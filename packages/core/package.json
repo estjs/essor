@@ -1,0 +1,62 @@
+{
+  "name": "essor",
+  "version": "0.0.5",
+  "packageManager": "pnpm@8.15.6",
+  "description": "",
+  "type": "module",
+  "keywords": [],
+  "license": "MIT",
+  "homepage": "https://github.com/estjs/essor#readme",
+  "bugs": "https://github.com/estjs/essor/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
+  "author": "jiangxd <jiangxd2016@gmail.com>",
+  "funding": "https://github.com/sponsors/estjs",
+  "files": [
+    "dist",
+    "types"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "browser": {
+        "development": {
+          "types": "./dist/index.d.ts",
+          "require": "./dist/index.dev.cjs.js",
+          "import": "./dist/index.dev.esm.js"
+        },
+        "types": "./dist/index.d.ts",
+        "require": "./dist/index.cjs.js",
+        "import": "./dist/index.esm.js"
+      },
+      "development": {
+        "types": "./dist/index.d.ts",
+        "require": "./dist/index.dev.cjs.js",
+        "import": "./dist/index.dev.esm.js"
+      },
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs.js",
+      "import": "./dist/index.esm.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "csstype": "^3.1.3",
+    "essor-shared": "workspace:*"
+  }
+}

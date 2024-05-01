@@ -1,0 +1,186 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`jsx ssr transform > transforms JSX element with JSX fragment 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<p>", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with JSX fragment as children 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p>", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with SVG tags 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<svg>", "<circle cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\">", "</circle>", "</svg>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with attributes 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div id=\\"myId\\" class=\\"myClass\\">", "Hello World", "</div>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with boolean attribute 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<input disabled/>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with children 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p>", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with class and style attributes 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div", ">", "Hello World", "</div>"]);
+const hasClass = true;
+const style = {
+  color: 'red',
+  fontSize: '16px'
+};
+const element = _ssr$(_tmpl$, {
+  "0": {
+    "class": () => hasClass ? 'myClass' : '',
+    "style": style
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with conditional attributes 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div", ">", "Hello World", "</div>"]);
+const hasClass = true;
+const element = _ssr$(_tmpl$, {
+  "0": {
+    "class": () => hasClass ? 'myClass' : 'otherClass'
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with dynamic expressions 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "Hello, ", "!", "</div>"]);
+const name = 'John';
+const element = _ssr$(_tmpl$, {
+  "1": {
+    "children": [[() => name, 2]]
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with function components 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "</div>"]);
+const element = _ssr$(_tmpl$, {
+  "1": {
+    "children": [[() => _ssr$(MyComponent, {
+      "text": "Component 1"
+    }), 1], [() => _ssr$(MyComponent, {
+      "text": "Component 2"
+    }), 1]]
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with nested expressions and children 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p>", "'s Profile", "</p>", "<ul>", "</ul>", "</div>"]),
+  _tmpl$2 = _ssrtmpl$(["<li", ">", "Item ", "</li>"]);
+const name = 'John';
+const element = _ssr$(_tmpl$, {
+  "2": {
+    "children": [[() => name, 2]]
+  },
+  "5": {
+    "children": [[() => Array.from({
+      length: 3
+    }, (_, i) => _ssr$(_tmpl$2, {
+      "0": {},
+      "2": {
+        "children": [[() => i + 1, 3]]
+      }
+    }, i)), 5]]
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with null and undefined attributes 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div", ">", "Hello World", "</div>"]);
+const element = _ssr$(_tmpl$, {
+  "0": {
+    "id": null,
+    "class": undefined
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with null and undefined children 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p>", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+const element = _ssr$(_tmpl$, {
+  "1": {
+    "children": [[() => null, 1], [() => undefined, 4], [() => false, 4]]
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with null and undefined in expressions 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p>", "'s Profile", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+const name = null;
+const element = _ssr$(_tmpl$, {
+  "1": {
+    "children": [[() => undefined, 4]]
+  },
+  "2": {
+    "children": [[() => name, 2]]
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with self-closing tags 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<img src=\\"image.jpg\\" alt=\\"Image 1\\"/>", "<img src=\\"image.jpg\\" alt=\\"Image 2\\"/>", "</div>"]);
+const element = _ssr$(_tmpl$, {});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with spread attributes 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div", ">", "Hello World", "</div>"]);
+const props = {
+  id: 'myId',
+  class: 'myClass'
+};
+const element = _ssr$(_tmpl$, {
+  "0": {
+    ...props
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms JSX element with style attribute 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div", ">", "Hello World", "</div>"]);
+const style = {
+  color: 'red',
+  fontSize: '16px'
+};
+const element = _ssr$(_tmpl$, {
+  "0": {
+    "style": style
+  }
+});"
+`;
+
+exports[`jsx ssr transform > transforms simple JSX element 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "Hello World", "</div>"]);
+const element = _ssr$(_tmpl$, {});"
+`;

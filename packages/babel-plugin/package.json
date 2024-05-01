@@ -1,0 +1,43 @@
+{
+  "name": "babel-plugin-essor",
+  "version": "0.0.5",
+  "packageManager": "pnpm@8.15.6",
+  "description": "",
+  "type": "module",
+  "keywords": [],
+  "license": "MIT",
+  "author": "jiangxd <jiangxd2016@gmail.com>",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/index.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup",
+    "dev": "cross-env BUILD_ENV=production tsup --watch"
+  },
+  "dependencies": {
+    "@babel/core": "^7.24.3",
+    "@babel/types": "^7.24.0"
+  },
+  "devDependencies": {
+    "@types/babel__core": "^7.20.5",
+    "typescript": "^5.4.4"
+  }
+}
