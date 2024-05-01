@@ -12,7 +12,7 @@ import {
   isTextChild,
   setNodeText,
 } from './shared';
-import type { OptionalMemberExpression } from '@babel/types';
+import type { Identifier, OptionalMemberExpression, StringLiteral } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
 
@@ -249,9 +249,19 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       });
       if (hasConditional) {
         value = t.arrowFunctionExpression([], value);
-      }
+        props[prop] = value;
+      } else {
+        // TODO: For the time being, only support style
+        if (prop === 'style') {
+          value.properties.forEach(property => {
+            if (t.isObjectProperty(property)) {
+              style += `${(property.key as Identifier).name}:${(property.value as StringLiteral).value};`;
+            }
+          });
 
-      props[prop] = value;
+          delete props[prop];
+        }
+      }
     }
   }
 
