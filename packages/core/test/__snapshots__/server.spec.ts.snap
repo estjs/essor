@@ -1,0 +1,5 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`service > should render a template with props > Hello, <div id="test" className="test-class"> 1`] = `"Hello <div>,!,</div> id="test" className="test-class" chidren="() => 123,1""`;
+
+exports[`service > should render a template with props 1`] = `"Hello <div>,!,</div> id="test" className="test-class" chidren="() => 123,1""`;
