@@ -1,7 +1,7 @@
 {
   "name": "unplugin-essor",
   "version": "0.0.5",
-  "packageManager": "pnpm@8.15.6",
+  "packageManager": "pnpm@8.15.8",
   "description": "",
   "type": "module",
   "keywords": [
