@@ -1,0 +1,27 @@
+{
+  "name": "playground",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --open --port 3001",
+    "typecheck": "tsc  --noEmit",
+    "preview": "vite preview",
+    "test": "vitest -r test"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@estjs/eslint-config": "^1.1.1",
+    "@types/node": "^20.11.30",
+    "eslint": "^8.57.0",
+    "express": "^4.19.2",
+    "happy-dom": "^14.3.3",
+    "typescript": "^5.4.3",
+    "unplugin-essor": "workspace:*",
+    "vite": "^5.2.4",
+    "vite-plugin-inspect": "^0.8.3",
+    "vitest": "^1.4.0"
+  }
+}

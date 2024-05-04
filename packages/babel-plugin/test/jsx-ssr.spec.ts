@@ -23,8 +23,16 @@ describe('jsx ssr transform', () => {
       const element = <div>Hello, {name}!</div>;
     `;
 
-    // TODO: bug
-    expect(transformCode(inputCode)).toMatchSnapshot();
+    expect(transformCode(inputCode)).toMatchInlineSnapshot(`
+      "import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+      const _tmpl$ = _ssrtmpl$(["<div>", "Hello, ", "!", "</div>"]);
+      const name = 'John';
+      const element = _ssr$(_tmpl$, {
+        "1": {
+          "children": [[() => name, 2]]
+        }
+      });"
+    `);
   });
 
   it('transforms JSX element with boolean attribute', () => {
