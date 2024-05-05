@@ -9,6 +9,10 @@ export const transformProgram = {
       ssrtmpl: path.scope.generateUidIdentifier('ssrtmpl$'),
       ssr: path.scope.generateUidIdentifier('ssr$'),
       template: path.scope.generateUidIdentifier('template$'),
+
+      useSignal: path.scope.generateUidIdentifier('signal$'),
+      useComputed: path.scope.generateUidIdentifier('computed$'),
+
       tmplDeclaration: t.variableDeclaration('const', []),
       opts: state.opts,
     } as State;

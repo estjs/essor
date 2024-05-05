@@ -1,12 +1,23 @@
 import babel from '@babel/core';
 import { transformProgram } from '../src/program';
 import { transformJSX } from '../src/jsx';
+import { replaceSymbol } from '../src/signal/symbol';
+import { replaceImportDeclaration } from '../src/signal/import';
 
-const transformList = {
+const transforms = {
   jsx: {
     Program: transformProgram,
     JSXElement: transformJSX,
     JSXFragment: transformJSX,
+  },
+  symbol: {
+    Program: transformProgram,
+    VariableDeclarator: replaceSymbol,
+  },
+  import: {
+    Program: transformProgram,
+    VariableDeclarator: replaceSymbol,
+    ImportDeclaration: replaceImportDeclaration,
   },
 };
 
@@ -19,10 +30,11 @@ export function getTransform(
         Object.assign(obj, transform[key]);
         return obj;
       }, {})
-    : transformList[transformName];
+    : transforms[transformName];
   if (!transform) {
     throw new Error(`Unsupported transform: ${transformName}`);
   }
+
   const babelPlugin = {
     name: 'babel-plugin-essor',
     manipulateOptions({ filename }, parserOpts) {
