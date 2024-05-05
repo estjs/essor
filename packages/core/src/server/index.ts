@@ -19,7 +19,7 @@ export function ssrtmpl(templates: string[] = []): TemplateMap {
 
 function jsonToAttrs(json: Record<string, any>): string {
   return Object.entries(json)
-    .map(([key, value]) => `${key}="${JSON.stringify(value)}"`)
+    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
     .join(' ');
 }
 
@@ -32,36 +32,34 @@ export function ssr(
   }
 
   const childrenMap: Record<string, EssorNode[]> = {};
-
+  const newTemplate: TemplateMap = {};
   if (isObject(template)) {
     Object.entries(template).forEach(([key, tmpl]) => {
       const prop = props[key];
-      if (!prop) return;
-
-      Object.keys(prop).forEach(propKey => {
-        if (propKey.startsWith('on') && isFunction(prop[propKey])) {
-          delete prop[propKey];
-        }
-      });
-
-      if (prop.children) {
-        prop.children.forEach(([child, idx]: [any, number]) => {
-          childrenMap[idx] = [...(childrenMap[idx] || []), child];
+      if (prop) {
+        Object.keys(prop).forEach(propKey => {
+          if (propKey.startsWith('on') && isFunction(prop[propKey])) {
+            delete prop[propKey];
+          }
         });
-        delete prop.children;
+
+        if (prop.children) {
+          prop.children.forEach(([child, idx]: [any, number]) => {
+            childrenMap[idx] = [...(childrenMap[idx] || []), child];
+          });
+          delete prop.children;
+        }
       }
 
-      template[key] = { template: tmpl, prop };
+      newTemplate[key] = { template: tmpl.template, prop };
     });
   }
-  console.log({ template });
 
-  return Object.entries(template)
+  return Object.entries(newTemplate)
     .map(([key, { template: tmpl, prop }]) => {
       let str = tmpl;
       if (prop) {
         str += ` ${jsonToAttrs(prop)}`;
-        console.log(str);
       }
       if (childrenMap[key]) {
         str += childrenMap[key].map(child => ssr(child, prop)).join('');
