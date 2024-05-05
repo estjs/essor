@@ -1,7 +1,7 @@
 import type { EssorComponent } from './component';
 
-export interface EssorNode<P = any> {
-  props: P;
+export interface EssorNode<T extends Record<string, any> = Record<string, any>> {
+  props: T;
   id?: string;
   template: EssorComponent | HTMLTemplateElement;
 
