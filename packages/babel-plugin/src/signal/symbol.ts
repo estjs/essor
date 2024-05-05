@@ -1,7 +1,6 @@
 import { types as t } from '@babel/core';
 import { type Identifier, type VariableDeclarator, cloneNode } from '@babel/types';
 import { imports } from '../program';
-import { replacePatternToReactive } from './pattern';
 import type { NodePath } from '@babel/core';
 
 export function replaceSymbol(path: NodePath<VariableDeclarator>) {
@@ -9,8 +8,6 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
   const variableName = (path.node.id as Identifier).name;
 
   if (t.isObjectPattern(path.node.id) || t.isArrayPattern(path.node.id)) {
-    // 如果是解构的，则交给 replacePatternToReactive 处理
-    replacePatternToReactive(path);
     return;
   }
 
