@@ -283,7 +283,7 @@ function replaceChild(node: t.Expression, result: Result): void {
   if (result.isLastChild) {
     result.index--;
   } else {
-    result.template += '<!-->';
+    result.template += '<!>';
   }
   result.props[result.parentIndex] ??= {};
   result.props[result.parentIndex].children ??= [];

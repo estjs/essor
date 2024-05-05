@@ -1,7 +1,7 @@
 import { isFunction } from 'essor-shared';
 import { signalObject } from '../signal';
 import { type Signal, useEffect, useSignal } from '../signal';
-import { type SignalObject, isSignal, signalToObject } from '../signal/signal';
+import { isSignal } from '../signal/signal';
 import { addEventListener } from './utils';
 import type { EssorComponent, NodeTrack } from '../../types';
 import type { TemplateNode } from './template-node';
@@ -21,19 +21,17 @@ export class ComponentNode implements JSX.Element {
 
   static ref: ComponentNode | null = null;
   static context: Record<symbol, Signal<any>> = {};
-
-  private proxyProps: SignalObject<any> = {};
-  private trackMap = new Map<string, NodeTrack>();
-
   id?: string;
-  private context: Record<symbol | string | number, any> = {};
-  private emitter = new Set<Function>();
+  private proxyProps: Record<string, Signal<any>> = {};
+  context: Record<symbol | string | number, any> = {};
+  emitter = new Set<Function>();
   mounted = false;
-  private rootNode: TemplateNode | null = null;
-  private hooks: Record<Hook, Set<() => void>> = {
+  rootNode: TemplateNode | null = null;
+  hooks: Record<Hook, Set<() => void>> = {
     mounted: new Set(),
     destroy: new Set(),
   };
+  private trackMap = new Map<string, NodeTrack>();
   get firstChild(): Node | null {
     return this.rootNode?.firstChild ?? null;
   }
@@ -62,6 +60,7 @@ export class ComponentNode implements JSX.Element {
     this.rootNode = node.rootNode;
     this.trackMap = node.trackMap;
 
+    // patch props
     const props = this.props;
     this.props = node.props;
 
@@ -88,7 +87,7 @@ export class ComponentNode implements JSX.Element {
     }
 
     ComponentNode.ref = this;
-    this.rootNode = this.template(signalToObject(this.proxyProps));
+    this.rootNode = this.template(this.proxyProps);
     ComponentNode.ref = null;
     this.mounted = true;
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
@@ -119,14 +118,10 @@ export class ComponentNode implements JSX.Element {
       } else if (key.indexOf('bind:') === 0) {
         this.proxyProps[key] = useSignal(prop);
       } else if (key === 'ref') {
-        if (isFunction(prop)) {
-          (props[key] as Function)(this.rootNode?.nodes[0]);
+        if (isSignal(prop)) {
+          (props[key] as any).value = this.rootNode?.nodes[0];
         } else {
-          if (isSignal(prop)) {
-            (props[key] as any).value = this.rootNode?.nodes[0];
-          } else {
-            props[key] = this.rootNode?.nodes[0];
-          }
+          props[key] = this.rootNode?.nodes[0];
         }
       } else {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));

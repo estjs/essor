@@ -54,7 +54,6 @@ export class TemplateNode implements JSX.Element {
   }
 
   parent: Node | null = null;
-
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
     if (this.isConnected) {
@@ -66,10 +65,10 @@ export class TemplateNode implements JSX.Element {
     const firstChild = cloneNode.firstChild as HTMLElement | null;
 
     if (firstChild?.hasAttribute?.('_svg_')) {
+      firstChild.remove();
       firstChild?.childNodes.forEach(node => {
         (cloneNode as Element).append(node);
       });
-      firstChild.remove();
     }
 
     this.nodes = Array.from(cloneNode.childNodes);
@@ -157,8 +156,8 @@ export class TemplateNode implements JSX.Element {
           });
         }
       } else if (attr === 'ref') {
-        if (isFunction(props[attr])) {
-          props[attr](node);
+        if (isSignal(props[attr])) {
+          props[attr].value = node;
         } else {
           props[attr] = node;
         }
@@ -174,7 +173,7 @@ export class TemplateNode implements JSX.Element {
 
         const triggerValue = isSignal(val) ? val : useSignal(val);
         const cleanup = useEffect(() => {
-          triggerValue.value = val;
+          triggerValue.value = isSignal(val) ? val.value : val;
           node[bindKey] = triggerValue.value;
         });
 
@@ -191,7 +190,7 @@ export class TemplateNode implements JSX.Element {
         const val = props[attr];
         const triggerValue = isSignal(val) ? val : useSignal(val);
         const cleanup = useEffect(() => {
-          triggerValue.value = val;
+          triggerValue.value = isSignal(val) ? val.value : val;
           patchAttribute(track, node, attr, triggerValue.value);
         });
 
