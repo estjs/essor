@@ -8,7 +8,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['**/scripts/**', '**/unplugin/**', '**/*.d.ts', '**/index.ts'],
+      exclude: ['**/scripts/**', '**/unplugin/**', '**/playground/**', '**/*.d.ts', '**/index.ts'],
     },
     globals: true,
     environment: 'jsdom',
