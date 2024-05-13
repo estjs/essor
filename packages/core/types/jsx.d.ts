@@ -143,7 +143,7 @@ declare global {
       ref?: unknown | ((e: unknown) => void);
     }
     interface CustomAttributes<T> {
-      ref?: T | ((el: T) => void);
+      ref?: Signal<T> | ((el: T) => void);
       classList?: {
         [k: string]: boolean | undefined;
       };
