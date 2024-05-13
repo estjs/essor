@@ -17,20 +17,20 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/essor-shared.js",
+  "module": "./dist/essor-shared.js",
+  "types": "./dist/essor-shared.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs",
-      "import": "./dist/index.js"
+      "types": "./dist/essor-shared.d.ts",
+      "require": "./dist/essor-shared.cjs",
+      "import": "./dist/essor-shared.js"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "./dist/index.d.ts"
+        "./dist/essor-shared.d.ts"
       ]
     }
   },

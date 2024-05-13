@@ -4,7 +4,9 @@ import { defineConfig } from 'tsup';
 const env = process.env.NODE_ENV;
 
 export default defineConfig({
-  entry: ['./src/index.ts'],
+  entryPoints: {
+    'essor-shared': './src/index.ts',
+  },
   outDir: 'dist',
   format: ['cjs', 'esm'],
   target: 'es2016',

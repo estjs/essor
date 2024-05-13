@@ -18,39 +18,41 @@
     "dist",
     "types"
   ],
-  "main": "./dist/index.js",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/essor.esm.js",
+  "module": "./dist/essor.esm.js",
+  "types": "./dist/essor.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
-          "types": "./dist/index.d.ts",
-          "require": "./dist/index.dev.cjs.js",
-          "import": "./dist/index.dev.esm.js"
+          "types": "./dist/essor.d.ts",
+          "require": "./dist/essor.dev.cjs.js",
+          "import": "./dist/essor.dev.esm.js"
         },
-        "types": "./dist/index.d.ts",
-        "require": "./dist/index.cjs.js",
-        "import": "./dist/index.esm.js"
+        "types": "./dist/essor.d.ts",
+        "require": "./dist/essor.cjs.js",
+        "import": "./dist/essor.esm.js"
       },
       "development": {
-        "types": "./dist/index.d.ts",
-        "require": "./dist/index.dev.cjs.js",
-        "import": "./dist/index.dev.esm.js"
+        "types": "./dist/essor.d.ts",
+        "require": "./dist/essor.dev.cjs.js",
+        "import": "./dist/essor.dev.esm.js"
       },
-      "types": "./dist/index.d.ts",
-      "require": "./dist/index.cjs.js",
-      "import": "./dist/index.esm.js"
+      "types": "./dist/essor.d.ts",
+      "require": "./dist/essor.cjs.js",
+      "import": "./dist/essor.esm.js"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "./dist/index.d.ts"
+        "./dist/essor.d.ts"
       ]
     }
   },
   "sideEffects": false,
+  "unpkg": "dist/essor.esm.js",
+  "jsdelivr": "dist/essor.esm.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"
