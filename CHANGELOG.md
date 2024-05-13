@@ -5,6 +5,11 @@ toc: false
 docClass: timeline
 ---
 
+## 0.0.6-beta.1 `2024-05-05`
+
+
+
+
 ## 0.0.5 `2024-05-05`
 
 
