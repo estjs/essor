@@ -120,8 +120,8 @@ export class ComponentNode implements JSX.Element {
       } else if (key === 'ref') {
         if (isSignal(prop)) {
           (props[key] as any).value = this.rootNode?.nodes[0];
-        } else {
-          props[key] = this.rootNode?.nodes[0];
+        } else if (isFunction(prop)) {
+          (props[key] as Function)(this.rootNode?.nodes[0]);
         }
       } else {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));

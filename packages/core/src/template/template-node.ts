@@ -158,8 +158,8 @@ export class TemplateNode implements JSX.Element {
       } else if (attr === 'ref') {
         if (isSignal(props[attr])) {
           props[attr].value = node;
-        } else {
-          props[attr] = node;
+        } else if (isFunction(props[attr])) {
+          (props[attr] as Function)(node);
         }
       } else if (attr.indexOf('on') === 0) {
         const eventName = attr.slice(2).toLocaleLowerCase();
