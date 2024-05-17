@@ -61,7 +61,7 @@ importers:
         version: 5.4.5
       vitest:
         specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.1)(jsdom@24.0.0)
+        version: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.2)(jsdom@24.0.0)
 
   packages/babel-plugin:
     dependencies:
@@ -150,7 +150,7 @@ importers:
         version: 4.19.2
       happy-dom:
         specifier: ^14.7.1
-        version: 14.10.1
+        version: 14.10.2
       typescript:
         specifier: ^5.4.5
         version: 5.4.5
@@ -165,7 +165,7 @@ importers:
         version: 0.8.4(vite@5.2.11)
       vitest:
         specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.1)(jsdom@24.0.0)
+        version: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.2)(jsdom@24.0.0)
 
 packages:
 
@@ -1432,7 +1432,7 @@ packages:
       std-env: 3.7.0
       strip-literal: 2.1.0
       test-exclude: 6.0.0
-      vitest: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.1)(jsdom@24.0.0)
+      vitest: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.2)(jsdom@24.0.0)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -3054,7 +3054,7 @@ packages:
       '@typescript-eslint/eslint-plugin': 7.9.0(@typescript-eslint/parser@7.9.0)(eslint@8.57.0)(typescript@5.4.5)
       '@typescript-eslint/utils': 7.9.0(eslint@8.57.0)(typescript@5.4.5)
       eslint: 8.57.0
-      vitest: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.1)(jsdom@24.0.0)
+      vitest: 1.6.0(@types/node@20.12.8)(happy-dom@14.10.2)(jsdom@24.0.0)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -3669,8 +3669,8 @@ packages:
       uglify-js: 3.17.4
     dev: true
 
-  /happy-dom@14.10.1:
-    resolution: {integrity: sha512-GRbrZYIezi8+tTtffF4v2QcF8bk1h2loUTO5VYQz3GZdrL08Vk0fI+bwf/vFEBf4C/qVf/easLJ/MY1wwdhytA==}
+  /happy-dom@14.10.2:
+    resolution: {integrity: sha512-n9A1h5X4OCJ1ACjjrLQJQ10F02dkGj9wpPdtam/LsxPHfcpsRp55Kfrruz/LVbDuM4QLwgZ56jr4OSVImWZkhQ==}
     engines: {node: '>=16.0.0'}
     dependencies:
       entities: 4.5.0
@@ -6468,7 +6468,7 @@ packages:
       fsevents: 2.3.3
     dev: true
 
-  /vitest@1.6.0(@types/node@20.12.8)(happy-dom@14.10.1)(jsdom@24.0.0):
+  /vitest@1.6.0(@types/node@20.12.8)(happy-dom@14.10.2)(jsdom@24.0.0):
     resolution: {integrity: sha512-H5r/dN06swuFnzNFhq/dnz37bPXnq8xB2xB5JOVk8K09rUtoeNN+LHWkoQ0A/i3hvbUKKcCei9KpbxqHMLhLLA==}
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
@@ -6503,7 +6503,7 @@ packages:
       chai: 4.4.1
       debug: 4.3.4(supports-color@5.5.0)
       execa: 8.0.1
-      happy-dom: 14.10.1
+      happy-dom: 14.10.2
       jsdom: 24.0.0
       local-pkg: 0.5.0
       magic-string: 0.30.9
