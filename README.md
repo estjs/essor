@@ -6,7 +6,7 @@
 
 ![ci](https://img.shields.io/github/actions/workflow/status/estjs/essor/ci.yml?label=CI&logo=GitHub)
 ![license](https://img.shields.io/github/license/estjs/essor)
-![version](https://img.shields.io/npm/v/eurus-ui)
+![version](https://img.shields.io/npm/v/essor)
 ![download](https://img.shields.io/npm/dm/essor)
 ![codecov](https://img.shields.io/codecov/c/github/estjs/essor)
 
