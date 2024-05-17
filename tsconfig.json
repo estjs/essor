@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "es2016",
-    "lib": ["es2021", "dom"],
+    "lib": ["es2022", "dom"],
     "experimentalDecorators": true,
     "module": "esnext",
     "moduleResolution": "node",

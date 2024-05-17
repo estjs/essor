@@ -108,15 +108,13 @@ export class ComponentNode implements JSX.Element {
     return track;
   }
 
-  patchProps(props: Record<string, unknown>) {
+  patchProps(props: Record<string, any>) {
     for (const [key, prop] of Object.entries(props)) {
       if (key.indexOf('on') === 0 && this.rootNode?.nodes) {
         const event = key.slice(2).toLowerCase();
         const listener = prop as Listener<unknown>;
         const cleanup = addEventListener(this.rootNode.nodes[0], event, listener);
         this.emitter.add(cleanup);
-      } else if (key.indexOf('bind:') === 0) {
-        this.proxyProps[key] = useSignal(prop);
       } else if (key === 'ref') {
         if (isSignal(prop)) {
           (props[key] as any).value = this.rootNode?.nodes[0];
@@ -124,6 +122,9 @@ export class ComponentNode implements JSX.Element {
           (props[key] as Function)(this.rootNode?.nodes[0]);
         }
       } else {
+        if (key.indexOf('update:') !== 0) {
+          return;
+        }
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {

@@ -206,4 +206,24 @@ describe('jsx ssr transform', () => {
 
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('should work with bind api', () => {
+    const inputCode = `
+    const value = 1;
+    <div>
+    <p bind:value={value}>Paragraph 1</p>
+    <p>Paragraph 2</p>
+  </div>`;
+    expect(transformCode(inputCode)).toMatchInlineSnapshot(`
+      "import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+      const _tmpl$ = _ssrtmpl$(["<div>", "<p", ">", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+      const value = 1;
+      _ssr$(_tmpl$, {
+        "0": {
+          "value": value,
+          "updateValue": _value => value = _value
+        }
+      });"
+    `);
+  });
 });
