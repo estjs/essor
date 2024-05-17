@@ -246,7 +246,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       delete props[prop];
       continue;
     }
-    if (prop.indexOf('style:') === 0 && (typeof value === 'string' || typeof value === 'number')) {
+    if (startsWith(prop, 'style:') && (typeof value === 'string' || typeof value === 'number')) {
       const name = prop.replace(/^style:/, '');
       style += `${name}:${value};`;
       delete props[prop];

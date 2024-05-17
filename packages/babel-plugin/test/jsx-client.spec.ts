@@ -214,16 +214,6 @@ describe('jsx transform', () => {
     <p bind:value={value}>Paragraph 1</p>
     <p>Paragraph 2</p>
   </div>`;
-    expect(transformCode(inputCode)).toMatchInlineSnapshot(`
-      "import { template as _template$, h as _h$ } from "essor";
-      const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-      const value = 1;
-      _h$(_tmpl$, {
-        "2": {
-          "value": value,
-          "updateValue": _value => value = _value
-        }
-      });"
-    `);
+    expect(transformCode(inputCode)).toMatchSnapshot()
   });
 });

@@ -1,5 +1,17 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`jsx transform > should work with bind api 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const value = 1;
+_h$(_tmpl$, {
+  "2": {
+    "value": value,
+    "updateValue": _value => value = _value
+  }
+});"
+`;
+
 exports[`jsx transform > transforms JSX element with JSX fragment 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<p>Paragraph 1</p><p>Paragraph 2</p>");

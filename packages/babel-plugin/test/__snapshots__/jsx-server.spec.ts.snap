@@ -1,5 +1,17 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`jsx ssr transform > should work with bind api 1`] = `
+"import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
+const _tmpl$ = _ssrtmpl$(["<div>", "<p", ">", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>", "</div>"]);
+const value = 1;
+_ssr$(_tmpl$, {
+  "0": {
+    "value": value,
+    "updateValue": _value => value = _value
+  }
+});"
+`;
+
 exports[`jsx ssr transform > transforms JSX element with JSX fragment 1`] = `
 "import { ssrtmpl as _ssrtmpl$, ssr as _ssr$ } from "essor";
 const _tmpl$ = _ssrtmpl$(["<p>", "Paragraph 1", "</p>", "<p>", "Paragraph 2", "</p>"]);

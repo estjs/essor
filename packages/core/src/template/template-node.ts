@@ -1,4 +1,4 @@
-import { coerceArray, isArray, isFunction, isNil } from 'essor-shared';
+import { coerceArray, isArray, isFunction, isNil, startsWith } from 'essor-shared';
 import { useEffect, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
 import { capitalizeFirstLetter } from './../../../shared/src/name';
@@ -157,7 +157,7 @@ export class TemplateNode implements JSX.Element {
         }
       } else {
         // ignore update
-        if (attr.indexOf('update:') !== 0) {
+        if (startsWith(attr, 'update:')) {
           return;
         }
         const track = this.getNodeTrack(`${key}:${attr}`);

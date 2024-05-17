@@ -1,3 +1,4 @@
+import { startsWith } from 'essor-shared';
 import { types as t } from '@babel/core';
 import { imports } from '../program';
 import { capitalizeFirstLetter } from './../../../shared/src/name';
@@ -233,7 +234,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       delete props[prop];
       continue;
     }
-    if (prop.indexOf('class:') === 0) {
+    if (startsWith(prop, 'class:')) {
       if (value === true) {
         const name = prop.replace(/^class:/, '');
         klass += ` ${name}`;
@@ -251,7 +252,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       delete props[prop];
       continue;
     }
-    if (prop.indexOf('style:') === 0 && (typeof value === 'string' || typeof value === 'number')) {
+    if (startsWith(prop, 'style:') && (typeof value === 'string' || typeof value === 'number')) {
       const name = prop.replace(/^style:/, '');
       style += `${name}:${value};`;
       delete props[prop];
