@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalizeFirstLetter, startsWith } from 'essor-shared';
+import { startsWith } from 'essor-shared';
 import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
 import type { OptionalMemberExpression } from '@babel/types';
@@ -355,8 +355,7 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
                 const value = path.scope.generateUidIdentifier('value');
                 const bindName = name.slice(5).toLocaleLowerCase();
                 props[bindName] = expression.node;
-                const capName = capitalizeFirstLetter(bindName);
-                props[`update${capName}`] = t.arrowFunctionExpression(
+                props[`update:${bindName}`] = t.arrowFunctionExpression(
                   [value],
                   t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),
                 );

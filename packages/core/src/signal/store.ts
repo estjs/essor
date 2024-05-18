@@ -2,7 +2,7 @@ import {
   type Signal,
   type SignalObject,
   signalObject,
-  signalToObject,
+  unSignal,
   useComputed,
   useSignal,
 } from './signal';
@@ -36,8 +36,8 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   const default_actions: StoreActions = {
     patch$(payload: PatchPayload) {
       Object.assign(signalState, signalObject(payload));
-      subscriptions.forEach(callback => callback(signalToObject(signalState)));
-      actionCallbacks.forEach(callback => callback(signalToObject(signalState)));
+      subscriptions.forEach(callback => callback(unSignal(signalState)));
+      actionCallbacks.forEach(callback => callback(unSignal(signalState)));
     },
     subscribe$(callback: Callback) {
       subscriptions.push(callback);
@@ -82,7 +82,7 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
     {
       get(_, key) {
         if (key === 'state') {
-          return signalToObject(signalState);
+          return unSignal(signalState);
         }
         if (key in states) {
           return states[key];

@@ -1,8 +1,14 @@
 import { coerceArray, isArray, isFunction, isNil, startsWith } from 'essor-shared';
 import { useEffect, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
-import { capitalizeFirstLetter } from './../../../shared/src/name';
-import { binNode, coerceNode, insertChild, removeChild, setAttribute } from './utils';
+import {
+  addEventListener,
+  binNode,
+  coerceNode,
+  insertChild,
+  removeChild,
+  setAttribute,
+} from './utils';
 import { patchChildren } from './patch';
 import type { NodeTrack } from '../../types';
 
@@ -155,11 +161,14 @@ export class TemplateNode implements JSX.Element {
         } else if (isFunction(props[attr])) {
           (props[attr] as Function)(node);
         }
-      } else {
-        // ignore update
-        if (startsWith(attr, 'update:')) {
-          return;
-        }
+      }
+      // handle events
+      else if (startsWith(attr, 'on')) {
+        const eventName = attr.slice(2).toLocaleLowerCase();
+        const track = this.getNodeTrack(`${key}:${attr}`);
+        const listener = props[attr];
+        track.cleanup = addEventListener(node, eventName, listener);
+      } else if (!startsWith(attr, 'update:')) {
         const track = this.getNodeTrack(`${key}:${attr}`);
         const val = props[attr];
         const triggerValue = isSignal(val) ? val : useSignal(val);
@@ -170,7 +179,7 @@ export class TemplateNode implements JSX.Element {
         });
 
         let cleanupBind;
-        const updateKey = `update${capitalizeFirstLetter(attr)}`;
+        const updateKey = `update:${attr}`;
         if (props[updateKey]) {
           cleanupBind = binNode(node, value => {
             props[updateKey](value);
@@ -178,7 +187,7 @@ export class TemplateNode implements JSX.Element {
         }
 
         track.cleanup = () => {
-          cleanup?.();
+          cleanup && cleanup();
           cleanupBind && cleanupBind();
         };
       }

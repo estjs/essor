@@ -11,10 +11,13 @@ export type Hook = 'mounted' | 'destroy';
 export class ComponentNode implements JSX.Element {
   constructor(
     public template: EssorComponent,
-    public props: Record<string, unknown>,
+    public props: Record<string, any>,
     public key?: string,
   ) {
-    this.proxyProps = signalObject(props);
+    this.proxyProps = signalObject(
+      props,
+      key => startsWith(key, 'on') || startsWith(key, 'update:'),
+    );
   }
   addEventListener(): void {}
   removeEventListener(): void {}
@@ -121,10 +124,9 @@ export class ComponentNode implements JSX.Element {
         } else if (isFunction(prop)) {
           (props[key] as Function)(this.rootNode?.nodes[0]);
         }
+      } else if (startsWith(key, 'update:')) {
+        props[key] = isSignal(prop) ? prop.value : prop;
       } else {
-        if (startsWith(key, 'update:')) {
-          return;
-        }
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {
