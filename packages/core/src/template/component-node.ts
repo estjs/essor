@@ -1,4 +1,4 @@
-import { isFunction } from 'essor-shared';
+import { isFunction, startsWith } from 'essor-shared';
 import { signalObject } from '../signal';
 import { type Signal, useEffect, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
@@ -11,10 +11,13 @@ export type Hook = 'mounted' | 'destroy';
 export class ComponentNode implements JSX.Element {
   constructor(
     public template: EssorComponent,
-    public props: Record<string, unknown>,
+    public props: Record<string, any>,
     public key?: string,
   ) {
-    this.proxyProps = signalObject(props);
+    this.proxyProps = signalObject(
+      props,
+      key => startsWith(key, 'on') || startsWith(key, 'update:'),
+    );
   }
   addEventListener(): void {}
   removeEventListener(): void {}
@@ -108,21 +111,21 @@ export class ComponentNode implements JSX.Element {
     return track;
   }
 
-  patchProps(props: Record<string, unknown>) {
+  patchProps(props: Record<string, any>) {
     for (const [key, prop] of Object.entries(props)) {
-      if (key.indexOf('on') === 0 && this.rootNode?.nodes) {
+      if (startsWith(key, 'on') && this.rootNode?.nodes) {
         const event = key.slice(2).toLowerCase();
         const listener = prop as Listener<unknown>;
         const cleanup = addEventListener(this.rootNode.nodes[0], event, listener);
         this.emitter.add(cleanup);
-      } else if (key.indexOf('bind:') === 0) {
-        this.proxyProps[key] = useSignal(prop);
       } else if (key === 'ref') {
         if (isSignal(prop)) {
           (props[key] as any).value = this.rootNode?.nodes[0];
         } else if (isFunction(prop)) {
           (props[key] as Function)(this.rootNode?.nodes[0]);
         }
+      } else if (startsWith(key, 'update:')) {
+        props[key] = isSignal(prop) ? prop.value : prop;
       } else {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);

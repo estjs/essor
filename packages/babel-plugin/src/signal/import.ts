@@ -1,4 +1,5 @@
 import { type NodePath, types as t } from '@babel/core';
+import { startsWith } from 'essor-shared';
 import type { ImportDeclaration } from '@babel/types';
 
 function isVariableUsedAsObject(path: NodePath<ImportDeclaration>, variableName: string) {
@@ -31,7 +32,7 @@ export function replaceImportDeclaration(path: NodePath<ImportDeclaration>) {
   imports.forEach(specifier => {
     const variableName = specifier.local.name;
 
-    if (variableName.indexOf('$') === 0 && !isVariableUsedAsObject(path, variableName)) {
+    if (startsWith(variableName, '$') && !isVariableUsedAsObject(path, variableName)) {
       path.scope.rename(variableName, `${variableName}.value`);
       specifier.local.name = `${variableName}`;
     }

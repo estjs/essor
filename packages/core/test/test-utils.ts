@@ -6,6 +6,8 @@ export function mount(code, props = {}) {
 
   return {
     nodes,
+    innerHTML: () => container.innerHTML,
     text: () => container.textContent,
+    get: name => container.querySelector(name),
   };
 }

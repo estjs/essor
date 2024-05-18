@@ -1,3 +1,5 @@
+import { isFunction } from '../../../shared/src';
+
 type EffectFn = () => void;
 
 let activeEffect: EffectFn | null = null;
@@ -143,25 +145,57 @@ export function useEffect(fn: EffectFn): () => void {
   };
 }
 
+function shouldExclude(key: string, exclude?: ((key: string) => boolean) | string[]): boolean {
+  return Array.isArray(exclude)
+    ? exclude.includes(key)
+    : isFunction(exclude)
+      ? exclude(key)
+      : false;
+}
+
 export type SignalObject<T> = {
-  [K in keyof T]: Signal<T[K]>;
+  [K in keyof T]: Signal<T[K]> | T[K];
 };
-export function signalObject<T extends Object>(initialValues: T): SignalObject<T> {
+/**
+ * Creates a SignalObject from the given initialValues, excluding specified keys.
+ *
+ * @param {T extends Object} initialValues - The initial values for the SignalObject.
+ * @param {(key: string) => boolean | string[]} exclude - A function that determines which keys to exclude from the SignalObject.
+ * @return {SignalObject<T>} The created SignalObject.
+ */
+export function signalObject<T extends object>(
+  initialValues: T,
+  exclude?: ((key: string) => boolean) | string[],
+): SignalObject<T> {
   const signals = Object.entries(initialValues).reduce((acc, [key, value]) => {
-    acc[key] = isSignal(value) ? value : useSignal(value);
+    acc[key] = shouldExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
     return acc;
   }, {} as SignalObject<T>);
 
   return signals;
 }
 
-export function signalToObject<T>(signal: SignalObject<T> | T | Signal<T>): T {
+/**
+ * Returns the current value of a signal, signal object, or plain object, excluding specified keys.
+ *
+ * @param {SignalObject<T> | T | Signal<T>} signal - The signal, signal object, or plain object to unwrap.
+ * @param {(key: string) => boolean | string[]} [exclude] - A function that determines which keys to exclude from the unwrapped object.
+ * @return {T} The unwrapped value of the signal, signal object, or plain object.
+ */
+export function unSignal<T>(
+  signal: SignalObject<T> | T | Signal<T>,
+  exclude?: ((key: string) => boolean) | string[],
+): T {
   if (!signal) return {} as T;
   if (isSignal(signal)) {
     return signal.peek();
   }
   return Object.entries(signal).reduce((acc, [key, value]) => {
-    acc[key] = isSignal(value) ? value.peek() : value;
+    if (shouldExclude(key, exclude)) {
+      acc[key] = value;
+    } else {
+      acc[key] = isSignal(value) ? value.peek() : value;
+    }
     return acc;
   }, {} as T);
 }

@@ -4,7 +4,7 @@ import essor from 'unplugin-essor/vite';
 
 export default defineConfig({
   test: {
-    environment: 'happy-dom',
+    environment: 'jsdom',
     globals: true,
   },
   plugins: [Inspect(), essor({ ssr: true })],
