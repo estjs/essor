@@ -13,7 +13,7 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^1.1.1",
+    "@estjs/eslint-config": "^1.1.2",
     "@types/node": "^20.12.8",
     "eslint": "^8.56.0",
     "express": "^4.19.2",
