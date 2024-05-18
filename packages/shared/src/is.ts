@@ -22,12 +22,6 @@ export function isNil(x: any): x is null | undefined {
   return x === null || x === undefined;
 }
 
-export const isIntegerKey = (key: unknown) =>
-  isString(key) && key !== 'NaN' && key[0] !== '-' && `${Number.parseInt(key, 10)}` === key;
-export function isClass(func) {
-  return typeof func === 'function' && /^class\s/.test(Function.prototype.toString.call(func));
-}
-
 export const isFunction = (val: unknown): val is Function => typeof val === 'function';
 export function isPrimitive(s: any): s is string | number {
   return (

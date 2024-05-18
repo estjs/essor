@@ -34,7 +34,8 @@
   },
   "dependencies": {
     "@babel/core": "^7.24.5",
-    "@babel/types": "^7.24.5"
+    "@babel/types": "^7.24.5",
+    "essor-shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",

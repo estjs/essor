@@ -1,6 +1,8 @@
 import { types as t } from '@babel/core';
+import { startsWith } from 'essor-shared';
 import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
+import type { OptionalMemberExpression } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
 type JSXElement = t.JSXElement | t.JSXFragment;
@@ -226,7 +228,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       delete props[prop];
       continue;
     }
-    if (prop.indexOf('class:') === 0) {
+    if (startsWith(prop, 'class:')) {
       if (value === true) {
         const name = prop.replace(/^class:/, '');
         klass += ` ${name}`;
@@ -244,7 +246,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
       delete props[prop];
       continue;
     }
-    if (prop.indexOf('style:') === 0 && (typeof value === 'string' || typeof value === 'number')) {
+    if (startsWith(prop, 'style:') && (typeof value === 'string' || typeof value === 'number')) {
       const name = prop.replace(/^style:/, '');
       style += `${name}:${value};`;
       delete props[prop];
@@ -350,7 +352,13 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
               if (/^key|ref|on.+$/.test(name)) {
                 props[name] = expression.node;
               } else if (/^bind:.+/.test(name)) {
-                props[name] = t.arrowFunctionExpression([], expression.node);
+                const value = path.scope.generateUidIdentifier('value');
+                const bindName = name.slice(5).toLocaleLowerCase();
+                props[bindName] = expression.node;
+                props[`update:${bindName}`] = t.arrowFunctionExpression(
+                  [value],
+                  t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),
+                );
               } else {
                 if (expression.isConditionalExpression()) {
                   props[name] = t.arrowFunctionExpression([], expression.node);

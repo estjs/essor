@@ -1,27 +1,4 @@
-import {
-  isFalsy,
-  isFunction,
-  isIntegerKey,
-  isObject,
-  isPrimitive,
-  isPromise,
-} from '../src';
-
-describe('isIntegerKey function', () => {
-  it('should return true for integer-like strings representing non-negative integers', () => {
-    expect(isIntegerKey('0')).toBe(true);
-    expect(isIntegerKey('1')).toBe(true);
-    expect(isIntegerKey('123')).toBe(true);
-  });
-
-  it('should return false for non-integer-like strings or negative integers', () => {
-    expect(isIntegerKey('')).toBe(false);
-    expect(isIntegerKey('abc')).toBe(false);
-    expect(isIntegerKey('-1')).toBe(false);
-    expect(isIntegerKey('-123')).toBe(false);
-    expect(isIntegerKey('NaN')).toBe(false);
-  });
-});
+import { isFalsy, isFunction, isObject, isPrimitive, isPromise } from '../src';
 
 describe('isFunction function', () => {
   it('should return true if the input is a function', () => {

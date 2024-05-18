@@ -1,4 +1,4 @@
-import { isFunction, isObject } from 'essor-shared';
+import { isFunction, isObject, startsWith } from 'essor-shared';
 import type { EssorNode } from '../../types';
 
 interface TemplateMap {
@@ -38,7 +38,7 @@ export function ssr(
       const prop = props[key];
       if (prop) {
         Object.keys(prop).forEach(propKey => {
-          if (propKey.startsWith('on') && isFunction(prop[propKey])) {
+          if (startsWith(propKey, 'on') && isFunction(prop[propKey])) {
             delete prop[propKey];
           }
         });

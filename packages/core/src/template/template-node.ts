@@ -1,4 +1,4 @@
-import { coerceArray, isArray, isFunction, isNil } from 'essor-shared';
+import { coerceArray, isArray, isFunction, isNil, startsWith } from 'essor-shared';
 import { useEffect, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
 import {
@@ -161,41 +161,34 @@ export class TemplateNode implements JSX.Element {
         } else if (isFunction(props[attr])) {
           (props[attr] as Function)(node);
         }
-      } else if (attr.indexOf('on') === 0) {
+      }
+      // handle events
+      else if (startsWith(attr, 'on')) {
         const eventName = attr.slice(2).toLocaleLowerCase();
         const track = this.getNodeTrack(`${key}:${attr}`);
         const listener = props[attr];
         track.cleanup = addEventListener(node, eventName, listener);
-      } else if (attr.indexOf('bind:') === 0) {
-        const bindKey = attr.slice(5).toLocaleLowerCase();
-        const val = props[attr];
-        const track = this.getNodeTrack(`${key}:${attr}`);
-
-        const triggerValue = isSignal(val) ? val : useSignal(val);
-        const cleanup = useEffect(() => {
-          triggerValue.value = isSignal(val) ? val.value : val;
-          node[bindKey] = triggerValue.value;
-        });
-
-        const cleanupBind = binNode(node, value => {
-          props[`update:${bindKey}`](value);
-        });
-
-        track.cleanup = () => {
-          cleanup?.();
-          cleanupBind?.();
-        };
-      } else if (attr.indexOf('update:') !== 0) {
+      } else if (!startsWith(attr, 'update:')) {
         const track = this.getNodeTrack(`${key}:${attr}`);
         const val = props[attr];
         const triggerValue = isSignal(val) ? val : useSignal(val);
+
         const cleanup = useEffect(() => {
           triggerValue.value = isSignal(val) ? val.value : val;
           patchAttribute(track, node, attr, triggerValue.value);
         });
 
+        let cleanupBind;
+        const updateKey = `update:${attr}`;
+        if (props[updateKey]) {
+          cleanupBind = binNode(node, value => {
+            props[updateKey](value);
+          });
+        }
+
         track.cleanup = () => {
-          cleanup?.();
+          cleanup && cleanup();
+          cleanupBind && cleanupBind();
         };
       }
     }

@@ -1,5 +1,6 @@
 import { types as t } from '@babel/core';
 import { type Identifier, type VariableDeclarator, cloneNode } from '@babel/types';
+import { startsWith } from 'essor-shared';
 import { imports } from '../program';
 import type { NodePath } from '@babel/core';
 
@@ -11,7 +12,7 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
     return;
   }
 
-  if (!variableName.startsWith('$')) {
+  if (!startsWith(variableName, '$')) {
     return;
   }
 

@@ -17,7 +17,7 @@
     "@types/node": "^20.12.8",
     "eslint": "^8.56.0",
     "express": "^4.19.2",
-    "happy-dom": "^14.7.1",
+    "jsdom": "^24.0.0",
     "typescript": "^5.4.5",
     "unplugin-essor": "workspace:*",
     "vite": "^5.2.11",

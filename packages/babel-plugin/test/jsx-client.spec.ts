@@ -206,4 +206,14 @@ describe('jsx transform', () => {
 
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('should work with bind api', () => {
+    const inputCode = `
+    const value = 1;
+    <div>
+    <p bind:value={value}>Paragraph 1</p>
+    <p>Paragraph 2</p>
+  </div>`;
+    expect(transformCode(inputCode)).toMatchSnapshot()
+  });
 });

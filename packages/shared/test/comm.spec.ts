@@ -1,4 +1,4 @@
-import { coerceArray, hasChanged } from '../src';
+import { coerceArray, hasChanged, startsWith } from '../src';
 
 describe('coerceArray function', () => {
   it('should return an array containing the input value if it is not an array', () => {
@@ -29,5 +29,28 @@ describe('hasChanged function', () => {
   it('should handle special cases like NaN', () => {
     expect(hasChanged(Number.NaN, Number.NaN)).toBe(false);
     expect(hasChanged(Number.NaN, 5)).toBe(true);
+  });
+});
+// 引入startsWith函数
+
+describe('startsWith function', () => {
+  it('should return true if str starts with searchString', () => {
+    expect(startsWith('https://www.google.com', 'https')).toBe(true);
+  });
+
+  it('should return true if searchString is an empty string', () => {
+    expect(startsWith('any string', '')).toBe(true);
+  });
+
+  it('should return true if str and searchString are the same', () => {
+    expect(startsWith('https', 'https')).toBe(true);
+  });
+
+  it('should return false if str is an empty string and searchString is not', () => {
+    expect(startsWith('', 'https')).toBe(false);
+  });
+
+  it('should be case-sensitive', () => {
+    expect(startsWith('https://www.google.com', 'HTTP')).toBe(false);
   });
 });
