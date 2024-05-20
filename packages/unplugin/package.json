@@ -1,7 +1,7 @@
 {
   "name": "unplugin-essor",
   "version": "0.0.6-beta.3",
-  "packageManager": "pnpm@8.15.8",
+  "packageManager": "pnpm@9.1.1",
   "description": "",
   "type": "module",
   "keywords": [
@@ -92,7 +92,7 @@
   "devDependencies": {
     "fast-glob": "^3.3.2",
     "nodemon": "^3.1.0",
-    "rimraf": "^5.0.5",
+    "rimraf": "^5.0.7",
     "rollup": "^4.17.2",
     "tsup": "^8.0.2",
     "typescript": "^5.4.5",
