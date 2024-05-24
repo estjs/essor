@@ -1,4 +1,20 @@
-import { useSignal } from 'essor';
+import { createStore, reactive } from 'essor';
+
+const sharedStore = createStore({
+  state: {
+    value: 'hello',
+  },
+  actions: {
+    updateValue(value) {
+      this.value = value;
+    },
+  },
+  getters: {
+    doubleValue() {
+      return this.value + this.value;
+    },
+  },
+});
 
 function Component(props) {
   return (
@@ -13,7 +29,9 @@ function Component(props) {
 }
 
 function App() {
-  const signal = useSignal('hello ');
+  const signal = reactive({
+    value: 'hello',
+  });
 
   return (
     <>
