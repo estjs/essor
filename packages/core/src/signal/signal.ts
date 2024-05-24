@@ -216,6 +216,9 @@ export function unReactive(obj) {
   return copy;
 }
 export function reactive(initialValue) {
+  if (isReactive(initialValue)) {
+    return initialValue;
+  }
   const signalObj = signalObject(initialValue);
 
   const handler = {

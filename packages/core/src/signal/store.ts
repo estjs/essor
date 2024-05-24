@@ -1,11 +1,4 @@
-import {
-  type Signal,
-  type SignalObject,
-  signalObject,
-  unSignal,
-  useComputed,
-  useSignal,
-} from './signal';
+import { reactive, useComputed } from './signal';
 
 interface StoreOptions<S, G, A> {
   state?: S;
@@ -26,18 +19,22 @@ let _id = 0;
 const StoreMap = new Map<number, any>();
 
 function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
-  const { state, getters, actions } = options as StoreOptions<any, any, any>;
+  const { state, getters, actions } = options as StoreOptions<
+    Record<string, any>,
+    Record<string, any>,
+    Record<string, any>
+  >;
 
   const initState = { ...(state ?? {}) };
-  const signalState: SignalObject<S> = signalObject(state ?? {});
+  const reactiveState = reactive(state ?? {});
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];
   const default_actions: StoreActions = {
     patch$(payload: PatchPayload) {
-      Object.assign(signalState, signalObject(payload));
-      subscriptions.forEach(callback => callback(unSignal(signalState)));
-      actionCallbacks.forEach(callback => callback(unSignal(signalState)));
+      Object.assign(reactiveState, payload);
+      subscriptions.forEach(callback => callback(reactiveState));
+      actionCallbacks.forEach(callback => callback(reactiveState));
     },
     subscribe$(callback: Callback) {
       subscriptions.push(callback);
@@ -52,17 +49,16 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
       actionCallbacks.push(callback);
     },
     reset$() {
-      default_actions.patch$(initState);
+      Object.assign(reactiveState, initState);
     },
   };
-  const states = {
-    _id: `store_${_id}`,
-  };
+  const gettersStates: Record<string | symbol, any> = {};
+  const actionStates: Record<string | symbol, any> = {};
   for (const key in getters) {
     const getter = getters[key];
     if (getter) {
-      states[key] = useComputed(() => {
-        return getter.call(signalState);
+      gettersStates[key] = useComputed(() => {
+        return getter.call(reactiveState, reactiveState);
       });
     }
   }
@@ -70,11 +66,11 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   for (const key in actions) {
     const action = actions[key];
     if (action) {
-      states[key] = action.bind(signalState);
+      actionStates[key] = action.bind(reactiveState);
     }
   }
 
-  StoreMap.set(_id, useSignal);
+  StoreMap.set(_id, reactiveState);
   ++_id;
 
   return new Proxy(
@@ -82,22 +78,25 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
     {
       get(_, key) {
         if (key === 'state') {
-          return unSignal(signalState);
+          return reactiveState;
         }
-        if (key in states) {
-          return states[key];
+        if (key in gettersStates) {
+          return gettersStates[key].value;
+        }
+        if (key in actionStates) {
+          return actionStates[key];
         }
         if (key in default_actions) {
           return default_actions[key];
         }
-        return signalState[key].value;
+        return reactiveState[key];
       },
     },
   );
 }
 
 type Getters<S> = {
-  [K in keyof S]: S[K] extends (...args: any[]) => any ? Signal<ReturnType<S[K]>> : Signal<S[K]>;
+  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
 };
 
 export function createStore<S, G, A>(
@@ -105,7 +104,7 @@ export function createStore<S, G, A>(
     state: S;
     getters?: G;
     actions?: A;
-  } & ThisType<SignalObject<S> & Getters<G> & A>,
+  } & ThisType<S & Getters<G> & A>,
 ): () => S & Getters<G> & A & StoreActions & { state: S } {
   return function () {
     if (StoreMap.has(_id)) {
