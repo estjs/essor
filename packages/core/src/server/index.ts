@@ -74,7 +74,7 @@ export function renderToString(component: (...args: any[]) => string, props: Pro
   return ssr(component, props);
 }
 
-export function hydrate(
+export function ssgRender(
   component: { mount: (root: HTMLElement) => void },
   root: HTMLElement,
 ): void {
