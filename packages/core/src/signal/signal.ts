@@ -199,3 +199,43 @@ export function unSignal<T>(
     return acc;
   }, {} as T);
 }
+
+const REACTIVE_MARKER = Symbol('reactive');
+
+export function isReactive(obj) {
+  return obj && obj[REACTIVE_MARKER] === true;
+}
+
+export function unReactive(obj) {
+  if (!isReactive(obj)) {
+    return obj;
+  }
+
+  const copy = Object.assign({}, obj);
+  delete copy[REACTIVE_MARKER];
+  return copy;
+}
+export function reactive(initialValue) {
+  const signalObj = signalObject(initialValue);
+
+  const handler = {
+    get(target, key, receiver) {
+      track(target, key);
+      const value = Reflect.get(target, key, receiver);
+      return isSignal(value) ? value.value : value;
+    },
+    set(target, key, value, receiver) {
+      const oldValue = Reflect.get(target, key, receiver);
+      if (oldValue !== value) {
+        Reflect.set(target, key, useSignal(value), receiver);
+        trigger(target, key);
+      }
+      return true;
+    },
+  };
+
+  const reactiveProxy = new Proxy(signalObj, handler);
+  reactiveProxy[REACTIVE_MARKER] = true;
+
+  return reactiveProxy;
+}
