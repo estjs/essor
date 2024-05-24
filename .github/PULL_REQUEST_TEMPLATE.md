@@ -45,5 +45,3 @@ Describe changes from the user side, and list all potential break changes or oth
 - [ ] Demo is updated/provided or not needed
 - [ ] TypeScript definition is updated/provided or not needed
 - [ ] Changelog is provided or not needed
-
-<!-- From: https://github.com/one-template/pr-template -->
