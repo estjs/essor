@@ -1,30 +1,26 @@
 import { createStore } from '../src';
 
 describe('createStore', () => {
-  it('should create a new store using options object', () => {
+  it('create store with state, getters, and actions', () => {
     const useStore = createStore({
       state: { count: 0 },
       getters: {
-        doubleCount() {
-          return this.count.value * 2;
+        doubleCount: state => {
+          return state.count * 2;
         },
       },
       actions: {
         increment() {
-          this.count.value++;
+          this.count++;
         },
       },
     });
-
     const store = useStore();
-    expect(store.count).toBe(0);
-    expect(store.state).toStrictEqual({ count: 0 });
-    expect(store.doubleCount.value).toBe(0);
+    expect(store.state.count).toBe(0);
+    expect(store.doubleCount).toBe(0);
     store.increment();
-
-    expect(store.count).toBe(1);
-    expect(store.doubleCount.value).toBe(2);
-    expect(store.state).toStrictEqual({ count: 1 });
+    expect(store.state.count).toBe(1);
+    expect(store.doubleCount).toBe(2);
   });
 });
 describe('store Methods', () => {
