@@ -1,4 +1,4 @@
-import { hydrate, renderToString, ssr, ssrtmpl } from '../src';
+import { renderToString, ssgRender, ssr, ssrtmpl } from '../src';
 
 describe('service', () => {
   let App;
@@ -71,7 +71,7 @@ describe('service', () => {
     const component = {
       mount: vitest.fn(),
     };
-    hydrate(component, document.querySelector('#root')!);
+    ssgRender(component, document.querySelector('#root')!);
     expect(component.mount).toHaveBeenCalled();
   });
 });
