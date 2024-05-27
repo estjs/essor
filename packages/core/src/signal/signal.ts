@@ -1,4 +1,4 @@
-import { isFunction } from '../../../shared/src';
+import { isFunction } from 'essor-shared';
 
 type EffectFn = () => void;
 
@@ -28,7 +28,9 @@ function track(target, key) {
 
 function trigger(target, key) {
   if (computedSet.size > 0) {
-    computedSet.forEach(computedSignal => computedSignal.run());
+    computedSet.forEach(computed => {
+      computed.run();
+    });
   }
 
   const depsMap = targetMap.get(target);
@@ -121,6 +123,9 @@ export class Computed<T> {
 }
 
 export function useComputed<T>(fn: () => T) {
+  if (isComputed(fn)) {
+    return fn;
+  }
   return new Computed(fn);
 }
 
@@ -138,7 +143,6 @@ export function useEffect(fn: EffectFn): () => void {
 
   EffectDeps.add(effectFn);
   effectFn();
-
   return () => {
     EffectDeps.delete(effectFn);
     activeEffect = null;
@@ -210,35 +214,39 @@ export function unReactive(obj) {
   if (!isReactive(obj)) {
     return obj;
   }
-
-  const copy = Object.assign({}, obj);
-  delete copy[REACTIVE_MARKER];
-  return copy;
+  return Object.assign({}, obj);
 }
-export function reactive(initialValue) {
+export function reactive<T extends object>(initialValue: T): T {
   if (isReactive(initialValue)) {
     return initialValue;
   }
+
   const signalObj = signalObject(initialValue);
 
-  const handler = {
+  const handler: ProxyHandler<SignalObject<T>> = {
     get(target, key, receiver) {
+      if (key === REACTIVE_MARKER) return true;
       track(target, key);
       const value = Reflect.get(target, key, receiver);
       return isSignal(value) ? value.value : value;
     },
     set(target, key, value, receiver) {
-      const oldValue = Reflect.get(target, key, receiver);
+      let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
+
+      if (isSignal(oldValue)) {
+        oldValue = oldValue.value;
+      }
+      if (isSignal(value)) {
+        value = value.value;
+      }
       if (oldValue !== value) {
         Reflect.set(target, key, useSignal(value), receiver);
         trigger(target, key);
+        return true;
       }
       return true;
     },
   };
 
-  const reactiveProxy = new Proxy(signalObj, handler);
-  reactiveProxy[REACTIVE_MARKER] = true;
-
-  return reactiveProxy;
+  return new Proxy(signalObj, handler) as T;
 }
