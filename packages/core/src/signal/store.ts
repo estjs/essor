@@ -1,4 +1,5 @@
 import { reactive, useComputed } from './signal';
+import type { Computed } from './signal';
 
 interface StoreOptions<S, G, A> {
   state?: S;
@@ -52,51 +53,34 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
       Object.assign(reactiveState, initState);
     },
   };
-  const gettersStates: Record<string | symbol, any> = {};
-  const actionStates: Record<string | symbol, any> = {};
+
+  const store = {
+    state: reactiveState,
+    ...default_actions,
+  };
+
   for (const key in getters) {
     const getter = getters[key];
     if (getter) {
-      gettersStates[key] = useComputed(() => {
-        return getter.call(reactiveState, reactiveState);
-      });
+      store[key] = useComputed(getter.bind(reactiveState, reactiveState));
     }
   }
 
   for (const key in actions) {
     const action = actions[key];
     if (action) {
-      actionStates[key] = action.bind(reactiveState);
+      store[key] = action.bind(reactiveState);
     }
   }
 
-  StoreMap.set(_id, reactiveState);
+  StoreMap.set(_id, store);
   ++_id;
 
-  return new Proxy(
-    {},
-    {
-      get(_, key) {
-        if (key === 'state') {
-          return reactiveState;
-        }
-        if (key in gettersStates) {
-          return gettersStates[key].value;
-        }
-        if (key in actionStates) {
-          return actionStates[key];
-        }
-        if (key in default_actions) {
-          return default_actions[key];
-        }
-        return reactiveState[key];
-      },
-    },
-  );
+  return store;
 }
 
 type Getters<S> = {
-  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
+  [K in keyof S]: S[K] extends (...args: any[]) => any ? Computed<ReturnType<S[K]>> : S[K];
 };
 
 export function createStore<S, G, A>(

@@ -17,10 +17,10 @@ describe('createStore', () => {
     });
     const store = useStore();
     expect(store.state.count).toBe(0);
-    expect(store.doubleCount).toBe(0);
+    expect(store.doubleCount.value).toBe(0);
     store.increment();
     expect(store.state.count).toBe(1);
-    expect(store.doubleCount).toBe(2);
+    expect(store.doubleCount.value).toBe(2);
   });
 });
 describe('store Methods', () => {
@@ -31,7 +31,7 @@ describe('store Methods', () => {
     const store = useTestStore();
 
     store.patch$({ value: 42 });
-    expect(store.value).toBe(42);
+    expect(store.state.value).toBe(42);
   });
 
   it('should subscribe and trigger callbacks', () => {
@@ -80,6 +80,6 @@ describe('store Methods', () => {
     const store = useTestStore();
     store.patch$({ value: 42 });
     store.reset$();
-    expect(store.value).toBe(0);
+    expect(store.state.value).toBe(0);
   });
 });
