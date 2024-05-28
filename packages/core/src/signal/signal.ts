@@ -1,4 +1,4 @@
-import { isFunction } from 'essor-shared';
+import { isFunction } from '../../../shared/src';
 
 type EffectFn = () => void;
 
@@ -28,9 +28,7 @@ function track(target, key) {
 
 function trigger(target, key) {
   if (computedSet.size > 0) {
-    computedSet.forEach(computed => {
-      computed.run();
-    });
+    computedSet.forEach(computedSignal => computedSignal.run());
   }
 
   const depsMap = targetMap.get(target);
@@ -96,11 +94,11 @@ export function isSignal<T>(value: any): value is Signal<T> {
 }
 export class Computed<T> {
   private _value: T;
+  private _deps: Set<EffectFn> = new Set();
 
   constructor(private readonly fn: () => T) {
     const prev = activeComputed;
     activeComputed = this;
-    track(this, '_value');
     this._value = this.fn();
     activeComputed = prev;
   }
@@ -113,10 +111,14 @@ export class Computed<T> {
     const newValue = this.fn();
     if (newValue !== this._value) {
       this._value = newValue;
+      this._deps.forEach(effect => effect());
     }
   }
 
   get value(): T {
+    if (activeEffect) {
+      this._deps.add(activeEffect);
+    }
     track(this, '_value');
     return this._value;
   }
@@ -143,6 +145,7 @@ export function useEffect(fn: EffectFn): () => void {
 
   EffectDeps.add(effectFn);
   effectFn();
+
   return () => {
     EffectDeps.delete(effectFn);
     activeEffect = null;

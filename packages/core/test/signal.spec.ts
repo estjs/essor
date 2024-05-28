@@ -143,6 +143,22 @@ describe('computed', () => {
     expect(double.value).toBe(2);
     expect(triple.value).toBe(3);
   });
+
+  it('should work computed in effect', () => {
+    const val = useSignal(0);
+    const computed = useComputed(() => {
+      return 10 * val.value;
+    });
+
+    let effectTimes = 0;
+    useEffect(() => {
+      computed.value;
+      effectTimes++;
+    });
+    expect(effectTimes).toBe(1);
+    val.value = 1;
+    expect(effectTimes).toBe(2);
+  });
 });
 
 describe('effect', () => {
