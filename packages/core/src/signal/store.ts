@@ -20,7 +20,7 @@ const StoreMap = new Map<number, any>();
 
 function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   const { state, getters, actions } = options as StoreOptions<
-    Record<string, any>,
+    Record<string | symbol, any>,
     Record<string, any>,
     Record<string, any>
   >;
