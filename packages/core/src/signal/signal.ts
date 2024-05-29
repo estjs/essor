@@ -124,11 +124,8 @@ export class Computed<T> {
   }
 }
 
-export function useComputed<T>(fn: () => T) {
-  if (isComputed(fn)) {
-    return fn;
-  }
-  return new Computed(fn);
+export function useComputed<T>(fn: () => T): Computed<T> {
+  return new Computed<T>(fn);
 }
 
 export function isComputed<T>(value: any): value is Computed<T> {
