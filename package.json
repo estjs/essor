@@ -5,7 +5,12 @@
   "packageManager": "pnpm@9.1.2",
   "description": "",
   "type": "module",
-  "keywords": [],
+  "keywords": [
+    "signal",
+    "quick",
+    "simple",
+    "framework"
+  ],
   "license": "MIT",
   "homepage": "https://github.com/estjs/essor#readme",
   "bugs": "https://github.com/estjs/essor/issues",
@@ -22,7 +27,7 @@
     "test": "vitest",
     "test:watch": "vitest -w",
     "clean": "rimraf ./packages/**/dist",
-    "typecheck": "tsc --noEmit -p ./tsconfig.build.json ",
+    "typecheck": "tsc --noEmit -p ./tsconfig.build.json",
     "coverage": "vitest run --coverage",
     "gen:version": "tsx ./scripts/gen-version.ts",
     "changelog": "tsx scripts/changelog.ts",
