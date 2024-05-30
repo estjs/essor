@@ -1,4 +1,4 @@
-import { isFunction } from '../../../shared/src';
+import { isFunction } from 'essor-shared';
 
 type EffectFn = () => void;
 
