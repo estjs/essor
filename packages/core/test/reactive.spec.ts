@@ -1,8 +1,8 @@
-import { isReactive, reactive, unReactive } from '../src';
+import { isReactive, useReactive, unReactive } from '../src';
 
-describe('reactive', () => {
+describe('useReactive', () => {
   it('property with initial value', () => {
-    const state = reactive({
+    const state = useReactive({
       count: 5,
     });
 
@@ -13,7 +13,7 @@ describe('reactive', () => {
   });
 
   it('multiple properties', () => {
-    const state = reactive({
+    const state = useReactive({
       count: 0,
       text: 'Hello',
       isEnabled: true,
@@ -28,7 +28,7 @@ describe('reactive', () => {
   });
 
   it('nested objects', () => {
-    const state = reactive({
+    const state = useReactive({
       user: {
         name: 'John',
         age: 30,
@@ -43,7 +43,7 @@ describe('reactive', () => {
   });
 
   it('nested arrays', () => {
-    const state = reactive({
+    const state = useReactive({
       items: [1, 2, 3],
     });
 
@@ -56,7 +56,7 @@ describe('reactive', () => {
 
   // Test Case 5: Reactive function
   it('function in state', () => {
-    const state = reactive({
+    const state = useReactive({
       count: 0,
       increment() {
         this.count++;
@@ -69,7 +69,7 @@ describe('reactive', () => {
   });
 
   it('arrays of objects', () => {
-    const state = reactive({
+    const state = useReactive({
       users: [
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 30 },
@@ -85,12 +85,12 @@ describe('reactive', () => {
 });
 
 describe('isReactive', () => {
-  it('check if object is reactive', () => {
-    const state = reactive({ count: 0 });
+  it('check if object is useReactive', () => {
+    const state = useReactive({ count: 0 });
     expect(isReactive(state)).toBe(true);
   });
 
-  it('check if object is not reactive', () => {
+  it('check if object is not useReactive', () => {
     const obj = { count: 0 };
 
     expect(isReactive(obj)).toBe(false);
@@ -98,15 +98,15 @@ describe('isReactive', () => {
 });
 
 describe('unReactive', () => {
-  it('unReactive - obtain original object from reactive proxy', () => {
+  it('unReactive - obtain original object from useReactive proxy', () => {
     const originalObj = { count: 0 };
-    const state = reactive(originalObj);
+    const state = useReactive(originalObj);
 
     const unreactiveObj = unReactive(state);
     expect(unreactiveObj).toEqual(originalObj);
   });
 
-  it('unReactive - obtain original object from non-reactive object', () => {
+  it('unReactive - obtain original object from non-useReactive object', () => {
     const obj = { count: 0 };
 
     const unreactiveObj = unReactive(obj);

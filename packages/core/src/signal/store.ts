@@ -1,4 +1,4 @@
-import { reactive, useComputed } from './signal';
+import { useComputed, useReactive } from './signal';
 import type { Computed } from './signal';
 
 interface StoreOptions<S, G, A> {
@@ -27,7 +27,7 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   >;
 
   const initState = { ...(state ?? {}) };
-  const reactiveState = reactive(state ?? {});
+  const reactiveState = useReactive(state ?? {});
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];

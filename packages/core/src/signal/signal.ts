@@ -204,7 +204,7 @@ export function unSignal<T>(
   }, {} as T);
 }
 
-const REACTIVE_MARKER = Symbol('reactive');
+const REACTIVE_MARKER = Symbol('useReactive');
 
 export function isReactive(obj) {
   return obj && obj[REACTIVE_MARKER] === true;
@@ -216,7 +216,7 @@ export function unReactive(obj) {
   }
   return Object.assign({}, obj);
 }
-export function reactive<T extends object>(initialValue: T): T {
+export function useReactive<T extends object>(initialValue: T): T {
   if (isReactive(initialValue)) {
     return initialValue;
   }
@@ -249,4 +249,30 @@ export function reactive<T extends object>(initialValue: T): T {
   };
 
   return new Proxy(signalObj, handler) as T;
+}
+
+/**
+ * Creates a watcher function that observes changes in a source value and triggers a callback when the value changes.
+ *
+ * @param {Signal<T> | Computed<T> | (() => T)} source - The source value or computed value to observe.
+ * @param {(newValue: T, oldValue: T) => void} callback - The callback function to be triggered when the value changes.
+ * @return {() => void} A function that can be used to stop observing the source value.
+ */
+export function useWatch<T>(
+  source: Signal<T> | Computed<T> | (() => T),
+  callback: (newValue: T, oldValue: T) => void,
+): () => void {
+  let oldValue: T;
+
+  const effectFn = () => {
+    const newValue = isFunction(source) ? (source as () => T)() : source.value;
+    if (newValue !== oldValue) {
+      callback(newValue, oldValue);
+      oldValue = newValue;
+    }
+  };
+
+  oldValue = isFunction(source) ? (source as () => T)() : source.value;
+
+  return useEffect(effectFn);
 }

@@ -6,9 +6,10 @@ export {
   isSignal,
   isComputed,
   unSignal,
-  reactive,
+  useReactive,
   isReactive,
   unReactive,
+  useWatch,
 } from './signal';
 export { type Signal, type Computed } from './signal';
 export { createStore, StoreActions } from './store';

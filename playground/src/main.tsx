@@ -1,4 +1,4 @@
-import { reactive } from 'essor';
+import { useReactive } from 'essor';
 
 function Component(props) {
   return (
@@ -13,7 +13,7 @@ function Component(props) {
 }
 
 function App() {
-  const signal = reactive({
+  const signal = useReactive({
     value: 'hello',
   });
 
