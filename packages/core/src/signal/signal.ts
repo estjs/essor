@@ -216,6 +216,8 @@ export function unReactive(obj) {
   }
   return Object.assign({}, obj);
 }
+const reactiveMap = new WeakMap<object, object>();
+
 export function useReactive<T extends object>(initialValue: T): T {
   if (!isObject(initialValue)) {
     return initialValue;
@@ -224,12 +226,20 @@ export function useReactive<T extends object>(initialValue: T): T {
     return initialValue;
   }
 
+  if (reactiveMap.has(initialValue)) {
+    return reactiveMap.get(initialValue) as T;
+  }
+
   const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER) return true;
+
       const value = Reflect.get(target, key, receiver);
       track(target, key);
-      return useReactive(value as object);
+      if (isObject(value)) {
+        return useReactive(value);
+      }
+      return value;
     },
     set(target, key, value, receiver) {
       let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
@@ -247,11 +257,16 @@ export function useReactive<T extends object>(initialValue: T): T {
       return obj;
     },
     deleteProperty(target, key) {
-      const ret = Reflect.deleteProperty(target, key);
-      trigger(target, key);
-      return ret;
+      const oldValue = Reflect.get(target, key);
+      const result = Reflect.deleteProperty(target, key);
+      if (oldValue !== undefined) {
+        trigger(target, key);
+      }
+      return result;
     },
   };
 
-  return new Proxy(initialValue, handler) as T;
+  const proxy = new Proxy(initialValue, handler);
+  reactiveMap.set(initialValue, proxy);
+  return proxy;
 }
