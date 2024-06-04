@@ -9,7 +9,7 @@ export {
   useReactive,
   isReactive,
   unReactive,
-  useWatch,
 } from './signal';
+export { useWatch } from './watch';
 export { type Signal, type Computed } from './signal';
 export { createStore, StoreActions } from './store';

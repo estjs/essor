@@ -1,71 +1,108 @@
-import { useComputed, useSignal, useWatch } from '../src';
+import { describe, expect, it, vi } from 'vitest';
+import { useComputed, useReactive, useSignal, useWatch } from '../src';
 
 describe('useWatch', () => {
-  it('should call callback with new and old values for signals', () => {
-    const count = useSignal(0);
-    const mockCallback = vi.fn();
+  it('should watch a signal and trigger callback on change', () => {
+    const signal = useSignal(1);
+    const callback = vi.fn();
 
-    useWatch(count, mockCallback);
+    const stop = useWatch(signal, callback);
 
-    expect(mockCallback).not.toHaveBeenCalled();
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith(2, 1);
 
-    count.value = 1;
-    expect(mockCallback).toHaveBeenCalledTimes(1);
-    expect(mockCallback).toHaveBeenCalledWith(1, 0);
-
-    count.value = 2;
-    expect(mockCallback).toHaveBeenCalledTimes(2);
-    expect(mockCallback).toHaveBeenCalledWith(2, 1);
+    stop();
   });
 
-  it('should call callback with new and old values for computed properties', () => {
-    const count = useSignal(0);
-    const double = useComputed(() => count.value * 2);
-    const mockCallback = vi.fn();
+  it('should watch a computed value and trigger callback on change', () => {
+    const signal = useSignal(1);
+    const computed = useComputed(() => signal.value * 2);
+    const callback = vi.fn();
 
-    useWatch(double, mockCallback);
+    const stop = useWatch(computed, callback);
 
-    expect(mockCallback).not.toHaveBeenCalled();
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith(4, 2);
 
-    count.value = 1;
-    expect(mockCallback).toHaveBeenCalledTimes(1);
-    expect(mockCallback).toHaveBeenCalledWith(2, 0);
-
-    count.value = 2;
-    expect(mockCallback).toHaveBeenCalledTimes(2);
-    expect(mockCallback).toHaveBeenCalledWith(4, 2);
+    stop();
   });
 
-  it('should call callback with new and old values for functions', () => {
-    const count = useSignal(0);
-    const mockCallback = vi.fn();
-    const getter = () => count.value * 3;
+  it('should watch a useReactive object and trigger callback on change', () => {
+    const obj = useReactive({ count: 1 });
+    const callback = vi.fn();
 
-    useWatch(getter, mockCallback);
+    const stop = useWatch(obj, callback);
 
-    expect(mockCallback).not.toHaveBeenCalled();
+    obj.count = 2;
+    expect(callback).toHaveBeenCalledWith({ count: 2 }, { count: 1 });
 
-    count.value = 1;
-    expect(mockCallback).toHaveBeenCalledTimes(1);
-    expect(mockCallback).toHaveBeenCalledWith(3, 0);
-
-    count.value = 2;
-    expect(mockCallback).toHaveBeenCalledTimes(2);
-    expect(mockCallback).toHaveBeenCalledWith(6, 3);
+    stop();
   });
 
-  it('should stop watching when stop function is called', () => {
-    const count = useSignal(0);
-    const mockCallback = vi.fn();
+  it('should watch an array of sources and trigger callback on change', () => {
+    const signal = useSignal(1);
+    const computed = useComputed(() => signal.value * 2);
+    const obj = useReactive({ count: 1 });
+    const callback = vi.fn();
 
-    const stopWatch = useWatch(count, mockCallback);
+    const stop = useWatch([signal, computed, obj], callback);
 
-    count.value = 1;
-    expect(mockCallback).toHaveBeenCalledTimes(1);
-    expect(mockCallback).toHaveBeenCalledWith(1, 0);
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith([2, 4, { count: 1 }], [1, 2, { count: 1 }]);
 
-    stopWatch();
-    count.value = 2;
-    expect(mockCallback).toHaveBeenCalledTimes(1); // No further calls after stop
+    obj.count = 2;
+    expect(callback).toHaveBeenCalledWith([2, 4, { count: 2 }], [2, 4, { count: 1 }]);
+
+    stop();
+  });
+
+  it('should watch a function source and trigger callback on change', () => {
+    const signal = useSignal(1);
+    const callback = vi.fn();
+
+    const stop = useWatch(() => signal.value * 2, callback);
+
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith(4, 2);
+
+    stop();
+  });
+
+  it('should not trigger callback if value does not change', () => {
+    const signal = useSignal(1);
+    const callback = vi.fn();
+
+    const stop = useWatch(signal, callback);
+
+    signal.value = 1;
+    expect(callback).not.toHaveBeenCalled();
+
+    stop();
+  });
+
+  it('should handle deep watch correctly', () => {
+    const obj = useReactive({ nested: { count: 1 } });
+    const callback = vi.fn();
+
+    const stop = useWatch(obj, callback, { deep: true });
+
+    obj.nested.count = 2;
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 1 } });
+
+    stop();
+  });
+
+  it('should handle immediate option correctly', () => {
+    const signal = useSignal(1);
+    const callback = vi.fn();
+
+    const stop = useWatch(signal, callback, { immediate: true });
+
+    expect(callback).toHaveBeenCalledWith(1, undefined);
+
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith(2, 1);
+
+    stop();
   });
 });

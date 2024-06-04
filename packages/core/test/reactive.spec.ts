@@ -1,4 +1,4 @@
-import { isReactive, useReactive, unReactive } from '../src';
+import { isReactive, unReactive, useEffect, useReactive } from '../src';
 
 describe('useReactive', () => {
   it('property with initial value', () => {
@@ -6,9 +6,15 @@ describe('useReactive', () => {
       count: 5,
     });
 
+    const mockFn = vi.fn(() => {
+      // do nothing
+      state.count;
+    });
+    useEffect(mockFn);
+    expect(mockFn).toHaveBeenCalledTimes(1);
     expect(state.count).toBe(5);
-
     state.count++;
+    expect(mockFn).toHaveBeenCalledTimes(2);
     expect(state.count).toBe(6);
   });
 
@@ -54,7 +60,6 @@ describe('useReactive', () => {
     expect(state.items.length).toBe(4);
   });
 
-  // Test Case 5: Reactive function
   it('function in state', () => {
     const state = useReactive({
       count: 0,
@@ -81,6 +86,26 @@ describe('useReactive', () => {
 
     state.users[1].age++;
     expect(state.users[1].age).toBe(31);
+  });
+
+  it('should work with reactive deep object', () => {
+    const state: any = useReactive({ a: { b: { c: { d: 1 } } } });
+
+    const mockFn = vi.fn();
+    useEffect(() => {
+      state.a.b?.c?.d;
+      mockFn();
+    });
+    expect(state.a.b.c.d).toBe(1);
+    expect(mockFn).toBeCalledTimes(1);
+
+    state.a.b.c.d++;
+    expect(state.a.b.c.d).toBe(2);
+    expect(mockFn).toBeCalledTimes(2);
+
+    state.a.b = { e: 3 };
+    expect(state.a.b.e).toBe(3);
+    expect(mockFn).toBeCalledTimes(3);
   });
 });
 

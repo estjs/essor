@@ -20,14 +20,14 @@ describe('isPrimitive function', () => {
     expect(isPrimitive(123)).toBe(true);
     expect(isPrimitive('')).toBe(true);
     expect(isPrimitive(0)).toBe(true);
+    expect(isPrimitive(true)).toBe(true);
+    expect(isPrimitive(null)).toBe(true);
   });
 
   it('should return false for non-primitive values', () => {
     expect(isPrimitive({})).toBe(false);
     expect(isPrimitive([])).toBe(false);
     expect(isPrimitive(() => {})).toBe(false);
-    expect(isPrimitive(null)).toBe(false);
-    expect(isPrimitive(undefined)).toBe(false);
   });
 });
 

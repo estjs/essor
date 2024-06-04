@@ -1,4 +1,4 @@
-import { isFunction } from 'essor-shared';
+import { hasChanged, isFunction, isObject } from 'essor-shared';
 
 type EffectFn = () => void;
 
@@ -217,18 +217,19 @@ export function unReactive(obj) {
   return Object.assign({}, obj);
 }
 export function useReactive<T extends object>(initialValue: T): T {
+  if (!isObject(initialValue)) {
+    return initialValue;
+  }
   if (isReactive(initialValue)) {
     return initialValue;
   }
 
-  const signalObj = signalObject(initialValue);
-
-  const handler: ProxyHandler<SignalObject<T>> = {
+  const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER) return true;
-      track(target, key);
       const value = Reflect.get(target, key, receiver);
-      return isSignal(value) ? value.value : value;
+      track(target, key);
+      return useReactive(value as object);
     },
     set(target, key, value, receiver) {
       let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
@@ -239,40 +240,18 @@ export function useReactive<T extends object>(initialValue: T): T {
       if (isSignal(value)) {
         value = value.value;
       }
-      if (oldValue !== value) {
-        Reflect.set(target, key, useSignal(value), receiver);
+      const obj = Reflect.set(target, key, value, receiver);
+      if (hasChanged(value, oldValue)) {
         trigger(target, key);
-        return true;
       }
-      return true;
+      return obj;
+    },
+    deleteProperty(target, key) {
+      const ret = Reflect.deleteProperty(target, key);
+      trigger(target, key);
+      return ret;
     },
   };
 
-  return new Proxy(signalObj, handler) as T;
-}
-
-/**
- * Creates a watcher function that observes changes in a source value and triggers a callback when the value changes.
- *
- * @param {Signal<T> | Computed<T> | (() => T)} source - The source value or computed value to observe.
- * @param {(newValue: T, oldValue: T) => void} callback - The callback function to be triggered when the value changes.
- * @return {() => void} A function that can be used to stop observing the source value.
- */
-export function useWatch<T>(
-  source: Signal<T> | Computed<T> | (() => T),
-  callback: (newValue: T, oldValue: T) => void,
-): () => void {
-  let oldValue: T;
-
-  const effectFn = () => {
-    const newValue = isFunction(source) ? (source as () => T)() : source.value;
-    if (newValue !== oldValue) {
-      callback(newValue, oldValue);
-      oldValue = newValue;
-    }
-  };
-
-  oldValue = isFunction(source) ? (source as () => T)() : source.value;
-
-  return useEffect(effectFn);
+  return new Proxy(initialValue, handler) as T;
 }

@@ -11,7 +11,9 @@ export const isArray = Array.isArray;
 export function isString(val: unknown): val is string {
   return typeof val === 'string';
 }
-
+export function isNull(val: any): val is null {
+  return val === null;
+}
 export function isSymbol(val: unknown): val is symbol {
   return typeof val === 'symbol';
 }
@@ -23,11 +25,12 @@ export function isNil(x: any): x is null | undefined {
 }
 
 export const isFunction = (val: unknown): val is Function => typeof val === 'function';
-export function isPrimitive(s: any): s is string | number {
-  return (
-    typeof s === 'string' || typeof s === 'number' || s instanceof String || s instanceof Number
-  );
-}
+
 export function isFalsy(x: any): x is false | null | undefined {
   return x === false || x === null || x === undefined || x === '';
 }
+
+export const isPrimitive = (
+  val: unknown,
+): val is string | number | boolean | symbol | null | undefined =>
+  ['string', 'number', 'boolean', 'symbol', 'undefined'].includes(typeof val) || isNull(val);
