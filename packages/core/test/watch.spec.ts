@@ -50,8 +50,8 @@ describe('useWatch', () => {
     signal.value = 2;
     expect(callback).toHaveBeenCalledWith([2, 4, { count: 1 }], [1, 2, { count: 1 }]);
 
-    // obj.count = 2;
-    // expect(callback).toHaveBeenCalledWith([2, 4, { count: 2 }], [2, 4, { count: 1 }]);
+    obj.count = 2;
+    expect(callback).toHaveBeenCalledWith([2, 4, { count: 2 }], [2, 4, { count: 1 }]);
 
     stop();
   });

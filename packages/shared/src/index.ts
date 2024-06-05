@@ -1,4 +1,14 @@
-export { noop, _toString, extend, hasChanged, coerceArray, hasOwn, startsWith } from './comm';
+export {
+  noop,
+  _toString,
+  extend,
+  hasChanged,
+  coerceArray,
+  hasOwn,
+  startsWith,
+  deepClone,
+  deepEqual,
+} from './comm';
 export {
   isString,
   isObject,

@@ -1,4 +1,12 @@
-import { isArray, isFunction, isObject, isPrimitive, noop } from 'essor-shared';
+import {
+  deepClone,
+  deepEqual,
+  isArray,
+  isFunction,
+  isObject,
+  isPrimitive,
+  noop,
+} from 'essor-shared';
 import { warn } from '../warning';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
@@ -137,94 +145,4 @@ function traverse(value: unknown, seen: Set<unknown> = new Set()): unknown {
     });
   }
   return value;
-}
-function deepEqual(a: any, b: any): boolean {
-  if (isPrimitive(a) && isPrimitive(b)) {
-    return a === b;
-  }
-  if (a === b) {
-    return true;
-  }
-
-  if (a == null || b == null || typeof a !== 'object' || typeof b !== 'object') {
-    return false;
-  }
-
-  if (a.constructor !== b.constructor) {
-    return false;
-  }
-
-  if (Array.isArray(a)) {
-    if (a.length !== b.length) {
-      return false;
-    }
-    for (const [i, element] of a.entries()) {
-      if (!deepEqual(element, b[i])) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (a instanceof Map) {
-    if (a.size !== b.size) {
-      return false;
-    }
-    for (const [key, value] of a) {
-      if (!b.has(key) || !deepEqual(value, b.get(key))) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  if (a instanceof Set) {
-    if (a.size !== b.size) {
-      return false;
-    }
-    for (const value of a) {
-      if (!b.has(value)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-
-  if (keysA.length !== keysB.length) {
-    return false;
-  }
-
-  for (const key of keysA) {
-    if (!keysB.includes(key) || !deepEqual(a[key], b[key])) {
-      return false;
-    }
-  }
-
-  return true;
-}
-function deepClone(obj, hash = new WeakMap()) {
-  // 判断传入的参数是否是一个对象
-  if (typeof obj !== 'object' || obj === null) {
-    return obj;
-  }
-
-  // 处理循环引用
-  if (hash.has(obj)) {
-    return hash.get(obj);
-  }
-
-  const cloneObj = Array.isArray(obj) ? [] : {};
-  hash.set(obj, cloneObj);
-
-  // 遍历对象的每个属性
-  for (const key in obj) {
-    if (obj.hasOwnProperty(key)) {
-      cloneObj[key] = deepClone(obj[key], hash);
-    }
-  }
-
-  return cloneObj;
 }
