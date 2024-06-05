@@ -216,4 +216,15 @@ describe('jsx ssr transform', () => {
   </div>`;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('should work with comment in JSX', () => {
+    const inputCode = `
+    const value = 1;
+    <div>
+      {/* comment */}
+      <p bind:value={value}>Paragraph 1</p>
+      <p>Paragraph 2</p>
+    </div>`;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
 });

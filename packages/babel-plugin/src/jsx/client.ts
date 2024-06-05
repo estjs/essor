@@ -169,6 +169,9 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
       result.template += String(expression.node.value);
     } else if (expression.isExpression()) {
       replaceChild(expression.node, result);
+    } else if (t.isJSXEmptyExpression(expression.node)) {
+      // it is empty expression
+      // do nothing
     } else {
       throw new Error('Unsupported child type');
     }
