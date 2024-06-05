@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.1.2
-        version: 1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))
+        version: 1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))
       '@playwright/test':
         specifier: ^1.44.0
         version: 1.44.0
@@ -19,7 +19,7 @@ importers:
         version: 20.12.12
       '@vitest/coverage-v8':
         specifier: ^1.6.0
-        version: 1.6.0(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))
+        version: 1.6.0(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))
       bumpp:
         specifier: ^9.4.1
         version: 9.4.1
@@ -31,7 +31,7 @@ importers:
         version: 8.57.0
       jsdom:
         specifier: ^24.0.0
-        version: 24.0.0
+        version: 24.1.0
       lint-staged:
         specifier: ^15.2.2
         version: 15.2.2
@@ -64,7 +64,7 @@ importers:
         version: 5.4.5
       vitest:
         specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3)
+        version: 1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3)
 
   packages/babel-plugin:
     dependencies:
@@ -144,7 +144,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.1.2
-        version: 1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))
+        version: 1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))
       '@types/node':
         specifier: ^20.12.12
         version: 20.12.12
@@ -156,7 +156,7 @@ importers:
         version: 4.19.2
       jsdom:
         specifier: ^24.0.0
-        version: 24.0.0
+        version: 24.1.0
       typescript:
         specifier: ^5.4.5
         version: 5.4.5
@@ -171,7 +171,7 @@ importers:
         version: 0.8.4(rollup@4.17.2)(vite@5.2.11(@types/node@20.12.12)(terser@5.30.3))
       vitest:
         specifier: ^1.6.0
-        version: 1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3)
+        version: 1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3)
 
 packages:
 
@@ -1451,6 +1451,15 @@ packages:
       supports-color:
         optional: true
 
+  debug@4.3.5:
+    resolution: {integrity: sha512-pt0bNEmneDIvdL1Xsd9oDQ/wrQRkXDT4AUWlNZNPKvW5x/jyO9VFXkJUP07vQ2upmw5PlaITaPKc31jK13V+jg==}
+    engines: {node: '>=6.0'}
+    peerDependencies:
+      supports-color: '*'
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
   decimal.js@10.4.3:
     resolution: {integrity: sha512-VBBaLc1MgL5XpzgIP7ny5Z6Nx3UrRkIViUkPUdtl9aya5amy3De1gsUUSB1g3+3sExYNjCAsAznmukyxCb1GRA==}
 
@@ -2388,8 +2397,8 @@ packages:
     resolution: {integrity: sha512-YtOli5Cmzy3q4dP26GraSOeAhqecewG04hoO8DY56CH4KJ9Fvv5qKWUCCo3HZob7esJQHCv6/+bnTy72xZZaVQ==}
     engines: {node: '>=12.0.0'}
 
-  jsdom@24.0.0:
-    resolution: {integrity: sha512-UDS2NayCvmXSXVP6mpTj+73JnNQadZlr9N68189xib2tx5Mls7swlTNao26IoHv46BZJFvXygyRtyXd1feAk1A==}
+  jsdom@24.1.0:
+    resolution: {integrity: sha512-6gpM7pRXCwIOKxX47cgOyvyQDN/Eh0f1MeKySBV2xGdKtqJBLj8P25eY3EVCWo2mglDDzozR2r2MW4T+JiNUZA==}
     engines: {node: '>=18'}
     peerDependencies:
       canvas: ^2.11.2
@@ -3086,6 +3095,9 @@ packages:
 
   rrweb-cssom@0.6.0:
     resolution: {integrity: sha512-APM0Gt1KoXBz0iIkkdB/kfvGOwC4UuJFeG/c+yV7wSc7q96cG/kJ0HiYCnzivD9SB53cLV1MlHFNfOuPaadYSw==}
+
+  rrweb-cssom@0.7.0:
+    resolution: {integrity: sha512-KlSv0pm9kgQSRxXEMgtivPJ4h826YHsuob8pSHcfSZsSXGtvpEAie8S0AnXuObEJ7nhikOb4ahwxDm0H2yW17g==}
 
   run-applescript@7.0.0:
     resolution: {integrity: sha512-9by4Ij99JUr/MCFBUkDKLWK3G9HVXmabKz9U5MlIAIuvuzkiOicRYs8XJLxX+xahD+mLiiCYDqF9dKAgtzKP1A==}
@@ -4255,7 +4267,7 @@ snapshots:
 
   '@eslint/js@8.57.0': {}
 
-  '@estjs/eslint-config@1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))':
+  '@estjs/eslint-config@1.1.2(@types/eslint@8.56.10)(eslint@8.57.0)(prettier@3.2.5)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))':
     dependencies:
       '@eslint-types/jsdoc': 48.2.1
       '@eslint-types/typescript-eslint': 7.5.0
@@ -4279,7 +4291,7 @@ snapshots:
       eslint-plugin-toml: 0.10.0(eslint@8.57.0)
       eslint-plugin-unicorn: 51.0.1(eslint@8.57.0)
       eslint-plugin-unused-imports: 3.2.0(@typescript-eslint/eslint-plugin@7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)
-      eslint-plugin-vitest: 0.4.1(@typescript-eslint/eslint-plugin@7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))
+      eslint-plugin-vitest: 0.4.1(@typescript-eslint/eslint-plugin@7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))
       eslint-plugin-vue: 9.26.0(eslint@8.57.0)
       eslint-plugin-yml: 1.14.0(eslint@8.57.0)
       globals: 15.3.0
@@ -4588,7 +4600,7 @@ snapshots:
       - supports-color
       - typescript
 
-  '@vitest/coverage-v8@1.6.0(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3))':
+  '@vitest/coverage-v8@1.6.0(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3))':
     dependencies:
       '@ampproject/remapping': 2.3.0
       '@bcoe/v8-coverage': 0.2.3
@@ -4603,7 +4615,7 @@ snapshots:
       std-env: 3.7.0
       strip-literal: 2.1.0
       test-exclude: 6.0.0
-      vitest: 1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3)
+      vitest: 1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3)
     transitivePeerDependencies:
       - supports-color
 
@@ -4739,7 +4751,7 @@ snapshots:
 
   agent-base@7.1.1:
     dependencies:
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
 
@@ -5174,6 +5186,10 @@ snapshots:
       ms: 2.1.2
     optionalDependencies:
       supports-color: 5.5.0
+
+  debug@4.3.5:
+    dependencies:
+      ms: 2.1.2
 
   decimal.js@10.4.3: {}
 
@@ -5622,13 +5638,13 @@ snapshots:
     optionalDependencies:
       '@typescript-eslint/eslint-plugin': 7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)
 
-  eslint-plugin-vitest@0.4.1(@typescript-eslint/eslint-plugin@7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3)):
+  eslint-plugin-vitest@0.4.1(@typescript-eslint/eslint-plugin@7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)(vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3)):
     dependencies:
       '@typescript-eslint/utils': 7.10.0(eslint@8.57.0)(typescript@5.4.5)
       eslint: 8.57.0
     optionalDependencies:
       '@typescript-eslint/eslint-plugin': 7.10.0(@typescript-eslint/parser@7.10.0(eslint@8.57.0)(typescript@5.4.5))(eslint@8.57.0)(typescript@5.4.5)
-      vitest: 1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3)
+      vitest: 1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3)
     transitivePeerDependencies:
       - supports-color
       - typescript
@@ -6081,14 +6097,14 @@ snapshots:
   http-proxy-agent@7.0.2:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
 
   https-proxy-agent@7.0.4:
     dependencies:
       agent-base: 7.1.1
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.3.5
     transitivePeerDependencies:
       - supports-color
 
@@ -6332,7 +6348,7 @@ snapshots:
 
   jsdoc-type-pratt-parser@4.0.0: {}
 
-  jsdom@24.0.0:
+  jsdom@24.1.0:
     dependencies:
       cssstyle: 4.0.1
       data-urls: 5.0.0
@@ -6344,7 +6360,7 @@ snapshots:
       is-potential-custom-element-name: 1.0.1
       nwsapi: 2.2.10
       parse5: 7.1.2
-      rrweb-cssom: 0.6.0
+      rrweb-cssom: 0.7.0
       saxes: 6.0.0
       symbol-tree: 3.2.4
       tough-cookie: 4.1.4
@@ -6526,7 +6542,7 @@ snapshots:
 
   micromark@2.11.4:
     dependencies:
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.3.5
       parse-entities: 2.0.0
     transitivePeerDependencies:
       - supports-color
@@ -7055,6 +7071,8 @@ snapshots:
       fsevents: 2.3.3
 
   rrweb-cssom@0.6.0: {}
+
+  rrweb-cssom@0.7.0: {}
 
   run-applescript@7.0.0: {}
 
@@ -7649,7 +7667,7 @@ snapshots:
       fsevents: 2.3.3
       terser: 5.30.3
 
-  vitest@1.6.0(@types/node@20.12.12)(jsdom@24.0.0)(terser@5.30.3):
+  vitest@1.6.0(@types/node@20.12.12)(jsdom@24.1.0)(terser@5.30.3):
     dependencies:
       '@vitest/expect': 1.6.0
       '@vitest/runner': 1.6.0
@@ -7673,7 +7691,7 @@ snapshots:
       why-is-node-running: 2.2.2
     optionalDependencies:
       '@types/node': 20.12.12
-      jsdom: 24.0.0
+      jsdom: 24.1.0
     transitivePeerDependencies:
       - less
       - lightningcss
