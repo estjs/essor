@@ -2,11 +2,12 @@ import { useSignal } from '../src';
 import { h as _h$, template as _template$ } from '../src/template';
 import { mount } from './test-utils';
 
-describe('ref', () => {
+describe('bind value', () => {
   let inputRef;
   let componentRef;
+  let signal;
   function inoutBind() {
-    const signal = useSignal('hello');
+    signal = useSignal('hello');
     return _h$(_template$('<input/>'), {
       '1': {
         'value': signal.value,
