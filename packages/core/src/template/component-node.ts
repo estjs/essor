@@ -1,6 +1,6 @@
 import { isFunction, startsWith } from 'essor-shared';
 import { signalObject } from '../signal';
-import { type Signal, useEffect, useSignal } from '../signal';
+import { type Signal, useEffect, useReactive, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
 import { addEventListener } from './utils';
 import type { EssorComponent, NodeTrack } from '../../types';
@@ -90,7 +90,7 @@ export class ComponentNode implements JSX.Element {
     }
 
     ComponentNode.ref = this;
-    this.rootNode = this.template(this.proxyProps);
+    this.rootNode = this.template(useReactive(this.proxyProps));
     ComponentNode.ref = null;
     this.mounted = true;
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];

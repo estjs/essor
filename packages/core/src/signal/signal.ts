@@ -1,4 +1,5 @@
 import { hasChanged, isFunction, isObject } from 'essor-shared';
+import { isArray } from '../../../shared/src';
 
 type EffectFn = () => void;
 
@@ -194,14 +195,20 @@ export function unSignal<T>(
   if (isSignal(signal)) {
     return signal.peek();
   }
-  return Object.entries(signal).reduce((acc, [key, value]) => {
-    if (shouldExclude(key, exclude)) {
-      acc[key] = value;
-    } else {
-      acc[key] = isSignal(value) ? value.peek() : value;
-    }
-    return acc;
-  }, {} as T);
+  if (isArray(signal)) {
+    return signal.map(value => unSignal(value, exclude)) as T;
+  }
+  if (isObject(signal)) {
+    return Object.entries(signal).reduce((acc, [key, value]) => {
+      if (shouldExclude(key, exclude)) {
+        acc[key] = value;
+      } else {
+        acc[key] = isSignal(value) ? value.peek() : value;
+      }
+      return acc;
+    }, {} as T);
+  }
+  return signal as T;
 }
 
 const REACTIVE_MARKER = Symbol('useReactive');
@@ -234,7 +241,9 @@ export function useReactive<T extends object>(initialValue: T): T {
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER) return true;
 
-      const value = Reflect.get(target, key, receiver);
+      const getValue = Reflect.get(target, key, receiver);
+      const value = isSignal(getValue) ? getValue.value : getValue;
+
       track(target, key);
       if (isObject(value)) {
         return useReactive(value);

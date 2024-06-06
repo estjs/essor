@@ -8,6 +8,7 @@ function Component(props) {
       }}
     >
       {props.value}
+      {props.val}
     </p>
   );
 }
@@ -17,9 +18,15 @@ function App() {
     value: 'hello',
   });
 
+  let val = 1;
+
+  setTimeout(() => {
+    val = 2;
+  }, 2000);
+
   return (
     <>
-      <Component bind:value={signal.value}></Component>
+      <Component bind:value={signal.value} val={val}></Component>
     </>
   );
 }
