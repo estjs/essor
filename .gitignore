@@ -15,4 +15,4 @@ coverage
 .eslintcache
 .gitlogmap
 version.ts
-
+commit.*
