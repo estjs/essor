@@ -10,8 +10,8 @@ describe('bind value', () => {
     signal = useSignal('hello');
     return _h$(_template$('<input/>'), {
       '1': {
-        'value': signal.value,
-        'update:value': _value => (signal.value = _value),
+        value: signal.value,
+        updateValue: _value => (signal.value = _value),
       },
     });
   }
@@ -19,7 +19,7 @@ describe('bind value', () => {
     return _h$(_template$('<p></p>'), {
       '1': {
         onClick: () => {
-          props['update:value']('Component');
+          props.updateValue('Component');
         },
         children: [[() => props.value, null]],
       },
@@ -33,8 +33,8 @@ describe('bind value', () => {
           [
             () =>
               _h$(Component, {
-                'value': signal.value,
-                'update:value': _value2 => (signal.value = _value2),
+                value: signal.value,
+                updateValue: _value2 => (signal.value = _value2),
               }),
             null,
           ],

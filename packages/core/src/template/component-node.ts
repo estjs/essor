@@ -16,7 +16,7 @@ export class ComponentNode implements JSX.Element {
   ) {
     this.proxyProps = signalObject(
       props,
-      key => startsWith(key, 'on') || startsWith(key, 'update:'),
+      key => startsWith(key, 'on') || startsWith(key, 'update'),
     );
   }
   addEventListener(): void {}
@@ -124,7 +124,7 @@ export class ComponentNode implements JSX.Element {
         } else if (isFunction(prop)) {
           (props[key] as Function)(this.rootNode?.nodes[0]);
         }
-      } else if (startsWith(key, 'update:')) {
+      } else if (startsWith(key, 'update')) {
         props[key] = isSignal(prop) ? prop.value : prop;
       } else {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));

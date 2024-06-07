@@ -1,33 +1,56 @@
-import { useReactive } from 'essor';
+import { useEffect, useReactive } from 'essor';
 
-function Component(props) {
+const MyComponent = ({ val, ...rest }) => {
+  useEffect(() => {
+    console.log('useEffect', rest);
+  });
   return (
     <p
       onClick={() => {
-        props['update:value']('Component');
+        rest.value = 'xxxx';
       }}
     >
-      {props.value}
-      {props.val}
+      {rest.value}
+      {val}
+      {rest.val2}
     </p>
   );
-}
+};
+
+const AnotherComponent = ({ name, age }) => {
+  return (
+    <div>
+      {name}
+      {age}
+    </div>
+  );
+};
 
 function App() {
-  const signal = useReactive({
+  const signal = useReactive<{ value: string }>({
     value: 'hello',
   });
 
   let val = 1;
+  const val2 = '123';
 
   setTimeout(() => {
     val = 2;
   }, 2000);
 
+  function updateValue(value: string) {
+    console.log('updateValue', value);
+
+    signal.value = value;
+  }
+
   return (
     <>
-      <Component bind:value={signal.value} val={val}></Component>
+      <MyComponent bind:value={signal.value} updateValue={updateValue} val={val} val2={val2} />
+      <AnotherComponent name="John" age={30} />
     </>
   );
 }
+
+// 渲染 App 组件
 (<App />).mount(document.querySelector('#app')!);

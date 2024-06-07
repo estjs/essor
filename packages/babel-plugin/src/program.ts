@@ -12,6 +12,7 @@ export const transformProgram = {
 
       useSignal: path.scope.generateUidIdentifier('signal$'),
       useComputed: path.scope.generateUidIdentifier('computed$'),
+      __exclude: path.scope.generateUidIdentifier('__exclude$'),
 
       tmplDeclaration: t.variableDeclaration('const', []),
       opts: state.opts,

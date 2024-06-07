@@ -3,6 +3,7 @@ import { transformProgram } from '../src/program';
 import { transformJSX } from '../src/jsx';
 import { replaceSymbol } from '../src/signal/symbol';
 import { replaceImportDeclaration } from '../src/signal/import';
+import { replaceProps } from '../src/signal/props';
 
 const transforms = {
   jsx: {
@@ -13,6 +14,10 @@ const transforms = {
   symbol: {
     Program: transformProgram,
     VariableDeclarator: replaceSymbol,
+  },
+  props: {
+    Program: transformProgram,
+    FunctionDeclaration: replaceProps,
   },
   import: {
     Program: transformProgram,
