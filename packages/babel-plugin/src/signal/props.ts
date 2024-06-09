@@ -1,5 +1,4 @@
 import { type NodePath, types as t } from '@babel/core';
-import { imports } from '../program';
 import type {
   ArrowFunctionExpression,
   FunctionDeclaration,
@@ -51,27 +50,14 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
     '__props.',
   );
 
-  const notRestProperties = properties.filter(
-    property => !t.isRestElement(property),
-  ) as unknown as ObjectProperty[];
   const restElement = properties.find(property => t.isRestElement(property)) as
     | RestElement
     | undefined;
 
   if (restElement) {
     const restName = (restElement.argument as any).name;
-    imports.add('__exclude');
-
     const restVariableDeclaration = t.variableDeclaration('const', [
-      t.variableDeclarator(
-        t.identifier(restName),
-        t.callExpression(t.identifier(path.state.__exclude.name), [
-          t.identifier('__props'),
-          t.arrayExpression(
-            notRestProperties.map(property => t.stringLiteral((property.key as Identifier).name)),
-          ),
-        ]),
-      ),
+      t.variableDeclarator(t.identifier(restName), t.identifier('__props')),
     ]);
 
     (path.node.body as any).body.unshift(restVariableDeclaration);

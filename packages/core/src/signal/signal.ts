@@ -279,26 +279,3 @@ export function useReactive<T extends object>(initialValue: T): T {
   reactiveMap.set(initialValue, proxy);
   return proxy;
 }
-
-export function __exclude<T extends Record<string, any>, K extends keyof T>(
-  obj: T,
-  excludeKeys: K[],
-): Omit<T, K> {
-  const excludeSet = new Set(excludeKeys);
-
-  return new Proxy(obj, {
-    get(target, key, receiver) {
-      if (!excludeSet.has(key as any)) {
-        const value = Reflect.get(target, key, receiver) as any;
-        return isSignal(value) ? value.value : value;
-      }
-      return undefined;
-    },
-    set(target, key, value, receiver) {
-      if (!excludeSet.has(key as any)) {
-        return Reflect.set(target, key, value, receiver);
-      }
-      return true;
-    },
-  });
-}

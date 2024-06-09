@@ -1,12 +1,4 @@
-import {
-  deepClone,
-  deepEqual,
-  isArray,
-  isFunction,
-  isObject,
-  isPrimitive,
-  noop,
-} from 'essor-shared';
+import { deepEqual, isArray, isFunction, isObject, isPrimitive, noop } from 'essor-shared';
 import { warn } from '../warning';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
@@ -109,11 +101,11 @@ function doWatch(
   let oldValue;
 
   const effectFn = () => {
-    const newValue = deepClone(getter());
+    const newValue = structuredClone(getter());
 
     if (!deepEqual(newValue, oldValue)) {
       cb && cb(newValue, oldValue);
-      oldValue = isPrimitive(newValue) ? newValue : deepClone(newValue);
+      oldValue = isPrimitive(newValue) ? newValue : structuredClone(newValue);
     }
   };
 

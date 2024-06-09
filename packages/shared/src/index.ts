@@ -6,7 +6,6 @@ export {
   coerceArray,
   hasOwn,
   startsWith,
-  deepClone,
   deepEqual,
 } from './comm';
 export {
