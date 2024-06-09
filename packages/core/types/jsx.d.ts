@@ -9,6 +9,9 @@ import type { EssorNode } from './node';
 type DOMElement = Element;
 declare const SERIALIZABLE: unique symbol;
 
+type Component<Props> = (props: Props) => EssorNode;
+type PropsOf<C> = C extends (props: infer P) => any ? P : never;
+
 declare global {
   export namespace JSX {
     export type Element = EssorNode;
@@ -144,9 +147,6 @@ declare global {
     }
     interface CustomAttributes<T> {
       ref?: Signal<T> | ((el: T) => void);
-      classList?: {
-        [k: string]: boolean | undefined;
-      };
       key?: string | number | symbol;
     }
     type Accessor<T> = () => T;
@@ -164,12 +164,12 @@ declare global {
         CustomCaptureEvents[Key]
       >;
     };
-    type BindAttributes = {
-      [Key in string | number | symbol as `bind:${Key}`]?: ExplicitAttributes[Key];
+    type PropAttributes = {
+      [Key in keyof ExplicitProperties as `bind:${Key}`]?: ExplicitProperties[Key];
     };
     interface DOMAttributes<T>
       extends CustomAttributes<T>,
-        BindAttributes,
+        PropAttributes,
         OnCaptureAttributes<T>,
         CustomEventHandlersCamelCase<T>,
         CustomEventHandlersLowerCase<T> {

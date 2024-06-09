@@ -6,8 +6,8 @@ export {
   coerceArray,
   hasOwn,
   startsWith,
-  deepClone,
   deepEqual,
+  deepClone,
 } from './comm';
 export {
   isString,

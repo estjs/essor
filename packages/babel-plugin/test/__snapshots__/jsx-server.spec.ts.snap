@@ -7,7 +7,7 @@ const value = 1;
 _ssr$(_tmpl$, {
   "0": {
     "value": value,
-    "update:value": _value => value = _value
+    "updateValue": _value => value = _value
   }
 });"
 `;
@@ -19,7 +19,7 @@ const value = 1;
 _ssr$(_tmpl$, {
   "0": {
     "value": value,
-    "update:value": _value => value = _value
+    "updateValue": _value => value = _value
   }
 });"
 `;

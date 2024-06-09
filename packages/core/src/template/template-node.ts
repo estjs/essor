@@ -1,4 +1,11 @@
-import { coerceArray, isArray, isFunction, isNil, startsWith } from 'essor-shared';
+import {
+  capitalizeFirstLetter,
+  coerceArray,
+  isArray,
+  isFunction,
+  isNil,
+  startsWith,
+} from 'essor-shared';
 import { useEffect, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
 import {
@@ -168,7 +175,7 @@ export class TemplateNode implements JSX.Element {
         const track = this.getNodeTrack(`${key}:${attr}`);
         const listener = props[attr];
         track.cleanup = addEventListener(node, eventName, listener);
-      } else if (!startsWith(attr, 'update:')) {
+      } else if (!startsWith(attr, 'update')) {
         const track = this.getNodeTrack(`${key}:${attr}`);
         const val = props[attr];
         const triggerValue = isSignal(val) ? val : useSignal(val);
@@ -179,7 +186,7 @@ export class TemplateNode implements JSX.Element {
         });
 
         let cleanupBind;
-        const updateKey = `update:${attr}`;
+        const updateKey = `update${capitalizeFirstLetter(attr)}`;
         if (props[updateKey]) {
           cleanupBind = binNode(node, value => {
             props[updateKey](value);

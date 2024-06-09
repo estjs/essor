@@ -1,6 +1,6 @@
 import { isFunction, startsWith } from 'essor-shared';
 import { signalObject } from '../signal';
-import { type Signal, useEffect, useSignal } from '../signal';
+import { type Signal, useEffect, useReactive, useSignal } from '../signal';
 import { isSignal } from '../signal/signal';
 import { addEventListener } from './utils';
 import type { EssorComponent, NodeTrack } from '../../types';
@@ -16,7 +16,7 @@ export class ComponentNode implements JSX.Element {
   ) {
     this.proxyProps = signalObject(
       props,
-      key => startsWith(key, 'on') || startsWith(key, 'update:'),
+      key => startsWith(key, 'on') || startsWith(key, 'update'),
     );
   }
   addEventListener(): void {}
@@ -90,7 +90,7 @@ export class ComponentNode implements JSX.Element {
     }
 
     ComponentNode.ref = this;
-    this.rootNode = this.template(this.proxyProps);
+    this.rootNode = this.template(useReactive(this.proxyProps));
     ComponentNode.ref = null;
     this.mounted = true;
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
@@ -124,7 +124,7 @@ export class ComponentNode implements JSX.Element {
         } else if (isFunction(prop)) {
           (props[key] as Function)(this.rootNode?.nodes[0]);
         }
-      } else if (startsWith(key, 'update:')) {
+      } else if (startsWith(key, 'update')) {
         props[key] = isSignal(prop) ? prop.value : prop;
       } else {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
