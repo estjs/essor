@@ -7,6 +7,7 @@ export {
   hasOwn,
   startsWith,
   deepEqual,
+  deepClone,
 } from './comm';
 export {
   isString,
