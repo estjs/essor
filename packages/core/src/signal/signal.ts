@@ -69,7 +69,7 @@ export class Signal<T> {
   }
 
   set value(newValue: T) {
-    if (this._value !== newValue) {
+    if (hasChanged(newValue, this._value)) {
       this._value = newValue;
       trigger(this, 'value');
     }
@@ -110,7 +110,7 @@ export class Computed<T> {
 
   run() {
     const newValue = this.fn();
-    if (newValue !== this._value) {
+    if (hasChanged(newValue, this._value)) {
       this._value = newValue;
       this._deps.forEach(effect => effect());
     }
@@ -150,7 +150,8 @@ export function useEffect(fn: EffectFn): () => void {
   };
 }
 
-function shouldExclude(key: string, exclude?: ((key: string) => boolean) | string[]): boolean {
+type ExcludeType = ((key: string | symbol) => boolean) | (string | symbol)[];
+function isExclude(key: string | symbol, exclude?: ExcludeType): boolean {
   return Array.isArray(exclude)
     ? exclude.includes(key)
     : isFunction(exclude)
@@ -170,10 +171,10 @@ export type SignalObject<T> = {
  */
 export function signalObject<T extends object>(
   initialValues: T,
-  exclude?: ((key: string) => boolean) | string[],
+  exclude?: ExcludeType,
 ): SignalObject<T> {
   const signals = Object.entries(initialValues).reduce((acc, [key, value]) => {
-    acc[key] = shouldExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
+    acc[key] = isExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
     return acc;
   }, {} as SignalObject<T>);
 
@@ -187,10 +188,7 @@ export function signalObject<T extends object>(
  * @param {(key: string) => boolean | string[]} [exclude] - A function that determines which keys to exclude from the unwrapped object.
  * @return {T} The unwrapped value of the signal, signal object, or plain object.
  */
-export function unSignal<T>(
-  signal: SignalObject<T> | T | Signal<T>,
-  exclude?: ((key: string) => boolean) | string[],
-): T {
+export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
   if (isSignal(signal)) {
     return signal.peek();
@@ -200,7 +198,7 @@ export function unSignal<T>(
   }
   if (isObject(signal)) {
     return Object.entries(signal).reduce((acc, [key, value]) => {
-      if (shouldExclude(key, exclude)) {
+      if (isExclude(key, exclude)) {
         acc[key] = value;
       } else {
         acc[key] = isSignal(value) ? value.peek() : value;
@@ -225,7 +223,7 @@ export function unReactive(obj) {
 }
 const reactiveMap = new WeakMap<object, object>();
 
-export function useReactive<T extends object>(initialValue: T): T {
+export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
   if (!isObject(initialValue)) {
     return initialValue;
   }
@@ -244,6 +242,9 @@ export function useReactive<T extends object>(initialValue: T): T {
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;
 
+      if (isExclude(key, exclude)) {
+        return value;
+      }
       track(target, key);
       if (isObject(value)) {
         return useReactive(value);
@@ -251,6 +252,10 @@ export function useReactive<T extends object>(initialValue: T): T {
       return value;
     },
     set(target, key, value, receiver) {
+      if (isExclude(key, exclude)) {
+        Reflect.set(target, key, value, receiver);
+        return true;
+      }
       let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
 
       if (isSignal(oldValue)) {

@@ -90,7 +90,7 @@ export class ComponentNode implements JSX.Element {
     }
 
     ComponentNode.ref = this;
-    this.rootNode = this.template(useReactive(this.proxyProps));
+    this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
     ComponentNode.ref = null;
     this.mounted = true;
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
@@ -130,7 +130,7 @@ export class ComponentNode implements JSX.Element {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {
-          newValue.value = prop;
+          newValue.value = isFunction(prop) ? prop() : prop;
         });
       }
     }

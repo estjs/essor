@@ -1,18 +1,19 @@
 import { useEffect, useReactive } from 'essor';
 
-const MyComponent = ({ val, ...rest }) => {
+const MyComponent = ({ val, children, updateValue, ...rest }) => {
   useEffect(() => {
     console.log('useEffect', rest);
   });
   return (
     <p
       onClick={() => {
-        rest.value = 'xxxx';
+        updateValue('xxxx');
       }}
     >
       {rest.value}
       {val}
       {rest.val2}
+      {children}
     </p>
   );
 };
@@ -46,8 +47,9 @@ function App() {
 
   return (
     <>
-      <MyComponent bind:value={signal.value} updateValue={updateValue} val={val} val2={val2} />
-      <AnotherComponent name="John" age={30} />
+      <MyComponent bind:value={signal.value} updateValue={updateValue} val={val} val2={val2}>
+        <AnotherComponent name={signal.value} age={30} />
+      </MyComponent>
     </>
   );
 }
