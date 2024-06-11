@@ -5,6 +5,17 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.6-beta.10](https://github.com/estjs/essor/compare/v0.0.6-beta.9...v0.0.6-beta.10) `2024-06-11`
+
+
+### Bug Fixes
+
+* fix haschange fn eq error ([d812b14](https://github.com/estjs/essor/commit/d812b1423aa578be6cc22480591744adaeb93f86))
+* **signal:** fix set value is haschanged ([5086bab](https://github.com/estjs/essor/commit/5086bab229bd75ccc0950c4e23fc37c6d2705705))
+
+
+
+
 ## [0.0.6-beta.9](https://github.com/estjs/essor/compare/v0.0.6-beta.8...v0.0.6-beta.9) `2024-06-05`
 
 
