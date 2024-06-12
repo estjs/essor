@@ -12,7 +12,7 @@ export function onDestroy(cb: () => void): void {
 
 function throwIfOutsideComponent(hook: string) {
   if (!ComponentNode.ref) {
-    throw new Error(
+    console.error(
       `"${hook}" can only be called within the component function body
       and cannot be used in asynchronous or deferred calls.`,
     );
