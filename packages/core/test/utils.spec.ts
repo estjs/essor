@@ -5,7 +5,9 @@ import {
   addEventListener,
   binNode,
   coerceNode,
+  convertToHtmlTag,
   insertChild,
+  isHtmlTagName,
   removeChild,
   replaceChild,
   setAttribute,
@@ -263,5 +265,44 @@ describe('addEventListener', () => {
 
     removeListener();
     expect(mockNode.removeEventListener).toHaveBeenCalledWith(eventName, handler);
+  });
+});
+describe('convertToHtmlTag', () => {
+  it('should convert a normal tag to its HTML element string', () => {
+    expect(convertToHtmlTag('div')).toBe('<div></div>');
+    expect(convertToHtmlTag('span')).toBe('<span></span>');
+    expect(convertToHtmlTag('p')).toBe('<p></p>');
+  });
+
+  it('should convert a self-closing tag to its self-closing HTML element string', () => {
+    expect(convertToHtmlTag('img')).toBe('<img/>');
+    expect(convertToHtmlTag('input')).toBe('<input/>');
+    expect(convertToHtmlTag('br')).toBe('<br/>');
+    expect(convertToHtmlTag('meta')).toBe('<meta/>');
+    expect(convertToHtmlTag('link')).toBe('<link/>');
+  });
+
+  it('should handle tags that are not in the self-closing list as normal tags', () => {
+    expect(convertToHtmlTag('custom-tag')).toBe('<custom-tag></custom-tag>');
+  });
+});
+describe('isHtmlTagName', () => {
+  it('should return true for valid HTML tags', () => {
+    expect(isHtmlTagName('div')).toBe(true);
+    expect(isHtmlTagName('img')).toBe(true);
+    expect(isHtmlTagName('span')).toBe(true);
+    expect(isHtmlTagName('p')).toBe(true);
+  });
+
+  it('should return false for invalid HTML tags', () => {
+    expect(isHtmlTagName('custom-tag')).toBe(false);
+    expect(isHtmlTagName('notatag')).toBe(false);
+    expect(isHtmlTagName('123')).toBe(false);
+    expect(isHtmlTagName('')).toBe(false);
+  });
+
+  it('should return false for null or undefined input', () => {
+    expect(isHtmlTagName(null)).toBe(false);
+    expect(isHtmlTagName(undefined)).toBe(false);
   });
 });

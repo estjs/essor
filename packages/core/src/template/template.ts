@@ -1,16 +1,23 @@
 import { isFunction } from 'essor-shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
+import { convertToHtmlTag, isHtmlTagName } from './utils';
 import type { EssorComponent, EssorNode } from '../../types';
 
-export function h(
-  template: EssorComponent | HTMLTemplateElement,
+export function h<K extends keyof HTMLElementTagNameMap>(
+  _template: EssorComponent | HTMLTemplateElement | K,
   props: Record<string, any>,
   key?: string,
 ): JSX.Element {
-  return isFunction(template)
-    ? new ComponentNode(template, props, key)
-    : new TemplateNode(template, props, key);
+  if (isHtmlTagName(_template)) {
+    _template = template(convertToHtmlTag(_template));
+    props = {
+      1: props,
+    };
+  }
+  return isFunction(_template)
+    ? new ComponentNode(_template, props, key)
+    : new TemplateNode(_template as HTMLTemplateElement, props, key);
 }
 
 export function isComponentOf(node: unknown, component: EssorComponent) {
