@@ -4,13 +4,14 @@ import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
 import {
   type JSXChild,
+  type JSXElement,
   getAttrName,
   getTagName,
   isComponent,
   isTextChild,
   setNodeText,
 } from './shared';
-import type { JSXElement, OptionalMemberExpression } from '@babel/types';
+import type { OptionalMemberExpression } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
 
