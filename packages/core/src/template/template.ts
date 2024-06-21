@@ -1,4 +1,4 @@
-import { isFunction } from 'essor-shared';
+import { isFunction, isString } from 'essor-shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { convertToHtmlTag, isHtmlTagName } from './utils';
@@ -9,12 +9,16 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   props: Record<string, any>,
   key?: string,
 ): JSX.Element {
-  if (isHtmlTagName(_template)) {
-    _template = template(convertToHtmlTag(_template));
-    props = {
-      1: props,
-    };
+  if (isString(_template)) {
+    if (isHtmlTagName(_template)) {
+      (_template as string) = convertToHtmlTag(_template as string);
+      props = {
+        1: props,
+      };
+    }
+    _template = template(_template as string);
   }
+
   return isFunction(_template)
     ? new ComponentNode(_template, props, key)
     : new TemplateNode(_template as HTMLTemplateElement, props, key);
