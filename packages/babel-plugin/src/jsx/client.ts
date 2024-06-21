@@ -2,24 +2,27 @@ import { types as t } from '@babel/core';
 import { capitalizeFirstLetter, startsWith } from 'essor-shared';
 import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
+import {
+  type JSXChild,
+  type JSXElement,
+  getAttrName,
+  getTagName,
+  hasSiblingElement,
+  isComponent,
+  isTextChild,
+  setNodeText,
+} from './shared';
 import type { OptionalMemberExpression } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
-type JSXElement = t.JSXElement | t.JSXFragment;
-interface Result {
+
+export interface Result {
   index: number;
   isLastChild: boolean;
   parentIndex: number;
   props: Record<string, any>;
   template: string;
 }
-
-type JSXChild =
-  | t.JSXElement
-  | t.JSXFragment
-  | t.JSXExpressionContainer
-  | t.JSXSpreadChild
-  | t.JSXText;
 
 export function transformJSXClient(path: NodePath<JSXElement>): void {
   const result: Result = {
@@ -128,7 +131,9 @@ function transformJSXElement(
       result.template += isSelfClose ? '/>' : '>';
       if (!isSelfClose) {
         transformChildren(path, result);
-        result.template += `</${tagName}>`;
+        if (hasSiblingElement(path)) {
+          result.template += `</${tagName}>`;
+        }
       }
     }
   } else {
@@ -193,30 +198,6 @@ function getNodeText(path: NodePath<JSXChild>): string {
     }
   }
   return '';
-}
-function setNodeText(path: NodePath<JSXChild>, text: string): void {
-  if (path.isJSXText()) {
-    path.node.value = text;
-  }
-  if (path.isJSXExpressionContainer()) {
-    const expression = path.get('expression');
-    if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      expression.replaceWith(t.stringLiteral(text));
-    }
-  }
-}
-
-export function isTextChild(path: NodePath<JSXChild>): boolean {
-  if (path.isJSXExpressionContainer()) {
-    const expression = path.get('expression');
-    if (expression.isJSXText() || expression.isStringLiteral() || expression.isNumericLiteral()) {
-      return true;
-    }
-  }
-  if (path.isJSXText() || path.isStringLiteral() || path.isNullLiteral()) {
-    return true;
-  }
-  return false;
 }
 
 function handleAttributes(props: Record<string, any>, result: Result): void {
@@ -288,7 +269,7 @@ function replaceChild(node: t.Expression, result: Result): void {
   if (result.isLastChild) {
     result.index--;
   } else {
-    result.template += '<!-->';
+    result.template += '<!>';
   }
   result.props[result.parentIndex] ??= {};
   result.props[result.parentIndex].children ??= [];
@@ -383,60 +364,4 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
     });
 
   return props;
-}
-export function getAttrName(attribute: t.JSXAttribute): string {
-  if (t.isJSXIdentifier(attribute.name)) {
-    return attribute.name.name;
-  }
-  if (t.isJSXNamespacedName(attribute.name)) {
-    return `${attribute.name.namespace.name}:${attribute.name.name.name}`;
-  }
-  throw new Error('Unsupported attribute type');
-}
-/**
- * Determines if the given tagName is a component.
- *
- *  case1: <MyComponent />
- *  case2: <SomeLibrary.SomeComponent />;
- *  case3: <_component />;
- *
- * @param {string} tagName - The name of the tag to check.
- * @return {boolean} True if the tagName is a component, false otherwise.
- */
-export function isComponent(tagName: string): boolean {
-  return (
-    (tagName[0] && tagName[0].toLowerCase() !== tagName[0]) ||
-    tagName.includes('.') ||
-    /[^A-Za-z]/.test(tagName[0])
-  );
-}
-
-export function getTagName(node: t.JSXElement): string {
-  const tag = node.openingElement.name;
-  return jsxElementNameToString(tag);
-}
-
-/**
- * Converts a JSX element name to a string representation.
- *
- * case1: <MyComponent />
- * case2: <SomeLibrary.SomeComponent />;
- * case3: <namespace:ComponentName />;
- * case4: <SomeLibrary.Nested.ComponentName />;
- *
- * @param {t.JSXMemberExpression | t.JSXIdentifier | t.JSXNamespacedName} node The JSX element name to convert.
- * @returns {string} The string representation of the JSX element name.
- */
-export function jsxElementNameToString(
-  node: t.JSXMemberExpression | t.JSXIdentifier | t.JSXNamespacedName,
-) {
-  if (t.isJSXMemberExpression(node)) {
-    return `${jsxElementNameToString(node.object)}.${jsxElementNameToString(node.property)}`;
-  }
-
-  if (t.isJSXIdentifier(node) || t.isIdentifier(node)) {
-    return node.name;
-  }
-
-  return `${node.namespace.name}:${node.name.name}`;
 }

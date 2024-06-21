@@ -180,20 +180,6 @@ const selfClosingTags = [
   'wbr',
 ];
 
-/**
- * A function that converts a tag to an HTML tag based on whether it is a self-closing tag or not.
- *
- * @param {string} tag - The tag to convert to an HTML tag.
- * @return {string} The converted HTML tag.
- */
-export function convertToHtmlTag(tag) {
-  if (selfClosingTags.includes(tag)) {
-    return `<${tag}/>`;
-  } else {
-    return `<${tag}></${tag}>`;
-  }
-}
-
 const htmlTags = [
   'a',
   'abbr',
@@ -336,6 +322,69 @@ const htmlTags = [
   'xmp',
 ];
 
-export function isHtmlTagName(str) {
+export function closeHtmlTags(input: string): string {
+  const tagStack: string[] = [];
+  const output: string[] = [];
+
+  const tagPattern = /<\/?([\dA-Za-z-]+)([^>]*)>/g;
+
+  let lastIndex = 0;
+
+  while (true) {
+    const match = tagPattern.exec(input);
+    if (!match) break;
+
+    const [fullMatch, tagName, attributes] = match;
+    const isEndTag = fullMatch[1] === '/';
+
+    // Push text content between tags
+    output.push(input.slice(lastIndex, match.index));
+    lastIndex = match.index + fullMatch.length;
+
+    if (isEndTag) {
+      // Handle end tag
+      while (tagStack.length > 0 && tagStack[tagStack.length - 1] !== tagName) {
+        const unclosedTag = tagStack.pop();
+        if (unclosedTag) {
+          output.push(`</${unclosedTag}>`);
+        }
+      }
+      if (tagStack.length > 0) {
+        tagStack.pop();
+        output.push(fullMatch);
+      }
+    } else {
+      // Handle start tag or self-closing tag
+      if (selfClosingTags.includes(tagName)) {
+        output.push(fullMatch);
+      } else {
+        tagStack.push(tagName);
+        output.push(`<${tagName}${attributes}>`);
+      }
+    }
+  }
+
+  // Push remaining text content after last tag
+  output.push(input.slice(lastIndex));
+
+  // Close any remaining open tags
+  while (tagStack.length > 0) {
+    const unclosedTag = tagStack.pop();
+    if (unclosedTag) {
+      output.push(`</${unclosedTag}>`);
+    }
+  }
+
+  return output.join('');
+}
+
+export function isHtmlTagName(str): str is string {
   return htmlTags.includes(str);
+}
+export function convertToHtmlTag(tag: string): string {
+  if (selfClosingTags.includes(tag)) {
+    return `<${tag}/>`;
+  } else {
+    return `<${tag}></${tag}>`;
+  }
 }

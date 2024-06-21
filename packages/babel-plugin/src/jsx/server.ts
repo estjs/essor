@@ -2,25 +2,26 @@ import { capitalizeFirstLetter, startsWith } from 'essor-shared';
 import { types as t } from '@babel/core';
 import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
-import { getAttrName, getTagName, isComponent, isTextChild } from './client';
+import {
+  type JSXChild,
+  type JSXElement,
+  getAttrName,
+  getTagName,
+  isComponent,
+  isTextChild,
+  setNodeText,
+} from './shared';
 import type { OptionalMemberExpression } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
-type JSXElement = t.JSXElement | t.JSXFragment;
-interface Result {
+
+export interface Result {
   index: number;
   isLastChild: boolean;
   parentIndex: number;
   props: Record<string, any>;
   template: string[];
 }
-
-type JSXChild =
-  | t.JSXElement
-  | t.JSXFragment
-  | t.JSXExpressionContainer
-  | t.JSXSpreadChild
-  | t.JSXText;
 
 export function transformJSXService(path: NodePath<JSXElement>): void {
   const result: Result = {
@@ -211,17 +212,6 @@ function getNodeText(path: NodePath<JSXChild>): string {
     }
   }
   return '';
-}
-function setNodeText(path: NodePath<JSXChild>, text: string): void {
-  if (path.isJSXText()) {
-    path.node.value = text;
-  }
-  if (path.isJSXExpressionContainer()) {
-    const expression = path.get('expression');
-    if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      expression.replaceWith(t.stringLiteral(text));
-    }
-  }
 }
 
 function handleAttributes(props: Record<string, any>, result: Result): void {
