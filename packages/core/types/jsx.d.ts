@@ -154,7 +154,11 @@ declare global {
     interface DirectiveFunctions {
       [x: string]: (el: DOMElement, accessor: Accessor<any>) => void;
     }
-    interface ExplicitProperties {}
+    interface ExplicitProperties<T> {
+      value: Signal<T>;
+      updateValue: (value: T) => void;
+    }
+
     interface ExplicitAttributes {}
     interface CustomEvents {}
     interface CustomCaptureEvents {}
@@ -164,12 +168,12 @@ declare global {
         CustomCaptureEvents[Key]
       >;
     };
-    type PropAttributes = {
-      [Key in keyof ExplicitProperties as `bind:${Key}`]?: ExplicitProperties[Key];
+    type PropAttributes<T> = {
+      [Key in keyof ExplicitProperties]?: ExplicitProperties<T>[Key];
     };
     interface DOMAttributes<T>
       extends CustomAttributes<T>,
-        PropAttributes,
+        PropAttributes<T>,
         OnCaptureAttributes<T>,
         CustomEventHandlersCamelCase<T>,
         CustomEventHandlersLowerCase<T> {
