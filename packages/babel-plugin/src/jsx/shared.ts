@@ -16,19 +16,13 @@ export type JSXChild =
  * @return {boolean} True if the path has a sibling element, false otherwise.
  */
 export function hasSiblingElement(path) {
-  function isSelfClosing(element) {
-    return element.openingElement.selfClosing;
-  }
-
   // Get all siblings (both previous and next)
   const siblings = path.getAllPrevSiblings().concat(path.getAllNextSiblings());
 
   // Check for non-self-closing sibling elements
-  const hasNonSelfClosingSibling = siblings.some(
-    siblingPath => siblingPath.isJSXElement() && !isSelfClosing(siblingPath.node),
-  );
+  const hasSibling = siblings.some(siblingPath => siblingPath.isJSXElement());
 
-  return hasNonSelfClosingSibling;
+  return hasSibling;
 }
 
 /**
