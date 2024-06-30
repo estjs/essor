@@ -8,6 +8,7 @@ export {
   startsWith,
   deepEqual,
   deepClone,
+  escape,
 } from './comm';
 export {
   isString,

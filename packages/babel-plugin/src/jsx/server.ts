@@ -43,13 +43,9 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     tmpl = t.identifier(getTagName(path.node));
   } else {
     tmpl = path.scope.generateUidIdentifier('_tmpl$');
-    const template = t.callExpression(state.ssrtmpl, [
-      t.arrayExpression(result.template.map(t.stringLiteral)),
-    ]);
+    const template = t.arrayExpression(result.template.map(t.stringLiteral));
     const declarator = t.variableDeclarator(tmpl, template);
     state.tmplDeclaration.declarations.push(declarator);
-
-    imports.add('ssrtmpl');
   }
 
   const args = [tmpl, createProps(result.props)];
@@ -57,8 +53,8 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   if (key) {
     args.push(key);
   }
-  imports.add('ssr');
-  return t.callExpression(state.ssr, args);
+  imports.add('renderTemplate');
+  return t.callExpression(state.renderTemplate, args);
 }
 
 function createProps(props: Record<string, any>): t.ObjectExpression {

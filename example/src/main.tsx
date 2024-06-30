@@ -1,3 +1,5 @@
+import { ssgRender } from 'essor';
+
 function App() {
   const $value = 'hello word';
   return (
@@ -8,4 +10,4 @@ function App() {
   );
 }
 
-(<App />).mount(document.querySelector('#app')!);
+ssgRender(App, document.querySelector('#app')!);
