@@ -1,5 +1,5 @@
 import { getTransform } from './transform-util';
-const transformCode = getTransform('jsx');
+const transformCode = getTransform('jsxClient');
 describe('jsx transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `

@@ -168,3 +168,29 @@ export function deepEqual(a: any, b: any, seen = new WeakMap()): boolean {
 
   return true;
 }
+
+
+
+/**
+ * Escapes special HTML characters in a string.
+ * @param str - The string to escape.
+ * @returns The escaped string.
+ */
+export function escape(str: string): string {
+  return str.replaceAll(/["&'<>]/g, char => {
+    switch (char) {
+      case '&':
+        return '&amp;';
+      case '<':
+        return '&lt;';
+      case '>':
+        return '&gt;';
+      case '"':
+        return '&quot;';
+      case "'":
+        return '&#039;';
+      default:
+        return char;
+    }
+  });
+}

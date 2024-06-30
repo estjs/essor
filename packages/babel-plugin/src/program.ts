@@ -6,8 +6,7 @@ export const transformProgram = {
   enter(path: NodePath<t.Program>, state) {
     path.state = {
       h: path.scope.generateUidIdentifier('h$'),
-      ssrtmpl: path.scope.generateUidIdentifier('ssrtmpl$'),
-      ssr: path.scope.generateUidIdentifier('ssr$'),
+      renderTemplate: path.scope.generateUidIdentifier('renderTemplate$'),
       template: path.scope.generateUidIdentifier('template$'),
 
       useSignal: path.scope.generateUidIdentifier('signal$'),

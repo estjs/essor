@@ -1,14 +1,16 @@
-import { renderToString, ssgRender, ssr, ssrtmpl } from '../src';
+import { renderTemplate, renderToString, ssgRender } from '../src';
 
 describe('service', () => {
   let App;
-  const _tmpl$ = ssrtmpl(['<div', '>', 'Hello, ', '!', '</div>']);
+  let root;
+  const _tmpl$ = ['<div', '>', 'Hello, ', '!', '</div>'];
 
   beforeEach(() => {
+    root = document.createElement('div');
     function AppFn(props) {
       const name = 'John';
 
-      return ssr(_tmpl$, {
+      return renderTemplate(_tmpl$, {
         '1': {
           id: props.id,
           class: props.class,
@@ -21,32 +23,7 @@ describe('service', () => {
 
   afterEach(() => {
     App = null;
-  });
-  it('should return an empty object for empty templates array', () => {
-    expect(ssrtmpl()).toEqual({});
-  });
-
-  it('should create a template map with correct indices', () => {
-    const result = _tmpl$;
-    expect(result).toMatchInlineSnapshot(`
-      {
-        "1": {
-          "template": "<div",
-        },
-        "2": {
-          "template": ">",
-        },
-        "3": {
-          "template": "Hello, ",
-        },
-        "4": {
-          "template": "!",
-        },
-        "5": {
-          "template": "</div>",
-        },
-      }
-    `);
+    root = null;
   });
 
   it('should render a template with props', () => {
@@ -54,7 +31,7 @@ describe('service', () => {
       id: 'test',
       class: 'test-class',
     };
-    const result = ssr(App, props);
+    const result = renderTemplate(App, props);
     expect(result).toMatchInlineSnapshot(`"<div id="test" class="test-class">JohnHello, !</div>"`);
   });
 
@@ -66,12 +43,14 @@ describe('service', () => {
     const result = renderToString(App, props);
     expect(result).toMatchInlineSnapshot(`"<div id="test" class="test-class">JohnHello, !</div>"`);
   });
-  it('should mount component to the root element', () => {
-    document.body.innerHTML = '<div id="root"></div>';
-    const component = {
-      mount: vitest.fn(),
+  it('should work with ssgRender', () => {
+    const props = {
+      id: 'test',
+      class: 'test-class',
     };
-    ssgRender(component, document.querySelector('#root')!);
-    expect(component.mount).toHaveBeenCalled();
+    ssgRender(App, root, props);
+    expect(root.innerHTML).toMatchInlineSnapshot(
+      `"<div id="test" class="test-class">JohnHello, !</div>"`,
+    );
   });
 });

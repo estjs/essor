@@ -7,5 +7,5 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
   },
-  plugins: [Inspect(), essor({ ssr: true })],
+  plugins: [Inspect(), essor({ ssg: true })],
 });
