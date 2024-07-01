@@ -38,18 +38,35 @@ describe('transform symbol', () => {
   });
   it('should work with object pattern', () => {
     const input = `
-      const {$a,b} = {a:1,b:2};
-      console.log($a);
+      const {$a,b} = {$a:1,b:2};
+      const [$c,d] = [1,2];
+      const [{$d,e}] = [{$d:1,e:2}];
+      console.log($a,b);
+      console.log($c,d);
+      console.log($d,e);
+
+
+
     `;
-    expect(transformCode(input)).toMatchInlineSnapshot(`
-      "const {
-        $a,
-        b
-      } = {
-        a: 1,
-        b: 2
-      };
-      console.log($a);"
-    `);
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+  it('should work with object pattern alias', () => {
+    const input = `
+      const {a:$a,b} = {a:1,b:2};
+      const [{d:$d}] = [{d:1,e:2}];
+      console.log($a,b);
+      console.log($d,);
+  `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should work with import value', () => {
+    const input = `
+      import {$a} from 'a';
+      import {b} from 'b';
+      console.log($a,b);
+  `;
+
+    expect(transformCode(input)).toMatchSnapshot();
   });
 });
