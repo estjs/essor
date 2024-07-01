@@ -50,8 +50,7 @@ export function symbolIdentifier(path) {
     t.isImportSpecifier(parentPath) ||
     t.isObjectProperty(parentPath) ||
     t.isArrayPattern(parentPath) ||
-    t.isObjectPattern(parentPath) ||
-    t.isFunction(parentPath?.parentPath)
+    t.isObjectPattern(parentPath)
   ) {
     return;
   }
