@@ -1,6 +1,11 @@
 import babel from '@babel/core';
 import { transformProgram } from '../src/program';
-import { replaceSymbol } from '../src/signal/symbol';
+import {
+  replaceSymbol,
+  symbolArrayPattern,
+  symbolIdentifier,
+  symbolObjectPattern,
+} from '../src/signal/symbol';
 import { replaceImportDeclaration } from '../src/signal/import';
 import { replaceProps } from '../src/signal/props';
 import { transformJSXClient } from '../src/jsx/client';
@@ -21,6 +26,9 @@ const transforms = {
   symbol: {
     Program: transformProgram,
     VariableDeclarator: replaceSymbol,
+    Identifier: symbolIdentifier,
+    ObjectPattern: symbolObjectPattern,
+    ArrayPattern: symbolArrayPattern,
   },
   props: {
     Program: transformProgram,

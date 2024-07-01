@@ -1,9 +1,13 @@
 import { transformJSX } from './jsx';
 import { transformProgram } from './program';
-import { replaceSymbol } from './signal/symbol';
+import {
+  replaceSymbol,
+  symbolArrayPattern,
+  symbolIdentifier,
+  symbolObjectPattern,
+} from './signal/symbol';
 import { replaceImportDeclaration } from './signal/import';
 import { replaceProps } from './signal/props';
-import { symbolAddValue } from './signal/value';
 import type { PluginObj } from '@babel/core';
 export { Options, State } from './types';
 export default function (): PluginObj {
@@ -22,8 +26,10 @@ export default function (): PluginObj {
       FunctionDeclaration: replaceProps,
       ArrowFunctionExpression: replaceProps,
       VariableDeclarator: replaceSymbol,
-      Identifier: symbolAddValue,
       ImportDeclaration: replaceImportDeclaration,
+      Identifier: symbolIdentifier,
+      ObjectPattern: symbolObjectPattern,
+      ArrayPattern: symbolArrayPattern,
     },
   };
 }
