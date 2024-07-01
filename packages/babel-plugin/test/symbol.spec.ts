@@ -39,16 +39,17 @@ describe('transform symbol', () => {
   it('should work with object pattern', () => {
     const input = `
       const {$a,b} = {a:1,b:2};
+      console.log($a);
     `;
     expect(transformCode(input)).toMatchInlineSnapshot(`
-      "import { useSignal as _signal$, useComputed as _computed$ } from "essor";
-      const {
+      "const {
         $a,
         b
       } = {
         a: 1,
         b: 2
-      };"
+      };
+      console.log($a);"
     `);
   });
 });

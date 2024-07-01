@@ -75,25 +75,25 @@ $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with const function transform computed 1`] = `
-"import { useSignal as _signal$, useComputed as _computed$ } from "essor";
+"import { useComputed as _computed$ } from "essor";
 const $a = _computed$(() => 1);
 $a = 2;"
 `;
 
 exports[`transform symbol > should work with const function transform computed 2`] = `
-"import { useSignal as _signal$, useComputed as _computed$ } from "essor";
+"import { useComputed as _computed$ } from "essor";
 const $a = _computed$(a => a + 1);
 $a = 2;"
 `;
 
 exports[`transform symbol > should work with let function transform computed 1`] = `
-"import { useSignal as _signal$, useComputed as _computed$ } from "essor";
+"import { useSignal as _signal$ } from "essor";
 let $a = _signal$(() => 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with let function transform computed 2`] = `
-"import { useSignal as _signal$, useComputed as _computed$ } from "essor";
+"import { useSignal as _signal$ } from "essor";
 let $a = _signal$(a => a + 1);
 $a.value = 2;"
 `;
