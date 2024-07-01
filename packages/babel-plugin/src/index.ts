@@ -22,7 +22,7 @@ export default function (): PluginObj {
       FunctionDeclaration: replaceProps,
       ArrowFunctionExpression: replaceProps,
       VariableDeclarator: replaceSymbol,
-      MemberExpression: symbolAddValue,
+      Identifier: symbolAddValue,
       ImportDeclaration: replaceImportDeclaration,
     },
   };
