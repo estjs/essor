@@ -29,6 +29,7 @@ const transforms = {
     Identifier: symbolIdentifier,
     ObjectPattern: symbolObjectPattern,
     ArrayPattern: symbolArrayPattern,
+    FunctionDeclaration: replaceProps,
   },
   props: {
     Program: transformProgram,

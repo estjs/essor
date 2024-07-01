@@ -42,13 +42,14 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
 }
 
 export function symbolIdentifier(path) {
-  // 忽略变量声明和导入声明
+  const parentPath = path.parentPath;
   if (
-    path.parentPath.isVariableDeclarator() ||
-    path.parentPath.isImportSpecifier() ||
-    path.parentPath.isObjectProperty() ||
-    path.parentPath.isArrayPattern() ||
-    path.parentPath.isObjectPattern()
+    t.isVariableDeclarator(parentPath) ||
+    t.isImportSpecifier(parentPath) ||
+    t.isObjectProperty(parentPath) ||
+    t.isArrayPattern(parentPath) ||
+    t.isObjectPattern(parentPath) ||
+    t.isMemberExpression(parentPath)
   ) {
     return;
   }

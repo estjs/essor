@@ -13,6 +13,7 @@ export const transformProgram = {
 
       useSignal: path.scope.generateUidIdentifier('signal$'),
       useComputed: path.scope.generateUidIdentifier('computed$'),
+      useReactive: path.scope.generateUidIdentifier('reactive$'),
 
       tmplDeclaration: t.variableDeclaration('const', []),
       opts: state.opts,

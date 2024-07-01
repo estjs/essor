@@ -1,5 +1,4 @@
-import { hasChanged, isFunction, isObject } from 'essor-shared';
-import { isArray } from '../../../shared/src';
+import { hasChanged, isArray, isFunction, isObject, startsWith } from 'essor-shared';
 
 type EffectFn = () => void;
 
@@ -69,6 +68,10 @@ export class Signal<T> {
   }
 
   set value(newValue: T) {
+    if (isSignal(newValue)) {
+      console.warn('Signal cannot be set to another signal, use .peek() instead');
+      newValue = newValue.peek() as T;
+    }
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
       trigger(this, 'value');
@@ -237,7 +240,7 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
 
   const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
-      if (key === REACTIVE_MARKER) return true;
+      if (key === REACTIVE_MARKER || startsWith(key, '_')) return true;
 
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;

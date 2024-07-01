@@ -25,8 +25,9 @@ describe('props', () => {
 
     const code = transformCode(input);
     expect(code).toMatchInlineSnapshot(`
-      "function testFunction(__props) {
-        const restProps = __props;
+      "import { useReactive as _reactive$ } from "essor";
+      function testFunction(__props) {
+        const restProps = _reactive$(__props, ["prop1", "prop2"]);
         return <div prop1={__props.prop1} prop2={__props.prop2} {...restProps} />;
       }"
     `);
@@ -41,8 +42,9 @@ describe('props', () => {
 
     const code = transformCode(input);
     expect(code).toMatchInlineSnapshot(`
-      "function testFunction(__props) {
-        const restProps = __props;
+      "import { useReactive as _reactive$ } from "essor";
+      function testFunction(__props) {
+        const restProps = _reactive$(__props, ["prop1", "prop2"]);
         return <div prop1={__props.prop1} prop2={__props.prop2} rest={{
           ...restProps
         }} />;
@@ -94,7 +96,7 @@ describe('props', () => {
       }"
     `);
   });
-  it('should not work  with not pattern props', () => {
+  it('should not work with not pattern props', () => {
     const input = `
       function testFunction(prop1, prop2) {
         return <div prop1={prop1} prop2={prop2} />;
@@ -105,6 +107,26 @@ describe('props', () => {
     expect(code).toMatchInlineSnapshot(`
       "function testFunction(prop1, prop2) {
         return <div prop1={prop1} prop2={prop2} />;
+      }"
+    `);
+  });
+  it('should work just rest props', () => {
+    const input = `
+      function testFunction({ ...restProps}) {
+        return <div prop1={restProps.$prop1} prop2={restProps.prop2} rest={{
+          ...restProps
+        }} />;
+      }
+    `;
+
+    const code = transformCode(input);
+    expect(code).toMatchInlineSnapshot(`
+      "import { useReactive as _reactive$ } from "essor";
+      function testFunction(__props) {
+        const restProps = _reactive$(__props, []);
+        return <div prop1={restProps.$prop1} prop2={restProps.prop2} rest={{
+          ...restProps
+        }} />;
       }"
     `);
   });

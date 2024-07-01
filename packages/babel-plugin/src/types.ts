@@ -4,11 +4,17 @@ export interface State {
   h: t.Identifier;
   template: t.Identifier;
   renderTemplate: t.Identifier;
+
+  useSignal: t.Identifier;
+  useComputed: t.Identifier;
+  useReactive: t.Identifier;
+
   tmplDeclaration: t.VariableDeclaration;
   opts: Options;
 }
 
 export interface Options {
-  ssg: false;
-  symbol: false;
+  ssg: boolean;
+  symbol: boolean;
+  props: boolean;
 }

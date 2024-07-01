@@ -1,4 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
+import { imports } from '../program';
+import type { State } from '../types';
 import type {
   ArrowFunctionExpression,
   FunctionDeclaration,
@@ -8,6 +10,8 @@ import type {
 } from '@babel/types';
 
 export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionExpression>) {
+  const state: State = path.state;
+
   const firstParam = path.node.params[0];
 
   if (!firstParam || !t.isObjectPattern(firstParam)) {
@@ -49,6 +53,8 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
     properties.filter(property => !t.isRestElement(property)),
     '__props.',
   );
+  const notRestProperties = properties.filter(property => !t.isRestElement(property));
+  const notRestNames = notRestProperties.map(property => (property.key as Identifier).name);
 
   const restElement = properties.find(property => t.isRestElement(property)) as
     | RestElement
@@ -57,8 +63,15 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
   if (restElement) {
     const restName = (restElement.argument as any).name;
     const restVariableDeclaration = t.variableDeclaration('const', [
-      t.variableDeclarator(t.identifier(restName), t.identifier('__props')),
+      t.variableDeclarator(
+        t.identifier(restName),
+        t.callExpression(state.useReactive, [
+          t.identifier('__props'),
+          t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
+        ]),
+      ),
     ]);
+    imports.add('useReactive');
 
     (path.node.body as any).body.unshift(restVariableDeclaration);
   }

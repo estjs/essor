@@ -1,4 +1,4 @@
-import { isPrimitive } from './is';
+import { isPrimitive, isString } from './is';
 
 export const _toString = Object.prototype.toString;
 export const extend = Object.assign;
@@ -23,6 +23,9 @@ export const noop = Function.prototype as () => void;
  * @return {boolean} Returns true if the input string starts with the specified substring, otherwise false.
  */
 export function startsWith(str, searchString) {
+  if (!isString(str)) {
+    return false;
+  }
   return str.indexOf(searchString) === 0;
 }
 
@@ -168,8 +171,6 @@ export function deepEqual(a: any, b: any, seen = new WeakMap()): boolean {
 
   return true;
 }
-
-
 
 /**
  * Escapes special HTML characters in a string.
