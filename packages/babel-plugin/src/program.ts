@@ -4,6 +4,8 @@ export const imports = new Set<string>();
 
 export const transformProgram = {
   enter(path: NodePath<t.Program>, state) {
+    imports.clear();
+
     path.state = {
       h: path.scope.generateUidIdentifier('h$'),
       ssrtmpl: path.scope.generateUidIdentifier('ssrtmpl$'),
