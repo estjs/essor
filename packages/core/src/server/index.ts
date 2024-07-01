@@ -10,49 +10,53 @@ interface TemplateMap {
 
 type Props = Record<string, any>;
 
-export function ssrtmpl(templates: string[] = []): TemplateMap {
-  return templates.reduce((acc, template, index) => {
-    acc[index + 1] = { template };
-    return acc;
-  }, {} as TemplateMap);
-}
-
+/**
+ * Converts a JSON object to a string of HTML attributes.
+ * @param json - The JSON object.
+ * @returns The string of HTML attributes.
+ */
 function jsonToAttrs(json: Record<string, any>): string {
   return Object.entries(json)
-    .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
+    .map(([key, value]) => `${key}=${JSON.stringify(escape(String(value)))}`)
     .join(' ');
 }
 
-export function ssr(
-  template: TemplateMap | EssorNode | ((props: Props) => string),
-  props: Props,
-): string {
+export function renderTemplate(template: string[] | EssorNode | Function, props: Props): string {
   if (isFunction(template)) {
     return template(props);
   }
 
+  const templates: TemplateMap = Array.isArray(template)
+    ? template.reduce((acc, tmpl, index) => {
+        acc[index + 1] = { template: tmpl };
+        return acc;
+      }, {})
+    : template;
+
   const childrenMap: Record<string, EssorNode[]> = {};
   const newTemplate: TemplateMap = {};
-  if (isObject(template)) {
-    Object.entries(template).forEach(([key, tmpl]) => {
+
+  if (isObject(templates)) {
+    for (const [key, tmpl] of Object.entries(templates)) {
       const prop = props[key];
       if (prop) {
-        Object.keys(prop).forEach(propKey => {
+        for (const propKey in prop) {
           if (startsWith(propKey, 'on') && isFunction(prop[propKey])) {
             delete prop[propKey];
           }
-        });
+        }
 
         if (prop.children) {
-          prop.children.forEach(([child, idx]: [any, number]) => {
-            childrenMap[idx] = [...(childrenMap[idx] || []), child];
-          });
+          for (const [child, idx] of prop.children) {
+            if (!childrenMap[idx]) childrenMap[idx] = [];
+            childrenMap[idx].push(child);
+          }
           delete prop.children;
         }
       }
 
       newTemplate[key] = { template: tmpl.template, prop };
-    });
+    }
   }
 
   return Object.entries(newTemplate)
@@ -62,7 +66,7 @@ export function ssr(
         str += ` ${jsonToAttrs(prop)}`;
       }
       if (childrenMap[key]) {
-        str += childrenMap[key].map(child => ssr(child, prop)).join('');
+        str += childrenMap[key].map(child => renderTemplate(child, prop)).join('');
       }
 
       return str;
@@ -70,14 +74,16 @@ export function ssr(
     .join('');
 }
 
+/**
+ * Renders the component to a string.
+ * @param component - The component function.
+ * @param props - The properties to pass to the component.
+ * @returns The rendered component as a string.
+ */
 export function renderToString(component: (...args: any[]) => string, props: Props): string {
-  return ssr(component, props);
+  return renderTemplate(component, props);
 }
 
-export function ssgRender(
-  component: { mount: (root: HTMLElement) => void },
-  root: HTMLElement,
-): void {
-  root.innerHTML = '';
-  component.mount(root);
+export function ssgRender(component, root: HTMLElement, props: Props = {}): void {
+  root.innerHTML = renderTemplate(component, props);
 }

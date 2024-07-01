@@ -1,16 +1,23 @@
 import babel from '@babel/core';
 import { transformProgram } from '../src/program';
-import { transformJSX } from '../src/jsx';
 import { replaceSymbol } from '../src/signal/symbol';
 import { replaceImportDeclaration } from '../src/signal/import';
 import { replaceProps } from '../src/signal/props';
+import { transformJSXClient } from '../src/jsx/client';
+import { transformJSXService } from '../src/jsx/server';
 
 const transforms = {
-  jsx: {
+  jsxClient: {
     Program: transformProgram,
-    JSXElement: transformJSX,
-    JSXFragment: transformJSX,
+    JSXElement: transformJSXClient,
+    JSXFragment: transformJSXClient,
   },
+  jsxServe: {
+    Program: transformProgram,
+    JSXElement: transformJSXService,
+    JSXFragment: transformJSXService,
+  },
+
   symbol: {
     Program: transformProgram,
     VariableDeclarator: replaceSymbol,
