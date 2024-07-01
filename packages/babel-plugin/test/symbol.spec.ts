@@ -36,4 +36,20 @@ describe('transform symbol', () => {
       expect(transformCode(`let $a = ${item}; $a = 2`)).toMatchSnapshot();
     }
   });
+  it('should work with object pattern', () => {
+    const input = `
+      const {$a,b} = {a:1,b:2};
+      console.log($a);
+    `;
+    expect(transformCode(input)).toMatchInlineSnapshot(`
+      "const {
+        $a,
+        b
+      } = {
+        a: 1,
+        b: 2
+      };
+      console.log($a);"
+    `);
+  });
 });
