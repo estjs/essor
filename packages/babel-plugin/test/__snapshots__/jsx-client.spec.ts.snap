@@ -99,7 +99,7 @@ const element = _h$(_tmpl$, {
 `;
 
 exports[`jsx transform > transforms JSX element with function components 1`] = `
-"import { template as _template$, h as _h$ } from "essor";
+"import { h as _h$, template as _template$ } from "essor";
 const _tmpl$ = _template$("<div><!>");
 const element = _h$(_tmpl$, {
   "1": {
