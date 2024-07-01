@@ -44,9 +44,6 @@ describe('transform symbol', () => {
       console.log($a,b);
       console.log($c,d);
       console.log($d,e);
-
-
-
     `;
     expect(transformCode(input)).toMatchSnapshot();
   });
@@ -68,5 +65,29 @@ describe('transform symbol', () => {
   `;
 
     expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should work with array index ', () => {
+    const input = `
+      const $a = [1];
+      console.log($a[0]);
+  `;
+
+    expect(transformCode(input)).toMatchInlineSnapshot(`
+      "import { useSignal as _signal$ } from "essor";
+      const $a = _signal$([1]);
+      console.log($a.value[0]);"
+    `);
+  });
+  it('should not work with add value symbol', () => {
+    const input = `
+      const $a = [1];
+      $a.value.push(2);
+  `;
+    expect(transformCode(input)).toMatchInlineSnapshot(`
+      "import { useSignal as _signal$ } from "essor";
+      const $a = _signal$([1]);
+      $a.value.push(2);"
+    `);
   });
 });

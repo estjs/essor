@@ -121,9 +121,7 @@ describe('props', () => {
 
     const code = transformCode(input);
     expect(code).toMatchInlineSnapshot(`
-      "import { useReactive as _reactive$ } from "essor";
-      function testFunction(__props) {
-        const restProps = _reactive$(__props, []);
+      "function testFunction(restProps) {
         return <div prop1={restProps.$prop1} prop2={restProps.prop2} rest={{
           ...restProps
         }} />;

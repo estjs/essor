@@ -43,13 +43,14 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
 
 export function symbolIdentifier(path) {
   const parentPath = path.parentPath;
+
   if (
+    !parentPath ||
     t.isVariableDeclarator(parentPath) ||
     t.isImportSpecifier(parentPath) ||
     t.isObjectProperty(parentPath) ||
     t.isArrayPattern(parentPath) ||
-    t.isObjectPattern(parentPath) ||
-    t.isMemberExpression(parentPath)
+    t.isObjectPattern(parentPath)
   ) {
     return;
   }
@@ -57,10 +58,21 @@ export function symbolIdentifier(path) {
   const { node } = path;
 
   if (node.name.startsWith('$')) {
-    const uniqueId = path.scope.generateUidIdentifierBasedOnNode(node, '$');
-    path.scope.rename(node.name, uniqueId.name);
+    // check is has .value
+    let currentPath = path;
+    while (currentPath.parentPath && !currentPath.parentPath.isProgram()) {
+      if (
+        currentPath.parentPath.isMemberExpression() &&
+        currentPath.parentPath.node.property.name === 'value'
+      ) {
+        return;
+      }
+      currentPath = currentPath.parentPath;
+    }
 
-    const newNode = t.memberExpression(t.identifier(uniqueId.name), t.identifier('value'));
+    // add with .value
+    const newNode = t.memberExpression(t.identifier(node.name), t.identifier('value'));
+
     path.replaceWith(newNode);
   }
 }

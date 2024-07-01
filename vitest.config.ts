@@ -13,7 +13,6 @@ export default defineConfig({
         '**/scripts/**',
         '**/unplugin/**',
         '**/playground/**',
-        '**/example/**',
         '**/examples/**',
         '**/*.d.ts',
         '**/index.ts',

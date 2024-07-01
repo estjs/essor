@@ -1,3 +1,4 @@
+import { startsWith } from 'essor-shared';
 import { type NodePath, types as t } from '@babel/core';
 import { imports } from '../program';
 import type { State } from '../types';
@@ -54,27 +55,36 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
     '__props.',
   );
   const notRestProperties = properties.filter(property => !t.isRestElement(property));
-  const notRestNames = notRestProperties.map(property => (property.key as Identifier).name);
+  const notRestNames = notRestProperties.map(
+    property => ((property as ObjectProperty).key as Identifier).name,
+  );
+  if (__DEV__ && notRestNames.some(name => startsWith(name, '$'))) {
+    console.warn('props name can not start with $');
+    return;
+  }
 
   const restElement = properties.find(property => t.isRestElement(property)) as
     | RestElement
     | undefined;
+  path.node.params[0] = t.identifier('__props');
 
   if (restElement) {
     const restName = (restElement.argument as any).name;
-    const restVariableDeclaration = t.variableDeclaration('const', [
-      t.variableDeclarator(
-        t.identifier(restName),
-        t.callExpression(state.useReactive, [
-          t.identifier('__props'),
-          t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
-        ]),
-      ),
-    ]);
-    imports.add('useReactive');
+    if (notRestProperties.length === 0) {
+      path.node.params[0] = t.identifier(restName);
+    } else {
+      const restVariableDeclaration = t.variableDeclaration('const', [
+        t.variableDeclarator(
+          t.identifier(restName),
+          t.callExpression(state.useReactive, [
+            t.identifier('__props'),
+            t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
+          ]),
+        ),
+      ]);
+      imports.add('useReactive');
 
-    (path.node.body as any).body.unshift(restVariableDeclaration);
+      (path.node.body as any).body.unshift(restVariableDeclaration);
+    }
   }
-
-  path.node.params[0] = t.identifier('__props');
 }
