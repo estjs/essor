@@ -21,5 +21,6 @@ export {
   isSymbol,
   isFalsy,
   isPrimitive,
+  isHtmlElement,
 } from './is';
 export { camelCase, kebabCase, capitalizeFirstLetter } from './name';
