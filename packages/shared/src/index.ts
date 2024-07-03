@@ -9,6 +9,8 @@ export {
   deepEqual,
   deepClone,
   escape,
+  isExclude,
+  ExcludeType,
 } from './comm';
 export {
   isString,
