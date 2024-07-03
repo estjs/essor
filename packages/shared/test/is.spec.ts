@@ -1,4 +1,14 @@
-import { isFalsy, isFunction, isObject, isPrimitive, isPromise } from '../src';
+import {
+  isFalsy,
+  isFunction,
+  isHtmlElement,
+  isMap,
+  isNil,
+  isObject,
+  isPrimitive,
+  isPromise,
+  isSymbol,
+} from '../src';
 
 describe('isFunction function', () => {
   it('should return true if the input is a function', () => {
@@ -74,5 +84,76 @@ describe('isPromise function', () => {
     expect(isPromise(() => {})).toBe(false);
     expect(isPromise(null)).toBe(false);
     expect(isPromise(undefined)).toBe(false);
+  });
+});
+
+describe('isSymbol', () => {
+  it('should return true for symbols', () => {
+    expect(isSymbol(Symbol('test'))).toBe(true);
+    expect(isSymbol(Symbol())).toBe(true);
+  });
+
+  it('should return false for non-symbols', () => {
+    expect(isSymbol('string')).toBe(false);
+    expect(isSymbol(123)).toBe(false);
+    expect(isSymbol({})).toBe(false);
+    expect(isSymbol(null)).toBe(false);
+    expect(isSymbol(undefined)).toBe(false);
+  });
+});
+
+describe('isMap', () => {
+  it('should return true for Map instances', () => {
+    expect(isMap(new Map())).toBe(true);
+    expect(
+      isMap(
+        new Map([
+          [1, 'a'],
+          [2, 'b'],
+        ]),
+      ),
+    ).toBe(true);
+  });
+
+  it('should return false for non-Map instances', () => {
+    expect(isMap(new Set())).toBe(false);
+    expect(isMap([])).toBe(false);
+    expect(isMap({})).toBe(false);
+    expect(isMap(null)).toBe(false);
+    expect(isMap(undefined)).toBe(false);
+  });
+});
+
+describe('isNil', () => {
+  it('should return true for null or undefined', () => {
+    expect(isNil(null)).toBe(true);
+    expect(isNil(undefined)).toBe(true);
+  });
+
+  it('should return false for non-null and non-undefined values', () => {
+    expect(isNil(0)).toBe(false);
+    expect(isNil('')).toBe(false);
+    expect(isNil([])).toBe(false);
+    expect(isNil({})).toBe(false);
+    expect(isNil(false)).toBe(false);
+  });
+});
+
+describe('isHtmlElement', () => {
+  it('should return true for HTML elements', () => {
+    const div = document.createElement('div');
+    expect(isHtmlElement(div)).toBe(true);
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    expect(isHtmlElement(svg)).toBe(true);
+  });
+
+  it('should return false for non-HTML elements', () => {
+    expect(isHtmlElement({})).toBe(false);
+    expect(isHtmlElement([])).toBe(false);
+    expect(isHtmlElement(null)).toBe(false);
+    expect(isHtmlElement(undefined)).toBe(false);
+    expect(isHtmlElement('string')).toBe(false);
+    expect(isHtmlElement(123)).toBe(false);
   });
 });

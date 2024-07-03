@@ -62,27 +62,68 @@ describe('useSignal', () => {
 
   it('should work with array method', () => {
     const testSignal = useSignal<number[] | null>([]);
+    const effectFn = vitest.fn(() => {
+      // trigger
+      testSignal.value;
+    });
+
+    useEffect(effectFn);
+    expect(effectFn).toHaveBeenCalledTimes(1);
 
     testSignal.value?.push(1);
     expect(testSignal.value).toEqual([1]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
 
     testSignal.value?.push(2);
     expect(testSignal.value).toEqual([1, 2]);
+    expect(effectFn).toHaveBeenCalledTimes(3);
 
     testSignal.value?.shift();
     expect(testSignal.value).toEqual([2]);
+    expect(effectFn).toHaveBeenCalledTimes(4);
 
     testSignal.value?.unshift(3);
     expect(testSignal.value).toEqual([3, 2]);
+    expect(effectFn).toHaveBeenCalledTimes(5);
 
     testSignal.value?.pop();
     expect(testSignal.value).toEqual([3]);
+    expect(effectFn).toHaveBeenCalledTimes(6);
 
     testSignal.value = [1, 3, 2, 4, 8, 5, 7, 6];
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7, 6]);
+    expect(effectFn).toHaveBeenCalledTimes(7);
+
     testSignal.value?.sort();
     expect(testSignal.value).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(effectFn).toHaveBeenCalledTimes(8);
   });
+
+  // TODO: need next time finish this
+  it(
+    'should work with Set,Map,WeekSet,WeekMap',
+    () => {
+      const testSignal = useSignal<Set<number> | null>(new Set([1, 2, 3]));
+      const effectFn = vitest.fn(() => {
+        // trigger
+        testSignal.value;
+      });
+
+      useEffect(effectFn);
+      expect(effectFn).toHaveBeenCalledTimes(1);
+      expect(testSignal.value).toEqual(new Set([1, 2, 3]));
+      expect(effectFn).toHaveBeenCalledTimes(2);
+
+      testSignal.value?.add(4);
+      expect(testSignal.value).toEqual(new Set([1, 2, 3, 4]));
+      expect(effectFn).toHaveBeenCalledTimes(3);
+
+      testSignal.value?.delete(2);
+      expect(testSignal.value).toEqual(new Set([1, 3, 4]));
+      expect(effectFn).toHaveBeenCalledTimes(4);
+    },
+    { skip: true },
+  );
 
   it('should work with deep object', () => {
     const testSignal = useSignal<any>({
@@ -193,7 +234,8 @@ describe('effect', () => {
       testSignal.value;
       effectTimes++;
     });
-    testSignal.value.push(4);
     expect(effectTimes).toBe(1);
+    testSignal.value.push(4);
+    expect(effectTimes).toBe(2);
   });
 });

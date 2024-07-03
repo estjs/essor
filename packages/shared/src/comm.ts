@@ -1,4 +1,4 @@
-import { isPrimitive, isString } from './is';
+import { isFunction, isPrimitive, isString } from './is';
 
 export const _toString = Object.prototype.toString;
 export const extend = Object.assign;
@@ -194,4 +194,20 @@ export function escape(str: string): string {
         return char;
     }
   });
+}
+
+export type ExcludeType = ((key: string | symbol) => boolean) | (string | symbol)[];
+
+/**
+ * Checks if a key should be excluded based on the provided exclude criteria.
+ * @param key - The key to check.
+ * @param exclude - The exclusion criteria.
+ * @returns True if the key should be excluded, otherwise false.
+ */
+export function isExclude(key: string | symbol, exclude?: ExcludeType): boolean {
+  return Array.isArray(exclude)
+    ? exclude.includes(key)
+    : isFunction(exclude)
+      ? exclude(key)
+      : false;
 }

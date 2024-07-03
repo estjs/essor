@@ -1,28 +1,14 @@
-function Com2({ ...rest }) {
-  return (
-    <div>
-      {rest.v}
-      {rest.val}
-      {rest.xxx}
-    </div>
-  );
-}
-function Com({ ...rest }) {
-  return (
-    <div>
-      {rest.v}
-      {rest.val}
-      {rest.xxx}
-      <Com2 v={rest.v} val={1} xxx={123}></Com2>
-    </div>
-  );
-}
+import { onMount } from 'essor';
 
 function App() {
-  const $v = 1;
+  let $v = 1;
+  onMount(() => {
+    $v++;
+    console.log($v);
+  });
   return (
     <>
-      <Com v={$v} val={1} xxx={123}></Com>;
+      {$v}
       <input type="text" bind:value={$v} />
     </>
   );

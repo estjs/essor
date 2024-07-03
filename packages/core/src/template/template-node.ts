@@ -178,10 +178,10 @@ export class TemplateNode implements JSX.Element {
         const val = props[attr];
         const triggerValue = isSignal(val) ? val : useSignal(val);
         patchAttribute(track, node, attr, triggerValue.value);
-        //   const cleanup = useEffect(() => {
-        //     triggerValue.value = isSignal(val) ? val.value : val;
-        //     patchAttribute(track, node, attr, triggerValue.value);
-        //   });
+        const cleanup = useEffect(() => {
+          triggerValue.value = isSignal(val) ? val.value : val;
+          patchAttribute(track, node, attr, triggerValue.value);
+        });
 
         let cleanupBind;
         const updateKey = `update${capitalizeFirstLetter(attr)}`;
@@ -192,7 +192,7 @@ export class TemplateNode implements JSX.Element {
         }
 
         track.cleanup = () => {
-          // cleanup && cleanup();
+          cleanup && cleanup();
           cleanupBind && cleanupBind();
         };
       }

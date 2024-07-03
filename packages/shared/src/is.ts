@@ -34,3 +34,7 @@ export const isPrimitive = (
   val: unknown,
 ): val is string | number | boolean | symbol | null | undefined =>
   ['string', 'number', 'boolean', 'symbol', 'undefined'].includes(typeof val) || isNull(val);
+
+export const isHtmlElement = (val: unknown): val is HTMLElement => {
+  return val instanceof HTMLElement || val instanceof SVGElement;
+};

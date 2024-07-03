@@ -1,4 +1,13 @@
-import { hasChanged, isArray, isFunction, isObject, startsWith } from 'essor-shared';
+import {
+  type ExcludeType,
+  hasChanged,
+  isArray,
+  isExclude,
+  isHtmlElement,
+  isObject,
+  isPrimitive,
+  startsWith,
+} from 'essor-shared';
 
 type EffectFn = () => void;
 
@@ -8,8 +17,14 @@ let activeComputed: Computed<unknown> | null = null;
 const computedSet = new Set<Computed<unknown>>();
 const targetMap = new WeakMap<object, Map<string | symbol, Set<EffectFn>>>();
 const EffectDeps = new Set<EffectFn>();
+const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
 
-function track(target, key) {
+/**
+ * Tracks dependencies for reactive properties.
+ * @param target - The target object being tracked.
+ * @param key - The key on the target object.
+ */
+function track(target: object, key: string | symbol) {
   let depsMap = targetMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
@@ -26,7 +41,12 @@ function track(target, key) {
   }
 }
 
-function trigger(target, key) {
+/**
+ * Triggers updates for reactive properties.
+ * @param target - The target object being triggered.
+ * @param key - The key on the target object.
+ */
+function trigger(target: object, key: string | symbol) {
   if (computedSet.size > 0) {
     computedSet.forEach(computedSignal => computedSignal.run());
   }
@@ -41,8 +61,15 @@ function trigger(target, key) {
   }
 }
 
+/**
+ * Signal class representing a reactive value.
+ */
 export class Signal<T> {
   private _value: T;
+  // @ts-ignore
+  private _reactive: T;
+  // @ts-ignore
+  private __activeEffect: EffectFn | null = null;
 
   constructor(value: T) {
     this._value = value;
@@ -50,11 +77,13 @@ export class Signal<T> {
 
   valueOf(): T {
     track(this, 'value');
+    this.__triggerObject();
     return this._value;
   }
 
   toString(): string {
     track(this, 'value');
+    this.__triggerObject();
     return String(this._value);
   }
 
@@ -64,7 +93,21 @@ export class Signal<T> {
 
   get value(): T {
     track(this, 'value');
+    this.__triggerObject();
     return this._value;
+  }
+
+  // if the value is not a primitive or an HTML element, create a reactive proxy
+  __triggerObject() {
+    // cache pre effect value
+    if (activeEffect) {
+      this.__activeEffect = activeEffect;
+    }
+
+    this._reactive =
+      isPrimitive(this._value) || isHtmlElement(this._value)
+        ? this._value
+        : (useReactive(this._value as object) as T);
   }
 
   set value(newValue: T) {
@@ -74,6 +117,11 @@ export class Signal<T> {
     }
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
+      if (!isPrimitive(this._value) && !isHtmlElement(this._value) && !activeEffect) {
+        activeEffect = this.__activeEffect;
+        this.__triggerObject();
+        activeEffect = null;
+      }
       trigger(this, 'value');
     }
   }
@@ -86,6 +134,12 @@ export class Signal<T> {
     trigger(this, 'value');
   }
 }
+
+/**
+ * Creates a Signal object.
+ * @param value - The initial value for the Signal.
+ * @returns A Signal object.
+ */
 export function useSignal<T>(value?: T): Signal<T> {
   if (isSignal(value)) {
     return value as Signal<T>;
@@ -93,9 +147,18 @@ export function useSignal<T>(value?: T): Signal<T> {
   return new Signal<T>(value as T);
 }
 
+/**
+ * Checks if a value is a Signal.
+ * @param value - The value to check.
+ * @returns True if the value is a Signal, otherwise false.
+ */
 export function isSignal<T>(value: any): value is Signal<T> {
   return value instanceof Signal;
 }
+
+/**
+ * Computed class representing a computed reactive value.
+ */
 export class Computed<T> {
   private _value: T;
   private _deps: Set<EffectFn> = new Set();
@@ -128,14 +191,29 @@ export class Computed<T> {
   }
 }
 
+/**
+ * Creates a Computed object.
+ * @param fn - The function to compute the value.
+ * @returns A Computed object.
+ */
 export function useComputed<T>(fn: () => T): Computed<T> {
   return new Computed<T>(fn);
 }
 
+/**
+ * Checks if a value is a Computed object.
+ * @param value - The value to check.
+ * @returns True if the value is a Computed object, otherwise false.
+ */
 export function isComputed<T>(value: any): value is Computed<T> {
   return value instanceof Computed;
 }
 
+/**
+ * Registers an effect function that runs whenever its dependencies change.
+ * @param fn - The effect function to register.
+ * @returns A function to unregister the effect.
+ */
 export function useEffect(fn: EffectFn): () => void {
   function effectFn() {
     const prev = activeEffect;
@@ -153,24 +231,15 @@ export function useEffect(fn: EffectFn): () => void {
   };
 }
 
-type ExcludeType = ((key: string | symbol) => boolean) | (string | symbol)[];
-function isExclude(key: string | symbol, exclude?: ExcludeType): boolean {
-  return Array.isArray(exclude)
-    ? exclude.includes(key)
-    : isFunction(exclude)
-      ? exclude(key)
-      : false;
-}
-
 export type SignalObject<T> = {
   [K in keyof T]: Signal<T[K]> | T[K];
 };
+
 /**
  * Creates a SignalObject from the given initialValues, excluding specified keys.
- *
- * @param {T extends Object} initialValues - The initial values for the SignalObject.
- * @param {(key: string) => boolean | string[]} exclude - A function that determines which keys to exclude from the SignalObject.
- * @return {SignalObject<T>} The created SignalObject.
+ * @param initialValues - The initial values for the SignalObject.
+ * @param exclude - A function or array that determines which keys to exclude from the SignalObject.
+ * @returns The created SignalObject.
  */
 export function signalObject<T extends object>(
   initialValues: T,
@@ -186,10 +255,9 @@ export function signalObject<T extends object>(
 
 /**
  * Returns the current value of a signal, signal object, or plain object, excluding specified keys.
- *
- * @param {SignalObject<T> | T | Signal<T>} signal - The signal, signal object, or plain object to unwrap.
- * @param {(key: string) => boolean | string[]} [exclude] - A function that determines which keys to exclude from the unwrapped object.
- * @return {T} The unwrapped value of the signal, signal object, or plain object.
+ * @param signal - The signal, signal object, or plain object to unwrap.
+ * @param exclude - A function or array that determines which keys to exclude from the unwrapped object.
+ * @returns The unwrapped value of the signal, signal object, or plain object.
  */
 export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
@@ -214,18 +282,35 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
 
 const REACTIVE_MARKER = Symbol('useReactive');
 
-export function isReactive(obj) {
+/**
+ * Checks if an object is reactive.
+ * @param obj - The object to check.
+ * @returns True if the object is reactive, otherwise false.
+ */
+export function isReactive(obj: any): boolean {
   return obj && obj[REACTIVE_MARKER] === true;
 }
 
-export function unReactive(obj) {
+/**
+ * Creates a shallow copy of a reactive object.
+ * @param obj - The reactive object to copy.
+ * @returns A shallow copy of the reactive object.
+ */
+export function unReactive(obj: any): any {
   if (!isReactive(obj)) {
     return obj;
   }
   return Object.assign({}, obj);
 }
+
 const reactiveMap = new WeakMap<object, object>();
 
+/**
+ * Creates a reactive object.
+ * @param initialValue - The initial value for the reactive object.
+ * @param exclude - A function or array that determines which keys to exclude from the reactive object.
+ * @returns A reactive object.
+ */
 export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
   if (!isObject(initialValue)) {
     return initialValue;
@@ -236,6 +321,26 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
 
   if (reactiveMap.has(initialValue)) {
     return reactiveMap.get(initialValue) as T;
+  }
+
+  if (Array.isArray(initialValue)) {
+    arrayMethods.forEach(method => {
+      const originalMethod = initialValue[method];
+      track(initialValue, 'length');
+
+      Object.defineProperties(initialValue, {
+        [method]: {
+          value(...args) {
+            const result = originalMethod.apply(this, args);
+            trigger(initialValue, 'length');
+            return result;
+          },
+          enumerable: false,
+          configurable: true,
+          writable: true,
+        },
+      });
+    });
   }
 
   const handler: ProxyHandler<T> = {

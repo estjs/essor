@@ -9,6 +9,8 @@ export {
   deepEqual,
   deepClone,
   escape,
+  isExclude,
+  ExcludeType,
 } from './comm';
 export {
   isString,
@@ -21,5 +23,6 @@ export {
   isSymbol,
   isFalsy,
   isPrimitive,
+  isHtmlElement,
 } from './is';
 export { camelCase, kebabCase, capitalizeFirstLetter } from './name';
