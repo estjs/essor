@@ -10,21 +10,19 @@ export function patchChildren(
   before: Node | null,
 ): Map<string, AnyNode> {
   const result = new Map<string, AnyNode>();
-  // use arrays instead of iterators to improve access speeds
-  const children = Array.from(childrenMap.values());
-  const childrenLength = children.length;
+  const children = childrenMap.values();
 
   if (childrenMap.size > 0 && nextChildren.length === 0) {
-    if (parent.childNodes.length === childrenLength + (before ? 1 : 0)) {
+    if (parent.childNodes.length === childrenMap.size + (before ? 1 : 0)) {
       (parent as Element).innerHTML = '';
       if (before) {
         insertChild(parent, before);
       }
     } else {
       const range = document.createRange();
-      const child = children[0];
+      const child = children.next().value;
       const start = isJsxElement(child) ? child.firstChild : child;
-      range.setStartBefore(start!);
+      range.setStartBefore(start);
       if (before) {
         range.setEndBefore(before);
       } else {
@@ -32,7 +30,7 @@ export function patchChildren(
       }
       range.deleteContents();
     }
-    children.forEach(node => {
+    childrenMap.forEach(node => {
       if (isJsxElement(node)) {
         node.unmount();
       }
@@ -43,17 +41,14 @@ export function patchChildren(
   const replaces: [Comment, AnyNode][] = [];
   const nextChildrenMap = mapKeys(nextChildren);
 
-  // Use childIndex to keep track of the currently processed child node to avoid unnecessary repeated visits.
-  let childIndex = 0;
-
   for (let [i, child] of nextChildren.entries()) {
-    let currChild = children[childIndex];
+    let currChild = children.next().value;
     let currKey = getKey(currChild, i);
 
     while (currChild && !nextChildrenMap.has(currKey)) {
       removeChild(currChild);
       childrenMap.delete(currKey);
-      currChild = children[++childIndex];
+      currChild = children.next().value;
       currKey = getKey(currChild, i);
     }
 
@@ -66,7 +61,7 @@ export function patchChildren(
 
     if (currChild) {
       if (currChild === origChild) {
-        childIndex++;
+        // noop
       } else if (currChild) {
         const placeholder = document.createComment('');
         insertChild(parent, placeholder, currChild);
@@ -110,8 +105,8 @@ function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
   return next;
 }
 
-export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
-  const result = new Map();
+function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
+  const result = new Map<string, AnyNode>();
   for (const [i, child] of children.entries()) {
     const key = getKey(child, i);
     result.set(key, child);
@@ -119,8 +114,8 @@ export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
   return result;
 }
 
-export function getKey(node, index): string {
-  const id = node instanceof Element ? node.id : undefined;
+function getKey(node: AnyNode | undefined, index: number): string {
+  const id = (node as Element)?.id;
   const result = id === '' ? undefined : id;
   return result ?? `_$${index}$`;
 }
