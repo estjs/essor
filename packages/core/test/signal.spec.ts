@@ -90,13 +90,19 @@ describe('useSignal', () => {
     expect(testSignal.value).toEqual([3]);
     expect(effectFn).toHaveBeenCalledTimes(6);
 
-    testSignal.value = [1, 3, 2, 4, 8, 5, 7, 6];
-    expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7, 6]);
-    expect(effectFn).toHaveBeenCalledTimes(7);
-
+    testSignal.value?.push(...[1, 4, 2, 6, 8, 7, 5]);
     testSignal.value?.sort();
     expect(testSignal.value).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
     expect(effectFn).toHaveBeenCalledTimes(8);
+
+    testSignal.value = [1, 3, 2, 4, 8, 5, 7, 6];
+    expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7, 6]);
+    expect(effectFn).toHaveBeenCalledTimes(9);
+
+    // if the array is assigned, the effect will not be triggered
+    testSignal.value?.pop();
+    expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7]);
+    expect(effectFn).toHaveBeenCalledTimes(9);
   });
 
   // TODO: need next time finish this

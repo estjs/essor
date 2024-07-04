@@ -16,7 +16,8 @@ let activeComputed: Computed<unknown> | null = null;
 
 const computedSet = new Set<Computed<unknown>>();
 const targetMap = new WeakMap<object, Map<string | symbol, Set<EffectFn>>>();
-const EffectDeps = new Set<EffectFn>();
+const effectDeps = new Set<EffectFn>();
+const reactiveMap = new WeakMap<object, object>();
 const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
 
 /**
@@ -25,6 +26,8 @@ const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reve
  * @param key - The key on the target object.
  */
 function track(target: object, key: string | symbol) {
+  if (!activeEffect && !activeComputed) return;
+
   let depsMap = targetMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
@@ -36,9 +39,7 @@ function track(target: object, key: string | symbol) {
     depsMap.set(key, dep);
   }
   if (activeEffect) dep.add(activeEffect);
-  if (activeComputed) {
-    computedSet.add(activeComputed);
-  }
+  if (activeComputed) computedSet.add(activeComputed);
 }
 
 /**
@@ -47,17 +48,14 @@ function track(target: object, key: string | symbol) {
  * @param key - The key on the target object.
  */
 function trigger(target: object, key: string | symbol) {
-  if (computedSet.size > 0) {
-    computedSet.forEach(computedSignal => computedSignal.run());
-  }
+  computedSet.forEach(computedSignal => computedSignal.run());
 
   const depsMap = targetMap.get(target);
-  if (!depsMap) {
-    return;
-  }
+  if (!depsMap) return;
+
   const dep = depsMap.get(key);
   if (dep) {
-    dep.forEach(effect => EffectDeps.has(effect) && effect());
+    dep.forEach(effect => effectDeps.has(effect) && effect());
   }
 }
 
@@ -66,10 +64,7 @@ function trigger(target: object, key: string | symbol) {
  */
 export class Signal<T> {
   private _value: T;
-  // @ts-ignore
   private _reactive: T;
-  // @ts-ignore
-  private __activeEffect: EffectFn | null = null;
 
   constructor(value: T) {
     this._value = value;
@@ -97,17 +92,10 @@ export class Signal<T> {
     return this._value;
   }
 
-  // if the value is not a primitive or an HTML element, create a reactive proxy
-  __triggerObject() {
-    // cache pre effect value
-    if (activeEffect) {
-      this.__activeEffect = activeEffect;
+  private __triggerObject() {
+    if (!isPrimitive(this._value) && !isHtmlElement(this._value)) {
+      useReactive(this._value as object);
     }
-
-    this._reactive =
-      isPrimitive(this._value) || isHtmlElement(this._value)
-        ? this._value
-        : (useReactive(this._value as object) as T);
   }
 
   set value(newValue: T) {
@@ -117,10 +105,8 @@ export class Signal<T> {
     }
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      if (!isPrimitive(this._value) && !isHtmlElement(this._value) && !activeEffect) {
-        activeEffect = this.__activeEffect;
+      if (!isPrimitive(this._value) && !isHtmlElement(this._value)) {
         this.__triggerObject();
-        activeEffect = null;
       }
       trigger(this, 'value');
     }
@@ -222,11 +208,11 @@ export function useEffect(fn: EffectFn): () => void {
     activeEffect = prev;
   }
 
-  EffectDeps.add(effectFn);
+  effectDeps.add(effectFn);
   effectFn();
 
   return () => {
-    EffectDeps.delete(effectFn);
+    effectDeps.delete(effectFn);
     activeEffect = null;
   };
 }
@@ -300,10 +286,8 @@ export function unReactive(obj: any): any {
   if (!isReactive(obj)) {
     return obj;
   }
-  return Object.assign({}, obj);
+  return { ...obj };
 }
-
-const reactiveMap = new WeakMap<object, object>();
 
 /**
  * Creates a reactive object.

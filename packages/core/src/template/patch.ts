@@ -10,7 +10,7 @@ export function patchChildren(
   before: Node | null,
 ): Map<string, AnyNode> {
   const result = new Map<string, AnyNode>();
-  // Use arrays instead of iterators to improve access speeds
+  // use arrays instead of iterators to improve access speeds
   const children = Array.from(childrenMap.values());
   const childrenLength = children.length;
 
@@ -42,6 +42,8 @@ export function patchChildren(
 
   const replaces: [Comment, AnyNode][] = [];
   const nextChildrenMap = mapKeys(nextChildren);
+
+  // Use childIndex to keep track of the currently processed child node to avoid unnecessary repeated visits.
   let childIndex = 0;
 
   for (let [i, child] of nextChildren.entries()) {
