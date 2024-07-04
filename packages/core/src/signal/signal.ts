@@ -14,8 +14,11 @@ type EffectFn = () => void;
 let activeEffect: EffectFn | null = null;
 let activeComputed: Computed<unknown> | null = null;
 
-const computedSet = new Set<Computed<unknown>>();
-const targetMap = new WeakMap<object, Map<string | symbol, Set<EffectFn>>>();
+type ComputedMap = Map<string | symbol, Set<Computed>>;
+type SignalMap = Map<string | symbol, Set<EffectFn>>;
+
+const computedMap = new WeakMap<object, ComputedMap>();
+const signalMap = new WeakMap<object, SignalMap>();
 const effectDeps = new Set<EffectFn>();
 const reactiveMap = new WeakMap<object, object>();
 const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
@@ -28,10 +31,10 @@ const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reve
 function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
 
-  let depsMap = targetMap.get(target);
+  let depsMap = signalMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
-    targetMap.set(target, depsMap);
+    signalMap.set(target, depsMap);
   }
   let dep = depsMap.get(key);
   if (!dep) {
@@ -39,7 +42,19 @@ function track(target: object, key: string | symbol) {
     depsMap.set(key, dep);
   }
   if (activeEffect) dep.add(activeEffect);
-  if (activeComputed) computedSet.add(activeComputed);
+
+  let depsMap2 = computedMap.get(target);
+  if (!depsMap2) {
+    depsMap2 = new Map();
+    computedMap.set(target, depsMap2);
+  }
+  let dep2 = depsMap2.get(key);
+  if (!dep2) {
+    dep2 = new Set();
+    depsMap2.set(key, dep2);
+  }
+
+  if (activeComputed) dep2.add(activeComputed);
 }
 
 /**
@@ -48,14 +63,20 @@ function track(target: object, key: string | symbol) {
  * @param key - The key on the target object.
  */
 function trigger(target: object, key: string | symbol) {
-  computedSet.forEach(computedSignal => computedSignal.run());
-
-  const depsMap = targetMap.get(target);
+  const depsMap = signalMap.get(target);
   if (!depsMap) return;
 
   const dep = depsMap.get(key);
   if (dep) {
     dep.forEach(effect => effectDeps.has(effect) && effect());
+  }
+
+  const computedDeps = computedMap.get(target);
+  if (computedDeps) {
+    const computeds = computedDeps.get(key);
+    if (computeds) {
+      computeds.forEach(computed => computed.run());
+    }
   }
 }
 
@@ -64,7 +85,6 @@ function trigger(target: object, key: string | symbol) {
  */
 export class Signal<T> {
   private _value: T;
-  private _reactive: T;
 
   constructor(value: T) {
     this._value = value;
@@ -145,7 +165,7 @@ export function isSignal<T>(value: any): value is Signal<T> {
 /**
  * Computed class representing a computed reactive value.
  */
-export class Computed<T> {
+export class Computed<T = unknown> {
   private _value: T;
   private _deps: Set<EffectFn> = new Set();
 

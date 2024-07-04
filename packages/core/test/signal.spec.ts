@@ -162,7 +162,7 @@ describe('computed', () => {
   });
 
   it('should compute the correct value with condition', () => {
-    const conditionSignal = useSignal(true);
+    const conditionSignal = useSignal(false);
     const testSignal = useSignal(10);
     let effectTime = 0;
     const computedSignal = useComputed(() => {
@@ -171,14 +171,16 @@ describe('computed', () => {
     });
 
     expect(effectTime).toBe(1);
-    expect(computedSignal.peek()).toBe(50);
+    expect(computedSignal.peek()).toBe(20);
     testSignal.value = 20;
     expect(effectTime).toBe(2);
-    conditionSignal.value = false;
+    conditionSignal.value = true;
     expect(effectTime).toBe(3);
-    expect(computedSignal.value).toBe(40);
-    testSignal.value = 30;
+    expect(computedSignal.value).toBe(50);
+    conditionSignal.value = false;
     expect(effectTime).toBe(4);
+    testSignal.value = 30;
+    expect(effectTime).toBe(5);
     expect(computedSignal.value).toBe(60);
   });
 
