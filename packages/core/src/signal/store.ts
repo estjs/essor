@@ -1,3 +1,4 @@
+import { isFunction } from 'essor-shared';
 import { useComputed, useReactive } from './signal';
 import type { Computed } from './signal';
 
@@ -22,12 +23,14 @@ const StoreMap = new Map<number, any>();
 function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   const { state, getters, actions } = options as StoreOptions<
     Record<string | symbol, any>,
-    Record<string, any>,
-    Record<string, any>
+    Record<string, Function>,
+    Record<string, Function>
   >;
 
   const initState = { ...(state ?? {}) };
-  const reactiveState = useReactive(state ?? {});
+  const reactiveState = useReactive(state ?? {}, val => {
+    return isFunction(val);
+  });
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];

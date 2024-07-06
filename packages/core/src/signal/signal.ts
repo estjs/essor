@@ -53,7 +53,9 @@ function track(target: object, key: string | symbol) {
     computedDeps = new Set();
     computedDepsMap.set(key, computedDeps);
   }
-  if (activeComputed) computedDeps.add(activeComputed);
+  if (activeComputed) {
+    computedDeps.add(activeComputed);
+  }
 }
 
 function trigger(target: object, key: string | symbol) {
@@ -85,13 +87,13 @@ export class Signal<T> {
   }
 
   valueOf(): T {
-    track(this, 'value');
+    track(this, '_sv');
     this.__triggerObject();
     return this._value;
   }
 
   toString(): string {
-    track(this, 'value');
+    track(this, '_sv');
     this.__triggerObject();
     return String(this._value);
   }
@@ -101,7 +103,7 @@ export class Signal<T> {
   }
 
   get value(): T {
-    track(this, 'value');
+    track(this, '_sv');
     this.__triggerObject();
     return this._value;
   }
@@ -122,7 +124,7 @@ export class Signal<T> {
       if (!isPrimitive(this._value) && !isHtmlElement(this._value)) {
         this.__triggerObject();
       }
-      trigger(this, 'value');
+      trigger(this, '_sv');
     }
   }
 
@@ -131,7 +133,7 @@ export class Signal<T> {
   }
 
   update() {
-    trigger(this, 'value');
+    trigger(this, '_sv');
   }
 }
 
@@ -161,7 +163,6 @@ export function isSignal<T>(value: any): value is Signal<T> {
  */
 export class Computed<T = unknown> {
   private _value: T;
-  private _deps: Set<EffectFn> = new Set();
 
   constructor(private readonly fn: () => T) {
     const prev = activeComputed;
@@ -178,15 +179,12 @@ export class Computed<T = unknown> {
     const newValue = this.fn();
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      this._deps.forEach(effect => effect());
+      trigger(this, '_cv');
     }
   }
 
   get value(): T {
-    if (activeEffect) {
-      this._deps.add(activeEffect);
-    }
-    track(this, '_value');
+    track(this, '_cv');
     return this._value;
   }
 }
