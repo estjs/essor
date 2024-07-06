@@ -14,7 +14,7 @@ type EffectFn = () => void;
 let activeEffect: EffectFn | null = null;
 let activeComputed: Computed<unknown> | null = null;
 
-type ComputedMap = Map<string | symbol, Set<Computed>>;
+type ComputedMap = Map<string | symbol, Set<Computed<unknown>>>;
 type SignalMap = Map<string | symbol, Set<EffectFn>>;
 
 const computedMap = new WeakMap<object, ComputedMap>();
@@ -43,25 +43,19 @@ function track(target: object, key: string | symbol) {
   }
   if (activeEffect) dep.add(activeEffect);
 
-  let depsMap2 = computedMap.get(target);
-  if (!depsMap2) {
-    depsMap2 = new Map();
-    computedMap.set(target, depsMap2);
+  let computedDepsMap = computedMap.get(target);
+  if (!computedDepsMap) {
+    computedDepsMap = new Map();
+    computedMap.set(target, computedDepsMap);
   }
-  let dep2 = depsMap2.get(key);
-  if (!dep2) {
-    dep2 = new Set();
-    depsMap2.set(key, dep2);
+  let computedDeps = computedDepsMap.get(key);
+  if (!computedDeps) {
+    computedDeps = new Set();
+    computedDepsMap.set(key, computedDeps);
   }
-
-  if (activeComputed) dep2.add(activeComputed);
+  if (activeComputed) computedDeps.add(activeComputed);
 }
 
-/**
- * Triggers updates for reactive properties.
- * @param target - The target object being triggered.
- * @param key - The key on the target object.
- */
 function trigger(target: object, key: string | symbol) {
   const depsMap = signalMap.get(target);
   if (!depsMap) return;
@@ -71,9 +65,9 @@ function trigger(target: object, key: string | symbol) {
     dep.forEach(effect => effectDeps.has(effect) && effect());
   }
 
-  const computedDeps = computedMap.get(target);
-  if (computedDeps) {
-    const computeds = computedDeps.get(key);
+  const computedDepsMap = computedMap.get(target);
+  if (computedDepsMap) {
+    const computeds = computedDepsMap.get(key);
     if (computeds) {
       computeds.forEach(computed => computed.run());
     }
