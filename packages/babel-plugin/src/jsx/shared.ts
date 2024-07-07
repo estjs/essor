@@ -19,12 +19,13 @@ export function hasSiblingElement(path) {
   // Get all siblings (both previous and next)
   const siblings = path.getAllPrevSiblings().concat(path.getAllNextSiblings());
 
-  // Check for non-self-closing sibling elements
-  const hasSibling = siblings.some(siblingPath => siblingPath.isJSXElement());
+  // Check for non-self-closing sibling elements or JSXExpressionContainer
+  const hasSibling = siblings.some(
+    siblingPath => siblingPath.isJSXElement() || siblingPath.isJSXExpressionContainer(),
+  );
 
   return hasSibling;
 }
-
 /**
  * Retrieves the name of a JSX attribute.
  *

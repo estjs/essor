@@ -1,10 +1,15 @@
 function App() {
-  const $val = 1;
+  const $v = false;
+
   return (
-    <div>
-      <p>{$val}</p>
-      <input type="text" bind:value={$val} />
-    </div>
+    <footer>
+      <div>
+        {$v ? <a>{$v}</a> : null}
+        <div></div>
+      </div>
+
+      <div></div>
+    </footer>
   );
 }
 (<App />).mount(document.querySelector('#app')!);

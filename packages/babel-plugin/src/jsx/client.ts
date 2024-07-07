@@ -131,7 +131,8 @@ function transformJSXElement(
       result.template += isSelfClose ? '/>' : '>';
       if (!isSelfClose) {
         transformChildren(path, result);
-        if (hasSiblingElement(path)) {
+
+        if (hasSiblingElement(path) ) {
           result.template += `</${tagName}>`;
         }
       }
