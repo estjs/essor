@@ -40,8 +40,6 @@ export function isJsxElement(node: unknown): node is EssorNode {
 
 export function template(html: string): HTMLTemplateElement {
   html = closeHtmlTags(html);
-  console.log(html);
-
   const template = document.createElement('template');
   template.innerHTML = html;
   return template;
