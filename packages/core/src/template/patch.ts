@@ -64,12 +64,10 @@ export function patchChildren(
     if (currChild) {
       if (currChild === origChild) {
         childIndex++;
-      } else if (currChild) {
+      } else {
         const placeholder = document.createComment('');
         insertChild(parent, placeholder, currChild);
         replaces.push([placeholder, child]);
-      } else {
-        insertChild(parent, child, before);
       }
     } else {
       insertChild(parent, child, before);

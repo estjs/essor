@@ -126,7 +126,7 @@ export class ComponentNode implements JSX.Element {
         }
       } else if (startsWith(key, 'update')) {
         props[key] = isSignal(prop) ? prop.value : prop;
-      } else {
+      } else if (key !== 'children') {
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {
