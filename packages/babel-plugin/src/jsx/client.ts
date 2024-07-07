@@ -7,6 +7,7 @@ import {
   type JSXElement,
   getAttrName,
   getTagName,
+  hasSiblingElement,
   isComponent,
   isTextChild,
   setNodeText,
@@ -130,10 +131,9 @@ function transformJSXElement(
       result.template += isSelfClose ? '/>' : '>';
       if (!isSelfClose) {
         transformChildren(path, result);
-        // 在复杂的嵌套关系下，仍然有问题
-        // if (hasSiblingElement(path)) {
-        result.template += `</${tagName}>`;
-        // }
+        if (hasSiblingElement(path)) {
+          result.template += `</${tagName}>`;
+        }
       }
     }
   } else {

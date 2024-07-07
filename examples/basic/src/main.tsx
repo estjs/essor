@@ -1,10 +1,9 @@
 function App() {
-  const $v = 1;
-
+  const $val = 1;
   return (
     <div>
-      <p>{$v}</p>
-      <input type="text" bind:value={$v} />
+      <p>{$val}</p>
+      <input type="text" bind:value={$val} />
     </div>
   );
 }

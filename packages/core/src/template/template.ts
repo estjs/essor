@@ -1,11 +1,11 @@
 import { isFunction, isString } from 'essor-shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
-import { convertToHtmlTag, isHtmlTagName } from './utils';
+import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
 import type { EssorComponent, EssorNode } from '../../types';
 
 export function h<K extends keyof HTMLElementTagNameMap>(
-  _template: EssorComponent | HTMLTemplateElement | K,
+  _template: EssorComponent | HTMLTemplateElement | K | '',
   props: Record<string, any>,
   key?: string,
 ): JSX.Element {
@@ -16,6 +16,12 @@ export function h<K extends keyof HTMLElementTagNameMap>(
         1: props,
       };
     }
+    if (_template === '') {
+      props = {
+        0: props,
+      };
+    }
+
     _template = template(_template as string);
   }
 
@@ -33,7 +39,7 @@ export function isJsxElement(node: unknown): node is EssorNode {
 }
 
 export function template(html: string): HTMLTemplateElement {
-  // html = closeHtmlTags(html);
+  html = closeHtmlTags(html);
   const template = document.createElement('template');
   template.innerHTML = html;
   return template;

@@ -23,8 +23,10 @@
     "dev": " pnpm -r --filter=./packages/* --parallel run dev",
     "build": "pnpm run -w gen:version && rimraf packages/**/dist && pnpm -r --filter=./packages/*  run build",
     "lint": "eslint --cache --fix \"./**/src/*.{ts,tsx,js}\"",
-    "test": "vitest",
-    "test:watch": "vitest -w",
+    "test:unit": "vitest",
+    "test:e2e": "playwright test",
+    "test": "pnpm run test:unit && pnpm run test:e2e",
+    "test:watch": "pnpm run test:unit --watch",
     "clean": "rimraf ./packages/**/dist",
     "typecheck": "tsc --noEmit -p ./tsconfig.build.json",
     "coverage": "vitest run --coverage",
@@ -34,7 +36,7 @@
     "release": "pnpm run changelog && pnpm run prerelease && bumpp package.json packages/*/package.json --no-git-checks --commit --push --tag && pnpm -r publish --access public"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^1.1.2",
+    "@estjs/eslint-config": "^1.2.0",
     "@playwright/test": "^1.44.1",
     "@types/node": "^20.14.7",
     "@vitest/coverage-v8": "^1.6.0",

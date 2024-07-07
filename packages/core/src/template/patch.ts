@@ -10,19 +10,20 @@ export function patchChildren(
   before: Node | null,
 ): Map<string, AnyNode> {
   const result = new Map<string, AnyNode>();
-  const children = childrenMap.values();
+  const children = Array.from(childrenMap.values());
+  const childrenLength = children.length;
 
   if (childrenMap.size > 0 && nextChildren.length === 0) {
-    if (parent.childNodes.length === childrenMap.size + (before ? 1 : 0)) {
+    if (parent.childNodes.length === childrenLength + (before ? 1 : 0)) {
       (parent as Element).innerHTML = '';
       if (before) {
         insertChild(parent, before);
       }
     } else {
       const range = document.createRange();
-      const child = children.next().value;
+      const child = children[0];
       const start = isJsxElement(child) ? child.firstChild : child;
-      range.setStartBefore(start);
+      range.setStartBefore(start!);
       if (before) {
         range.setEndBefore(before);
       } else {
@@ -30,7 +31,7 @@ export function patchChildren(
       }
       range.deleteContents();
     }
-    childrenMap.forEach(node => {
+    children.forEach(node => {
       if (isJsxElement(node)) {
         node.unmount();
       }
@@ -40,15 +41,16 @@ export function patchChildren(
 
   const replaces: [Comment, AnyNode][] = [];
   const nextChildrenMap = mapKeys(nextChildren);
+  let childIndex = 0;
 
   for (let [i, child] of nextChildren.entries()) {
-    let currChild = children.next().value;
+    let currChild = children[childIndex];
     let currKey = getKey(currChild, i);
 
     while (currChild && !nextChildrenMap.has(currKey)) {
       removeChild(currChild);
       childrenMap.delete(currKey);
-      currChild = children.next().value;
+      currChild = children[++childIndex];
       currKey = getKey(currChild, i);
     }
 
@@ -61,7 +63,7 @@ export function patchChildren(
 
     if (currChild) {
       if (currChild === origChild) {
-        // noop
+        childIndex++;
       } else if (currChild) {
         const placeholder = document.createComment('');
         insertChild(parent, placeholder, currChild);
@@ -105,8 +107,8 @@ function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
   return next;
 }
 
-function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
-  const result = new Map<string, AnyNode>();
+export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
+  const result = new Map();
   for (const [i, child] of children.entries()) {
     const key = getKey(child, i);
     result.set(key, child);
@@ -114,8 +116,8 @@ function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
   return result;
 }
 
-function getKey(node: AnyNode | undefined, index: number): string {
-  const id = (node as Element)?.id;
+export function getKey(node, index): string {
+  const id = node instanceof Element ? node.id : undefined;
   const result = id === '' ? undefined : id;
   return result ?? `_$${index}$`;
 }

@@ -23,9 +23,17 @@ describe('h', () => {
     const element = () =>
       h('div', {
         class: 'text-red',
-        children: [[() => 'hello word', null]],
+        children: [[() => 'hello world', null]],
       });
     const render = mount(element);
-    expect(render.innerHTML()).toBe('<div class="text-red">hello word</div>');
+    expect(render.innerHTML()).toBe('<div class="text-red">hello world</div>');
+  });
+  it('should work with empty string', () => {
+    const element = () =>
+      h('', {
+        children: [[() => 'hello world', null]],
+      });
+    const render = mount(element);
+    expect(render.innerHTML()).toBe('hello world');
   });
 });
