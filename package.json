@@ -32,7 +32,7 @@
     "coverage": "vitest run --coverage",
     "gen:version": "tsx ./scripts/gen-version.ts",
     "changelog": "tsx scripts/changelog.ts",
-    "prerelease": "pnpm run build && pnpm run typecheck && pnpm run test",
+    "prerelease": "pnpm run lint && pnpm run build && pnpm run typecheck && pnpm run test",
     "release": "pnpm run changelog && pnpm run prerelease && bumpp package.json packages/*/package.json --no-git-checks --commit --push --tag && pnpm -r publish --access public"
   },
   "devDependencies": {
