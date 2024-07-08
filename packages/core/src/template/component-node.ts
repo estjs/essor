@@ -12,7 +12,6 @@ export class ComponentNode implements JSX.Element {
   constructor(
     public template: EssorComponent,
     public props: Record<string, any>,
-    public key?: string,
   ) {
     this.proxyProps = signalObject(
       props,

@@ -24,7 +24,6 @@ export class TemplateNode implements JSX.Element {
   constructor(
     public template: HTMLTemplateElement,
     public props: Record<string, unknown>,
-    public key?: string,
   ) {}
 
   mounted = false;
