@@ -24,7 +24,6 @@ export function isNil(x: any): x is null | undefined {
   return x === null || x === undefined;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export const isFunction = (val: unknown): val is Function => typeof val === 'function';
 
 export function isFalsy(x: any): x is false | null | undefined {

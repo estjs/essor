@@ -86,16 +86,16 @@
   "dependencies": {
     "@babel/core": "^7.24.7",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^1.10.1"
+    "unplugin": "^1.11.0"
   },
   "devDependencies": {
     "fast-glob": "^3.3.2",
     "nodemon": "^3.1.4",
-    "rimraf": "^5.0.7",
-    "rollup": "^4.18.0",
+    "rimraf": "^6.0.0",
+    "rollup": "^4.18.1",
     "tsup": "^8.1.0",
-    "typescript": "^5.4.5",
-    "vite": "^5.3.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.3.3",
     "webpack": "^5.92.1"
   }
 }

@@ -13,15 +13,15 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^1.1.2",
-    "@types/node": "^20.14.7",
-    "eslint": "^8.56.0",
+    "@estjs/eslint-config": "^1.2.1",
+    "@types/node": "^20.14.10",
+    "eslint": "^9.6.0",
     "express": "^4.19.2",
     "jsdom": "^24.1.0",
-    "typescript": "^5.4.5",
+    "typescript": "^5.5.3",
     "unplugin-essor": "workspace:*",
-    "vite": "^5.3.1",
+    "vite": "^5.3.3",
     "vite-plugin-inspect": "^0.8.4",
-    "vitest": "^1.6.0"
+    "vitest": "^2.0.1"
   }
 }
