@@ -1,7 +1,7 @@
 import {
   isFalsy,
   isFunction,
-  isHtmlElement,
+  isHTMLElement,
   isMap,
   isNil,
   isObject,
@@ -139,21 +139,21 @@ describe('isNil', () => {
   });
 });
 
-describe('isHtmlElement', () => {
+describe('isHTMLElement', () => {
   it('should return true for HTML elements', () => {
     const div = document.createElement('div');
-    expect(isHtmlElement(div)).toBe(true);
+    expect(isHTMLElement(div)).toBe(true);
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    expect(isHtmlElement(svg)).toBe(true);
+    expect(isHTMLElement(svg)).toBe(true);
   });
 
   it('should return false for non-HTML elements', () => {
-    expect(isHtmlElement({})).toBe(false);
-    expect(isHtmlElement([])).toBe(false);
-    expect(isHtmlElement(null)).toBe(false);
-    expect(isHtmlElement(undefined)).toBe(false);
-    expect(isHtmlElement('string')).toBe(false);
-    expect(isHtmlElement(123)).toBe(false);
+    expect(isHTMLElement({})).toBe(false);
+    expect(isHTMLElement([])).toBe(false);
+    expect(isHTMLElement(null)).toBe(false);
+    expect(isHTMLElement(undefined)).toBe(false);
+    expect(isHTMLElement('string')).toBe(false);
+    expect(isHTMLElement(123)).toBe(false);
   });
 });

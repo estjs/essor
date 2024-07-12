@@ -23,6 +23,6 @@ export {
   isSymbol,
   isFalsy,
   isPrimitive,
-  isHtmlElement,
+  isHTMLElement,
 } from './is';
 export { camelCase, kebabCase, capitalizeFirstLetter } from './name';

@@ -3,7 +3,7 @@ import {
   hasChanged,
   isArray,
   isExclude,
-  isHtmlElement,
+  isHTMLElement,
   isObject,
   isPrimitive,
   startsWith,
@@ -109,7 +109,7 @@ export class Signal<T> {
   }
 
   private __triggerObject() {
-    if (!isPrimitive(this._value) && !isHtmlElement(this._value)) {
+    if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
       useReactive(this._value as object);
     }
   }
@@ -121,7 +121,7 @@ export class Signal<T> {
     }
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      if (!isPrimitive(this._value) && !isHtmlElement(this._value)) {
+      if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
         this.__triggerObject();
       }
       trigger(this, '_sv');
