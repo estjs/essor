@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.4
-        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.2)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
+        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.3)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
       '@playwright/test':
         specifier: ^1.45.1
         version: 1.45.1
@@ -43,7 +43,7 @@ importers:
         version: 9.5.0
       prettier:
         specifier: ^3.3.2
-        version: 3.3.2
+        version: 3.3.3
       rimraf:
         specifier: ^6.0.1
         version: 6.0.1
@@ -74,7 +74,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.4
-        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.2)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
+        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.3)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
       '@types/node':
         specifier: ^20.14.10
         version: 20.14.10
@@ -111,7 +111,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.4
-        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.2)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
+        version: 1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.3)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))
       '@types/node':
         specifier: ^20.14.10
         version: 20.14.10
@@ -1221,7 +1221,7 @@ packages:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
   cookie-signature@1.0.6:
-    resolution: {integrity: sha1-4wOogrNCzD7oylE6eZmXNNqzriw=}
+    resolution: {integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==}
 
   cookie@0.6.0:
     resolution: {integrity: sha512-U71cyTamuh1CRNCfpGY6to28lxvNwPG4Guz/EVjgf3Jmzv0vlDp1atT9eS5dDjMYHucpHbWns6Lwf3BKz6svdw==}
@@ -1364,7 +1364,7 @@ packages:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
 
   ee-first@1.1.1:
-    resolution: {integrity: sha1-WQxhFWsK4vTwJVcyoViyZrxWsh0=}
+    resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
   electron-to-chromium@1.4.807:
     resolution: {integrity: sha512-kSmJl2ZwhNf/bcIuCH/imtNOKlpkLDn2jqT5FJ+/0CXjhnFaOa9cOe9gHKKy71eM49izwuQjZhKk+lWQ1JxB7A==}
@@ -1760,7 +1760,7 @@ packages:
     engines: {node: '>= 0.6'}
 
   fresh@0.5.2:
-    resolution: {integrity: sha1-PYyt2Q2XZWn6g1qx+OSyOhBWBac=}
+    resolution: {integrity: sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==}
     engines: {node: '>= 0.6'}
 
   fs-extra@11.2.0:
@@ -2377,7 +2377,7 @@ packages:
     resolution: {integrity: sha512-AW4DRS3QbBayY/jJmD8437V1Gombjf8RSOUCMFBuo5iHi58AGEgVCKQ+ezHkZZDpAQS75hcBMpLqjpJTjtUL7w==}
 
   media-typer@0.3.0:
-    resolution: {integrity: sha1-hxDXrwqmJvj/+hzgAWhUUmMlV0g=}
+    resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}
     engines: {node: '>= 0.6'}
 
   meow@13.2.0:
@@ -2385,7 +2385,7 @@ packages:
     engines: {node: '>=18'}
 
   merge-descriptors@1.0.1:
-    resolution: {integrity: sha1-sAqqVW3YtEVoFQ7J0blT8/kMu2E=}
+    resolution: {integrity: sha512-cCi6g3/Zr1iqQi6ySbseM1Xvooa98N0w31jzUYrXPX2xqObmFGHJ0tQ5u74H3mVh7wLouTseZyYIq39g8cNp1w==}
 
   merge-stream@2.0.0:
     resolution: {integrity: sha512-abv/qOcuPfk3URPfDzmZU1LKmuw8kT+0nIHvKrKgFrwifol/doWcdA4ZqsWQ8ENrFKkd67Mfpo/LovbIUsbt3w==}
@@ -2777,8 +2777,8 @@ packages:
     resolution: {integrity: sha512-GbK2cP9nraSSUF9N2XwUwqfzlAFlMNYYl+ShE/V+H8a9uNl/oUqB1w2EL54Jh0OlyRSd8RfWYJ3coVS4TROP2w==}
     engines: {node: '>=6.0.0'}
 
-  prettier@3.3.2:
-    resolution: {integrity: sha512-rAVeHYMcv8ATV5d508CFdn+8/pHPpXeIid1DdrPwXnaAdH7cqjVbpJaT5eq4yRAFU/lsbwYwSF/n5iNrdJHPQA==}
+  prettier@3.3.3:
+    resolution: {integrity: sha512-i2tDNA0O5IrMO757lfrdQZCc2jPNDVntV0m/+4whiDfWaTKfMNgR7Qz0NAeGz/nRqF4m5/6CLzbP4/liHt12Ew==}
     engines: {node: '>=14'}
     hasBin: true
 
@@ -3435,7 +3435,7 @@ packages:
     resolution: {integrity: sha512-EPD5q1uXyFxJpCrLnCc1nHnq3gOa6DZBocAIiI2TaSCA7VCJ1UJDMagCzIkXNsUYfD1daK//LTEQ8xiIbrHtcw==}
 
   utils-merge@1.0.1:
-    resolution: {integrity: sha1-n5VxD1CiZ5R7LMwSR0HBAoQn5xM=}
+    resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
 
   validate-npm-package-license@3.0.4:
@@ -3924,7 +3924,7 @@ snapshots:
 
   '@eslint/object-schema@2.1.4': {}
 
-  '@estjs/eslint-config@1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.2)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))':
+  '@estjs/eslint-config@1.2.4(@types/eslint@8.56.10)(eslint@9.6.0)(prettier@3.3.3)(typescript@5.5.3)(vitest@2.0.2(@types/node@20.14.10)(jsdom@24.1.0)(terser@5.31.1))':
     dependencies:
       '@eslint-types/jsdoc': 48.2.2
       '@eslint-types/typescript-eslint': 7.5.0
@@ -3939,7 +3939,7 @@ snapshots:
       eslint-plugin-jsonc: 2.16.0(eslint@9.6.0)
       eslint-plugin-markdown: 5.0.0(eslint@9.6.0)
       eslint-plugin-n: 17.9.0(eslint@9.6.0)
-      eslint-plugin-prettier: 5.1.3(@types/eslint@8.56.10)(eslint-config-prettier@9.1.0(eslint@9.6.0))(eslint@9.6.0)(prettier@3.3.2)
+      eslint-plugin-prettier: 5.1.3(@types/eslint@8.56.10)(eslint-config-prettier@9.1.0(eslint@9.6.0))(eslint@9.6.0)(prettier@3.3.3)
       eslint-plugin-react: 7.34.3(eslint@9.6.0)
       eslint-plugin-react-hooks: 4.6.2(eslint@9.6.0)
       eslint-plugin-react-refresh: 0.4.8(eslint@9.6.0)
@@ -5159,10 +5159,10 @@ snapshots:
       minimatch: 9.0.4
       semver: 7.6.2
 
-  eslint-plugin-prettier@5.1.3(@types/eslint@8.56.10)(eslint-config-prettier@9.1.0(eslint@9.6.0))(eslint@9.6.0)(prettier@3.3.2):
+  eslint-plugin-prettier@5.1.3(@types/eslint@8.56.10)(eslint-config-prettier@9.1.0(eslint@9.6.0))(eslint@9.6.0)(prettier@3.3.3):
     dependencies:
       eslint: 9.6.0
-      prettier: 3.3.2
+      prettier: 3.3.3
       prettier-linter-helpers: 1.0.0
       synckit: 0.8.8
     optionalDependencies:
@@ -6545,7 +6545,7 @@ snapshots:
     dependencies:
       fast-diff: 1.3.0
 
-  prettier@3.3.2: {}
+  prettier@3.3.3: {}
 
   prompts@2.4.2:
     dependencies:
