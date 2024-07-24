@@ -52,7 +52,7 @@ importers:
         version: 6.0.0(conventional-commits-filter@5.0.0)
       tsup:
         specifier: ^8.2.2
-        version: 8.2.2(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5)
+        version: 8.2.3(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5)
       tsx:
         specifier: ^4.16.2
         version: 4.16.2
@@ -177,7 +177,7 @@ importers:
         version: link:../babel-plugin
       esbuild:
         specifier: '*'
-        version: 0.21.5
+        version: 0.23.0
       unplugin:
         specifier: ^1.12.0
         version: 1.12.0
@@ -196,7 +196,7 @@ importers:
         version: 4.19.0
       tsup:
         specifier: ^8.2.2
-        version: 8.2.2(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5)
+        version: 8.2.3(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5)
       typescript:
         specifier: ^5.5.4
         version: 5.5.4
@@ -205,7 +205,7 @@ importers:
         version: 5.3.4(@types/node@20.14.12)(terser@5.31.1)
       webpack:
         specifier: ^5.93.0
-        version: 5.93.0(esbuild@0.21.5)
+        version: 5.93.0(esbuild@0.23.0)
 
 packages:
 
@@ -2012,6 +2012,10 @@ packages:
     engines: {node: '>=16 || 14 >=14.18'}
     hasBin: true
 
+  glob@10.4.5:
+    resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    hasBin: true
+
   glob@11.0.0:
     resolution: {integrity: sha512-9UiX/Bl6J2yaBbxKoEBRm4Cipxgok8kQYcOPEhScPwebu2I0HoQOuYdIO6S3hLuWoZgpDpwQZMzTFxgpkyT76g==}
     engines: {node: 20 || >=22}
@@ -2354,6 +2358,9 @@ packages:
   jackspeak@3.4.0:
     resolution: {integrity: sha512-JVYhQnN59LVPFCEcVa2C3CrEKYacvjRfqIQl+h8oi91aLYQVWRYbxjPcv1bUiUy/kLmQaANrYfNMCO3kuEDHfw==}
     engines: {node: '>=14'}
+
+  jackspeak@3.4.3:
+    resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
 
   jackspeak@4.0.1:
     resolution: {integrity: sha512-cub8rahkh0Q/bw1+GxP7aeSe29hHHn2V4m29nnDlvCdlgU+3UGxkZp7Z53jLUdpX3jdTO0nJZUDl3xvbWc2Xog==}
@@ -3463,8 +3470,8 @@ packages:
   tslib@2.6.3:
     resolution: {integrity: sha512-xNvxJEOUiWPGhUuUdQgAJPKOOJfGnIyKySOc09XkKsgdUV/3E2zvwZYdejjmRgPCgcym1juLH3226yA7sEFJKQ==}
 
-  tsup@8.2.2:
-    resolution: {integrity: sha512-MufIuzdSt6HYPOeOtjUXLR4rqRJySi6XsRNZdwvjC2XR+xghsu2L3vSmYmX+k4S1mO6j0OlUEyVQ3Fc0H66XcA==}
+  tsup@8.2.3:
+    resolution: {integrity: sha512-6YNT44oUfXRbZuSMNmN36GzwPPIlD2wBccY7looM2fkTcxkf2NEmwr3OZuDZoySklnrIG4hoEtzy8yUXYOqNcg==}
     engines: {node: '>=18'}
     hasBin: true
     peerDependencies:
@@ -5922,6 +5929,15 @@ snapshots:
       package-json-from-dist: 1.0.0
       path-scurry: 1.11.1
 
+  glob@10.4.5:
+    dependencies:
+      foreground-child: 3.2.1
+      jackspeak: 3.4.3
+      minimatch: 9.0.5
+      minipass: 7.1.2
+      package-json-from-dist: 1.0.0
+      path-scurry: 1.11.1
+
   glob@11.0.0:
     dependencies:
       foreground-child: 3.2.1
@@ -6238,6 +6254,12 @@ snapshots:
       set-function-name: 2.0.2
 
   jackspeak@3.4.0:
+    dependencies:
+      '@isaacs/cliui': 8.0.2
+    optionalDependencies:
+      '@pkgjs/parseargs': 0.11.0
+
+  jackspeak@3.4.3:
     dependencies:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
@@ -7261,7 +7283,7 @@ snapshots:
     dependencies:
       '@jridgewell/gen-mapping': 0.3.5
       commander: 4.1.1
-      glob: 10.4.2
+      glob: 10.4.5
       lines-and-columns: 1.2.4
       mz: 2.7.0
       pirates: 4.0.6
@@ -7316,16 +7338,16 @@ snapshots:
       mkdirp: 1.0.4
       yallist: 4.0.0
 
-  terser-webpack-plugin@5.3.10(esbuild@0.21.5)(webpack@5.93.0(esbuild@0.21.5)):
+  terser-webpack-plugin@5.3.10(esbuild@0.23.0)(webpack@5.93.0(esbuild@0.23.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.2
       terser: 5.31.1
-      webpack: 5.93.0(esbuild@0.21.5)
+      webpack: 5.93.0(esbuild@0.23.0)
     optionalDependencies:
-      esbuild: 0.21.5
+      esbuild: 0.23.0
 
   terser@5.31.1:
     dependencies:
@@ -7399,7 +7421,7 @@ snapshots:
 
   tslib@2.6.3: {}
 
-  tsup@8.2.2(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5):
+  tsup@8.2.3(jiti@1.21.6)(postcss@8.4.39)(tsx@4.16.2)(typescript@5.5.4)(yaml@2.4.5):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.23.0)
       cac: 6.7.14
@@ -7665,7 +7687,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.93.0(esbuild@0.21.5):
+  webpack@5.93.0(esbuild@0.23.0):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.5
@@ -7688,7 +7710,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(esbuild@0.21.5)(webpack@5.93.0(esbuild@0.21.5))
+      terser-webpack-plugin: 5.3.10(esbuild@0.23.0)(webpack@5.93.0(esbuild@0.23.0))
       watchpack: 2.4.1
       webpack-sources: 3.2.3
     transitivePeerDependencies:
