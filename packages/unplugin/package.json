@@ -84,18 +84,18 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.24.8",
+    "@babel/core": "^7.24.9",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^1.11.0"
+    "unplugin": "^1.12.0"
   },
   "devDependencies": {
     "fast-glob": "^3.3.2",
     "nodemon": "^3.1.4",
     "rimraf": "^6.0.1",
-    "rollup": "^4.18.1",
-    "tsup": "^8.1.0",
-    "typescript": "^5.5.3",
-    "vite": "^5.3.3",
+    "rollup": "^4.19.0",
+    "tsup": "^8.2.2",
+    "typescript": "^5.5.4",
+    "vite": "^5.3.4",
     "webpack": "^5.93.0"
   }
 }

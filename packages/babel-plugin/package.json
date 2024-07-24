@@ -32,12 +32,12 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.24.8",
-    "@babel/types": "^7.24.8",
+    "@babel/core": "^7.24.9",
+    "@babel/types": "^7.24.9",
     "essor-shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
-    "typescript": "^5.5.3"
+    "typescript": "^5.5.4"
   }
 }

@@ -7,6 +7,6 @@ import pkg from '../package.json';
   const version = pkg.version;
   fs.writeFileSync(
     path.resolve(srcPath, 'version.ts'),
-    `export const __essor_version = '${version}';\n`,
+    `export const essor_version = '${version}';\n`,
   );
 })();
