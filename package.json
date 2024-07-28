@@ -40,7 +40,7 @@
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.4",
     "@playwright/test": "^1.45.3",
-    "@types/node": "^20.14.12",
+    "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^2.0.4",
     "bumpp": "^9.4.1",
     "cross-env": "^7.0.3",
