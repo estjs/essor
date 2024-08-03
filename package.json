@@ -40,11 +40,11 @@
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.4",
     "@playwright/test": "^1.45.3",
-    "@types/node": "^20.14.12",
-    "@vitest/coverage-v8": "^2.0.4",
-    "bumpp": "^9.4.1",
+    "@types/node": "^22.1.0",
+    "@vitest/coverage-v8": "^2.0.5",
+    "bumpp": "^9.4.2",
     "cross-env": "^7.0.3",
-    "eslint": "^9.7.0",
+    "eslint": "^9.8.0",
     "jsdom": "^24.1.1",
     "lint-staged": "^15.2.7",
     "picocolors": "^1.0.1",
@@ -52,10 +52,10 @@
     "prettier": "^3.3.3",
     "simple-git-hooks": "^2.11.1",
     "standard-changelog": "^6.0.0",
-    "tsup": "^8.2.2",
-    "tsx": "^4.16.2",
+    "tsup": "^8.2.4",
+    "tsx": "^4.16.5",
     "typescript": "^5.5.4",
-    "vitest": "^2.0.4"
+    "vitest": "^2.0.5"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged --concurrent false",
