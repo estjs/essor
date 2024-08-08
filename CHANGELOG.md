@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.7](https://github.com/estjs/essor/compare/v0.0.7-beta.6...v0.0.7) `2024-08-08`
+
+
+### Bug Fixes
+
+* fix windows changelog script not work ([2dfa109](https://github.com/estjs/essor/commit/2dfa1093b157f21c7e171285d17a0761898ed181))
+
+
+
+
 
 
 
