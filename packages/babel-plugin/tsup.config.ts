@@ -7,7 +7,7 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   format: ['cjs', 'esm'],
- target: 'es2015',
+  target: 'es2015',
   dts: true,
   shims: true,
   external: ['@babel/core'],

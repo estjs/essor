@@ -93,7 +93,7 @@ export function isComponent(tagName: string): boolean {
   return (
     (tagName[0] && tagName[0].toLowerCase() !== tagName[0]) ||
     tagName.includes('.') ||
-    /[^A-Za-z]/.test(tagName[0])
+    /[^a-z]/i.test(tagName[0])
   );
 }
 

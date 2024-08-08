@@ -58,17 +58,13 @@ export function useRef<T>(): {
   __is_ref: boolean;
   current: T | null;
 } {
-  // 初始化 ref 为 null，类型为 T 或 null
   let refValue: T | null = null;
 
-  // 使用 Proxy 创建一个代理对象，以便我们可以自定义 get 和 set 行为
   return new Proxy({} as any, {
     get(target, key: string | symbol) {
-      // 特殊属性 __is_ref 始终返回 true
       if (key === '__is_ref') {
         return true;
       }
-      // 直接返回 refValue
       return refValue;
     },
     set(target, prop: string | symbol, value: any) {

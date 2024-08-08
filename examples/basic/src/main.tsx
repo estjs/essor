@@ -3,13 +3,7 @@ function App() {
 
   return (
     <div>
-      <p
-        style={{
-          color: $v > 1 ? 'red' : 'blue',
-        }}
-      >
-        {$v}
-      </p>
+      <p>{$v}</p>
       <input type="text" bind:value={$v} />
     </div>
   );

@@ -23,10 +23,11 @@
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
   "scripts": {
-    "build": "pnpm run gen:version && turbo run build --filter=./packages/*",
-    "dev": "pnpm run gen:version && turbo run dev --filter=./packages/*",
+    "build": "pnpm run gen:version && turbo run build --filter=./packages/* ",
+    "dev": "pnpm run gen:version && turbo watch build --filter=./packages/*",
     "lint": "eslint --cache --fix \"./**/src/*.{ts,tsx,js}\"",
     "test": "pnpm run test:unit",
+    "p": "turbo generate",
     "test:watch": "pnpm run test:unit --watch",
     "typecheck": "tsc --noEmit -p ./tsconfig.build.json",
     "coverage": "vitest run --coverage",

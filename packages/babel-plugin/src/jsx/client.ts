@@ -132,7 +132,7 @@ function transformJSXElement(
       if (!isSelfClose) {
         transformChildren(path, result);
 
-        if (hasSiblingElement(path) ) {
+        if (hasSiblingElement(path)) {
           result.template += `</${tagName}>`;
         }
       }
@@ -206,7 +206,7 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
   let style = '';
 
   for (const prop in props) {
-    const value = props[prop];
+    let value = props[prop];
 
     if (prop === 'class' && typeof value === 'string') {
       klass += ` ${value}`;
@@ -230,6 +230,28 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
     if (typeof value === 'string' || typeof value === 'number') {
       result.template += ` ${prop}="${value}"`;
       delete props[prop];
+    }
+
+    // if value is conditional expression
+    if (t.isConditionalExpression(value)) {
+      const { test, consequent, alternate } = value;
+      value = t.arrowFunctionExpression([], t.conditionalExpression(test, consequent, alternate));
+      props[prop] = value;
+    }
+
+    // if value is object expression and has conditional
+    if (t.isObjectExpression(value)) {
+      let hasConditional = false;
+      value.properties.forEach(property => {
+        if (t.isObjectProperty(property) && t.isConditionalExpression(property.value)) {
+          hasConditional = true;
+        }
+      });
+      if (hasConditional) {
+        value = t.arrowFunctionExpression([], value);
+      }
+
+      props[prop] = value;
     }
   }
 

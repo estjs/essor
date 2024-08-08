@@ -326,7 +326,7 @@ export function closeHtmlTags(input: string): string {
   const tagStack: string[] = [];
   const output: string[] = [];
 
-  const tagPattern = /<\/?([\dA-Za-z-]+)([^>]*)>/g;
+  const tagPattern = /<\/?([\da-z-]+)([^>]*)>/gi;
 
   let lastIndex = 0;
 
