@@ -57,7 +57,7 @@ function updateChangeLog() {
     console.log('generate changelog done.');
 
     await execPromise('git add CHANGELOG.md');
-    await execPromise("git commit -m 'chore: update changelog'");
+    await execPromise(`git commit -m "chore: update changelog"`);
     await execPromise('git push');
   });
 }
