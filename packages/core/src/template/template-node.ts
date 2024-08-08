@@ -152,7 +152,7 @@ export class TemplateNode implements JSX.Element {
         } else {
           props.children.filter(Boolean).forEach((item, index) => {
             const [child, path] = isArray(item) ? item : [item, null];
-            const before = isNil(path) ? null : this.treeMap.get(path) ?? null;
+            const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);
             const trackKey = `${key}:${attr}:${index}`;
             const track = this.getNodeTrack(trackKey, true, isRoot);
             patchChild(track, node, child, before);
@@ -174,7 +174,9 @@ export class TemplateNode implements JSX.Element {
         // attr
       } else if (!startsWith(attr, 'update')) {
         const track = this.getNodeTrack(`${key}:${attr}`);
+
         const val = props[attr];
+
         const triggerValue = isSignal(val) ? val : useSignal(val);
         patchAttribute(track, node, attr, triggerValue.value);
         const cleanup = useEffect(() => {
