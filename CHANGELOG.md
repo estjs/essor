@@ -8,6 +8,9 @@ docClass: timeline
 
 
 
+
+
+
 ## [0.0.7-beta.6](https://github.com/estjs/essor/compare/v0.0.7-beta.5...v0.0.7-beta.6) `2024-07-09`
 
 
