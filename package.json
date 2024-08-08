@@ -23,8 +23,8 @@
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
   "scripts": {
-    "build": "turbo run build --filter=./packages/*",
-    "dev": "turbo run dev --filter=./packages/*",
+    "build": "pnpm run gen:version && turbo run build --filter=./packages/*",
+    "dev": "pnpm run gen:version && turbo run dev --filter=./packages/*",
     "lint": "eslint --cache --fix \"./**/src/*.{ts,tsx,js}\"",
     "test": "pnpm run test:unit",
     "test:watch": "pnpm run test:unit --watch",
