@@ -3,7 +3,7 @@ import { h as _h$, template as _template$ } from '../src/template';
 import { mount } from './test-utils';
 
 describe('ref', () => {
-  const _tmpl$ = _template$('<div>ref</div>');
+  const _tmpl$ = _template$('<div>ref');
 
   let normal;
   let signal;

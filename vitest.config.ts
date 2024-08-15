@@ -7,7 +7,7 @@ export default defineConfig({
   },
   test: {
     coverage: {
-      provider: 'v8',
+      provider: 'istanbul',
       reporter: ['text', 'json', 'html'],
       exclude: [
         '**/scripts/**',
@@ -18,6 +18,9 @@ export default defineConfig({
         '**/index.ts',
         '**/test/**',
         '**/warning.ts',
+        '**/node_modules/**',
+        '**/e2e/**',
+        '**/dist/**',
       ],
     },
     globals: true,
