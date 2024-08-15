@@ -86,7 +86,7 @@
   "dependencies": {
     "@babel/core": "^7.25.2",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^1.12.0"
+    "unplugin": "^1.12.1"
   },
   "devDependencies": {
     "fast-glob": "^3.3.2",
@@ -95,7 +95,7 @@
     "rollup": "^4.20.0",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",
-    "vite": "^5.3.5",
+    "vite": "^5.4.0",
     "webpack": "^5.93.0"
   }
 }
