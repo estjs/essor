@@ -227,4 +227,11 @@ describe('jsx transform', () => {
     </div>`;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('should work with static style transform to inline style', () => {
+    const inputCode = `
+      const element = <div style={{ color: 'red', fontSize: '16px' }}>Hello World</div>;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
 });

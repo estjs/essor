@@ -24,6 +24,12 @@ _h$(_tmpl$, {
 });"
 `;
 
+exports[`jsx transform > should work with static style transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div style=\\"color:red;fontSize:16px;\\">Hello World");
+const element = _h$(_tmpl$, {});"
+`;
+
 exports[`jsx transform > transforms JSX element with JSX fragment 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<p>Paragraph 1</p><p>Paragraph 2</p>");
