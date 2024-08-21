@@ -8,14 +8,14 @@ import {
 } from '../src/signal/symbol';
 import { replaceImportDeclaration } from '../src/signal/import';
 import { replaceProps } from '../src/signal/props';
-import { transformJSXClient } from '../src/jsx/client';
+import { transformJSX } from '../src/jsx/client';
 import { transformJSXService } from '../src/jsx/server';
 
 const transforms = {
   jsxClient: {
     Program: transformProgram,
-    JSXElement: transformJSXClient,
-    JSXFragment: transformJSXClient,
+    JSXElement: transformJSX,
+    JSXFragment: transformJSX,
   },
   jsxServe: {
     Program: transformProgram,
