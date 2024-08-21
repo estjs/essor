@@ -56,6 +56,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     tmpl = t.identifier(getTagName(path.node));
   } else {
     tmpl = path.scope.generateUidIdentifier('_tmpl$');
+
     const template = isSsg
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
       : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
@@ -188,7 +189,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
   } else if (child.isJSXExpressionContainer()) {
     const expression = child.get('expression');
     if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      result.template += String(expression.node.value);
+      addToTemplate(result, String(expression.node.value));
     } else if (expression.isExpression()) {
       replaceChild(expression.node, result);
     } else if (t.isJSXEmptyExpression(expression.node)) {
@@ -198,7 +199,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
       throw new Error('Unsupported child type');
     }
   } else if (child.isJSXText()) {
-    result.template += String(child.node.value);
+    addToTemplate(result, String(child.node.value));
   } else {
     throw new Error('Unsupported child type');
   }
