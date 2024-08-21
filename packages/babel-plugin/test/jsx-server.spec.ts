@@ -1,6 +1,6 @@
 import { getTransform } from './transform-util';
-const transformCode = getTransform('jsxServe', { ssr: true });
-describe('jsx ssr transform', () => {
+const transformCode = getTransform('jsxServe', { ssg: true });
+describe('jsx ssg transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `
       const element = <div>Hello World</div>;

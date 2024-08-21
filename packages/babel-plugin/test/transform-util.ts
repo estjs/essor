@@ -8,8 +8,7 @@ import {
 } from '../src/signal/symbol';
 import { replaceImportDeclaration } from '../src/signal/import';
 import { replaceProps } from '../src/signal/props';
-import { transformJSX } from '../src/jsx/client';
-import { transformJSXService } from '../src/jsx/server';
+import { transformJSX } from '../src/jsx';
 
 const transforms = {
   jsxClient: {
@@ -19,8 +18,8 @@ const transforms = {
   },
   jsxServe: {
     Program: transformProgram,
-    JSXElement: transformJSXService,
-    JSXFragment: transformJSXService,
+    JSXElement: transformJSX,
+    JSXFragment: transformJSX,
   },
 
   symbol: {
