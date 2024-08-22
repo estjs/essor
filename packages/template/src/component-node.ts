@@ -1,9 +1,8 @@
-import { isFunction, startsWith } from 'essor-shared';
-import { signalObject } from '../signal';
-import { type Signal, useEffect, useReactive, useSignal } from '../signal';
-import { isSignal } from '../signal/signal';
+import { isFunction, startsWith } from '@essor/shared';
+import { isSignal, signalObject } from '@essor/signal';
+import { type Signal, useEffect, useReactive, useSignal } from '@essor/signal';
 import { addEventListener } from './utils';
-import type { EssorComponent, NodeTrack } from '../../types';
+import type { EssorComponent, NodeTrack } from '../types';
 import type { TemplateNode } from './template-node';
 import type { Listener } from './utils';
 export type Hook = 'mounted' | 'destroy';

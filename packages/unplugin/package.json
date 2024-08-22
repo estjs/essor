@@ -23,6 +23,16 @@
       "require": "./dist/index.cjs",
       "import": "./dist/index.js"
     },
+    "./astro": {
+      "types": "./dist/astro.d.ts",
+      "require": "./dist/astro.cjs",
+      "import": "./dist/astro.js"
+    },
+    "./rspack": {
+      "types": "./dist/rspack.d.ts",
+      "require": "./dist/rspack.cjs",
+      "import": "./dist/rspack.js"
+    },
     "./vite": {
       "types": "./dist/vite.d.ts",
       "require": "./dist/vite.cjs",
@@ -89,13 +99,13 @@
     "unplugin": "^1.12.2"
   },
   "devDependencies": {
+    "@types/node": "^22.5.0",
+    "chalk": "^5.3.0",
     "fast-glob": "^3.3.2",
-    "nodemon": "^3.1.4",
-    "rimraf": "^6.0.1",
     "rollup": "^4.21.0",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",
-    "vite": "^5.4.1",
+    "vite": "^5.4.2",
     "webpack": "^5.93.0"
   }
 }

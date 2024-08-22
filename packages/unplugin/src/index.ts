@@ -9,6 +9,8 @@ const CSS_EXTENSIONS = ['.css', '.scss', '.sass'];
 
 const DEFAULT_OPTIONS = {
   symbol: '$',
+  props: true,
+  ssg: false,
 };
 
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}) => {

@@ -1,4 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
+import { startsWith } from '@essor/shared';
+import type { State } from './types';
 
 export type JSXElement = t.JSXElement | t.JSXFragment;
 
@@ -133,4 +135,14 @@ export function setNodeText(path: NodePath<JSXChild>, text: string): void {
       expression.replaceWith(t.stringLiteral(text));
     }
   }
+}
+
+/**
+ *  get the symbol start with
+ */
+export function isSymbolStart(path: NodePath<any>, name: string) {
+  const state: State = path.state;
+  const { symbol } = state.opts;
+
+  return startsWith(name, symbol);
 }

@@ -1,4 +1,4 @@
-import { startsWith } from 'essor-shared';
+import { startsWith } from '@essor/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { imports } from '../program';
 import type { State } from '../types';
@@ -10,6 +10,26 @@ import type {
   RestElement,
 } from '@babel/types';
 
+/**
+ * Replaces the properties of a function's first parameter with new names.
+ *
+ *  auto replace pattern to props object
+ *
+ *  rule1:  function argument
+ *  rule2: first argument is object and it pattern
+ *  rule3: function has return
+ *
+ * transform case
+ *    case1  ({a, b}) => <div>{a.value}</div>  to=> (_props)=><div>{_props.a.value}</div>
+ *    case2  ({a, b, ...rest}) => <div>{a.value}{rest}</div>  to=> (_props)=> {const restProps = reactive(props,[a,b]);return <div>{_props.a.value}{reset}</div>}
+ *
+ * not transform case
+ *    case1 ([a,b])=> <div>{a.value}</div>
+ *    case2 ({a.,b}) ={}
+ *
+ * @param {NodePath<FunctionDeclaration | ArrowFunctionExpression>} path - The path to the function node.
+ * @return {void}
+ */
 export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionExpression>) {
   const state: State = path.state;
 

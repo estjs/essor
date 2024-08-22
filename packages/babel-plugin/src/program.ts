@@ -1,10 +1,19 @@
 import { type NodePath, types as t } from '@babel/core';
-import type { State } from './types';
+import type { Options, State } from './types';
 export const imports = new Set<string>();
+
+const defaultOption: Options = {
+  ssg: false,
+  symbol: '$',
+  props: true,
+};
 
 export const transformProgram = {
   enter(path: NodePath<t.Program>, state) {
     imports.clear();
+
+    // merge options
+    state.opts = { ...defaultOption, ...state.opts };
 
     path.state = {
       h: path.scope.generateUidIdentifier('h$'),

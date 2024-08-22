@@ -11,7 +11,7 @@ import {
   removeChild,
   replaceChild,
   setAttribute,
-} from '../src/template/utils';
+} from '../src/utils';
 
 const tmpl = template('<div>Hello World</div>');
 const element = h(tmpl, {});

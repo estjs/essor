@@ -5,7 +5,7 @@ const env = process.env.NODE_ENV;
 
 export default defineConfig({
   entryPoints: {
-    'essor-shared': './src/index.ts',
+    shared: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
