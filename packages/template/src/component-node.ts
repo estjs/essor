@@ -118,9 +118,9 @@ export class ComponentNode implements JSX.Element {
         this.emitter.add(cleanup);
       } else if (key === 'ref') {
         if (isSignal(prop)) {
-          (props[key] as any).value = this.rootNode?.nodes[0];
+          (props[key] as Signal<Node>).value = this.rootNode!.nodes[0];
         } else if (isFunction(prop)) {
-          (props[key] as Function)(this.rootNode?.nodes[0]);
+          (props[key] as (node: Node) => void)(this.rootNode!.nodes[0]);
         }
       } else if (startsWith(key, 'update')) {
         props[key] = isSignal(prop) ? prop.value : prop;
