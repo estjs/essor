@@ -1,11 +1,11 @@
 function App() {
-  const $v = 'hello world';
-
+  const $value = 'hello word';
   return (
     <div>
-      <p>{$v}</p>
-      <input type="text" bind:value={$v} />
+      <p>{$value}</p>
+      <input type="text" bind:value={$value} />
     </div>
   );
 }
+
 (<App />).mount(document.querySelector('#app')!);
