@@ -86,6 +86,7 @@ export class Signal<T> {
       console.warn('Signal cannot be set to another signal, use .peek() instead');
       newValue = newValue.peek() as T;
     }
+
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
       this.triggerObject();
@@ -97,8 +98,8 @@ export class Signal<T> {
     return this._value;
   }
 
-  update() {
-    trigger(this, '_sv');
+  update(value) {
+    this.value = value;
   }
 }
 
@@ -242,7 +243,14 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
       if (isExclude(key, exclude)) return value;
 
       track(target, key);
-      return isObject(value) ? useReactive(value) : value;
+
+      if (isSignal(value)) {
+        return value.value;
+      }
+      if (isObject(value)) {
+        return useReactive(value);
+      }
+      return value;
     },
     set(target, key, value, receiver) {
       if (isExclude(key, exclude)) {
@@ -251,10 +259,14 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
       }
 
       const getValue = Reflect.get(target, key, receiver);
+
       const oldValue = isSignal(getValue) ? getValue.value : getValue;
+      const newValue = isSignal(value) ? value.value : value;
 
       const result = Reflect.set(target, key, value, receiver);
-      if (hasChanged(value, oldValue)) trigger(target, key);
+      if (hasChanged(newValue, oldValue)) {
+        trigger(target, key);
+      }
       return result;
     },
     deleteProperty(target, key) {

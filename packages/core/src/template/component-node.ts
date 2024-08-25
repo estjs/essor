@@ -1,6 +1,6 @@
 import { isFunction, startsWith } from '@essor/shared';
-import { isSignal, signalObject } from '@essor/signal';
-import { type Signal, useEffect, useReactive, useSignal } from '@essor/signal';
+import { isSignal, signalObject } from '../signal';
+import { type Signal, useEffect, useReactive, useSignal } from '../signal';
 import { addEventListener } from './utils';
 import type { EssorComponent, NodeTrack } from '../types';
 import type { TemplateNode } from './template-node';

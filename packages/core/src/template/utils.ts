@@ -74,10 +74,12 @@ export function setAttribute(element: HTMLElement, attr: string, value: unknown)
 
   if (isFalsy(value)) {
     element.removeAttribute(attr);
-  } else if (value === true) {
-    element.setAttribute(attr, '');
   } else {
-    element.setAttribute(attr, String(value));
+    if (element instanceof HTMLInputElement && attr === 'value') {
+      element.value = value === true ? '' : String(value);
+    } else {
+      element.setAttribute(attr, value === true ? '' : String(value));
+    }
   }
 }
 

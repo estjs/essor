@@ -1,4 +1,4 @@
-import { closeHtmlTags } from '../src/utils';
+import { closeHtmlTags } from '../src/template/utils';
 
 describe('closeHtmlTags', () => {
   it('should close a single unclosed tag', () => {
