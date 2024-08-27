@@ -1,6 +1,5 @@
 import { essor_version } from './version';
 
-export * from '@essor/signal';
 export * from '@essor/template';
 
 if (globalThis) {

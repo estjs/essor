@@ -1,4 +1,4 @@
-import { isFalsy, kebabCase } from "@essor/shared";
+import { isFalsy, kebabCase } from '@essor/shared';
 import { isJsxElement } from './template';
 
 // 将任意数据转换为 Node 或 JSX.Element 类型

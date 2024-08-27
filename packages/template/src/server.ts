@@ -1,4 +1,4 @@
-import { isFunction, isObject, startsWith } from "@essor/shared";
+import { isFunction, isObject, startsWith } from '@essor/shared';
 import type { EssorNode } from '../types';
 
 interface TemplateMap {

@@ -23,6 +23,7 @@ export function getCurrentComponent(): ComponentNode | null {
   return ComponentNode.ref;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types, unused-imports/no-unused-vars
 export interface InjectionKey<T> extends Symbol {}
 
 export function useProvide<T, K = InjectionKey<T> | string | number>(
