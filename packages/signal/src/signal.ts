@@ -7,7 +7,7 @@ import {
   isObject,
   isPrimitive,
   startsWith,
-} from 'essor-shared';
+} from "@essor/shared";
 
 type EffectFn = () => void;
 

@@ -5,9 +5,9 @@ import {
   isFunction,
   isNil,
   startsWith,
-} from 'essor-shared';
-import { useEffect, useSignal } from '../signal';
-import { isSignal } from '../signal/signal';
+} from '@essor/shared';
+import { isSignal, useEffect, useSignal } from '@essor/signal';
+
 import {
   addEventListener,
   binNode,

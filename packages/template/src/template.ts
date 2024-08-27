@@ -1,4 +1,4 @@
-import { isFunction, isString } from 'essor-shared';
+import { isFunction, isString } from "@essor/shared";
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';

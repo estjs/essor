@@ -26,3 +26,4 @@ export {
   isHTMLElement,
 } from './is';
 export { camelCase, kebabCase, capitalizeFirstLetter } from './name';
+export { warn, info, error } from './console';

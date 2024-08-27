@@ -1,4 +1,4 @@
-import { startsWith } from 'essor-shared';
+import { startsWith } from "@essor/shared";
 import { type NodePath, types as t } from '@babel/core';
 import { imports } from '../program';
 import type { State } from '../types';

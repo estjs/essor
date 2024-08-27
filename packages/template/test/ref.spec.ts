@@ -1,8 +1,8 @@
-import { useSignal } from '../src';
+import { useSignal } from '@essor/signal';
 import { h as _h$, template as _template$ } from '../src/template';
 import { mount } from './test-utils';
 
-describe('ref', () => {
+describe('html element ref', () => {
   const _tmpl$ = _template$('<div>ref');
 
   let normal;

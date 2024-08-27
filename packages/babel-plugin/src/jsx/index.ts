@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalizeFirstLetter } from 'essor-shared';
+import { capitalizeFirstLetter } from "@essor/shared";
 import { imports } from '../program';
 import { selfClosingTags, svgTags } from './constants';
 import {

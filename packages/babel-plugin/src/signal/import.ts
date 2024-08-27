@@ -1,5 +1,5 @@
 import { type NodePath, types as t } from '@babel/core';
-import { startsWith } from 'essor-shared';
+import { startsWith } from "@essor/shared";
 import type { ImportDeclaration } from '@babel/types';
 
 function isVariableUsedAsObject(path: NodePath<ImportDeclaration>, variableName: string) {

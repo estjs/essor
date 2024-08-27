@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { useComputed, useReactive, useSignal, useWatch } from '../src';
+import { useComputed, useReactive, useSignal, useWatch } from '../../core/src';
 
 describe('useWatch', () => {
   it('should watch a signal and trigger callback on change', () => {

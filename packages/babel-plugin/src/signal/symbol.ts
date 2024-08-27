@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { startsWith } from 'essor-shared';
+import { startsWith } from "@essor/shared";
 import { imports } from '../program';
 import type { Identifier, VariableDeclarator } from '@babel/types';
 import type { NodePath } from '@babel/core';
