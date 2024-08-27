@@ -1,7 +1,5 @@
-
-import { type NodePath, types as t } from '@babel/core';
-import { startsWith } from "@essor/shared";
-import type { ImportDeclaration } from '@babel/types';
+import { types as t } from '@babel/core';
+import { startsWith } from '@essor/shared';
 
 /**
  * Replaces import declarations

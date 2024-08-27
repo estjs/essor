@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useComputed, useReactive, useSignal, useWatch } from '../src';
 
-
 describe('useWatch', () => {
   it('should watch a signal and trigger callback on change', () => {
     const signal = useSignal(1);

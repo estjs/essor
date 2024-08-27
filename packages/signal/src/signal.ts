@@ -9,7 +9,6 @@ import {
   startsWith,
 } from '@essor/shared';
 
-
 type EffectFn = () => void;
 
 let activeEffect: EffectFn | null = null;
