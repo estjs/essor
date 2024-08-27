@@ -45,7 +45,7 @@
     "bumpp": "^9.5.1",
     "cross-env": "^7.0.3",
     "eslint": "^9.9.0",
-    "jsdom": "^24.1.1",
+    "jsdom": "^25.0.0",
     "lint-staged": "^15.2.9",
     "picocolors": "^1.0.1",
     "pnpm": "^9.7.1",
