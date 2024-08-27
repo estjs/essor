@@ -1,14 +1,30 @@
 # Essor babel plugin
 
-## 安装
+## Install
 
 ```bash
 npm install @essor/babel-plugin --save-dev
 ```
 
-## 使用
+## Usage
 
+```js
+import EssorBabelPlugin from '@essor/babel-plugin';
 
-::: warn
-不要在pops中使用$,props是个reactive,必须添加value
-:::
+{
+  "plugins": [[EssorBabelPlugin,pluginOptions]]
+}
+
+```
+
+## Options
+
+```json
+{
+  // translate signal symbol,default "$"
+  "symbol":"$",
+  // enable ssg, dot use it,not a stable API
+  "ssg":false,
+  // enable props translate,default true
+  "props":true
+}

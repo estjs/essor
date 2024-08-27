@@ -21,8 +21,7 @@ export default function (): PluginObj {
     },
     visitor: {
       Program: transformProgram,
-      JSXElement: transformJSX,
-      JSXFragment: transformJSX,
+
       FunctionDeclaration: replaceProps,
       ArrowFunctionExpression: replaceProps,
       VariableDeclarator: replaceSymbol,
@@ -30,6 +29,9 @@ export default function (): PluginObj {
       Identifier: symbolIdentifier,
       ObjectPattern: symbolObjectPattern,
       ArrayPattern: symbolArrayPattern,
+
+      JSXElement: transformJSX,
+      JSXFragment: transformJSX,
     },
   };
 }

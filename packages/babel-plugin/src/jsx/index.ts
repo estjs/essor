@@ -1,7 +1,6 @@
 import { types as t } from '@babel/core';
-import { capitalizeFirstLetter } from "@essor/shared";
+import { capitalizeFirstLetter } from '@essor/shared';
 import { imports } from '../program';
-import { selfClosingTags, svgTags } from './constants';
 import {
   type JSXChild,
   type JSXElement,
@@ -11,7 +10,8 @@ import {
   isComponent,
   isTextChild,
   setNodeText,
-} from './shared';
+} from '../shared';
+import { selfClosingTags, svgTags } from './constants';
 import type { Identifier, OptionalMemberExpression, StringLiteral } from '@babel/types';
 import type { State } from '../types';
 import type { NodePath } from '@babel/core';
@@ -371,6 +371,10 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
                 const value = path.scope.generateUidIdentifier('value');
                 const bindName = name.slice(5).toLocaleLowerCase();
                 props[bindName] = expression.node;
+                // props[bindName] = t.memberExpression(
+                //   t.identifier((expression.node as Identifier).name),
+                //   t.identifier('value'),
+                // );
                 props[`update${capitalizeFirstLetter(bindName)}`] = t.arrowFunctionExpression(
                   [value],
                   t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),

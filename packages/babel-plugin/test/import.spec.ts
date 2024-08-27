@@ -9,10 +9,7 @@ describe('import symbol transform', () => {
   `;
 
     const code = transformCode(inputCode);
-    expect(code).toMatchInlineSnapshot(`
-      "import $a from "./test";
-      <div>{$a.value}</div>;"
-    `);
+    expect(code).toMatchSnapshot();
   });
   it('should add .value to object import', () => {
     const inputCode = `
@@ -21,10 +18,7 @@ describe('import symbol transform', () => {
   `;
 
     const code = transformCode(inputCode);
-    expect(code).toMatchInlineSnapshot(`
-      "import { $a } from "./test";
-      <div>{$a.b}</div>;"
-    `);
+    expect(code).toMatchSnapshot();
   });
 
   it('should add .value to deep object import', () => {
@@ -34,9 +28,6 @@ describe('import symbol transform', () => {
   `;
 
     const code = transformCode(inputCode);
-    expect(code).toMatchInlineSnapshot(`
-      "import { $a } from "./test";
-      <div>{$a.b.c.d.e.f}</div>;"
-    `);
+    expect(code).toMatchSnapshot();
   });
 });

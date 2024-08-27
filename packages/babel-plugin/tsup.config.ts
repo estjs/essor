@@ -11,7 +11,7 @@ export default defineConfig({
   dts: true,
   shims: true,
   external: ['@babel/core'],
-  noExternal: ["@essor/shared"],
+  noExternal: ['@essor/shared'],
   tsconfig: '../../tsconfig.build.json',
   define: {
     __DEV__: `${process.env.BUILD_ENV !== 'production'}` + ``,

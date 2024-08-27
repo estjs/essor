@@ -73,21 +73,23 @@ describe('transform symbol', () => {
       console.log($a[0]);
   `;
 
-    expect(transformCode(input)).toMatchInlineSnapshot(`
-      "import { useSignal as _signal$ } from "essor";
-      const $a = _signal$([1]);
-      console.log($a.value[0]);"
-    `);
+    expect(transformCode(input)).toMatchSnapshot();
   });
   it('should not work with add value symbol', () => {
     const input = `
       const $a = [1];
       $a.value.push(2);
   `;
-    expect(transformCode(input)).toMatchInlineSnapshot(`
-      "import { useSignal as _signal$ } from "essor";
-      const $a = _signal$([1]);
-      $a.value.push(2);"
-    `);
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+});
+
+const transformCustomSymbol = getTransform('symbol', { symbol: '__' });
+describe('transform custom symbol', () => {
+  it('should work with basic types', () => {
+    const list = [false, true, 0, 1, '1', `${1}23`, null, undefined, Number.NaN];
+    for (const item of list) {
+      expect(transformCustomSymbol(`const __a = ${item}; __a = 1`)).toMatchSnapshot();
+    }
   });
 });

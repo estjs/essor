@@ -15,6 +15,6 @@ export interface State {
 
 export interface Options {
   ssg: boolean;
-  symbol: boolean;
+  symbol: string;
   props: boolean;
 }

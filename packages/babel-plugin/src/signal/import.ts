@@ -1,33 +1,18 @@
+
 import { type NodePath, types as t } from '@babel/core';
 import { startsWith } from "@essor/shared";
 import type { ImportDeclaration } from '@babel/types';
 
-function isVariableUsedAsObject(path: NodePath<ImportDeclaration>, variableName: string) {
-  const binding = path.scope.getBinding(variableName);
-  let isUsedObject = false;
-  if (!binding || !binding.referencePaths) {
-    return isUsedObject;
-  }
-
-  for (const referencePath of binding.referencePaths) {
-    if (t.isMemberExpression(referencePath.parent)) {
-      //   const memberExprParent = referencePath.parent;
-
-      //   if (memberExprParent.object && memberExprParent.property) {
-      //     const newMemberExpr = t.memberExpression(
-      //       memberExprParent.object,
-      //       t.identifier(`${(memberExprParent.property as t.Identifier).name}.value`),
-      //     );
-      //     referencePath.parentPath?.replaceWith(newMemberExpr);
-      isUsedObject = true;
-      // }
-    }
-  }
-
-  return isUsedObject;
-}
-// TODO: 暂时不支持对象
-export function replaceImportDeclaration(path: NodePath<ImportDeclaration>) {
+/**
+ * Replaces import declarations
+ *
+ *  case1: import { $a } from 'a';console.log(a)  =>  import { $a } from 'a';console.log($a.value)
+ *  case2: import $a from 'a';console.log(a)  =>  import $a from 'a';console.log($a.value)
+ *
+ * @param {object} path - The path to replace import declarations.
+ * @return {void}
+ */
+export function replaceImportDeclaration(path) {
   const imports = path.node.specifiers;
   imports.forEach(specifier => {
     const variableName = specifier.local.name;
@@ -37,4 +22,29 @@ export function replaceImportDeclaration(path: NodePath<ImportDeclaration>) {
       specifier.local.name = `${variableName}`;
     }
   });
+}
+function isVariableUsedAsObject(path, variableName) {
+  const binding = path.scope.getBinding(variableName);
+  let isUsedObject = false;
+
+  if (!binding || !binding.referencePaths) {
+    return isUsedObject;
+  }
+
+  for (const referencePath of binding.referencePaths) {
+    if (t.isMemberExpression(referencePath.parent)) {
+      const memberExprParent = referencePath.parent;
+
+      if (t.isIdentifier(memberExprParent.object, { name: variableName })) {
+        const newMemberExpr = t.memberExpression(
+          t.memberExpression(memberExprParent.object, t.identifier('value')),
+          memberExprParent.property,
+        );
+        referencePath.parentPath.replaceWith(newMemberExpr);
+        isUsedObject = true;
+      }
+    }
+  }
+
+  return isUsedObject;
 }
