@@ -1,4 +1,5 @@
 import { types as t } from '@babel/core';
+import { startsWith } from "@essor/shared";
 import { imports } from '../program';
 import { isSymbolStart } from '../shared';
 import type { Identifier, VariableDeclarator } from '@babel/types';
