@@ -5,7 +5,7 @@ const env = process.env.NODE_ENV;
 
 export default defineConfig({
   entryPoints: {
-    'essor-shared': './src/index.ts',
+    signal: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
@@ -13,8 +13,18 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
-  sourcemap: true,
+  treeshake: true,
   cjsInterop: true,
+  sourcemap: false,
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
+  noExternal: ['@essor/shared'],
+  define: {
+    __DEV__: env !== 'production' ? 'true' : 'false',
+  },
+  outExtension({ format }) {
+    return {
+      js: `${env !== 'production' ? '.dev' : ''}.${format}.js`,
+    };
+  },
 });

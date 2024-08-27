@@ -11,7 +11,7 @@ import {
   removeChild,
   replaceChild,
   setAttribute,
-} from '../src/template/utils';
+} from '../src/utils';
 
 const tmpl = template('<div>Hello World</div>');
 const element = h(tmpl, {});
@@ -155,7 +155,7 @@ describe('setAttribute', () => {
   it('should remove attribute if value is falsy', () => {
     const element = document.createElement('div');
     element.setAttribute('id', 'test');
-    setAttribute(element, 'id');
+    setAttribute(element, 'id', '');
     expect(element.hasAttribute('id')).toBe(false);
   });
 

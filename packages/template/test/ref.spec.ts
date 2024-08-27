@@ -1,4 +1,4 @@
-import { useSignal } from '../src/signal';
+import { useSignal } from '@essor/signal';
 import { h as _h$, template as _template$ } from '../src/template';
 import { mount } from './test-utils';
 

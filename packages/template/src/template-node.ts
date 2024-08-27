@@ -6,7 +6,7 @@ import {
   isNil,
   startsWith,
 } from '@essor/shared';
-import { isSignal, useEffect, useSignal } from '../signal';
+import { isSignal, useEffect, useSignal } from '@essor/signal';
 import {
   addEventListener,
   binNode,
@@ -177,15 +177,14 @@ export class TemplateNode implements JSX.Element {
         const val = props[attr];
 
         const triggerValue = isSignal(val) ? val : useSignal(val);
+        patchAttribute(track, node, attr, triggerValue.value);
         const cleanup = useEffect(() => {
           triggerValue.value = isSignal(val) ? val.value : val;
-
           patchAttribute(track, node, attr, triggerValue.value);
         });
 
         let cleanupBind;
         const updateKey = `update${capitalizeFirstLetter(attr)}`;
-
         if (props[updateKey]) {
           cleanupBind = binNode(node, value => {
             props[updateKey](value);
@@ -205,7 +204,8 @@ function patchAttribute(track: NodeTrack, node: Node, attr: string, data: unknow
   const element = node as HTMLElement;
   if (!element.setAttribute) {
     return;
-  } else if (isFunction(data)) {
+  }
+  if (isFunction(data)) {
     track.cleanup = useEffect(() => {
       setAttribute(element, attr, data());
     });

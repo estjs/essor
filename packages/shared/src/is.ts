@@ -27,7 +27,7 @@ export function isNil(x: any): x is null | undefined {
 export const isFunction = (val: unknown): val is Function => typeof val === 'function';
 
 export function isFalsy(x: any): x is false | null | undefined {
-  return x === false || x === null || x === undefined;
+  return x === false || x === null || x === undefined || x === '';
 }
 
 export const isPrimitive = (

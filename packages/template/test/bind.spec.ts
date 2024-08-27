@@ -1,15 +1,16 @@
-import { useSignal } from '../src/signal';
+import { useSignal } from '@essor/signal';
 import { h as _h$, template as _template$ } from '../src/template';
 import { mount } from './test-utils';
 
 describe('bind value', () => {
   let inputRef;
   let componentRef;
+  let signal;
   function inoutBind() {
-    const signal = useSignal('hello');
+    signal = useSignal('hello');
     return _h$(_template$('<input/>'), {
       '1': {
-        value: signal,
+        value: signal.value,
         updateValue: _value => (signal.value = _value),
       },
     });

@@ -19,49 +19,66 @@ type SignalMap = Map<string | symbol, Set<EffectFn>>;
 
 const computedMap = new WeakMap<object, ComputedMap>();
 const signalMap = new WeakMap<object, SignalMap>();
-const effectDeps = new WeakSet<EffectFn>();
+const effectDeps = new Set<EffectFn>();
 const reactiveMap = new WeakMap<object, object>();
 const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
 
-function getDepsMap<T>(
-  map: WeakMap<object, Map<string | symbol, Set<T>>>,
-  target: object,
-  key: string | symbol,
-): Set<T> {
-  let depsMap = map.get(target);
+/**
+ * Tracks dependencies for reactive properties.
+ * @param target - The target object being tracked.
+ * @param key - The key on the target object.
+ */
+function track(target: object, key: string | symbol) {
+  if (!activeEffect && !activeComputed) return;
+
+  let depsMap = signalMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
-    map.set(target, depsMap);
+    signalMap.set(target, depsMap);
   }
   let dep = depsMap.get(key);
   if (!dep) {
     dep = new Set();
     depsMap.set(key, dep);
   }
-  return dep;
-}
+  if (activeEffect) dep.add(activeEffect);
 
-function track(target: object, key: string | symbol) {
-  if (activeEffect) {
-    getDepsMap(signalMap, target, key).add(activeEffect);
+  let computedDepsMap = computedMap.get(target);
+  if (!computedDepsMap) {
+    computedDepsMap = new Map();
+    computedMap.set(target, computedDepsMap);
+  }
+  let computedDeps = computedDepsMap.get(key);
+  if (!computedDeps) {
+    computedDeps = new Set();
+    computedDepsMap.set(key, computedDeps);
   }
   if (activeComputed) {
-    getDepsMap(computedMap, target, key).add(activeComputed);
+    computedDeps.add(activeComputed);
   }
 }
 
 function trigger(target: object, key: string | symbol) {
-  const effects = signalMap.get(target)?.get(key);
-  if (effects) {
-    effects.forEach(effect => effectDeps.has(effect) && effect());
+  const depsMap = signalMap.get(target);
+  if (!depsMap) return;
+
+  const dep = depsMap.get(key);
+  if (dep) {
+    dep.forEach(effect => effectDeps.has(effect) && effect());
   }
 
-  const computeds = computedMap.get(target)?.get(key);
-  if (computeds) {
-    computeds.forEach(computed => computed.run());
+  const computedDepsMap = computedMap.get(target);
+  if (computedDepsMap) {
+    const computeds = computedDepsMap.get(key);
+    if (computeds) {
+      computeds.forEach(computed => computed.run());
+    }
   }
 }
 
+/**
+ * Signal class representing a reactive value.
+ */
 export class Signal<T> {
   private _value: T;
 
@@ -69,16 +86,32 @@ export class Signal<T> {
     this._value = value;
   }
 
-  private triggerObject() {
-    if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
-      useReactive(this._value as object);
-    }
+  valueOf(): T {
+    track(this, '_sv');
+    this.__triggerObject();
+    return this._value;
+  }
+
+  toString(): string {
+    track(this, '_sv');
+    this.__triggerObject();
+    return String(this._value);
+  }
+
+  toJSON(): T {
+    return this._value;
   }
 
   get value(): T {
     track(this, '_sv');
-    this.triggerObject();
+    this.__triggerObject();
     return this._value;
+  }
+
+  private __triggerObject() {
+    if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
+      useReactive(this._value as object);
+    }
   }
 
   set value(newValue: T) {
@@ -86,10 +119,11 @@ export class Signal<T> {
       console.warn('Signal cannot be set to another signal, use .peek() instead');
       newValue = newValue.peek() as T;
     }
-
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      this.triggerObject();
+      if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
+        this.__triggerObject();
+      }
       trigger(this, '_sv');
     }
   }
@@ -98,19 +132,35 @@ export class Signal<T> {
     return this._value;
   }
 
-  update(value) {
-    this.value = value;
+  update() {
+    trigger(this, '_sv');
   }
 }
 
+/**
+ * Creates a Signal object.
+ * @param value - The initial value for the Signal.
+ * @returns A Signal object.
+ */
 export function useSignal<T>(value?: T): Signal<T> {
-  return isSignal(value) ? (value as Signal<T>) : new Signal<T>(value as T);
+  if (isSignal(value)) {
+    return value as Signal<T>;
+  }
+  return new Signal<T>(value as T);
 }
 
+/**
+ * Checks if a value is a Signal.
+ * @param value - The value to check.
+ * @returns True if the value is a Signal, otherwise false.
+ */
 export function isSignal<T>(value: any): value is Signal<T> {
   return value instanceof Signal;
 }
 
+/**
+ * Computed class representing a computed reactive value.
+ */
 export class Computed<T = unknown> {
   private _value: T;
 
@@ -139,14 +189,29 @@ export class Computed<T = unknown> {
   }
 }
 
+/**
+ * Creates a Computed object.
+ * @param fn - The function to compute the value.
+ * @returns A Computed object.
+ */
 export function useComputed<T>(fn: () => T): Computed<T> {
   return new Computed<T>(fn);
 }
 
+/**
+ * Checks if a value is a Computed object.
+ * @param value - The value to check.
+ * @returns True if the value is a Computed object, otherwise false.
+ */
 export function isComputed<T>(value: any): value is Computed<T> {
   return value instanceof Computed;
 }
 
+/**
+ * Registers an effect function that runs whenever its dependencies change.
+ * @param fn - The effect function to register.
+ * @returns A function to unregister the effect.
+ */
 export function useEffect(fn: EffectFn): () => void {
   function effectFn() {
     const prev = activeEffect;
@@ -168,6 +233,12 @@ export type SignalObject<T> = {
   [K in keyof T]: Signal<T[K]> | T[K];
 };
 
+/**
+ * Creates a SignalObject from the given initialValues, excluding specified keys.
+ * @param initialValues - The initial values for the SignalObject.
+ * @param exclude - A function or array that determines which keys to exclude from the SignalObject.
+ * @returns The created SignalObject.
+ */
 export function signalObject<T extends object>(
   initialValues: T,
   exclude?: ExcludeType,
@@ -180,6 +251,12 @@ export function signalObject<T extends object>(
   return signals;
 }
 
+/**
+ * Returns the current value of a signal, signal object, or plain object, excluding specified keys.
+ * @param signal - The signal, signal object, or plain object to unwrap.
+ * @param exclude - A function or array that determines which keys to exclude from the unwrapped object.
+ * @returns The unwrapped value of the signal, signal object, or plain object.
+ */
 export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
   if (isSignal(signal)) {
@@ -190,7 +267,11 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
   }
   if (isObject(signal)) {
     return Object.entries(signal).reduce((acc, [key, value]) => {
-      acc[key] = isExclude(key, exclude) ? value : isSignal(value) ? value.peek() : value;
+      if (isExclude(key, exclude)) {
+        acc[key] = value;
+      } else {
+        acc[key] = isSignal(value) ? value.peek() : value;
+      }
       return acc;
     }, {} as T);
   }
@@ -199,17 +280,40 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
 
 const REACTIVE_MARKER = Symbol('useReactive');
 
+/**
+ * Checks if an object is reactive.
+ * @param obj - The object to check.
+ * @returns True if the object is reactive, otherwise false.
+ */
 export function isReactive(obj: any): boolean {
   return obj && obj[REACTIVE_MARKER] === true;
 }
 
+/**
+ * Creates a shallow copy of a reactive object.
+ * @param obj - The reactive object to copy.
+ * @returns A shallow copy of the reactive object.
+ */
 export function unReactive(obj: any): any {
-  return isReactive(obj) ? { ...obj } : obj;
+  if (!isReactive(obj)) {
+    return obj;
+  }
+  return { ...obj };
 }
 
+/**
+ * Creates a reactive object.
+ * @param initialValue - The initial value for the reactive object.
+ * @param exclude - A function or array that determines which keys to exclude from the reactive object.
+ * @returns A reactive object.
+ */
 export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
-  if (!isObject(initialValue)) return initialValue;
-  if (isReactive(initialValue)) return initialValue;
+  if (!isObject(initialValue)) {
+    return initialValue;
+  }
+  if (isReactive(initialValue)) {
+    return initialValue;
+  }
 
   if (reactiveMap.has(initialValue)) {
     return reactiveMap.get(initialValue) as T;
@@ -239,14 +343,13 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER || startsWith(key, '_')) return true;
 
-      const value = Reflect.get(target, key, receiver);
-      if (isExclude(key, exclude)) return value;
+      const getValue = Reflect.get(target, key, receiver);
+      const value = isSignal(getValue) ? getValue.value : getValue;
 
-      track(target, key);
-
-      if (isSignal(value)) {
-        return value.value;
+      if (isExclude(key, exclude)) {
+        return value;
       }
+      track(target, key);
       if (isObject(value)) {
         return useReactive(value);
       }
@@ -257,22 +360,26 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
         Reflect.set(target, key, value, receiver);
         return true;
       }
+      let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
 
-      const getValue = Reflect.get(target, key, receiver);
-
-      const oldValue = isSignal(getValue) ? getValue.value : getValue;
-      const newValue = isSignal(value) ? value.value : value;
-
-      const result = Reflect.set(target, key, value, receiver);
-      if (hasChanged(newValue, oldValue)) {
+      if (isSignal(oldValue)) {
+        oldValue = oldValue.value;
+      }
+      if (isSignal(value)) {
+        value = value.value;
+      }
+      const obj = Reflect.set(target, key, value, receiver);
+      if (hasChanged(value, oldValue)) {
         trigger(target, key);
       }
-      return result;
+      return obj;
     },
     deleteProperty(target, key) {
       const oldValue = Reflect.get(target, key);
       const result = Reflect.deleteProperty(target, key);
-      if (oldValue !== undefined) trigger(target, key);
+      if (oldValue !== undefined) {
+        trigger(target, key);
+      }
       return result;
     },
   };

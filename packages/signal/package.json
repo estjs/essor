@@ -1,0 +1,61 @@
+{
+  "name": "@essor/signal",
+  "version": "0.0.8",
+  "description": "",
+  "type": "module",
+  "keywords": [],
+  "license": "MIT",
+  "homepage": "https://github.com/estjs/essor/signal#readme",
+  "bugs": "https://github.com/estjs/essor/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
+  "author": "jiangxd <jiangxd2016@gmail.com>",
+  "funding": "https://github.com/sponsors/estjs",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/signal.esm.js",
+  "module": "./dist/signal.esm.js",
+  "types": "./dist/signal.d.ts",
+  "exports": {
+    ".": {
+      "browser": {
+        "development": {
+          "types": "./dist/signal.d.ts",
+          "require": "./dist/signal.dev.cjs.js",
+          "import": "./dist/signal.dev.esm.js"
+        },
+        "types": "./dist/signal.d.ts",
+        "require": "./dist/signal.cjs.js",
+        "import": "./dist/signal.esm.js"
+      },
+      "development": {
+        "types": "./dist/signal.d.ts",
+        "require": "./dist/signal.dev.cjs.js",
+        "import": "./dist/signal.dev.esm.js"
+      },
+      "types": "./dist/signal.d.ts",
+      "require": "./dist/signal.cjs.js",
+      "import": "./dist/signal.esm.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/signal.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "unpkg": "dist/signal.esm.js",
+  "jsdelivr": "dist/signal.esm.js",
+  "scripts": {
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@essor/shared": "workspace:*"
+  }
+}
