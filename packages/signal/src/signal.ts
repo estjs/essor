@@ -8,6 +8,7 @@ import {
   isPrimitive,
   startsWith,
 } from '@essor/shared';
+import { isMap, isSet, isWeakMap, isWeakSet } from '@essor/shared';
 
 type EffectFn = () => void;
 
@@ -301,6 +302,43 @@ export function unReactive(obj: any): any {
   return { ...obj };
 }
 
+function initArray(initialValue: any[]) {
+  arrayMethods.forEach(method => {
+    const originalMethod = Array.prototype[method];
+    track(initialValue, 'length');
+
+    Object.defineProperty(initialValue, method, {
+      value(...args: any[]) {
+        const result = originalMethod.apply(this, args);
+        if (['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].includes(method)) {
+          trigger(initialValue, 'length');
+        }
+        return result;
+      },
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    });
+  });
+}
+
+function initCollection(initialValue: Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>) {
+  ['add', 'delete', 'clear', 'set'].forEach(method => {
+    const originalMethod = initialValue[method];
+    track(initialValue, method);
+
+    Object.defineProperty(initialValue, method, {
+      value(...args: any[]) {
+        const result = originalMethod.apply(this, args);
+        trigger(initialValue, method);
+        return result;
+      },
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    });
+  });
+}
 /**
  * Creates a reactive object.
  * @param initialValue - The initial value for the reactive object.
@@ -318,25 +356,15 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
   if (reactiveMap.has(initialValue)) {
     return reactiveMap.get(initialValue) as T;
   }
-
   if (Array.isArray(initialValue)) {
-    arrayMethods.forEach(method => {
-      const originalMethod = initialValue[method];
-      track(initialValue, 'length');
-
-      Object.defineProperties(initialValue, {
-        [method]: {
-          value(...args) {
-            const result = originalMethod.apply(this, args);
-            trigger(initialValue, 'length');
-            return result;
-          },
-          enumerable: false,
-          configurable: true,
-          writable: true,
-        },
-      });
-    });
+    initArray(initialValue);
+  } else if (
+    isSet(initialValue) ||
+    isMap(initialValue) ||
+    isWeakSet(initialValue) ||
+    isWeakMap(initialValue)
+  ) {
+    initCollection(initialValue);
   }
 
   const handler: ProxyHandler<T> = {

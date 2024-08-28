@@ -17,6 +17,17 @@ export function isNull(val: any): val is null {
 export function isSymbol(val: unknown): val is symbol {
   return typeof val === 'symbol';
 }
+
+export function isSet(val: any): val is Set<any> {
+  return _toString.call(val) === '[object Set]';
+}
+export function isWeakMap(val: any): val is WeakMap<any, any> {
+  return _toString.call(val) === '[object WeakMap]';
+}
+export function isWeakSet(val: any): val is WeakSet<any> {
+  return _toString.call(val) === '[object WeakSet]';
+}
+
 export function isMap(val: unknown): val is Map<any, any> {
   return _toString.call(val) === '[object Map]';
 }

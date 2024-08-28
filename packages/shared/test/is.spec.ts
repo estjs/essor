@@ -7,7 +7,10 @@ import {
   isObject,
   isPrimitive,
   isPromise,
+  isSet,
   isSymbol,
+  isWeakMap,
+  isWeakSet,
 } from '../src';
 
 describe('isFunction function', () => {
@@ -121,6 +124,49 @@ describe('isMap', () => {
     expect(isMap({})).toBe(false);
     expect(isMap(null)).toBe(false);
     expect(isMap(undefined)).toBe(false);
+  });
+});
+
+describe('isSet', () => {
+  it('should return true for Set instances', () => {
+    expect(isSet(new Set())).toBe(true);
+    expect(isSet(new Set([1, 2, 3]))).toBe(true);
+  });
+
+  it('should return false for non-Set instances', () => {
+    expect(isSet(new Map())).toBe(false);
+    expect(isSet([])).toBe(false);
+    expect(isSet({})).toBe(false);
+    expect(isSet(null)).toBe(false);
+    expect(isSet(undefined)).toBe(false);
+  });
+});
+
+describe('isWeakMap', () => {
+  it('should return true for WeakMap instances', () => {
+    expect(isWeakMap(new WeakMap())).toBe(true);
+  });
+
+  it('should return false for non-WeakMap instances', () => {
+    expect(isWeakMap(new Set())).toBe(false);
+    expect(isWeakMap([])).toBe(false);
+    expect(isWeakMap({})).toBe(false);
+    expect(isWeakMap(null)).toBe(false);
+    expect(isWeakMap(undefined)).toBe(false);
+  });
+});
+
+describe('isWeakSet', () => {
+  it('should return true for WeakSet instances', () => {
+    expect(isWeakSet(new WeakSet())).toBe(true);
+  });
+
+  it('should return false for non-WeakSet instances', () => {
+    expect(isWeakSet(new Set())).toBe(false);
+    expect(isWeakSet([])).toBe(false);
+    expect(isWeakSet({})).toBe(false);
+    expect(isWeakSet(null)).toBe(false);
+    expect(isWeakSet(undefined)).toBe(false);
   });
 });
 
