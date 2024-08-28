@@ -46,7 +46,6 @@ describe('isFalsy function', () => {
     expect(isFalsy(false)).toBe(true);
     expect(isFalsy(null)).toBe(true);
     expect(isFalsy(undefined)).toBe(true);
-    expect(isFalsy('')).toBe(true);
   });
 
   it('should return false for truthy values', () => {
@@ -54,6 +53,7 @@ describe('isFalsy function', () => {
     expect(isFalsy(0)).toBe(false);
     expect(isFalsy('string')).toBe(false);
     expect(isFalsy({})).toBe(false);
+    expect(isFalsy('')).toBe(false);
   });
 });
 

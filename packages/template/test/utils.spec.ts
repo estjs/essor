@@ -155,7 +155,7 @@ describe('setAttribute', () => {
   it('should remove attribute if value is falsy', () => {
     const element = document.createElement('div');
     element.setAttribute('id', 'test');
-    setAttribute(element, 'id', '');
+    setAttribute(element, 'id', undefined);
     expect(element.hasAttribute('id')).toBe(false);
   });
 

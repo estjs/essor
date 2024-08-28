@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "@essor/shared": "workspace:*",
+    "@essor/signal": "workspace:*",
     "@essor/template": "workspace:*",
     "csstype": "^3.1.3"
   }

@@ -39,7 +39,7 @@
       },
       "types": "./dist/template.d.ts",
       "require": "./dist/template.cjs.js",
-      "import": "./dist/template.esm.js"
+      "import": "./dist/template.dev.esm.js"
     }
   },
   "typesVersions": {

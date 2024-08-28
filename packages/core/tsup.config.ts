@@ -16,7 +16,7 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: false,
-  noExternal: ['@essor/shared', '@essor/template'],
+  noExternal: ['@essor/shared', '@essor/template', '@essor/signal'],
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
   define: {

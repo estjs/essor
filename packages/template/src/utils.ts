@@ -77,7 +77,11 @@ export function setAttribute(element: HTMLElement, attr: string, value: unknown)
   } else if (value === true) {
     element.setAttribute(attr, '');
   } else {
-    element.setAttribute(attr, String(value));
+    if (element instanceof HTMLInputElement) {
+      element.value = String(value);
+    } else {
+      element.setAttribute(attr, String(value));
+    }
   }
 }
 
