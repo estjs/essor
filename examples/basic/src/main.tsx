@@ -1,5 +1,5 @@
 function App() {
-  const $value = 'hello word';
+  const $value = 'hello world';
   return (
     <div>
       <p>{$value}</p>
