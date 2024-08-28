@@ -10,11 +10,9 @@ npm install @essor/babel-plugin --save-dev
 
 ```js
 import EssorBabelPlugin from '@essor/babel-plugin';
-
 {
   "plugins": [[EssorBabelPlugin,pluginOptions]]
 }
-
 ```
 
 ## Options
