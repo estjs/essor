@@ -33,6 +33,8 @@
     "changelog": "tsx scripts/changelog.ts",
     "test:unit": "vitest",
     "test:e2e": "playwright test",
+    "docs:dev": "pnpm run -C docs dev",
+    "docs:build": "pnpm run -C docs build",
     "gen:version": "tsx ./scripts/gen-version.ts",
     "prerelease": "pnpm run lint && pnpm run build && pnpm run typecheck && pnpm run test",
     "release": "pnpm run changelog && pnpm run prerelease && bumpp package.json packages/*/package.json --no-git-checks --commit --push --tag && pnpm -r publish --access public"

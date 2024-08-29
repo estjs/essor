@@ -66,6 +66,12 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5(@types/node@22.5.1)(jsdom@25.0.0)(terser@5.31.6)
 
+  docs:
+    dependencies:
+      athen:
+        specifier: link:../athen/packages/athen
+        version: link:../../athen/packages/athen
+
   examples/basic:
     dependencies:
       essor:
