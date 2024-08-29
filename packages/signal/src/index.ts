@@ -9,6 +9,8 @@ export {
   useReactive,
   isReactive,
   unReactive,
+  shallowReactive,
+  shallowSignal,
 } from './signal';
 export { useWatch } from './watch';
 export { type Signal, type Computed } from './signal';

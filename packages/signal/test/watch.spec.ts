@@ -1,4 +1,3 @@
-import { describe, expect, it, vi } from 'vitest';
 import { useComputed, useReactive, useSignal, useWatch } from '../src';
 
 describe('useWatch', () => {

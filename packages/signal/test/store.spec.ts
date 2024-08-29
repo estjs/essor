@@ -17,10 +17,10 @@ describe('createStore', () => {
     });
     const store = useStore();
     expect(store.state.count).toBe(0);
-    expect(store.doubleCount.value).toBe(0);
+    expect(store.doubleCount).toBe(0);
     store.increment();
     expect(store.state.count).toBe(1);
-    expect(store.doubleCount.value).toBe(2);
+    expect(store.doubleCount).toBe(2);
   });
 });
 describe('store Methods', () => {

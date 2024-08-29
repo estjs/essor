@@ -12,9 +12,11 @@ import { isMap, isSet, isWeakMap, isWeakSet } from '@essor/shared';
 
 type EffectFn = () => void;
 
+// Globals to track active effects and computed functions
 let activeEffect: EffectFn | null = null;
 let activeComputed: Computed<unknown> | null = null;
 
+// WeakMaps to store dependency tracking information
 type ComputedMap = Map<string | symbol, Set<Computed<unknown>>>;
 type SignalMap = Map<string | symbol, Set<EffectFn>>;
 
@@ -31,7 +33,7 @@ const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reve
  */
 function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
-
+  // Handle signal dependencies
   let depsMap = signalMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
@@ -43,7 +45,7 @@ function track(target: object, key: string | symbol) {
     depsMap.set(key, dep);
   }
   if (activeEffect) dep.add(activeEffect);
-
+  // Handle computed dependencies
   let computedDepsMap = computedMap.get(target);
   if (!computedDepsMap) {
     computedDepsMap = new Map();
@@ -58,16 +60,21 @@ function track(target: object, key: string | symbol) {
     computedDeps.add(activeComputed);
   }
 }
-
+/**
+ * Trigger function to notify all effects and computed functions
+ * that are dependent on a specific target key.
+ * @param target - The target object.
+ * @param key - The key on the target object.
+ */
 function trigger(target: object, key: string | symbol) {
   const depsMap = signalMap.get(target);
   if (!depsMap) return;
-
+  // Run all effects associated with the key
   const dep = depsMap.get(key);
   if (dep) {
     dep.forEach(effect => effectDeps.has(effect) && effect());
   }
-
+  // Run all computed functions associated with the key
   const computedDepsMap = computedMap.get(target);
   if (computedDepsMap) {
     const computeds = computedDepsMap.get(key);
@@ -79,42 +86,36 @@ function trigger(target: object, key: string | symbol) {
 
 /**
  * Signal class representing a reactive value.
+ * Signals can be used to track and respond to changes in state.
  */
 export class Signal<T> {
   private _value: T;
+  private _shallow: boolean;
 
-  constructor(value: T) {
+  constructor(value: T, shallow: boolean = false) {
     this._value = value;
+    this._shallow = shallow;
   }
-
-  valueOf(): T {
-    track(this, '_sv');
-    this.__triggerObject();
-    return this._value;
-  }
-
-  toString(): string {
-    track(this, '_sv');
-    this.__triggerObject();
-    return String(this._value);
-  }
-
-  toJSON(): T {
-    return this._value;
-  }
-
+  /**
+   * Get the current value of the Signal and track its usage.
+   */
   get value(): T {
     track(this, '_sv');
     this.__triggerObject();
     return this._value;
   }
-
+  /**
+   * Trigger reactivity for non-primitive and non-HTMLElement values.
+   * Recursively applies reactivity to nested objects.
+   */
   private __triggerObject() {
-    if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
+    if (!isPrimitive(this._value) && !isHTMLElement(this._value) && !this._shallow) {
       useReactive(this._value as object);
     }
   }
-
+  /**
+   * Set a new value to the Signal and trigger updates if the value has changed.
+   */
   set value(newValue: T) {
     if (isSignal(newValue)) {
       console.warn('Signal cannot be set to another signal, use .peek() instead');
@@ -128,13 +129,11 @@ export class Signal<T> {
       trigger(this, '_sv');
     }
   }
-
+  /**
+   * Peek at the current value of the Signal without tracking it.
+   */
   peek(): T {
     return this._value;
-  }
-
-  update() {
-    trigger(this, '_sv');
   }
 }
 
@@ -151,6 +150,16 @@ export function useSignal<T>(value?: T): Signal<T> {
 }
 
 /**
+ * Creates a shallow Signal that does not recursively track the value.
+ * Shallow signals are useful for performance optimization when the value
+ * is an object or an array that is not expected to change.
+ * @param value - The initial value for the Signal.
+ * @returns A shallow Signal object.
+ */
+export function shallowSignal<T>(value?: T): Signal<T> {
+  return new Signal<T>(value as T, true);
+}
+/**
  * Checks if a value is a Signal.
  * @param value - The value to check.
  * @returns True if the value is a Signal, otherwise false.
@@ -161,21 +170,27 @@ export function isSignal<T>(value: any): value is Signal<T> {
 
 /**
  * Computed class representing a computed reactive value.
+ * Computed values automatically update when their dependencies change.
  */
 export class Computed<T = unknown> {
   private _value: T;
 
   constructor(private readonly fn: () => T) {
+    // Track dependencies when the Computed is created
     const prev = activeComputed;
     activeComputed = this;
     this._value = this.fn();
     activeComputed = prev;
   }
-
+  /**
+   * Get the current computed value without tracking it.
+   */
   peek(): T {
     return this._value;
   }
-
+  /**
+   * Run the computed function and update the value if it has changed.
+   */
   run() {
     const newValue = this.fn();
     if (hasChanged(newValue, this._value)) {
@@ -184,6 +199,9 @@ export class Computed<T = unknown> {
     }
   }
 
+  /**
+   * Get the current computed value and track its usage.
+   */
   get value(): T {
     track(this, '_cv');
     return this._value;
@@ -302,7 +320,7 @@ export function unReactive(obj: any): any {
   return { ...obj };
 }
 
-function initArray(initialValue: any[]) {
+function initArrayProxy(initialValue: any[]) {
   arrayMethods.forEach(method => {
     const originalMethod = Array.prototype[method];
     track(initialValue, 'length');
@@ -322,7 +340,9 @@ function initArray(initialValue: any[]) {
   });
 }
 
-function initCollection(initialValue: Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>) {
+function initCollectionProxy(
+  initialValue: Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>,
+) {
   ['add', 'delete', 'clear', 'set'].forEach(method => {
     const originalMethod = initialValue[method];
     track(initialValue, method);
@@ -345,7 +365,34 @@ function initCollection(initialValue: Set<any> | Map<any, any> | WeakSet<any> | 
  * @param exclude - A function or array that determines which keys to exclude from the reactive object.
  * @returns A reactive object.
  */
+
 export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
+  return reactive(initialValue, exclude, false);
+}
+
+/**
+ * Creates a shallow reactive object.
+ * Only the top level properties of the object are reactive. Nested objects are not reactive.
+ * @param initialValue - The initial value for the reactive object.
+ * @param exclude - A function or array that determines which keys to exclude from the reactive object.
+ * @returns A shallow reactive object.
+ */
+export function shallowReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
+  return reactive(initialValue, exclude, true);
+}
+
+/**
+ * Creates a reactive object.
+ * @param initialValue - The initial value for the reactive object.
+ * @param exclude - A function or array that determines which keys to exclude from the reactive object.
+ * @param shallow - If true, only the top level properties of the object are reactive. Nested objects are not reactive.
+ * @returns A reactive object.
+ */
+function reactive<T extends object>(
+  initialValue: T,
+  exclude?: ExcludeType,
+  shallow: boolean = false,
+): T {
   if (!isObject(initialValue)) {
     return initialValue;
   }
@@ -357,19 +404,20 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
     return reactiveMap.get(initialValue) as T;
   }
   if (Array.isArray(initialValue)) {
-    initArray(initialValue);
+    initArrayProxy(initialValue);
   } else if (
     isSet(initialValue) ||
     isMap(initialValue) ||
     isWeakSet(initialValue) ||
     isWeakMap(initialValue)
   ) {
-    initCollection(initialValue);
+    initCollectionProxy(initialValue);
   }
 
   const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER || startsWith(key, '_')) return true;
+      // console.log('track', target, key);
 
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;
@@ -377,8 +425,9 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
       if (isExclude(key, exclude)) {
         return value;
       }
+
       track(target, key);
-      if (isObject(value)) {
+      if (isObject(value) && !shallow) {
         return useReactive(value);
       }
       return value;

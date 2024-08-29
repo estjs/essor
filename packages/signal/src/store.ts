@@ -1,5 +1,5 @@
-import { isFunction } from '@essor/shared';
 import { useComputed, useReactive } from './signal';
+import { useWatch } from './watch';
 import type { Computed } from './signal';
 
 interface StoreOptions<S, G, A> {
@@ -28,9 +28,7 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   >;
 
   const initState = { ...(state ?? {}) };
-  const reactiveState = useReactive(state ?? {}, val => {
-    return isFunction(val);
-  });
+  const reactiveState = useReactive(state ?? {});
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];
@@ -65,7 +63,9 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   for (const key in getters) {
     const getter = getters[key];
     if (getter) {
-      store[key] = useComputed(getter.bind(reactiveState, reactiveState));
+      useWatch(useComputed(getter.bind(reactiveState, reactiveState)), value => {
+        store[key] = value;
+      });
     }
   }
 

@@ -1,4 +1,4 @@
-import { useComputed, useEffect, useSignal } from '../src';
+import { shallowSignal, useComputed, useEffect, useSignal } from '../src';
 
 describe('useSignal', () => {
   it('should initialize with the correct value', () => {
@@ -238,6 +238,39 @@ describe('useSignal', () => {
 
     expect(fn).toHaveBeenCalled();
     expect(testSignal.value.one.two.three).toEqual([1]);
+  });
+
+  it('should work with shallow signal array', () => {
+    const testSignal = shallowSignal([1, 2, 3]);
+
+    const fn = vitest.fn(() => {
+      testSignal.value;
+    });
+    useEffect(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+    testSignal.value.push(4);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(testSignal.value).toEqual([1, 2, 3, 4]);
+
+    testSignal.value = [2, 3, 4];
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(testSignal.value).toEqual([2, 3, 4]);
+  });
+
+  it('should work with shallow signal object', () => {
+    const testSignal = shallowSignal<Record<string, number>>({ a: 1, b: 2, c: 3 });
+
+    const fn = vitest.fn(() => {
+      testSignal.value;
+    });
+    useEffect(fn);
+    expect(fn).toHaveBeenCalledTimes(1);
+    testSignal.value.d = 4;
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(testSignal.value).toEqual({ a: 1, b: 2, c: 3, d: 4 });
+    testSignal.value = { a: 2, b: 3, c: 4, d: 5 };
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(testSignal.value).toEqual({ a: 2, b: 3, c: 4, d: 5 });
   });
 });
 
