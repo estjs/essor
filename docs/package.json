@@ -1,0 +1,17 @@
+{
+  "name": "docs",
+  "version": "0.0.4",
+  "description": "",
+  "type": "module",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "athen dev ./",
+    "build": "athen build ./"
+  },
+  "dependencies": {
+    "athen": "^0.0.7-beta.3"
+  }
+}
