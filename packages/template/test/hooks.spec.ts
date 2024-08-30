@@ -1,4 +1,4 @@
-import { h, onDestroy, onMount, template, useInject, useProvide, useRef } from '../src';
+import { h, onDestroy, onMount, template, useInject, useProvide } from '../src';
 
 describe('lifecycle Hooks', () => {
   let ComptNode;
@@ -77,18 +77,5 @@ describe('provide and inject', () => {
 
   it('useProvide should add value to ComptNode context', () => {
     expect(root.querySelector('.temp2')?.innerHTML).toBe('value');
-  });
-});
-
-describe('useRef', () => {
-  it('should allow setting the current value of the ref', () => {
-    const ref = useRef<number>();
-    ref.current = 10;
-    expect(ref.current).toBe(10);
-  });
-
-  it('should return true for the __is_ref property', () => {
-    const ref = useRef<number>();
-    expect(ref.__is_ref).toBe(true);
   });
 });

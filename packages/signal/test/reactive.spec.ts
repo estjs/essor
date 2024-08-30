@@ -1,4 +1,4 @@
-import { isReactive, shallowReactive, unReactive, useEffect, useReactive } from '../src';
+import { isReactive, shallowReactive, unReactive, useEffect, useReactive, useSignal } from '../src';
 
 describe('useReactive', () => {
   it('should work with property with initial value', () => {
@@ -149,6 +149,88 @@ describe('useReactive', () => {
 
     state[1] = { d: 4 };
     expect(mockFn).toBeCalledTimes(2);
+  });
+  it('should not work with not object type', () => {
+    // @ts-ignore
+    const state = useReactive(1);
+    expect(state).toBe(1);
+
+    // @ts-ignore
+    const state2 = shallowReactive(false);
+    expect(state2).toBe(false);
+
+    // @ts-ignore
+    const state3 = shallowReactive(null);
+    expect(state3).toBe(null);
+
+    // @ts-ignore
+    const state4 = shallowReactive(undefined);
+    expect(state4).toBe(undefined);
+
+    const symbol = Symbol();
+    // @ts-ignore
+    const state5 = shallowReactive(symbol);
+    expect(state5).toBe(symbol);
+
+    // @ts-ignore
+    const state6 = shallowReactive('');
+    expect(state6).toBe('');
+  });
+
+  it('should not work with reactive proxy', () => {
+    const state = useReactive({ count: 0 });
+    const state2 = useReactive(state);
+
+    expect(state).toEqual(state2);
+  });
+
+  it('should work with exclude', () => {
+    const state = useReactive({ count: 0, count2: 0 }, ['count']);
+
+    const effectFn = vi.fn(() => {
+      state.count;
+      state.count2;
+    });
+    useEffect(() => {
+      effectFn();
+    });
+    expect(effectFn).toBeCalledTimes(1);
+
+    state.count++;
+    expect(effectFn).toBeCalledTimes(1);
+    state.count2++;
+    expect(effectFn).toBeCalledTimes(2);
+  });
+
+  it('should work with reactive set signal value', () => {
+    const state = useReactive<Record<string, any>>({ count: 0 });
+
+    const effectFn = vi.fn(() => {
+      state.count;
+    });
+    useEffect(() => {
+      effectFn();
+    });
+    expect(effectFn).toBeCalledTimes(1);
+    state.count = useSignal(2);
+    expect(state.count).toBe(2);
+    expect(effectFn).toBeCalledTimes(2);
+  });
+
+  it('should work with reactive deleteProperty', () => {
+    const state = useReactive({ count: 0 });
+
+    const effectFn = vi.fn(() => {
+      state.count;
+    });
+    useEffect(() => {
+      effectFn();
+    });
+    expect(effectFn).toBeCalledTimes(1);
+    //@ts-ignore
+    delete state.count;
+    expect(state.count).toBe(undefined);
+    expect(effectFn).toBeCalledTimes(2);
   });
 });
 

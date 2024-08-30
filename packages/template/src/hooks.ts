@@ -48,33 +48,3 @@ export function useInject<T, K = InjectionKey<T> | string | number>(
 //   const propsRef = () => {};
 //   const propsChild = () => {};
 // }
-
-/**
- * Initializes a reference with a null value of type T or null.
- *
- * @template T - The type of the reference.
- * @return {T & { __is_ref: boolean; current: T | null }} A proxy object allowing custom get and set behavior.
- */
-export function useRef<T>(): {
-  __is_ref: boolean;
-  current: T | null;
-} {
-  let refValue: T | null = null;
-
-  return new Proxy({} as any, {
-    get(target, key: string | symbol) {
-      if (key === '__is_ref') {
-        return true;
-      }
-      return refValue;
-    },
-    set(target, prop: string | symbol, value: any) {
-      if (prop === 'current') {
-        refValue = value;
-        return true;
-      }
-      refValue = value;
-      return true;
-    },
-  });
-}

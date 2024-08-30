@@ -22,6 +22,7 @@ export default defineConfig({
         '**/node_modules/**',
         '**/e2e/**',
         '**/dist/**',
+        '**/version.ts',
       ],
     },
     globals: true,

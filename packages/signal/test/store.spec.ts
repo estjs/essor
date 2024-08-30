@@ -71,6 +71,10 @@ describe('store Methods', () => {
     store.subscribe$(callback);
     store.patch$({ value: 42 });
     expect(callback).toHaveBeenCalled();
+
+    store.unsubscribe$(callback);
+    store.patch$({ value: 43 });
+    expect(callback).toHaveBeenCalledTimes(1);
   });
 
   it('should reset the state', () => {

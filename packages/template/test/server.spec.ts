@@ -1,4 +1,4 @@
-import { renderTemplate, renderToString, ssgRender } from '../src';
+import { renderSSG, renderTemplate, renderToString } from '../src';
 
 describe('service', () => {
   let App;
@@ -48,7 +48,7 @@ describe('service', () => {
       id: 'test',
       class: 'test-class',
     };
-    ssgRender(App, root, props);
+    renderSSG(App, root, props);
     expect(root.innerHTML).toMatchInlineSnapshot(
       `"<div id="test" class="test-class">JohnHello, !</div>"`,
     );

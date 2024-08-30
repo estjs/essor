@@ -1,4 +1,12 @@
-import { shallowSignal, useComputed, useEffect, useSignal } from '../src';
+import {
+  isSignal,
+  shallowSignal,
+  signalObject,
+  unSignal,
+  useComputed,
+  useEffect,
+  useSignal,
+} from '../src';
 
 describe('useSignal', () => {
   it('should initialize with the correct value', () => {
@@ -367,5 +375,94 @@ describe('effect', () => {
     expect(effectTimes).toBe(1);
     testSignal.value.push(4);
     expect(effectTimes).toBe(2);
+  });
+});
+
+describe('signalObject', () => {
+  it('should convert plain object properties to signals', () => {
+    const initialValues = { a: 1, b: 2 };
+    const signals = signalObject(initialValues);
+
+    expect(isSignal(signals.a)).toBe(true);
+    expect(isSignal(signals.b)).toBe(true);
+    expect(signals.a.peek()).toBe(1);
+    expect(signals.b.peek()).toBe(2);
+  });
+
+  it('should exclude properties based on exclude function', () => {
+    const initialValues = { a: 1, b: 2 };
+    const exclude = (key: string | symbol) => key === 'a';
+    const signals = signalObject(initialValues, exclude);
+
+    expect(isSignal(signals.a)).toBe(false); // 'a' should not be converted to a signal
+    expect(isSignal(signals.b)).toBe(true); // 'b' should be converted to a signal
+    expect(signals.a).toBe(1);
+    expect(signals.b.peek()).toBe(2);
+  });
+
+  it('should preserve signal values if they are already signals', () => {
+    const initialValues = { a: useSignal(1), b: 2 };
+    const signals = signalObject(initialValues);
+
+    expect(isSignal(signals.a)).toBe(true);
+    expect(signals.a.peek()).toBe(1); // should not wrap a signal in another signal
+    expect(isSignal(signals.b)).toBe(true);
+    expect(signals.b.peek()).toBe(2);
+  });
+
+  it('should handle empty objects', () => {
+    const initialValues = {};
+    const signals = signalObject(initialValues);
+
+    expect(signals).toEqual({});
+  });
+});
+
+describe('unSignal', () => {
+  it('should unwrap signal values', () => {
+    const signal = useSignal(1);
+    const unwrapped = unSignal(signal);
+
+    expect(unwrapped).toBe(1);
+  });
+
+  it('should unwrap signal objects', () => {
+    const initialValues = { a: useSignal(1), b: useSignal(2) };
+    const unwrapped = unSignal(signalObject(initialValues));
+
+    expect(unwrapped).toEqual({ a: 1, b: 2 });
+  });
+
+  it('should handle arrays of signals', () => {
+    const signalsArray = [useSignal(1), useSignal(2)];
+    const unwrapped = unSignal(signalsArray);
+
+    expect(unwrapped).toEqual([1, 2]);
+  });
+
+  it('should exclude properties based on exclude function during unwrapping', () => {
+    const initialValues = { a: useSignal(1), b: useSignal(2) };
+    const exclude = (key: string | symbol) => key === 'a';
+    const unwrapped = unSignal(signalObject(initialValues), exclude);
+
+    expect(unwrapped).toEqual({ a: initialValues.a, b: 2 });
+  });
+
+  it('should handle plain objects without signals', () => {
+    const obj = { a: 1, b: 2 };
+    const unwrapped = unSignal(obj);
+
+    expect(unwrapped).toEqual(obj);
+  });
+
+  it('should return the same value if not a signal, object, or array', () => {
+    expect(unSignal(42)).toBe(42);
+    expect(unSignal('string')).toBe('string');
+  });
+
+  it('should handle empty objects', () => {
+    const obj = {};
+    const unwrapped = unSignal(obj);
+    expect(unwrapped).toEqual({});
   });
 });

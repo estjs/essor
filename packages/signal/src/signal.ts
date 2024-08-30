@@ -249,7 +249,7 @@ export function useEffect(fn: EffectFn): () => void {
 }
 
 export type SignalObject<T> = {
-  [K in keyof T]: Signal<T[K]> | T[K];
+  [K in keyof T]: Signal<T[K]>;
 };
 
 /**
@@ -320,7 +320,7 @@ export function unReactive(obj: any): any {
   return { ...obj };
 }
 
-function initArrayProxy(initialValue: any[]) {
+function createArrayProxy(initialValue: any[]) {
   arrayMethods.forEach(method => {
     const originalMethod = Array.prototype[method];
     track(initialValue, 'length');
@@ -340,7 +340,7 @@ function initArrayProxy(initialValue: any[]) {
   });
 }
 
-function initCollectionProxy(
+function createCollectionProxy(
   initialValue: Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>,
 ) {
   ['add', 'delete', 'clear', 'set'].forEach(method => {
@@ -404,14 +404,14 @@ function reactive<T extends object>(
     return reactiveMap.get(initialValue) as T;
   }
   if (Array.isArray(initialValue)) {
-    initArrayProxy(initialValue);
+    createArrayProxy(initialValue);
   } else if (
     isSet(initialValue) ||
     isMap(initialValue) ||
     isWeakSet(initialValue) ||
     isWeakMap(initialValue)
   ) {
-    initCollectionProxy(initialValue);
+    createCollectionProxy(initialValue);
   }
 
   const handler: ProxyHandler<T> = {

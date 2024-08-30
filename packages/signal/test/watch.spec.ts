@@ -42,15 +42,16 @@ describe('useWatch', () => {
     const signal = useSignal(1);
     const computed = useComputed(() => signal.value * 2);
     const obj = useReactive({ count: 1 });
+    const fn = () => signal.value + obj.count + computed.value;
     const callback = vi.fn();
 
-    const stop = useWatch([signal, computed, obj], callback);
+    const stop = useWatch([signal, computed, obj, fn], callback);
 
     signal.value = 2;
     // 3 called
-    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }], [2, 2, { count: 1 }]);
+    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }, 7], [2, 2, { count: 1 }, 5]);
     obj.count = 2;
-    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 2 }], [2, 4, { count: 1 }]);
+    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 2 }, 8], [2, 4, { count: 1 }, 7]);
 
     stop();
   });
@@ -64,6 +65,16 @@ describe('useWatch', () => {
     signal.value = 2;
     expect(callback).toHaveBeenCalledWith(4, 2);
 
+    stop();
+  });
+  it('should work with function return array source', () => {
+    const signal = useSignal(1);
+    const callback = vi.fn();
+    const computed = useComputed(() => signal.value * 2);
+    const arr = [signal, computed];
+    const stop = useWatch(arr, callback);
+    signal.value = 2;
+    expect(callback).toHaveBeenCalledWith([2, 4], [2, 2]);
     stop();
   });
 
@@ -103,6 +114,20 @@ describe('useWatch', () => {
 
     signal.value = 2;
     expect(callback).toHaveBeenCalledWith(2, 1);
+
+    stop();
+  });
+
+  it('should not work with invalid source', () => {
+    const obj = { arr: [1, 2, 3] };
+    const callback = vi.fn();
+
+    const stop = useWatch(obj, callback, { immediate: true });
+
+    expect(callback).toHaveBeenCalledTimes(0);
+
+    obj.arr = [2, 3, 4];
+    expect(callback).toHaveBeenCalledTimes(0);
 
     stop();
   });
