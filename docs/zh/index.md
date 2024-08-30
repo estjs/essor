@@ -2,26 +2,26 @@
 pageType: home
 
 hero:
-  name: athen 模板
-  text:  文档
-  tagline: 文档模板
+  name: essor docs
+  text:  Essor
+  tagline:  一个基于简单易用的前端框架
   image:
     src: /logo.png
     alt: Note
   actions:
     - theme: brand
       text: 点击查看
-      link: /article/htmlParser
+      link: /zh/guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/estjs/athen
+      link: https://github.com/estjs/essor
 features:
   - title: Feature 1
     details: Feature 1 的详细内容
     icon: 🪐
   - title: Feature 2
     details: Feature 2 的详细内容
-    icon: 🧑🏻‍💻
+    icon: 🧑🏻
   - title: Feature 3
     details: Feature 3 的详细内容
     icon: 🏃‍♂️
