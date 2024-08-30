@@ -1,5 +1,4 @@
 import { isFalsy, kebabCase } from '@essor/shared';
-import { selfClosingTags } from './../../babel-plugin/src/jsx/constants';
 import { isJsxElement } from './template';
 
 const selfClosingTags = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
