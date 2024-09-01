@@ -18,6 +18,21 @@ describe('useReactive', () => {
     expect(state.count).toBe(6);
   });
 
+  it('should work with add new property', () => {
+    const state = useReactive<Partial<Record<string, any>>>({});
+
+    const mockFn = vi.fn(() => {
+      // do nothing
+      state.count;
+    });
+    useEffect(mockFn);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    state.count = 5;
+    expect(state.count).toBe(5);
+    expect(mockFn).toHaveBeenCalledTimes(2);
+  });
+
   it('should work with multiple properties', () => {
     const state = useReactive({
       count: 0,

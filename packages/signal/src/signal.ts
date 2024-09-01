@@ -4,11 +4,14 @@ import {
   isArray,
   isExclude,
   isHTMLElement,
+  isMap,
   isObject,
   isPrimitive,
+  isSet,
+  isWeakMap,
+  isWeakSet,
   startsWith,
 } from '@essor/shared';
-import { isMap, isSet, isWeakMap, isWeakSet } from '@essor/shared';
 
 type EffectFn = () => void;
 
@@ -289,7 +292,7 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
       if (isExclude(key, exclude)) {
         acc[key] = value;
       } else {
-        acc[key] = isSignal(value) ? value.peek() : value;
+        acc[key] = isSignal(value) ? value.peek() : isReactive(value) ? unReactive(value) : value;
       }
       return acc;
     }, {} as T);
@@ -340,25 +343,6 @@ function createArrayProxy(initialValue: any[]) {
   });
 }
 
-function createCollectionProxy(
-  initialValue: Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>,
-) {
-  ['add', 'delete', 'clear', 'set'].forEach(method => {
-    const originalMethod = initialValue[method];
-    track(initialValue, method);
-
-    Object.defineProperty(initialValue, method, {
-      value(...args: any[]) {
-        const result = originalMethod.apply(this, args);
-        trigger(initialValue, method);
-        return result;
-      },
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    });
-  });
-}
 /**
  * Creates a reactive object.
  * @param initialValue - The initial value for the reactive object.
@@ -405,19 +389,20 @@ function reactive<T extends object>(
   }
   if (Array.isArray(initialValue)) {
     createArrayProxy(initialValue);
-  } else if (
+  }
+  if (
     isSet(initialValue) ||
     isMap(initialValue) ||
     isWeakSet(initialValue) ||
     isWeakMap(initialValue)
   ) {
-    createCollectionProxy(initialValue);
+    // not support collection
+    return initialValue;
   }
 
   const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
       if (key === REACTIVE_MARKER || startsWith(key, '_')) return true;
-      // console.log('track', target, key);
 
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;
@@ -446,6 +431,7 @@ function reactive<T extends object>(
         value = value.value;
       }
       const obj = Reflect.set(target, key, value, receiver);
+
       if (hasChanged(value, oldValue)) {
         trigger(target, key);
       }

@@ -1,10 +1,8 @@
-import { deepClone, deepEqual, isArray, isFunction, isPrimitive, noop, warn } from '@essor/shared';
+import { hasChanged, isArray, isFunction, noop, warn } from '@essor/shared';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
-
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
-
 export type WatchStopHandle = () => void;
 
 type MapSources<T> = {
@@ -99,17 +97,16 @@ function doWatch(
     getter = noop;
   }
 
-  let oldValue;
+  let oldValue: any;
 
   // Effect function to be triggered on source changes
   const effectFn = () => {
-    const newValue = deepClone(getter());
+    const newValue = getter();
 
     // Check if the new value has changed compared to the old value
-    if (!deepEqual(newValue, oldValue)) {
+    if (options?.deep || hasChanged(newValue, oldValue)) {
       cb && cb(newValue, oldValue);
-      // Update the old value to the new value
-      oldValue = isPrimitive(newValue) ? newValue : deepClone(newValue);
+      oldValue = newValue;
     }
   };
 

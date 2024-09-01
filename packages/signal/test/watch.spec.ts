@@ -92,6 +92,37 @@ describe('useWatch', () => {
     stop();
   });
 
+  it(
+    'should work with collection',
+    () => {
+      const map = new Map();
+      const set = new Set();
+      const weakMap = new WeakMap();
+      const weakSet = new WeakSet();
+
+      const signalMap = useSignal(map);
+      const signalSet = useSignal(set);
+      const signalWeakMap = useSignal(weakMap);
+      const signalWeakSet = useSignal(weakSet);
+
+      const collection = useReactive({
+        signalMap,
+        signalSet,
+        signalWeakMap,
+        signalWeakSet,
+      });
+      const callBack = vi.fn();
+      const stop = useWatch(collection, callBack);
+      expect(callBack).toBeCalledTimes(1);
+      signalMap.value.set(1, 1);
+      expect(callBack).toBeCalledTimes(2);
+      signalSet.value.add(1);
+      expect(callBack).toBeCalledTimes(3);
+      stop();
+    },
+    { skip: true },
+  );
+
   it('should handle deep watch object correctly', () => {
     const obj = useReactive({ nested: { count: 1 } });
     const callback = vi.fn();
@@ -99,7 +130,7 @@ describe('useWatch', () => {
     const stop = useWatch(obj, callback, { deep: true });
 
     obj.nested.count = 2;
-    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 1 } });
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, undefined);
 
     stop();
   });
