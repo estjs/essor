@@ -1,4 +1,4 @@
-import { isFunction, isPrimitive, isString } from './is';
+import { isFunction, isString } from './is';
 
 export const _toString = Object.prototype.toString;
 export const extend = Object.assign;
@@ -28,7 +28,6 @@ export function startsWith(str, searchString) {
   }
   return str.indexOf(searchString) === 0;
 }
-
 
 /**
  * Escapes special HTML characters in a string.

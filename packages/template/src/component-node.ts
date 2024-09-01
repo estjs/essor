@@ -68,17 +68,6 @@ export class ComponentNode implements JSX.Element {
     this.patchProps(props);
   }
 
-  unmount(): void {
-    this.hooks.destroy.forEach(handler => handler());
-    Object.values(this.hooks).forEach(set => set.clear());
-    this.rootNode?.unmount();
-    this.rootNode = null;
-    this.proxyProps = {};
-    this.mounted = false;
-    this.emitter.forEach(emitter => emitter());
-    ComponentNode.context = {};
-  }
-
   mount(parent: Node, before?: Node | null): Node[] {
     if (!isFunction(this.template)) {
       throw new Error('Template must be a function');
@@ -97,6 +86,17 @@ export class ComponentNode implements JSX.Element {
 
     return mountedNode;
   }
+
+  unmount(): void {
+    this.hooks.destroy.forEach(handler => handler());
+    Object.values(this.hooks).forEach(set => set.clear());
+    this.rootNode?.unmount();
+    this.rootNode = null;
+    this.proxyProps = {};
+    this.mounted = false;
+    this.emitter.forEach(emitter => emitter());
+  }
+
   private getNodeTrack(trackKey: string, suppressCleanupCall?: boolean): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {

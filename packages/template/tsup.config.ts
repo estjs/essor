@@ -29,7 +29,6 @@ export default defineConfig({
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
   external: ['csstype'],
-  noExternal: ['@essor/shared'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },
