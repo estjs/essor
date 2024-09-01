@@ -1,6 +1,6 @@
 {
-  "name": "@essor/signal",
-  "version": "0.0.10-beta.20",
+  "name": "@estjs/signal",
+  "version": "0.0.10-beta.21",
   "description": "",
   "type": "module",
   "keywords": [],
@@ -56,6 +56,6 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@essor/shared": "workspace:*"
+    "@estjs/shared": "workspace:*"
   }
 }

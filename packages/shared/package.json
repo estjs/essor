@@ -1,6 +1,6 @@
 {
-  "name": "@essor/shared",
-  "version": "0.0.10-beta.20",
+  "name": "@estjs/shared",
+  "version": "0.0.10-beta.21",
   "description": "",
   "type": "module",
   "keywords": [],

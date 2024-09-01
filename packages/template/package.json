@@ -1,6 +1,6 @@
 {
-  "name": "@essor/template",
-  "version": "0.0.10-beta.20",
+  "name": "@estjs/template",
+  "version": "0.0.10-beta.21",
   "description": "",
   "type": "module",
   "keywords": [],
@@ -57,8 +57,8 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@essor/shared": "workspace:*",
-    "@essor/signal": "workspace:*",
+    "@estjs/shared": "workspace:*",
+    "@estjs/signal": "workspace:*",
     "csstype": "^3.1.3"
   }
 }
