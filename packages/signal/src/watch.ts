@@ -1,4 +1,4 @@
-import { hasChanged, isArray, isFunction, noop, warn } from '@essor/shared';
+import { hasChanged, isArray, isFunction, noop, warn } from '@estjs/shared';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);

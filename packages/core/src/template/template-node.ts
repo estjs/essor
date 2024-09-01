@@ -5,8 +5,8 @@ import {
   isFunction,
   isNil,
   startsWith,
-} from '@essor/shared';
-import { isSignal, useEffect, useSignal } from '@essor/signal';
+} from '@estjs/shared';
+import { isSignal, useEffect, useSignal } from '@estjs/signal';
 import {
   addEventListener,
   binNode,
@@ -16,7 +16,7 @@ import {
   setAttribute,
 } from './utils';
 import { patchChildren } from './patch';
-import type { NodeTrack } from '../types';
+import type { NodeTrack } from '../../types';
 
 export class TemplateNode implements JSX.Element {
   treeMap = new Map<number, Node>();

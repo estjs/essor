@@ -59,6 +59,6 @@
   "dependencies": {
     "@estjs/shared": "workspace:*",
     "@estjs/signal": "workspace:*",
-    "@estjs/template": "workspace:*"
+    "csstype": "^3.1.3"
   }
 }

@@ -28,7 +28,7 @@ export default defineConfig({
   sourcemap: false,
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
-  noExternal: ['@essor/shared'],
+  noExternal: ['@estjs/shared'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },

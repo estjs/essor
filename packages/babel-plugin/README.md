@@ -3,13 +3,13 @@
 ## Install
 
 ```bash
-npm install @essor/babel-plugin --save-dev
+npm install babel-plugin-essor --save-dev
 ```
 
 ## Usage
 
 ```js
-import EssorBabelPlugin from '@essor/babel-plugin';
+import EssorBabelPlugin from 'babel-plugin-essor';
 {
   "plugins": [[EssorBabelPlugin,pluginOptions]]
 }

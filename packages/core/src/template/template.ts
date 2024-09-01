@@ -1,8 +1,8 @@
-import { isFunction, isString } from '@essor/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
-import type { EssorComponent, EssorNode } from '../types';
+import type { EssorComponent, EssorNode } from '../../types';
 
 export function h<K extends keyof HTMLElementTagNameMap>(
   _template: EssorComponent | HTMLTemplateElement | K | '',

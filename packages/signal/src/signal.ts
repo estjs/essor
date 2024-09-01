@@ -11,7 +11,7 @@ import {
   isWeakMap,
   isWeakSet,
   startsWith,
-} from '@essor/shared';
+} from '@estjs/shared';
 
 type EffectFn = () => void;
 

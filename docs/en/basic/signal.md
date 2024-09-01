@@ -133,7 +133,7 @@ The `useReactive` function creates a reactive object. The properties of the obje
 
 #### Example
 ```javascript
-import { useReactive } from '@essor/shared';
+import { useReactive } from '@estjs/shared';
 
 const state = useReactive({ count: 0 });
 
@@ -157,7 +157,7 @@ The `isReactive` function checks if a given object is reactive.
 
 #### Example
 ```javascript
-import { isReactive, useReactive } from '@essor/shared';
+import { isReactive, useReactive } from '@estjs/shared';
 
 const state = useReactive({ count: 0 });
 
@@ -179,7 +179,7 @@ The `unReactive` function creates a shallow copy of a reactive object.
 
 #### Example
 ```javascript
-import { unReactive, useReactive } from '@essor/shared';
+import { unReactive, useReactive } from '@estjs/shared';
 
 const state = useReactive({ count: 0 });
 
@@ -201,7 +201,7 @@ The `shallowReactive` function creates a reactive object, but only the top-level
 
 #### Example
 ```javascript
-import { shallowReactive } from '@essor/shared';
+import { shallowReactive } from '@estjs/shared';
 
 const state = shallowReactive({ nested: { count: 0 } });
 
@@ -223,7 +223,7 @@ The `shallowSignal` function creates a shallow signal that does not recursively 
 
 #### Example
 ```javascript
-import { shallowSignal } from '@essor/shared';
+import { shallowSignal } from '@estjs/shared';
 
 const state = shallowSignal({ count: 0 });
 

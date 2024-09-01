@@ -1,4 +1,4 @@
-import { isFalsy, kebabCase } from '@essor/shared';
+import { isFalsy, kebabCase } from '@estjs/shared';
 import { isJsxElement } from './template';
 
 const selfClosingTags = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
