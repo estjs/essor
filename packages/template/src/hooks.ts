@@ -37,7 +37,7 @@ export function useProvide<T, K = InjectionKey<T> | string | number>(
 export function useInject<T, K = InjectionKey<T> | string | number>(
   key: K,
   defaultValue?: K extends InjectionKey<infer V> ? V : T,
-) {
+): (K extends InjectionKey<infer V> ? V : T) | undefined {
   throwIfOutsideComponent('useInject');
   return ComponentNode.ref?.getContext(key as string) || defaultValue;
 }
