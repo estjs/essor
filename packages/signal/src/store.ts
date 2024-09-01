@@ -1,6 +1,5 @@
 import { useComputed, useReactive } from './signal';
 import { useWatch } from './watch';
-import type { Computed } from './signal';
 
 interface StoreOptions<S, G, A> {
   state?: S;
@@ -83,7 +82,7 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
 }
 
 type Getters<S> = {
-  [K in keyof S]: S[K] extends (...args: any[]) => any ? Computed<ReturnType<S[K]>> : S[K];
+  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
 };
 
 export function createStore<S, G, A>(
