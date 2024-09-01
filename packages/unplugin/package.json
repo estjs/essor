@@ -96,13 +96,13 @@
   "dependencies": {
     "@babel/core": "^7.25.2",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^1.12.2"
+    "unplugin": "^1.12.3"
   },
   "devDependencies": {
-    "@types/node": "^22.5.0",
+    "@types/node": "^22.5.1",
     "chalk": "^5.3.0",
     "fast-glob": "^3.3.2",
-    "rollup": "^4.21.1",
+    "rollup": "^4.21.2",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4",
     "vite": "^5.4.2",
