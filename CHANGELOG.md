@@ -5,6 +5,41 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.10-beta.13](https://github.com/estjs/essor/compare/v0.0.10-beta.12...v0.0.10-beta.13) `2024-09-01`
+
+## [0.0.10-beta.14](https://github.com/estjs/essor/compare/v0.0.10-beta.13...v0.0.10-beta.14) `2024-09-01`
+
+
+### Features
+
+* try use github workflows auto release ([f6de1e9](https://github.com/estjs/essor/commit/f6de1e947e85cfec105e2a312cfd23441a32b031))
+
+## [0.0.10-beta.15](https://github.com/estjs/essor/compare/v0.0.10-beta.14...v0.0.10-beta.15) `2024-09-01`
+
+
+### Bug Fixes
+
+* fix typo ([594a490](https://github.com/estjs/essor/commit/594a490f2432be36bee3f997c1cbd3777a4b110d))
+
+## [0.0.10-beta.16](https://github.com/estjs/essor/compare/v0.0.10-beta.15...v0.0.10-beta.16) `2024-09-01`
+
+
+### Bug Fixes
+
+* fix release sort ([c230e42](https://github.com/estjs/essor/commit/c230e42ccef2d579c060e8474aa9528af2091ccc))
+
+## [0.0.10-beta.17](https://github.com/estjs/essor/compare/v0.0.10-beta.16...v0.0.10-beta.17) `2024-09-01`
+
+
+### Bug Fixes
+
+* fix release ([6bb9b3a](https://github.com/estjs/essor/commit/6bb9b3a422d5bcef7f0b6a0eb07d972792f2a1ad))
+
+## [0.0.10-beta.18](https://github.com/estjs/essor/compare/v0.0.10-beta.17...v0.0.10-beta.18) `2024-09-01`
+
+
+
+
 ## [0.0.10-beta.12](https://github.com/estjs/essor/compare/v0.0.10-beta.11...v0.0.10-beta.12) `2024-09-01`
 
 ## [0.0.9](https://github.com/estjs/essor/compare/v0.0.10-beta.12...v0.0.9) `2024-09-01`
