@@ -1,6 +1,6 @@
 {
   "name": "essor-monorepo",
-  "version": "0.0.10-beta.18",
+  "version": "0.0.10-beta.19",
   "private": "true",
   "packageManager": "pnpm@9.9.0",
   "description": "",
@@ -36,7 +36,7 @@
     "docs:build": "pnpm run -C docs build",
     "gen:version": "tsx ./scripts/gen-version.ts",
     "prerelease": "pnpm run lint && pnpm run build && pnpm run typecheck && pnpm run test",
-    "release": "pnpm run prerelease && bumpp --commit --push --tag"
+    "release": "pnpm run changelog && pnpm run prerelease && bumpp package.json packages/*/package.json --no-git-checks --commit --push --tag && pnpm -r publish --access public"
   },
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.5",
