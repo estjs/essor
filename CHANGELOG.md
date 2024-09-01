@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.9](https://github.com/estjs/essor/compare/v0.0.10-beta.1...v0.0.9) `2024-09-01`
+
+
+### Features
+
+* delete example provide console ([6c1cca1](https://github.com/estjs/essor/commit/6c1cca1191f844004c6741dbe4869ed18f118979))
+
+
+
+
 ## [0.0.10-beta.1](https://github.com/estjs/essor/compare/v0.0.9...v0.0.10-beta.1) `2024-09-01`
 
 ## [0.0.9](https://github.com/estjs/essor/compare/v0.0.10-beta.1...v0.0.9) `2024-09-01`
