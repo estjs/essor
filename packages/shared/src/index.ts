@@ -6,8 +6,6 @@ export {
   coerceArray,
   hasOwn,
   startsWith,
-  deepEqual,
-  deepClone,
   escape,
   isExclude,
   ExcludeType,
