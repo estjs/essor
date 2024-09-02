@@ -5,6 +5,10 @@
   "type": "module",
   "keywords": [],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "files": [
     "dist"

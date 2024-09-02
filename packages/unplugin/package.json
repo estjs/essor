@@ -11,6 +11,10 @@
     "transform"
   ],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
   "files": [
     "dist"
   ],
