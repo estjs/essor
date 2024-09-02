@@ -2,7 +2,7 @@ import { isFunction, startsWith } from '@estjs/shared';
 import { isSignal, signalObject } from '@estjs/signal';
 import { type Signal, useEffect, useReactive, useSignal } from '@estjs/signal';
 import { addEventListener } from './utils';
-import type { EssorComponent, NodeTrack } from '../../types';
+import type { EssorComponent, NodeTrack } from '../types';
 import type { TemplateNode } from './template-node';
 import type { Listener } from './utils';
 export type Hook = 'mounted' | 'destroy';

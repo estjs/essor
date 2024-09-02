@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["bumpp", "essor", "pnpm", "unplugin", "vitest"],
+  "cSpell.words": ["bumpp", "essor", "pnpm", "unplugin", "vitest","estjs","jiangxd","tsup"],
   "prettier.enable": false,
   "eslint.experimental.useFlatConfig": true,
   "editor.codeActionsOnSave": {

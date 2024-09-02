@@ -1,5 +1,5 @@
 import { isFunction, isObject, startsWith } from '@estjs/shared';
-import type { EssorNode } from '../../types';
+import type { EssorNode } from '../types';
 
 interface TemplateEntry {
   template: string;

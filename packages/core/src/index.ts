@@ -1,6 +1,6 @@
 import { essor_version } from './version';
 
-export * from './template';
+export * from '@estjs/template';
 export * from '@estjs/signal';
 
 if (globalThis) {

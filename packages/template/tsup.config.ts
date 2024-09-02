@@ -1,5 +1,6 @@
 import process from 'node:process';
 import { defineConfig } from 'tsup';
+
 import pkg from './package.json';
 
 const env = process.env.NODE_ENV;
@@ -11,7 +12,7 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    essor: './src/index.ts',
+    template: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
@@ -25,9 +26,9 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: false,
-  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signal'],
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
+  external: ['csstype'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },

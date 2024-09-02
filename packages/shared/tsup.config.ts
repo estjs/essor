@@ -12,7 +12,7 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    'essor-shared': './src/index.ts',
+    shared: './src/index.ts',
   },
   banner: {
     js: banner,

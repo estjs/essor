@@ -6,4 +6,4 @@ export { onMount, onDestroy, useInject, useProvide, InjectionKey } from './hooks
 
 export { renderToString, renderSSG, renderTemplate } from './server';
 
-export type * from '../../types/index.d.ts';
+export type * from '../types/index.d.ts';
