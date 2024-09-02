@@ -1,6 +1,6 @@
 {
   "name": "essor-monorepo",
-  "version": "0.0.10-beta.22",
+  "version": "0.0.10-beta.23",
   "private": "true",
   "packageManager": "pnpm@9.9.0",
   "description": "",
