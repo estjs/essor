@@ -109,43 +109,6 @@ importers:
         specifier: ^2.0.5
         version: 2.0.5(@types/node@22.5.1)(jsdom@25.0.0)
 
-  examples/deep:
-    dependencies:
-      essor:
-        specifier: workspace:*
-        version: link:../../packages/core
-    devDependencies:
-      '@estjs/eslint-config':
-        specifier: ^1.2.5
-        version: 1.2.5(eslint@9.9.1)(prettier@3.3.3)(typescript@5.5.4)(vitest@2.0.5)
-      '@types/node':
-        specifier: ^22.5.1
-        version: 22.5.1
-      eslint:
-        specifier: ^9.9.1
-        version: 9.9.1
-      express:
-        specifier: ^4.19.2
-        version: 4.19.2
-      jsdom:
-        specifier: ^25.0.0
-        version: 25.0.0
-      typescript:
-        specifier: ^5.5.4
-        version: 5.5.4
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
-      vite:
-        specifier: ^5.4.2
-        version: 5.4.2(@types/node@22.5.1)
-      vite-plugin-inspect:
-        specifier: ^0.8.7
-        version: 0.8.7(rollup@4.21.2)(vite@5.4.2)
-      vitest:
-        specifier: ^2.0.5
-        version: 2.0.5(@types/node@22.5.1)(jsdom@25.0.0)
-
   examples/provide:
     dependencies:
       essor:

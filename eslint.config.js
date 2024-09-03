@@ -12,4 +12,4 @@ export default estjs({
   javascript: {
     'no-prototype-builtins': 'off',
   },
-});
+}, { unocss: false });
