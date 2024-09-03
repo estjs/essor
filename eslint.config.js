@@ -2,9 +2,9 @@ import { estjs } from '@estjs/eslint-config';
 
 export default estjs({
   unicorn: {
-    'prefer-modern-dom-apis': 'off',
-    'prefer-dom-node-remove': 'off',
-    'prefer-string-replace-all': 'off',
+    'unicorn/prefer-modern-dom-apis': 'off',
+    'unicorn/prefer-dom-node-remove': 'off',
+    'unicorn/prefer-dom-node-append': 'off',
   },
   typescript: {
     '@typescript-eslint/no-this-alias': 'off',
