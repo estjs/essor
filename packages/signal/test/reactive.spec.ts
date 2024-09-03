@@ -263,18 +263,75 @@ describe('isReactive', () => {
 });
 
 describe('unReactive', () => {
-  it('should work with unReactive from useReactive proxy', () => {
-    const originalObj = { count: 0 };
-    const state = useReactive(originalObj);
-
-    const unreactiveObj = unReactive(state);
-    expect(unreactiveObj).toEqual(originalObj);
+  it('should return primitive values directly', () => {
+    const num = 42;
+    // @ts-ignore
+    const result = unReactive(num);
+    expect(result).toBe(num);
   });
 
-  it('should work with unReactive non-useReactive object', () => {
-    const obj = { count: 0 };
+  it('should return non-reactive objects as-is', () => {
+    const obj = { a: 1, b: { c: 2 } };
+    const result = unReactive(obj);
+    expect(result).toBe(obj);
+  });
 
-    const unreactiveObj = unReactive(obj);
-    expect(unreactiveObj).toEqual(obj);
+  it('should remove reactivity from a reactive object', () => {
+    const reactiveObj = useReactive({ a: 1, b: { c: 2 } });
+    const result = unReactive(reactiveObj);
+
+    expect(result).toEqual({ a: 1, b: { c: 2 } });
+    expect(isReactive(result)).toBe(false);
+  });
+
+  it('should remove reactivity from nested reactive objects', () => {
+    const reactiveObj = useReactive({ a: 1, b: useReactive({ c: 2 }) });
+    const result = unReactive(reactiveObj);
+
+    expect(result).toEqual({ a: 1, b: { c: 2 } });
+    expect(isReactive(result.b)).toBe(false);
+  });
+
+  it('should work with arrays', () => {
+    const reactiveArray = useReactive([1, { a: 2 }, 3]);
+    const result = unReactive(reactiveArray);
+
+    expect(result).toEqual([1, { a: 2 }, 3]);
+    expect(isReactive(result[1])).toBe(false);
+  });
+
+  it('should unwrap signals in objects', () => {
+    const signal = useSignal(10);
+    const reactiveObj = useReactive({ a: signal, b: { c: signal } });
+    const result = unReactive(reactiveObj);
+
+    expect(result).toEqual({ a: 10, b: { c: 10 } });
+    expect(isReactive(result.b)).toBe(false);
+  });
+
+  it('should unwrap signals in arrays', () => {
+    const signal = useSignal(10);
+    const reactiveArray = useReactive([signal, { a: signal }]);
+    const result = unReactive(reactiveArray);
+
+    expect(result).toEqual([10, { a: 10 }]);
+    expect(isReactive(result[1])).toBe(false);
+  });
+
+  it('should handle shallow reactive objects', () => {
+    const shallowObj = shallowReactive({ a: 1, b: { c: 2 } });
+    const result = unReactive(shallowObj);
+
+    expect(result).toEqual({ a: 1, b: { c: 2 } });
+    expect(isReactive(result)).toBe(false);
+    expect(isReactive(result.b)).toBe(false);
+  });
+
+  it('should handle mixed reactive and non-reactive properties', () => {
+    const reactiveObj = useReactive({ a: 1, b: useReactive({ c: 2 }), d: 3 });
+    const result = unReactive(reactiveObj);
+
+    expect(result).toEqual({ a: 1, b: { c: 2 }, d: 3 });
+    expect(isReactive(result.b)).toBe(false);
   });
 });

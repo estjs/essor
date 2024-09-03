@@ -1,6 +1,7 @@
 import {
   type ExcludeType,
   hasChanged,
+  hasOwn,
   isArray,
   isExclude,
   isHTMLElement,
@@ -292,7 +293,11 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
       if (isExclude(key, exclude)) {
         acc[key] = value;
       } else {
-        acc[key] = isSignal(value) ? value.peek() : isReactive(value) ? unReactive(value) : value;
+        acc[key] = isSignal(value)
+          ? value.peek()
+          : isReactive(value)
+            ? unReactive(value as object)
+            : value;
       }
       return acc;
     }, {} as T);
@@ -309,18 +314,6 @@ const REACTIVE_MARKER = Symbol('useReactive');
  */
 export function isReactive(obj: any): boolean {
   return obj && obj[REACTIVE_MARKER] === true;
-}
-
-/**
- * Creates a shallow copy of a reactive object.
- * @param obj - The reactive object to copy.
- * @returns A shallow copy of the reactive object.
- */
-export function unReactive(obj: any): any {
-  if (!isReactive(obj)) {
-    return obj;
-  }
-  return { ...obj };
 }
 
 function createArrayProxy(initialValue: any[]) {
@@ -363,6 +356,40 @@ export function useReactive<T extends object>(initialValue: T, exclude?: Exclude
  */
 export function shallowReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
   return reactive(initialValue, exclude, true);
+}
+
+/**
+ * Creates a non-reactive copy of the target object.
+ * This method is the opposite of `useReactive`.
+ * @param target - The object to create a non-reactive copy of.
+ * @returns A non-reactive copy of the target object.
+ */
+export function unReactive<T extends object>(target: T): T {
+  if (!isObject(target)) {
+    return target;
+  }
+
+  if (!isReactive(target)) {
+    return target;
+  }
+
+  const unReactiveObj: T = (Array.isArray(target) ? [] : {}) as T;
+
+  for (const key in target) {
+    if (hasOwn(target, key)) {
+      const value = target[key] as T[keyof T];
+
+      if (isReactive(value)) {
+        unReactiveObj[key as keyof T] = unReactive(value as T[keyof T] & object);
+      } else if (isSignal(value)) {
+        unReactiveObj[key as keyof T] = value.peek() as unknown as T[keyof T];
+      } else {
+        unReactiveObj[key as keyof T] = value;
+      }
+    }
+  }
+
+  return unReactiveObj;
 }
 
 /**
