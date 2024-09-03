@@ -113,9 +113,15 @@ export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
   }
   return result;
 }
+export function getKey(node: AnyNode, index: number): string {
+  if (isJsxElement(node)) {
+    // use jsx key
+    const jsxKey = (node as any).key;
+    if (jsxKey !== undefined && jsxKey !== null) {
+      return String(jsxKey);
+    }
+  }
 
-export function getKey(node, index): string {
-  const id = node instanceof Element ? node.id : undefined;
-  const result = id === '' ? undefined : id;
-  return result ?? `_$${index}$`;
+  // use index
+  return `_$${index}$`;
 }

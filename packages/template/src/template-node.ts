@@ -11,6 +11,7 @@ import {
   addEventListener,
   binNode,
   coerceNode,
+  generateShortId,
   insertChild,
   removeChild,
   setAttribute,
@@ -23,6 +24,7 @@ export class TemplateNode implements JSX.Element {
   constructor(
     public template: HTMLTemplateElement,
     public props: Record<string, unknown>,
+    public key?: string,
   ) {}
 
   mounted = false;
@@ -47,6 +49,8 @@ export class TemplateNode implements JSX.Element {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
     }
+
+    this.key = this.key || generateShortId();
 
     const cloneNode = this.template.content.cloneNode(true);
     const firstChild = cloneNode.firstChild as HTMLElement | null;
