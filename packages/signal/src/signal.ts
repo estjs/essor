@@ -178,7 +178,6 @@ export function isSignal<T>(value: any): value is Signal<T> {
  */
 export class Computed<T = unknown> {
   private _value: T;
-
   constructor(private readonly fn: () => T) {
     // Track dependencies when the Computed is created
     const prev = activeComputed;

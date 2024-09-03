@@ -29,6 +29,7 @@ export class TemplateNode implements JSX.Element {
   nodes: Node[] = [];
   provides: Record<string, unknown> = {};
   trackMap = new Map<string, NodeTrack>();
+  parent: Node | null = null;
 
   get firstChild(): Node | null {
     return this.nodes[0] ?? null;
@@ -40,25 +41,6 @@ export class TemplateNode implements JSX.Element {
   addEventListener(): void {}
   removeEventListener(): void {}
 
-  unmount(): void {
-    this.trackMap.forEach(track => {
-      track.cleanup?.();
-      track.lastNodes?.forEach(node => {
-        if (track.isRoot) {
-          removeChild(node);
-        } else if (node instanceof TemplateNode) {
-          node.unmount();
-        }
-      });
-    });
-    this.trackMap.clear();
-    this.treeMap.clear();
-    this.nodes.forEach(node => removeChild(node));
-    this.nodes = [];
-    this.mounted = false;
-  }
-
-  parent: Node | null = null;
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
     if (this.isConnected) {
@@ -84,6 +66,24 @@ export class TemplateNode implements JSX.Element {
     this.patchNodes(this.props);
     this.mounted = true;
     return this.nodes;
+  }
+
+  unmount(): void {
+    this.trackMap.forEach(track => {
+      track.cleanup?.();
+      track.lastNodes?.forEach(node => {
+        if (track.isRoot) {
+          removeChild(node);
+        } else if (node instanceof TemplateNode) {
+          node.unmount();
+        }
+      });
+    });
+    this.trackMap.clear();
+    this.treeMap.clear();
+    this.nodes.forEach(node => removeChild(node));
+    this.nodes = [];
+    this.mounted = false;
   }
 
   mapNodeTree(parent: Node, tree: Node) {
