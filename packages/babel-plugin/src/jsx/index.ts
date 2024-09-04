@@ -25,8 +25,11 @@ export interface Result {
 }
 let isSsg = false;
 
-function addToTemplate(result: Result, content: string): void {
+function addToTemplate(result: Result, content: string, join = false): void {
   if (isSsg) {
+    if (join) {
+      (result.template as string[])[result.template.length - 1] += content;
+    }
     (result.template as string[]).push(content);
   } else {
     result.template += content;
@@ -124,7 +127,7 @@ function transformJSXElement(
     const tagIsComponent = isComponent(tagName);
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && result.index === 1;
-    const props = getAttrProps(path);
+    const { props, hasExpression } = getAttrProps(path);
     if (tagIsComponent) {
       if (isRoot) {
         result.props = props;
@@ -145,10 +148,11 @@ function transformJSXElement(
 
       addToTemplate(result, `<${tagName}`);
       handleAttributes(props, result);
-      addToTemplate(result, isSelfClose ? '/>' : '>');
+
+      addToTemplate(result, isSelfClose ? '/>' : '>', hasExpression);
+
       if (!isSelfClose) {
         transformChildren(path, result);
-
         if (hasSiblingElement(path)) {
           addToTemplate(result, `</${tagName}>`);
         }
@@ -338,9 +342,10 @@ export function isValidChild(path: NodePath<JSXChild>): boolean {
   }
   return Object.keys(path.node).length > 0;
 }
+
 export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> {
   const props: Record<string, any> = {};
-
+  let hasExpression = false;
   path
     .get('openingElement')
     .get('attributes')
@@ -365,6 +370,7 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
               transformJSX(expression);
               props[name] = expression.node;
             } else if (expression.isExpression()) {
+              hasExpression = true;
               if (/^key|ref|on.+$/.test(name)) {
                 props[name] = expression.node;
               } else if (/^bind:.+/.test(name)) {
@@ -394,10 +400,14 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
         }
       } else if (attribute.isJSXSpreadAttribute()) {
         props._$spread$ = attribute.get('argument').node;
+        hasExpression = true;
       } else {
         throw new Error('Unsupported attribute type');
       }
     });
 
-  return props;
+  return {
+    props,
+    hasExpression,
+  };
 }

@@ -2,7 +2,7 @@
 
 exports[`jsx ssg transform > should work with bind api 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "<p", ">", "Paragraph 1", "</p>", "<p", ">", "Paragraph 2", "</p>"];
+const _tmpl$ = ["<div", ">", "<p>", ">", "Paragraph 1", "</p>", "<p", ">", "Paragraph 2", "</p>"];
 const value = 1;
 _renderTemplate$(_tmpl$, {
   "2": {
@@ -14,7 +14,7 @@ _renderTemplate$(_tmpl$, {
 
 exports[`jsx ssg transform > should work with comment in JSX 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "<p", ">", "Paragraph 1", "</p>", "<p", ">", "Paragraph 2", "</p>"];
+const _tmpl$ = ["<div", ">", "<p>", ">", "Paragraph 1", "</p>", "<p", ">", "Paragraph 2", "</p>"];
 const value = 1;
 _renderTemplate$(_tmpl$, {
   "3": {
@@ -62,7 +62,7 @@ const element = _renderTemplate$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with class and style attributes 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World"];
+const _tmpl$ = ["<div>", ">", "Hello World"];
 const hasClass = true;
 const style = {
   color: 'red',
@@ -78,7 +78,7 @@ const element = _renderTemplate$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with conditional attributes 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World"];
+const _tmpl$ = ["<div>", ">", "Hello World"];
 const hasClass = true;
 const element = _renderTemplate$(_tmpl$, {
   "1": {
@@ -115,7 +115,7 @@ const element = _renderTemplate$(_tmpl$, {
 exports[`jsx ssg transform > transforms JSX element with nested expressions and children 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
 const _tmpl$ = ["<div", ">", "<p", ">", "<!>", "'s Profile", "</p>", "<ul", ">", "</ul>"],
-  _tmpl$2 = ["<li", ">", "Item "];
+  _tmpl$2 = ["<li>", ">", "Item "];
 const name = 'John';
 const element = _renderTemplate$(_tmpl$, {
   "4": {
@@ -136,7 +136,7 @@ const element = _renderTemplate$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with null and undefined attributes 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World"];
+const _tmpl$ = ["<div>", ">", "Hello World"];
 const element = _renderTemplate$(_tmpl$, {
   "1": {
     "id": null,
@@ -177,7 +177,7 @@ const element = _renderTemplate$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with spread attributes 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World"];
+const _tmpl$ = ["<div>", ">", "Hello World"];
 const props = {
   id: 'myId',
   class: 'myClass'
@@ -191,7 +191,7 @@ const element = _renderTemplate$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with style attribute 1`] = `
 "import { renderTemplate as _renderTemplate$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World"];
+const _tmpl$ = ["<div>", ">", "Hello World"];
 const style = {
   color: 'red',
   fontSize: '16px'
