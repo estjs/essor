@@ -1,5 +1,5 @@
 {
-  "name": "essor-example-basic",
+  "name": "essor-example-ssg",
   "private": true,
   "type": "module",
   "scripts": {

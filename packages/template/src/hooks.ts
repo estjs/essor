@@ -1,26 +1,22 @@
-import { ComponentNode } from './component-node';
+import { Hooks } from './component-node';
 
 export function onMount(cb: () => void): void {
   throwIfOutsideComponent('onMounted');
-  ComponentNode.ref?.addHook('mounted', cb);
+  Hooks.ref?.addHook('mounted', cb);
 }
 
 export function onDestroy(cb: () => void): void {
   throwIfOutsideComponent('onDestroy');
-  ComponentNode.ref?.addHook('destroy', cb);
+  Hooks.ref?.addHook('destroy', cb);
 }
 
 function throwIfOutsideComponent(hook: string) {
-  if (!ComponentNode.ref) {
+  if (!Hooks.ref) {
     console.error(
       `"${hook}" can only be called within the component function body
       and cannot be used in asynchronous or deferred calls.`,
     );
   }
-}
-
-export function getCurrentComponent(): ComponentNode | null {
-  return ComponentNode.ref;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types, unused-imports/no-unused-vars
@@ -32,14 +28,14 @@ export function useProvide<T, K = InjectionKey<T> | string | number>(
 ) {
   throwIfOutsideComponent('useProvide');
 
-  ComponentNode.ref?.setContext(key as string, value);
+  Hooks.ref?.setContext(key as string, value);
 }
 export function useInject<T, K = InjectionKey<T> | string | number>(
   key: K,
   defaultValue?: K extends InjectionKey<infer V> ? V : T,
 ): (K extends InjectionKey<infer V> ? V : T) | undefined {
   throwIfOutsideComponent('useInject');
-  return ComponentNode.ref?.getContext(key as string) || defaultValue;
+  return Hooks.ref?.getContext(key as string) || defaultValue;
 }
 
 // export function useProps(props) {

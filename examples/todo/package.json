@@ -1,5 +1,5 @@
 {
-  "name": "essor-basic-todo",
+  "name": "essor-example-todo",
   "private": true,
   "type": "module",
   "scripts": {

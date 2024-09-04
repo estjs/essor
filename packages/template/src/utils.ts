@@ -257,7 +257,7 @@ export function closeHtmlTags(input: string): string {
  * @param tagName - The tag name to check.
  * @returns A boolean indicating if the tag name is valid.
  */
-export function isHtmlTagName(tagName: string): boolean {
+export function isHtmlTagName<K extends keyof HTMLElementTagNameMap>(tagName: K): boolean {
   const htmlTagsList = htmlTags.split(',');
   return htmlTagsList.includes(tagName);
 }

@@ -73,10 +73,10 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   const args = [tmpl, createProps(result.props)];
   const key = result.props.key || result.props[0]?.key;
   if (key) {
-    args.push(key);
+    args.push(t.identifier(`${key}`));
   }
-  imports.add(isSsg ? 'renderTemplate' : 'h');
-  return t.callExpression(isSsg ? state.renderTemplate : state.h, args);
+  imports.add('h');
+  return t.callExpression(state.h, args);
 }
 
 function createProps(props) {

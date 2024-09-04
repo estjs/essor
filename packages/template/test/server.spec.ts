@@ -1,4 +1,4 @@
-import { renderSSG, renderTemplate, renderToString } from '../src';
+import { renderSSG, renderToString } from '../src';
 
 describe('service', () => {
   let App;
@@ -10,7 +10,7 @@ describe('service', () => {
     function AppFn(props) {
       const name = 'John';
 
-      return renderTemplate(_tmpl$, {
+      return renderToString(_tmpl$, {
         '1': {
           id: props.id,
           class: props.class,
@@ -31,7 +31,7 @@ describe('service', () => {
       id: 'test',
       class: 'test-class',
     };
-    const result = renderTemplate(App, props);
+    const result = renderToString(App, props);
     expect(result).toMatchInlineSnapshot(`"<div id="test" class="test-class">JohnHello, !</div>"`);
   });
 

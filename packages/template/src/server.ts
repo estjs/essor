@@ -1,6 +1,6 @@
-import { isFunction, isObject, startsWith } from '@estjs/shared';
+import { escape, isFunction, isObject, startsWith } from '@estjs/shared';
+import { Hooks } from './component-node';
 import type { EssorNode } from '../types';
-
 interface TemplateEntry {
   template: string;
   props?: Record<string, any>;
@@ -24,69 +24,98 @@ function convertJsonToAttributes(json: Record<string, any>): string {
 }
 
 /**
- * Renders a template to a string based on provided props.
- * Handles both function-based and object-based templates.
- * @param template - The template to render, which can be an array, an object, or a function.
- * @param props - The properties used for rendering the template.
- * @returns The rendered template as a string.
+ * Class to render a template to a string based on provided props.
+ * Inherits from Hooks to support lifecycle hooks.
  */
-export function renderTemplate(template: string[] | EssorNode | Function, props: Props): string {
-  // If the template is a function, invoke it with props and return the result
-  if (isFunction(template)) {
-    return template(props);
+export class TemplateRenderer extends Hooks {
+  constructor(
+    private template: string[] | EssorNode | Function,
+    private props: Props,
+  ) {
+    super();
   }
 
-  // Convert array-based templates to TemplateCollection format
-  const templateCollection: TemplateCollection = Array.isArray(template)
-    ? template.reduce((acc, tmpl, index) => {
-        acc[index + 1] = { template: tmpl };
-        return acc;
-      }, {})
-    : template;
+  /**
+   * Renders the template to a string.
+   * @returns The rendered template as a string.
+   */
+  render(): string {
+    this.initRef(); // Initialize the Hooks reference before rendering
 
-  const childNodesMap: Record<string, EssorNode[]> = {};
-  const processedTemplates: TemplateCollection = {};
+    let renderedString: string;
+    try {
+      // If the template is a function, invoke it with props and return the result
+      if (isFunction(this.template)) {
+        renderedString = this.template(this.props);
+      } else {
+        // Convert array-based templates to TemplateCollection format
+        const templateCollection: TemplateCollection = Array.isArray(this.template)
+          ? this.template.reduce((acc, tmpl, index) => {
+              acc[index + 1] = { template: tmpl };
+              return acc;
+            }, {})
+          : this.template;
 
-  if (isObject(templateCollection)) {
-    for (const [key, tmpl] of Object.entries(templateCollection)) {
-      const prop = props[key];
-      if (prop) {
-        // Remove event listeners (props starting with 'on') from the properties
-        for (const propKey in prop) {
-          if (startsWith(propKey, 'on') && isFunction(prop[propKey])) {
-            delete prop[propKey];
+        const childNodesMap: Record<string, EssorNode[]> = {};
+        const processedTemplates: TemplateCollection = {};
+
+        if (isObject(templateCollection)) {
+          for (const [key, tmpl] of Object.entries(templateCollection)) {
+            const prop = this.props[key];
+            if (prop) {
+              // Remove event listeners (props starting with 'on') from the properties
+              for (const propKey in prop) {
+                if (startsWith(propKey, 'on') && isFunction(prop[propKey])) {
+                  delete prop[propKey];
+                }
+              }
+
+              // Handle child elements if present
+              if (prop.children) {
+                for (const [child, idx] of prop.children) {
+                  if (!childNodesMap[idx]) childNodesMap[idx] = [];
+                  childNodesMap[idx].push(child);
+                }
+                delete prop.children;
+              }
+            }
+
+            // Store the processed template and associated props
+            processedTemplates[key] = { template: tmpl.template, props: prop };
           }
         }
 
-        // Handle child elements if present
-        if (prop.children) {
-          for (const [child, idx] of prop.children) {
-            if (!childNodesMap[idx]) childNodesMap[idx] = [];
-            childNodesMap[idx].push(child);
-          }
-          delete prop.children;
-        }
+        // Render the final template as a string
+        renderedString = Object.entries(processedTemplates)
+          .map(([key, { template: tmpl, props: prop }]) => {
+            let tmplString = tmpl;
+            if (prop) {
+              tmplString += ` ${convertJsonToAttributes(prop)}`;
+            }
+            if (childNodesMap[key]) {
+              tmplString += childNodesMap[key].map(child => this.renderChild(child, prop)).join('');
+            }
+
+            return tmplString;
+          })
+          .join('');
       }
-
-      // Store the processed template and associated props
-      processedTemplates[key] = { template: tmpl.template, props: prop };
+    } finally {
+      this.removeRef(); // Ensure that Hooks reference is cleaned up after rendering
     }
+
+    return renderedString;
   }
 
-  // Render the final template as a string
-  return Object.entries(processedTemplates)
-    .map(([key, { template: tmpl, props: prop }]) => {
-      let renderedString = tmpl;
-      if (prop) {
-        renderedString += ` ${convertJsonToAttributes(prop)}`;
-      }
-      if (childNodesMap[key]) {
-        renderedString += childNodesMap[key].map(child => renderTemplate(child, prop)).join('');
-      }
-
-      return renderedString;
-    })
-    .join('');
+  /**
+   * Helper method to render child nodes recursively.
+   * @param child - The child node to render.
+   * @param props - The properties to be passed to the child node.
+   * @returns The rendered child node as a string.
+   */
+  private renderChild(child: EssorNode, props: Props): string {
+    return new TemplateRenderer(child, props).render();
+  }
 }
 
 /**
@@ -95,8 +124,9 @@ export function renderTemplate(template: string[] | EssorNode | Function, props:
  * @param props - The properties to be passed to the component.
  * @returns The rendered component as a string.
  */
-export function renderToString(component: (...args: any[]) => string, props: Props): string {
-  return renderTemplate(component, props);
+export function renderToString(component: string[], props: Props): string {
+  const renderer = new TemplateRenderer(component, props);
+  return renderer.render();
 }
 
 /**
@@ -106,5 +136,6 @@ export function renderToString(component: (...args: any[]) => string, props: Pro
  * @param props - The properties to be passed to the component.
  */
 export function renderSSG(component, root: HTMLElement, props: Props = {}): void {
-  root.innerHTML = renderTemplate(component, props);
+  const renderer = new TemplateRenderer(component, props);
+  root.innerHTML = renderer.render();
 }

@@ -2,36 +2,64 @@ import { isFunction, startsWith } from '@estjs/shared';
 import { isSignal, signalObject } from '@estjs/signal';
 import { type Signal, useEffect, useReactive, useSignal } from '@estjs/signal';
 import { addEventListener } from './utils';
+import { RENDER_TYPE } from './constants';
 import type { EssorComponent, NodeTrack } from '../types';
 import type { TemplateNode } from './template-node';
 import type { Listener } from './utils';
 export type Hook = 'mounted' | 'destroy';
 
-export class ComponentNode implements JSX.Element {
+export class Hooks {
+  addEventListener(): void {}
+  removeEventListener(): void {}
+
+  static ref: Hooks | null = null;
+  static context: Record<symbol, Signal<any>> = {};
+
+  hooks: Record<Hook, Set<() => void>> = {
+    mounted: new Set(),
+    destroy: new Set(),
+  };
+
+  addHook(hook: Hook, cb: () => void): void {
+    this.hooks[hook]?.add(cb);
+  }
+
+  getContext<T>(context: symbol | string | number): T | undefined {
+    return Hooks.context[context];
+  }
+
+  setContext<T>(context: symbol | string | number, value: T): void {
+    Hooks.context[context] = value;
+  }
+
+  initRef() {
+    Hooks.ref = this;
+  }
+  removeRef() {
+    Hooks.ref = null;
+  }
+}
+
+export class ComponentNode extends Hooks implements JSX.Element {
   constructor(
     public template: EssorComponent,
     public props: Record<string, any>,
+    public key?: string,
+    public renderType = RENDER_TYPE.CLIENT,
   ) {
+    super();
     this.proxyProps = signalObject(
       props,
       key => startsWith(key, 'on') || startsWith(key, 'update'),
     );
   }
-  addEventListener(): void {}
-  removeEventListener(): void {}
 
-  static ref: ComponentNode | null = null;
-  static context: Record<symbol, Signal<any>> = {};
-  id?: string;
   private proxyProps: Record<string, Signal<any>> = {};
-  context: Record<symbol | string | number, any> = {};
   emitter = new Set<Function>();
   mounted = false;
   rootNode: TemplateNode | null = null;
-  hooks: Record<Hook, Set<() => void>> = {
-    mounted: new Set(),
-    destroy: new Set(),
-  };
+  context: Record<symbol | string | number, any> = {};
+
   private trackMap = new Map<string, NodeTrack>();
   get firstChild(): Node | null {
     return this.rootNode?.firstChild ?? null;
@@ -39,18 +67,6 @@ export class ComponentNode implements JSX.Element {
 
   get isConnected(): boolean {
     return this.rootNode?.isConnected ?? false;
-  }
-
-  addHook(hook: Hook, cb: () => void): void {
-    this.hooks[hook]?.add(cb);
-  }
-
-  getContext<T>(context: symbol | string | number): T | undefined {
-    return ComponentNode.context[context];
-  }
-
-  setContext<T>(context: symbol | string | number, value: T): void {
-    ComponentNode.context[context] = value;
   }
 
   inheritNode(node: ComponentNode): void {
@@ -76,9 +92,9 @@ export class ComponentNode implements JSX.Element {
       return this.rootNode?.mount(parent, before) ?? [];
     }
 
-    ComponentNode.ref = this;
+    this.initRef();
     this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
-    ComponentNode.ref = null;
+    this.removeRef();
     this.mounted = true;
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
     this.hooks.mounted.forEach(handler => handler());

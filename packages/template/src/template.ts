@@ -7,9 +7,10 @@ import type { EssorComponent, EssorNode } from '../types';
 export function h<K extends keyof HTMLElementTagNameMap>(
   _template: EssorComponent | HTMLTemplateElement | K | '',
   props: Record<string, any>,
+  key?: string,
 ): JSX.Element {
   if (isString(_template)) {
-    if (isHtmlTagName(_template)) {
+    if (isHtmlTagName(_template as any)) {
       (_template as string) = convertToHtmlTag(_template as string);
       props = {
         1: props,
@@ -25,8 +26,8 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   }
 
   return isFunction(_template)
-    ? new ComponentNode(_template, props)
-    : new TemplateNode(_template as HTMLTemplateElement, props);
+    ? new ComponentNode(_template as any, props)
+    : new TemplateNode(_template as HTMLTemplateElement, props, key);
 }
 
 export function isComponentOf(node: unknown, component: EssorComponent) {
