@@ -1,7 +1,8 @@
-import { isFunction, isString } from '@estjs/shared';
+import { isArray, isFunction, isString } from '@estjs/shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
+import { ServerNode } from './server-node';
 import type { EssorComponent, EssorNode } from '../types';
 
 export function h<K extends keyof HTMLElementTagNameMap>(
@@ -27,7 +28,9 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 
   return isFunction(_template)
     ? new ComponentNode(_template, props, key)
-    : new TemplateNode(_template as HTMLTemplateElement, props, key);
+    : isArray(_template)
+      ? (new ServerNode(_template, props, key) as unknown as EssorNode)
+      : new TemplateNode(_template as HTMLTemplateElement, props, key);
 }
 
 export function isComponentOf(node: unknown, component: EssorComponent) {

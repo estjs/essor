@@ -1,16 +1,19 @@
-import { type InjectionKey, renderSSG, useProvide, useReactive } from 'essor';
-import InjectComponent from './inject';
+import { type InjectionKey, useSignal } from 'essor';
 
 export const ProvideKey: InjectionKey<{ count: number }> = Symbol('ProvideKey');
 function App() {
-  const value = useReactive({ count: 10 });
-  useProvide(ProvideKey, value);
+  const count = useSignal(0);
 
   setInterval(() => {
-    value.count++;
+    count.value++;
   }, 600);
 
-  return <InjectComponent key={123}></InjectComponent>;
+  const reset = () => {
+    count.value = 0;
+  };
+  return <div onClick={() => reset()}>{count.value}</div>;
 }
 
-renderSSG(App, document.querySelector('#app')!);
+const html = (<App />).mount();
+
+document.querySelector('#app')!.innerHTML = html;

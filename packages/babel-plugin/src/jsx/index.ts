@@ -29,8 +29,9 @@ function addToTemplate(result: Result, content: string, join = false): void {
   if (isSsg) {
     if (join) {
       (result.template as string[])[result.template.length - 1] += content;
+    } else {
+      (result.template as string[]).push(content);
     }
-    (result.template as string[]).push(content);
   } else {
     result.template += content;
   }
@@ -149,7 +150,7 @@ function transformJSXElement(
       addToTemplate(result, `<${tagName}`);
       handleAttributes(props, result);
 
-      addToTemplate(result, isSelfClose ? '/>' : '>', hasExpression);
+      addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
 
       if (!isSelfClose) {
         transformChildren(path, result);
