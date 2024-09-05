@@ -2,7 +2,6 @@ import { isFunction, startsWith } from '@estjs/shared';
 import { isSignal, signalObject } from '@estjs/signal';
 import { type Signal, useEffect, useReactive, useSignal } from '@estjs/signal';
 import { addEventListener } from './utils';
-import { RENDER_TYPE } from './constants';
 import type { EssorComponent, NodeTrack } from '../types';
 import type { TemplateNode } from './template-node';
 import type { Listener } from './utils';
@@ -45,13 +44,14 @@ export class ComponentNode extends Hooks implements JSX.Element {
     public template: EssorComponent,
     public props: Record<string, any>,
     public key?: string,
-    public renderType = RENDER_TYPE.CLIENT,
   ) {
     super();
     this.proxyProps = signalObject(
       props,
       key => startsWith(key, 'on') || startsWith(key, 'update'),
     );
+
+    this.key = this.key || props.key;
   }
 
   private proxyProps: Record<string, Signal<any>> = {};
@@ -96,6 +96,7 @@ export class ComponentNode extends Hooks implements JSX.Element {
     this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
     this.removeRef();
     this.mounted = true;
+
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
     this.hooks.mounted.forEach(handler => handler());
     this.patchProps(this.props);

@@ -62,6 +62,8 @@ export class TemplateRenderer extends Hooks {
         if (isObject(templateCollection)) {
           for (const [key, tmpl] of Object.entries(templateCollection)) {
             const prop = this.props[key];
+            console.log(prop, this.props);
+
             if (prop) {
               // Remove event listeners (props starting with 'on') from the properties
               for (const propKey in prop) {

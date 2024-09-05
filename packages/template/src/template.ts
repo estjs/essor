@@ -26,7 +26,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   }
 
   return isFunction(_template)
-    ? new ComponentNode(_template as any, props)
+    ? new ComponentNode(_template, props, key)
     : new TemplateNode(_template as HTMLTemplateElement, props, key);
 }
 

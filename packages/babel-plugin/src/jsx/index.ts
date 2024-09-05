@@ -153,7 +153,7 @@ function transformJSXElement(
 
       if (!isSelfClose) {
         transformChildren(path, result);
-        if (hasSiblingElement(path)) {
+        if (hasSiblingElement(path) || isSsg) {
           addToTemplate(result, `</${tagName}>`);
         }
       }

@@ -1,3 +1,4 @@
+import { isSymbol } from '@estjs/shared';
 import { Hooks } from './component-node';
 
 export function onMount(cb: () => void): void {
@@ -10,10 +11,10 @@ export function onDestroy(cb: () => void): void {
   Hooks.ref?.addHook('destroy', cb);
 }
 
-function throwIfOutsideComponent(hook: string) {
+function throwIfOutsideComponent(hook: string, key?: unknown) {
   if (!Hooks.ref) {
     console.error(
-      `"${hook}" can only be called within the component function body
+      `"${hook}"(key: ${isSymbol(key) ? key.toString() : key}) can only be called within the component function body
       and cannot be used in asynchronous or deferred calls.`,
     );
   }
@@ -26,7 +27,7 @@ export function useProvide<T, K = InjectionKey<T> | string | number>(
   key: K,
   value: K extends InjectionKey<infer V> ? V : T,
 ) {
-  throwIfOutsideComponent('useProvide');
+  throwIfOutsideComponent('useProvide', key);
 
   Hooks.ref?.setContext(key as string, value);
 }
@@ -34,7 +35,7 @@ export function useInject<T, K = InjectionKey<T> | string | number>(
   key: K,
   defaultValue?: K extends InjectionKey<infer V> ? V : T,
 ): (K extends InjectionKey<infer V> ? V : T) | undefined {
-  throwIfOutsideComponent('useInject');
+  throwIfOutsideComponent('useInject', key);
   return Hooks.ref?.getContext(key as string) || defaultValue;
 }
 
