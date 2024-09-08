@@ -13,6 +13,7 @@ import {
   isWeakSet,
   startsWith,
 } from '@estjs/shared';
+import { nextTick, queueJob, queuePreFlushCb } from './scheduler';
 
 type EffectFn = () => void;
 
@@ -229,21 +230,61 @@ export function isComputed<T>(value: any): value is Computed<T> {
   return value instanceof Computed;
 }
 
+export interface effectOptions {
+  flush?: 'pre' | 'post' | 'sync'; // default: 'pre'
+  onTrack?: () => void;
+  onTrigger?: () => void;
+}
+
 /**
- * Registers an effect function that runs whenever its dependencies change.
- * @param fn - The effect function to register.
- * @returns A function to unregister the effect.
+ * Registers a side-effect function to be executed when a signal or computed property changes.
+ * @param fn - The side-effect function to be executed when reactive data changes.
+ * @param options - The options object.
+ * @param options.flush - The flush type, one of 'pre', 'post', 'sync'. Default is 'pre'.
+ * @param options.onTrack - A function to be called when a dependency is tracked.
+ * @param options.onTrigger - A function to be called when the side-effect is triggered.
+ * @returns A function to clean up the side-effect.
  */
-export function useEffect(fn: EffectFn): () => void {
+export function useEffect(fn: () => void, options: effectOptions = {}): () => void {
+  const { flush = 'pre', onTrack, onTrigger } = options;
+
+  // 创建副作用函数
   function effectFn() {
     const prev = activeEffect;
-    activeEffect = effectFn;
+
+    activeEffect = effectFn.init ? effectFn : effectFn.effect;
+
     fn();
+    // work done run trigger
+    onTrigger && onTrigger();
+
     activeEffect = prev;
   }
+  const scheduler =
+    flush === 'sync'
+      ? () => {
+          queueJob(effectFn);
+        }
+      : flush === 'pre'
+        ? () => {
+            queuePreFlushCb(effectFn);
+          }
+        : () => {
+            nextTick(() => {
+              queueJob(effectFn);
+            });
+          };
+
+  // mark the effect as inited
+  effectFn.effect = scheduler;
+  effectFn.init = true;
+
+  // start tracking
+  onTrack && onTrack();
+
+  effectFn();
 
   effectDeps.add(effectFn);
-  effectFn();
 
   return () => {
     effectDeps.delete(effectFn);
