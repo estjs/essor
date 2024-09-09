@@ -5,3 +5,5 @@ export { nextTick } from './utils';
 export { onMount, onDestroy, useInject, useProvide, InjectionKey } from './hooks';
 
 export type * from '../types/index.d.ts';
+
+export { renderToString } from './ssr';
