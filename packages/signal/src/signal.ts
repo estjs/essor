@@ -123,9 +123,14 @@ export class Signal<T> {
    */
   set value(newValue: T) {
     if (isSignal(newValue)) {
-      console.warn('Signal cannot be set to another signal, use .peek() instead');
+      if (__DEV__) {
+        console.warn(
+          'Do not set the signal as a signal, the original value of the signal will be used!',
+        );
+      }
       newValue = newValue.peek() as T;
     }
+
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
       if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {

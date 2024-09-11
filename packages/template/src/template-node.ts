@@ -160,6 +160,7 @@ export class TemplateNode implements JSX.Element {
             patchChild(track, node, child, before);
           });
         }
+        // handle ref
       } else if (attr === 'ref') {
         props[attr].value = node;
       }

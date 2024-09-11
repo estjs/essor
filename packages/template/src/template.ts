@@ -26,10 +26,6 @@ export function h<K extends keyof HTMLElementTagNameMap>(
     _template = template(closeHtmlTags(_template));
   }
 
-  // if (isArray(_template)) {
-  //   _template = template(_template.join(''));
-  // }
-
   if (sharedConfig.renderType === RENDER_TYPE.SSG) {
     return new ServerNode(_template as any, props, key) as any;
   }
