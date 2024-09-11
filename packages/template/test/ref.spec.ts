@@ -1,5 +1,6 @@
 import { useSignal } from '@estjs/signal';
 import { h as _h$, template as _template$ } from '../src/template';
+import { useRef } from '../src';
 import { mount } from './test-utils';
 
 describe('html element ref', () => {
@@ -12,9 +13,10 @@ describe('html element ref', () => {
   let signalRef;
 
   function normalValue() {
+    const ref = (normalRef = useRef());
     return _h$(_tmpl$, {
       '1': {
-        ref: r => (normalRef = r),
+        ref,
       },
     });
   }
@@ -41,7 +43,7 @@ describe('html element ref', () => {
   });
   it('should work with normal value', () => {
     expect(normal.text()).toBe('ref');
-    expect(normalRef.innerHTML).toBe('ref');
+    expect(normalRef.value.innerHTML).toBe('ref');
   });
 
   it('should work with signal value', () => {

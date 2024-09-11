@@ -1,4 +1,5 @@
 import { isSymbol } from '@estjs/shared';
+import { type Signal, shallowSignal } from '@estjs/signal';
 import { Hooks } from './component-node';
 
 export function onMount(cb: () => void): void {
@@ -45,3 +46,21 @@ export function useInject<T, K = InjectionKey<T> | string | number>(
 //   const propsRef = () => {};
 //   const propsChild = () => {};
 // }
+
+/**
+ * Creates a reactive ref that can be used to reference a DOM node
+ * or a component instance within the component function body.
+ *
+ * @returns a reactive ref signal
+ *
+ * @example
+ * const inputRef = useRef(')
+ *
+ * <input ref={inputRef} />
+ *
+ * inputRef.value // input element
+ */
+export function useRef<T>(): Signal<T | null> {
+  const ref = shallowSignal<T | null>(null);
+  return ref;
+}

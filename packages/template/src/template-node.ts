@@ -161,11 +161,7 @@ export class TemplateNode implements JSX.Element {
           });
         }
       } else if (attr === 'ref') {
-        if (isSignal(props[attr])) {
-          props[attr].value = node;
-        } else if (isFunction(props[attr])) {
-          (props[attr] as Function)(node);
-        }
+        props[attr].value = node;
       }
       // handle events
       else if (startsWith(attr, 'on')) {
