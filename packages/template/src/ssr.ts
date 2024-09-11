@@ -1,8 +1,13 @@
 import { coerceArray, escape, isArray, isFunction, isObject } from '@estjs/shared';
 import { isSignal } from '@estjs/signal';
 import { Hooks } from './component-node';
-import { RENDER_TYPE, sharedConfig } from './constants';
 import type { EssorNode } from '../types';
+
+
+
+const sharedConfig:any= {
+
+}
 
 interface TemplateEntry {
   template: string;
@@ -30,13 +35,10 @@ export class ServerNode extends Hooks {
   constructor(
     private template: string[] | EssorNode | Function,
     private props: Props = {},
-    public key?: string,
   ) {
     super();
     this.initTemplate();
   }
-  public hydrate = false;
-  public enventMap = new Map<string, Function>();
 
   // eslint-disable-next-line unused-imports/no-unused-vars
   mount(parent?, before?) {
@@ -140,7 +142,6 @@ export class ServerNode extends Hooks {
 }
 
 export function renderToString(component: any, props?: Props): string {
-  sharedConfig.renderType = RENDER_TYPE.SSG;
   const renderer = new ServerNode(component, props || {});
   const html = renderer.mount();
   return html;

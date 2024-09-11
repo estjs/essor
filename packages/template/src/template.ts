@@ -1,8 +1,7 @@
-import { isFunction, isString } from '@estjs/shared';
+import { isBrowser, isFunction, isString } from '@estjs/shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
-import { RENDER_TYPE, sharedConfig } from './constants';
 import { ServerNode } from './ssr';
 import type { EssorComponent, EssorNode } from '../types';
 
@@ -26,8 +25,8 @@ export function h<K extends keyof HTMLElementTagNameMap>(
     _template = template(closeHtmlTags(_template));
   }
 
-  if (sharedConfig.renderType === RENDER_TYPE.SSG) {
-    return new ServerNode(_template as any, props, key) as any;
+  if (!isBrowser()) {
+    return new ServerNode(_template as any, props) as any;
   }
 
   return isFunction(_template)

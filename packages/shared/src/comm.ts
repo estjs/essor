@@ -68,3 +68,26 @@ export function isExclude(key: string | symbol, exclude?: ExcludeType): boolean 
       ? exclude(key)
       : false;
 }
+
+/**
+ * Generates a unique random 8 character string ID.
+ * The generated IDs only contain alphanumeric characters.
+ * @returns A unique random 8 character string ID.
+ */
+export function generateUniqueId() {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  const charactersLength = characters.length;
+  for (let i = 0; i < 8; i++) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+  }
+  return result;
+}
+
+/**
+ * Checks if the current environment is a browser.
+ * @returns True if the current environment is a browser, otherwise false.
+ */
+export function isBrowser() {
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
+}

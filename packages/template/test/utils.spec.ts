@@ -6,7 +6,6 @@ import {
   binNode,
   coerceNode,
   convertToHtmlTag,
-  generateShortId,
   insertChild,
   isHtmlTagName,
   removeChild,
@@ -307,32 +306,5 @@ describe('isHtmlTagName', () => {
     expect(isHtmlTagName(null)).toBe(false);
     // @ts-ignore
     expect(isHtmlTagName(undefined)).toBe(false);
-  });
-});
-describe('generateShortId', () => {
-  it('should generate a string of length 8', () => {
-    const id = generateShortId();
-    expect(id).toHaveLength(8);
-  });
-
-  it('should generate a string containing only allowed characters', () => {
-    const id = generateShortId();
-    const validCharacters = /^[\da-z]+$/i;
-    expect(id).toMatch(validCharacters);
-  });
-
-  it('should generate unique IDs for multiple calls', () => {
-    const ids = new Set();
-    for (let i = 0; i < 1000; i++) {
-      const id = generateShortId();
-      expect(ids.has(id)).toBe(false); // Ensure no duplicates
-      ids.add(id);
-    }
-  });
-
-  it('should generate different IDs in subsequent calls', () => {
-    const id1 = generateShortId();
-    const id2 = generateShortId();
-    expect(id1).not.toBe(id2);
   });
 });

@@ -9,6 +9,8 @@ export {
   escape,
   isExclude,
   ExcludeType,
+  generateUniqueId,
+  isBrowser,
 } from './comm';
 export {
   isString,
