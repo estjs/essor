@@ -16,7 +16,6 @@
     "@estjs/eslint-config": "^1.2.5",
     "@types/node": "^22.5.1",
     "eslint": "^9.9.1",
-    "express": "^4.19.2",
     "jsdom": "^25.0.0",
     "typescript": "^5.5.4",
     "unplugin-essor": "workspace:*",

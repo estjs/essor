@@ -12,6 +12,7 @@ import {
   isWeakMap,
   isWeakSet,
   startsWith,
+  warn,
 } from '@estjs/shared';
 import { nextTick, queueJob, queuePreFlushCb } from './scheduler';
 
@@ -311,6 +312,12 @@ export function signalObject<T extends object>(
   initialValues: T,
   exclude?: ExcludeType,
 ): SignalObject<T> {
+  if (!initialValues || !isObject(initialValues)) {
+    if (__DEV__) {
+      warn('initialValues must be an object,will return initial value!', initialValues);
+    }
+    return initialValues;
+  }
   const signals = Object.entries(initialValues).reduce((acc, [key, value]) => {
     acc[key] = isExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
     return acc;

@@ -19,7 +19,6 @@ import { patchChildren } from './patch';
 import type { NodeTrack } from '../types';
 
 export class TemplateNode implements JSX.Element {
-  treeMap = new Map<number, Node>();
   constructor(
     public template: HTMLTemplateElement,
     public props: Record<string, unknown>,
@@ -27,7 +26,7 @@ export class TemplateNode implements JSX.Element {
   ) {
     this.key = this.key || (props.key as string);
   }
-
+  treeMap = new Map<number, Node>();
   mounted = false;
   nodes: Node[] = [];
   provides: Record<string, unknown> = {};

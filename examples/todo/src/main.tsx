@@ -1,5 +1,3 @@
-import { renderToString } from 'essor';
-
 function App() {
   const $list: string[] = [];
   let $val: string = '';
@@ -39,7 +37,4 @@ function App() {
     </div>
   );
 }
-
-console.log(renderToString(App));
-
-document.body.innerHTML = renderToString(App);
+(<App />).mount(document.querySelector('#app')!);

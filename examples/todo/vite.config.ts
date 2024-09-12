@@ -10,5 +10,5 @@ export default defineConfig({
       '@/': `${path.resolve(__dirname, '/src')}/`,
     },
   },
-  plugins: [Inspect(), essor({ ssg: true })],
+  plugins: [Inspect(), essor()],
 });

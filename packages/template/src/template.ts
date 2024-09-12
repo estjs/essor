@@ -1,8 +1,8 @@
-import { isBrowser, isFunction, isString } from '@estjs/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
-import { ServerNode } from './ssr';
+import { mockDocument } from './node-mock';
 import type { EssorComponent, EssorNode } from '../types';
 
 export function h<K extends keyof HTMLElementTagNameMap>(
@@ -25,10 +25,6 @@ export function h<K extends keyof HTMLElementTagNameMap>(
     _template = template(closeHtmlTags(_template));
   }
 
-  if (!isBrowser()) {
-    return new ServerNode(_template as any, props) as any;
-  }
-
   return isFunction(_template)
     ? new ComponentNode(_template, props, key)
     : new TemplateNode(_template as HTMLTemplateElement, props, key);
@@ -43,9 +39,9 @@ export function isJsxElement(node: unknown): node is EssorNode {
 }
 
 export function template(html: string): HTMLTemplateElement {
-  const template = document.createElement('template');
+  const template = mockDocument.createElement('template');
   template.innerHTML = html;
-  return template;
+  return template as any;
 }
 export function Fragment(props: { children: JSX.Element }) {
   return props.children;

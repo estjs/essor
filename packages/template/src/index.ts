@@ -6,4 +6,4 @@ export { onMount, onDestroy, useInject, useProvide, InjectionKey, useRef } from 
 
 export type * from '../types/index.d.ts';
 
-export { renderToString } from './ssr';
+export * from './ssr';
