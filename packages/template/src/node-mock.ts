@@ -1,17 +1,15 @@
 //@ts-nocheck
-import { Parser } from './html-parser';
-import type { DomElement } from './html-parser';
-
+import { HTMLParser } from './html-parser';
 class Element {
-  tagName: string;
+  type: string;
   data?: string; // For text nodes
   children: DomElement[] = [];
   attributes: Record<string, string> = {};
   eventListeners: Record<string, Function[]> = {};
   parentNode: Element | null = null;
 
-  constructor(tagName: string, data?: string) {
-    this.tagName = tagName;
+  constructor(type: string, data?: string) {
+    this.type = type;
     this.data = data;
   }
 
@@ -32,7 +30,7 @@ class Element {
 
   // Clone the node
   cloneNode(deep: boolean = false): Element {
-    const cloned = new Element(this.tagName);
+    const cloned = new Element(this.type);
     cloned.attributes = { ...this.attributes };
     if (deep) {
       cloned.children = this.children.map(child => ({ ...child }));
@@ -50,7 +48,7 @@ class Element {
 
   // Return innerHTML string
   get innerHTML(): string {
-    if (this.tagName === 'text') {
+    if (this.type === 'text') {
       return this.data || '';
     }
 
@@ -60,27 +58,14 @@ class Element {
 
     const childrenHTML = (this.children || []).map(child => this.getInnerHTML(child)).join('');
 
-    return `<${this.tagName}${attributes ? ` ${attributes}` : ''}>${childrenHTML}</${this.tagName}>`;
-  }
-
-  getInnerHTML(element: DomElement): string {
-    if (element.type === 'text') {
-      return element.data || '';
-    }
-
-    const attributes = Object.entries(element.attributes || {})
-      .map(([key, value]) => `${key}="${value}"`)
-      .join(' ');
-
-    const childrenHTML = (element.children || []).map(child => this.getInnerHTML(child)).join('');
-
-    return `<${element.name}${attributes ? ` ${attributes}` : ''}>${childrenHTML}</${element.name}>`;
+    return `<${this.name}${attributes ? ` ${attributes}` : ''}>${childrenHTML}</${this.name}>`;
   }
 
   // Set innerHTML
   set innerHTML(html: string) {
-    const parser = new Parser();
-    const dom = parser.parse(html);
+    const dom = HTMLParser(html);
+    console.log(dom);
+
     this.children = dom;
   }
 
@@ -94,7 +79,7 @@ class Element {
 
   // Get/Set textContent
   get textContent(): string {
-    if (this.tagName === 'text') {
+    if (this.type === 'text') {
       return this.data || '';
     }
     return this.children.map(child => child.textContent).join('');
@@ -176,8 +161,8 @@ class Range {
 }
 
 export const mockDocument = {
-  createElement(tagName: string): Element {
-    return new Element(tagName);
+  createElement(type: string): Element {
+    return new Element(type);
   },
 
   createTextNode(text: string): Element {
@@ -203,4 +188,21 @@ export class MockNode {
   DOCUMENT_NODE = 9;
   DOCUMENT_TYPE_NODE = 10;
   DOCUMENT_FRAGMENT_NODE = 11;
+}
+
+export function getInnerHTML(element: DomElement): string {
+  if (element.type === 'text') {
+    return element.data || '';
+  }
+
+  const attributes = Object.entries(element.attributes || {})
+    .map(([key, value]) => `${key}="${value}"`)
+    .join(' ');
+
+  const childrenHTML = (element.children || []).map(child => getInnerHTML(child)).join('');
+  console.log(
+    `<${element.name}${attributes ? ` ${attributes}` : ''}>${childrenHTML}</${element.name}>`,
+  );
+
+  return `<${element.name}${attributes ? ` ${attributes}` : ''}>${childrenHTML}</${element.name}>`;
 }

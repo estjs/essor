@@ -1,5 +1,5 @@
 import { h } from './template';
-import { MockNode, mockDocument } from './node-mock';
+import { MockNode, getInnerHTML, mockDocument } from './node-mock';
 /**
  *
  * @param component
@@ -17,10 +17,8 @@ export function renderToString(component: any, props?): string {
 
   component.mount(dom, props);
 
-  console.log(JSON.stringify(dom));
-
   //@ts-ignore
-  return dom.innerHTML;
+  return getInnerHTML(dom.children[0]);
 }
 
 /**

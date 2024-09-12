@@ -40,7 +40,7 @@ export function isJsxElement(node: unknown): node is EssorNode {
 
 export function template(html: string): HTMLTemplateElement {
   const template = mockDocument.createElement('template');
-  template.innerHTML = html;
+  template.innerHTML = closeHtmlTags(html);
   return template as any;
 }
 export function Fragment(props: { children: JSX.Element }) {
