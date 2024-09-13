@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.11](https://github.com/estjs/essor/compare/v0.0.10...v0.0.11) `2024-09-03`
+
+
+### Bug Fixes
+
+* disable unocss eslint ([c0c725c](https://github.com/estjs/essor/commit/c0c725ce058b712224b65ee35086a378800eca29))
+
+
+
+
 
 
 
