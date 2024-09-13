@@ -2,7 +2,6 @@ import { isFunction, isString } from '@estjs/shared';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
-import { mockDocument } from './node-mock';
 import type { EssorComponent, EssorNode } from '../types';
 
 export function h<K extends keyof HTMLElementTagNameMap>(
@@ -22,7 +21,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
         0: props,
       };
     }
-    _template = template(closeHtmlTags(_template));
+    _template = template(_template);
   }
 
   return isFunction(_template)
@@ -39,9 +38,9 @@ export function isJsxElement(node: unknown): node is EssorNode {
 }
 
 export function template(html: string): HTMLTemplateElement {
-  const template = mockDocument.createElement('template');
+  const template = document.createElement('template');
   template.innerHTML = closeHtmlTags(html);
-  return template as any;
+  return template;
 }
 export function Fragment(props: { children: JSX.Element }) {
   return props.children;

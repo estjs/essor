@@ -18,7 +18,7 @@ export const transformProgram = {
     path.state = {
       h: path.scope.generateUidIdentifier('h$'),
       template: path.scope.generateUidIdentifier('template$'),
-      renderToString: path.scope.generateUidIdentifier('renderToString$'),
+      ssg: path.scope.generateUidIdentifier('ssg$'),
 
       useSignal: path.scope.generateUidIdentifier('signal$'),
       useComputed: path.scope.generateUidIdentifier('computed$'),

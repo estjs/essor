@@ -10,20 +10,5 @@ export default defineConfig({
       '@/': `${path.resolve(__dirname, '/src')}/`,
     },
   },
-  plugins: [Inspect(), essor()],
-  build: {
-    rollupOptions: {
-      input: {
-        app: 'src/app.js',
-        main: 'src/main.js',
-        server: 'src/server.js',
-      },
-      output: {
-        dir: 'dist',
-        format: 'es',
-        exports: 'named',
-        entryFileNames: '[name].js',
-      },
-    },
-  },
+  plugins: [Inspect(), essor({ ssg: true })],
 });

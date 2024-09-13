@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "cross-env NODE_ENV=development node ./src/server.js",
+    "dev": "vite --open --port 3001",
     "typecheck": "tsc  --noEmit",
     "preview": "vite preview",
     "test": "vitest -r test"
@@ -15,9 +15,7 @@
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.5",
     "@types/node": "^22.5.1",
-    "cross-env": "^7.0.3",
     "eslint": "^9.9.1",
-    "express": "^4.19.2",
     "jsdom": "^25.0.0",
     "typescript": "^5.5.4",
     "unplugin-essor": "workspace:*",
