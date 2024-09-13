@@ -27,10 +27,11 @@ let isSsg = false;
 
 function addToTemplate(result: Result, content: string, join = false): void {
   if (isSsg) {
-    if (join) {
+    if (join && result.template.length > 0) {
       (result.template as string[])[result.template.length - 1] += content;
+    } else {
+      (result.template as string[]).push(content);
     }
-    (result.template as string[]).push(content);
   } else {
     result.template += content;
   }
@@ -75,8 +76,13 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   if (key) {
     args.push(t.identifier(`${key}`));
   }
-  imports.add('h');
-  return t.callExpression(state.h, args);
+  if (isSsg) {
+    imports.add('ssg');
+    return t.callExpression(state.ssg, args);
+  } else {
+    imports.add('h');
+    return t.callExpression(state.h, args);
+  }
 }
 
 function createProps(props) {
@@ -146,14 +152,14 @@ function transformJSXElement(
         result.template = isSsg ? ['<svg _svg_>'] : '<svg _svg_>';
       }
 
-      addToTemplate(result, `<${tagName}`);
+      addToTemplate(result, `<${tagName}`, true);
       handleAttributes(props, result);
 
-      addToTemplate(result, isSelfClose ? '/>' : '>', hasExpression);
+      addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
 
       if (!isSelfClose) {
         transformChildren(path, result);
-        if (hasSiblingElement(path)) {
+        if (hasSiblingElement(path) || isSsg) {
           addToTemplate(result, `</${tagName}>`);
         }
       }
@@ -361,7 +367,6 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
         } else {
           if (value.isJSXExpressionContainer()) {
             const expression = value.get('expression');
-
             if (expression.isStringLiteral()) {
               props[name] = expression.node.value;
             } else if (expression.isNumericLiteral()) {

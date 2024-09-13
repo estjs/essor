@@ -257,7 +257,7 @@ export function closeHtmlTags(input: string): string {
  * @param tagName - The tag name to check.
  * @returns A boolean indicating if the tag name is valid.
  */
-export function isHtmlTagName<K extends keyof HTMLElementTagNameMap>(tagName: K): boolean {
+export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagNameMap {
   const htmlTagsList = htmlTags.split(',');
   return htmlTagsList.includes(tagName);
 }
@@ -274,13 +274,4 @@ export function convertToHtmlTag(tagName: string): string {
   } else {
     return `<${tagName}></${tagName}>`;
   }
-}
-export function generateShortId() {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const charactersLength = characters.length;
-  for (let i = 0; i < 8; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
 }

@@ -11,7 +11,6 @@ import {
   addEventListener,
   binNode,
   coerceNode,
-  generateShortId,
   insertChild,
   removeChild,
   setAttribute,
@@ -20,13 +19,14 @@ import { patchChildren } from './patch';
 import type { NodeTrack } from '../types';
 
 export class TemplateNode implements JSX.Element {
-  treeMap = new Map<number, Node>();
   constructor(
     public template: HTMLTemplateElement,
     public props: Record<string, unknown>,
     public key?: string,
-  ) {}
-
+  ) {
+    this.key = this.key || (props.key as string);
+  }
+  treeMap = new Map<number, Node>();
   mounted = false;
   nodes: Node[] = [];
   provides: Record<string, unknown> = {};
@@ -49,8 +49,6 @@ export class TemplateNode implements JSX.Element {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
     }
-
-    this.key = this.key || generateShortId();
 
     const cloneNode = this.template.content.cloneNode(true);
     const firstChild = cloneNode.firstChild as HTMLElement | null;
@@ -161,12 +159,9 @@ export class TemplateNode implements JSX.Element {
             patchChild(track, node, child, before);
           });
         }
+        // handle ref
       } else if (attr === 'ref') {
-        if (isSignal(props[attr])) {
-          props[attr].value = node;
-        } else if (isFunction(props[attr])) {
-          (props[attr] as Function)(node);
-        }
+        props[attr].value = node;
       }
       // handle events
       else if (startsWith(attr, 'on')) {

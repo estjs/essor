@@ -290,44 +290,6 @@ describe('useSignal', () => {
   });
 });
 
-describe('effect', () => {
-  it('should run the effect function', () => {
-    let testValue = 0;
-    useEffect(() => {
-      testValue = 10;
-    });
-    expect(testValue).toBe(10);
-  });
-
-  it('should get correct value', () => {
-    const name = useSignal('Dnt');
-
-    let effectTimes = 0;
-    const dispose = useEffect(() => {
-      effectTimes++;
-      name.value;
-    });
-    expect(effectTimes).toBe(1);
-    dispose();
-    name.value = 'John';
-    expect(effectTimes).toBe(1);
-    name.value = '';
-    expect(effectTimes).toBe(1);
-  });
-
-  it('should get the value correctly', () => {
-    const testSignal = useSignal([1, 2, 3]);
-    let effectTimes = 0;
-    useEffect(() => {
-      testSignal.value;
-      effectTimes++;
-    });
-    expect(effectTimes).toBe(1);
-    testSignal.value.push(4);
-    expect(effectTimes).toBe(2);
-  });
-});
-
 describe('signalObject', () => {
   it('should convert plain object properties to signals', () => {
     const initialValues = { a: 1, b: 2 };

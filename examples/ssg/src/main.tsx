@@ -1,15 +1,19 @@
-import { type InjectionKey, useProvide, useReactive } from 'essor';
-import InjectComponent from './inject';
-
-export const ProvideKey: InjectionKey<{ count: number }> = Symbol('ProvideKey');
-function App() {
-  const value = useReactive({ count: 10 });
-  useProvide(ProvideKey, value);
-
-  setInterval(() => {
-    value.count++;
-  }, 600);
-
-  return <InjectComponent key={123}></InjectComponent>;
+import { renderToString } from 'essor';
+export function Com(props) {
+  return <div>{props.count}</div>;
 }
-(<App />).mount(document.querySelector('#app')!);
+
+function App() {
+  const $value = 'hello world';
+  return (
+    <div>
+      <p>{$value}</p>
+      <Com count={$value}></Com>
+      <input type="text" bind:value={$value} />
+    </div>
+  );
+}
+
+console.log(renderToString(App));
+
+document.querySelector('#app')!.innerHTML = renderToString(App);

@@ -17,3 +17,21 @@
 - Uses JSX, signals, and has a low learning curve
 - No virtual DOM, fine-grained updates
 - Simple and user-friendly, allowing for more focus on business logic
+
+
+append
+createRange
+setStartBefore
+setEndBefore
+setEndAfter
+deleteContents
+createComment
+textContent
+firstChild
+remove
+nextSibling
+nodes
+before
+createTextNode
+parentNode
+className
