@@ -11,38 +11,36 @@ import { startsWith } from '@estjs/shared';
  * @return {void}
  */
 export function replaceImportDeclaration(path) {
-  const imports = path.node.specifiers;
-  imports.forEach(specifier => {
+  path.node.specifiers.forEach(specifier => {
     const variableName = specifier.local.name;
-
     if (startsWith(variableName, '$') && !isVariableUsedAsObject(path, variableName)) {
       path.scope.rename(variableName, `${variableName}.value`);
-      specifier.local.name = `${variableName}`;
+      specifier.local.name = variableName;
     }
   });
 }
+
+/**
+ * Checks if a variable is used as an object.
+ *
+ * @param path - The path to the variable.
+ * @param variableName - The name of the variable.
+ * @returns {boolean} - Whether the variable is used as an object.
+ */
 function isVariableUsedAsObject(path, variableName) {
   const binding = path.scope.getBinding(variableName);
-  let isUsedObject = false;
-
-  if (!binding || !binding.referencePaths) {
-    return isUsedObject;
-  }
-
-  for (const referencePath of binding.referencePaths) {
-    if (t.isMemberExpression(referencePath.parent)) {
-      const memberExprParent = referencePath.parent;
-
-      if (t.isIdentifier(memberExprParent.object, { name: variableName })) {
-        const newMemberExpr = t.memberExpression(
-          t.memberExpression(memberExprParent.object, t.identifier('value')),
-          memberExprParent.property,
-        );
-        referencePath.parentPath.replaceWith(newMemberExpr);
-        isUsedObject = true;
+  return (
+    binding?.referencePaths?.some(referencePath => {
+      if (t.isMemberExpression(referencePath.parent)) {
+        const { object, property } = referencePath.parent;
+        if (t.isIdentifier(object, { name: variableName })) {
+          referencePath.parentPath.replaceWith(
+            t.memberExpression(t.memberExpression(object, t.identifier('value')), property),
+          );
+          return true;
+        }
       }
-    }
-  }
-
-  return isUsedObject;
+      return false;
+    }) || false
+  );
 }

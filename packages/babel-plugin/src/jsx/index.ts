@@ -7,7 +7,7 @@ import {
   getAttrName,
   getTagName,
   hasSiblingElement,
-  isComponent,
+  isComponent as isComponentName,
   isTextChild,
   setNodeText,
 } from '../shared';
@@ -54,18 +54,17 @@ export function transformJSX(path: NodePath<JSXElement>): void {
 
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
   const state: State = path.state;
+  const isComponent = path.isJSXElement() && isComponentName(getTagName(path.node));
 
-  let tmpl: t.Identifier;
-  if (path.isJSXElement() && isComponent(getTagName(path.node))) {
-    tmpl = t.identifier(getTagName(path.node));
-  } else {
-    tmpl = path.scope.generateUidIdentifier('_tmpl$');
+  const tmpl = isComponent
+    ? t.identifier(getTagName(path.node))
+    : path.scope.generateUidIdentifier('_tmpl$');
 
+  if (!isComponent) {
     const template = isSsg
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
       : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
-    const declarator = t.variableDeclarator(tmpl, template);
-    state.tmplDeclaration.declarations.push(declarator);
+    state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, template));
     if (!isSsg) {
       imports.add('template');
     }
@@ -76,13 +75,10 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   if (key) {
     args.push(t.identifier(`${key}`));
   }
-  if (isSsg) {
-    imports.add('ssg');
-    return t.callExpression(state.ssg, args);
-  } else {
-    imports.add('h');
-    return t.callExpression(state.h, args);
-  }
+
+  const fnName = isSsg ? 'ssg' : 'h';
+  imports.add(fnName);
+  return t.callExpression(state[fnName], args);
 }
 
 function createProps(props) {
@@ -130,7 +126,7 @@ function transformJSXElement(
 ): void {
   if (path.isJSXElement()) {
     const tagName = getTagName(path.node);
-    const tagIsComponent = isComponent(tagName);
+    const tagIsComponent = isComponentName(tagName);
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && result.index === 1;
     const { props, hasExpression } = getAttrProps(path);
@@ -232,63 +228,25 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
   let klass = '';
   let style = '';
 
-  for (const prop in props) {
-    let value = props[prop];
-
+  for (const [prop, value] of Object.entries(props)) {
     if (prop === 'class' && typeof value === 'string') {
       klass += ` ${value}`;
       delete props[prop];
-      continue;
-    }
-
-    if (prop === 'style' && typeof value === 'string') {
+    } else if (prop === 'style' && typeof value === 'string') {
       style += `${value}${value.at(-1) === ';' ? '' : ';'}`;
       delete props[prop];
-      continue;
-    }
-
-    if (value === true) {
+    } else if (value === true) {
       addToTemplate(result, ` ${prop}`);
       delete props[prop];
-    }
-    if (value === false) {
+    } else if (value === false) {
       delete props[prop];
-    }
-    if (typeof value === 'string' || typeof value === 'number') {
+    } else if (typeof value === 'string' || typeof value === 'number') {
       addToTemplate(result, ` ${prop}="${value}"`);
       delete props[prop];
-    }
-
-    // if value is conditional expression
-    if (t.isConditionalExpression(value)) {
-      const { test, consequent, alternate } = value;
-      value = t.arrowFunctionExpression([], t.conditionalExpression(test, consequent, alternate));
-      props[prop] = value;
-    }
-
-    // if value is object expression and has conditional
-    if (t.isObjectExpression(value)) {
-      let hasConditional = false;
-      value.properties.forEach(property => {
-        if (t.isObjectProperty(property) && t.isConditionalExpression(property.value)) {
-          hasConditional = true;
-        }
-      });
-      if (hasConditional) {
-        value = t.arrowFunctionExpression([], value);
-        props[prop] = value;
-      } else {
-        // TODO: For the time being, only support style
-        if (prop === 'style') {
-          value.properties.forEach(property => {
-            if (t.isObjectProperty(property)) {
-              style += `${(property.key as Identifier).name}:${(property.value as StringLiteral).value};`;
-            }
-          });
-
-          delete props[prop];
-        }
-      }
+    } else if (t.isConditionalExpression(value)) {
+      props[prop] = t.arrowFunctionExpression([], value);
+    } else if (t.isObjectExpression(value)) {
+      handleObjectExpression(prop, value, props, style);
     }
   }
 
@@ -304,6 +262,29 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
   }
   if (style) {
     addToTemplate(result, ` style="${style}"`);
+  }
+}
+
+function handleObjectExpression(
+  prop: string,
+  value: t.ObjectExpression,
+  props: Record<string, any>,
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  style: string,
+): void {
+  const hasConditional = value.properties.some(
+    property => t.isObjectProperty(property) && t.isConditionalExpression(property.value),
+  );
+
+  if (hasConditional) {
+    props[prop] = t.arrowFunctionExpression([], value);
+  } else if (prop === 'style') {
+    value.properties.forEach(property => {
+      if (t.isObjectProperty(property)) {
+        style += `${(property.key as Identifier).name}:${(property.value as StringLiteral).value};`;
+      }
+    });
+    delete props[prop];
   }
 }
 

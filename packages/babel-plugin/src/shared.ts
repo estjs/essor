@@ -142,7 +142,7 @@ export function setNodeText(path: NodePath<JSXChild>, text: string): void {
  */
 export function isSymbolStart(path: NodePath<any>, name: string) {
   const state: State = path.state;
-  const { symbol } = state.opts;
+  const { symbol } = state?.opts || '$';
 
   return startsWith(name, symbol);
 }
