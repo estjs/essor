@@ -25,6 +25,7 @@ export {
   isPromise,
   isSymbol,
   isFalsy,
+  isPlainObject,
   isPrimitive,
   isHTMLElement,
 } from './is';

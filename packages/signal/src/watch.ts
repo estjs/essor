@@ -1,4 +1,14 @@
-import { hasChanged, isArray, isFunction, noop, warn } from '@estjs/shared';
+import {
+  hasChanged,
+  isArray,
+  isFunction,
+  isMap,
+  isObject,
+  isPlainObject,
+  isSet,
+  noop,
+  warn,
+} from '@estjs/shared';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
@@ -76,13 +86,15 @@ function doWatch(
   options?: WatchOptions,
 ): WatchStopHandle {
   let getter: () => any;
-
+  let isMultiSource = false;
+  const { deep, immediate } = options || {};
   // Determine the correct getter function based on the source type
   if (isSignal(source) || isComputed(source)) {
     getter = () => source.value;
   } else if (isReactive(source)) {
     getter = () => ({ ...source }); // Create a shallow copy for reactive objects
   } else if (isArray(source)) {
+    isMultiSource = true;
     getter = () =>
       source.map(s => {
         if (isSignal(s) || isComputed(s)) return s.value;
@@ -95,17 +107,28 @@ function doWatch(
   } else {
     warn('Invalid source type', source);
     getter = noop;
+    return noop;
   }
 
-  let oldValue: any;
+  if (cb && deep) {
+    const baseGetter = getter;
+    const depth = deep === true ? Infinity : deep;
+    getter = () => traverse(baseGetter(), depth);
+  }
+
+  const INITIAL_WATCHER_VALUE = {};
+  let oldValue: any = isMultiSource
+    ? Array.from({ length: (source as []).length }).fill(INITIAL_WATCHER_VALUE)
+    : INITIAL_WATCHER_VALUE;
 
   // Effect function to be triggered on source changes
   const effectFn = () => {
     const newValue = getter();
 
     // Check if the new value has changed compared to the old value
-    if (options?.deep || hasChanged(newValue, oldValue)) {
+    if (hasChanged(newValue, oldValue)) {
       cb && cb(newValue, oldValue);
+
       oldValue = newValue;
     }
   };
@@ -114,9 +137,42 @@ function doWatch(
   const stop = useEffect(effectFn);
 
   // If immediate execution is requested, trigger the effect function immediately
-  if (options?.immediate) {
+  if (immediate) {
     effectFn();
   }
 
   return stop;
+}
+export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
+  if (depth <= 0 || !isObject(value)) {
+    return value;
+  }
+
+  seen = seen || new Set();
+  if (seen.has(value)) {
+    return value;
+  }
+  seen.add(value);
+  depth--;
+  if (isSignal(value)) {
+    traverse(value.value, depth, seen);
+  } else if (isArray(value)) {
+    for (const element of value) {
+      traverse(element, depth, seen);
+    }
+  } else if (isSet(value) || isMap(value)) {
+    value.forEach((v: any) => {
+      traverse(v, depth, seen);
+    });
+  } else if (isPlainObject(value)) {
+    for (const key in value) {
+      traverse(value[key], depth, seen);
+    }
+    for (const key of Object.getOwnPropertySymbols(value)) {
+      if (Object.prototype.propertyIsEnumerable.call(value, key)) {
+        traverse(value[key as any], depth, seen);
+      }
+    }
+  }
+  return value;
 }

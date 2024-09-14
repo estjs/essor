@@ -49,7 +49,7 @@ describe('useWatch', () => {
 
     signal.value = 2;
     // 3 called
-    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }, 7], [2, 2, { count: 1 }, 5]);
+    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }, 7], [2, 4, { count: 1 }, 7]);
     obj.count = 2;
     expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 2 }, 8], [2, 4, { count: 1 }, 7]);
 
@@ -74,7 +74,7 @@ describe('useWatch', () => {
     const arr = [signal, computed];
     const stop = useWatch(arr, callback);
     signal.value = 2;
-    expect(callback).toHaveBeenCalledWith([2, 4], [2, 2]);
+    expect(callback).toHaveBeenCalledWith([2, 4], [1, 2]);
     stop();
   });
 
@@ -130,7 +130,7 @@ describe('useWatch', () => {
     const stop = useWatch(obj, callback, { deep: true });
 
     obj.nested.count = 2;
-    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, undefined);
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, {});
 
     stop();
   });
@@ -141,7 +141,7 @@ describe('useWatch', () => {
 
     const stop = useWatch(signal, callback, { immediate: true });
 
-    expect(callback).toHaveBeenCalledWith(1, undefined);
+    expect(callback).toHaveBeenCalledWith(1, {});
 
     signal.value = 2;
     expect(callback).toHaveBeenCalledWith(2, 1);

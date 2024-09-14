@@ -56,11 +56,22 @@ describe('useReactive', () => {
       },
     });
 
+    const mockFn = vi.fn(() => {
+      // do nothing
+      state.user.age;
+    });
+
+    useEffect(mockFn);
+
     expect(state.user.name).toBe('John');
     expect(state.user.age).toBe(30);
 
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
     state.user.age++;
     expect(state.user.age).toBe(31);
+
+    expect(mockFn).toHaveBeenCalledTimes(2);
   });
 
   it('should work with nested arrays', () => {
@@ -68,11 +79,22 @@ describe('useReactive', () => {
       items: [1, 2, 3],
     });
 
+    const mockFn = vi.fn(() => {
+      // do nothing
+      state.items.push;
+    });
+
+    useEffect(mockFn);
+
     expect(state.items.length).toBe(3);
     expect(state.items[1]).toBe(2);
 
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
     state.items.push(4);
     expect(state.items.length).toBe(4);
+
+    expect(mockFn).toHaveBeenCalledTimes(2);
   });
 
   it('should work with function in state', () => {

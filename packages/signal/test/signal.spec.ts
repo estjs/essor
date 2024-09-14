@@ -61,10 +61,11 @@ describe('useSignal', () => {
   });
 
   it('should work with array method', () => {
-    const testSignal = useSignal<number[] | null>([]);
+    const testSignal = useSignal<number[]>([]);
     const effectFn = vitest.fn(() => {
       // trigger
       testSignal.value;
+      testSignal.value.push;
     });
 
     useEffect(effectFn);

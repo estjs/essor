@@ -11,24 +11,22 @@ import {
   isSet,
   isWeakMap,
   isWeakSet,
-  startsWith,
   warn,
 } from '@estjs/shared';
 import { nextTick, queueJob, queuePreFlushCb } from './scheduler';
 
-type EffectFn = () => void;
+type EffectFn = (() => void) &
+  Partial<{
+    init: boolean;
+    active: boolean;
+  }>;
 
-// Globals to track active effects and computed functions
 let activeEffect: EffectFn | null = null;
-let activeComputed: Computed<unknown> | null = null;
+let activeComputed: EffectFn | null = null;
 
-// WeakMaps to store dependency tracking information
-type ComputedMap = Map<string | symbol, Set<Computed<unknown>>>;
-type SignalMap = Map<string | symbol, Set<EffectFn>>;
+type TriggerMap = Map<string | symbol, Set<EffectFn>>;
 
-const computedMap = new WeakMap<object, ComputedMap>();
-const signalMap = new WeakMap<object, SignalMap>();
-const effectDeps = new Set<EffectFn>();
+const triggerMap = new WeakMap<object, TriggerMap>();
 const reactiveMap = new WeakMap<object, object>();
 const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
 
@@ -39,11 +37,10 @@ const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reve
  */
 function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
-  // Handle signal dependencies
-  let depsMap = signalMap.get(target);
+  let depsMap = triggerMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
-    signalMap.set(target, depsMap);
+    triggerMap.set(target, depsMap);
   }
   let dep = depsMap.get(key);
   if (!dep) {
@@ -51,20 +48,7 @@ function track(target: object, key: string | symbol) {
     depsMap.set(key, dep);
   }
   if (activeEffect) dep.add(activeEffect);
-  // Handle computed dependencies
-  let computedDepsMap = computedMap.get(target);
-  if (!computedDepsMap) {
-    computedDepsMap = new Map();
-    computedMap.set(target, computedDepsMap);
-  }
-  let computedDeps = computedDepsMap.get(key);
-  if (!computedDeps) {
-    computedDeps = new Set();
-    computedDepsMap.set(key, computedDeps);
-  }
-  if (activeComputed) {
-    computedDeps.add(activeComputed);
-  }
+  if (activeComputed) dep.add(activeComputed);
 }
 /**
  * Trigger function to notify all effects and computed functions
@@ -73,23 +57,23 @@ function track(target: object, key: string | symbol) {
  * @param key - The key on the target object.
  */
 function trigger(target: object, key: string | symbol) {
-  const depsMap = signalMap.get(target);
+  const depsMap = triggerMap.get(target);
   if (!depsMap) return;
-  // Run all effects associated with the key
   const dep = depsMap.get(key);
   if (dep) {
-    dep.forEach(effect => effectDeps.has(effect) && effect());
-  }
-  // Run all computed functions associated with the key
-  const computedDepsMap = computedMap.get(target);
-  if (computedDepsMap) {
-    const computeds = computedDepsMap.get(key);
-    if (computeds) {
-      computeds.forEach(computed => computed.run());
-    }
+    dep.forEach(effect => {
+      if (hasOwn(effect, 'active') && !effect.active) {
+        dep.delete(effect);
+        return;
+      }
+      effect();
+    });
   }
 }
-
+/**
+ * Signal class representing a reactive value.
+ * Signals can be used to track and respond to changes in state.
+ */
 /**
  * Signal class representing a reactive value.
  * Signals can be used to track and respond to changes in state.
@@ -97,6 +81,9 @@ function trigger(target: object, key: string | symbol) {
 export class Signal<T> {
   private _value: T;
   private _shallow: boolean;
+
+  //@ts-ignore
+  private readonly __signal = true;
 
   constructor(value: T, shallow: boolean = false) {
     this._value = value;
@@ -147,7 +134,6 @@ export class Signal<T> {
     return this._value;
   }
 }
-
 /**
  * Creates a Signal object.
  * @param value - The initial value for the Signal.
@@ -176,7 +162,7 @@ export function shallowSignal<T>(value?: T): Signal<T> {
  * @returns True if the value is a Signal, otherwise false.
  */
 export function isSignal<T>(value: any): value is Signal<T> {
-  return value instanceof Signal;
+  return !!(value && value.__signal);
 }
 
 /**
@@ -185,10 +171,12 @@ export function isSignal<T>(value: any): value is Signal<T> {
  */
 export class Computed<T = unknown> {
   private _value: T;
+  //@ts-ignore
+  private readonly __computed = true;
   constructor(private readonly fn: () => T) {
     // Track dependencies when the Computed is created
     const prev = activeComputed;
-    activeComputed = this;
+    activeComputed = this.run.bind(this);
     this._value = this.fn();
     activeComputed = prev;
   }
@@ -233,13 +221,31 @@ export function useComputed<T>(fn: () => T): Computed<T> {
  * @returns True if the value is a Computed object, otherwise false.
  */
 export function isComputed<T>(value: any): value is Computed<T> {
-  return value instanceof Computed;
+  return !!(value && value.__computed);
 }
 
 export interface effectOptions {
   flush?: 'pre' | 'post' | 'sync'; // default: 'pre'
   onTrack?: () => void;
   onTrigger?: () => void;
+}
+
+/**
+ * Creates a scheduler function for the given effect and flush type.
+ * @param effect - The effect function to be scheduled.
+ * @param flush - The flush type, one of 'pre', 'post', or 'sync'.
+ * @returns A scheduler function.
+ */
+function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
+  if (flush === 'sync') {
+    return () => effect();
+  } else if (flush === 'pre') {
+    return () => queuePreFlushCb(effect);
+  } else {
+    return () => {
+      nextTick(() => queueJob(effect));
+    };
+  }
 }
 
 /**
@@ -258,7 +264,7 @@ export function useEffect(fn: () => void, options: effectOptions = {}): () => vo
   function effectFn() {
     const prev = activeEffect;
 
-    activeEffect = effectFn.init ? effectFn : effectFn.effect;
+    activeEffect = effectFn.init ? effectFn : effectFn.scheduler;
 
     fn();
     // work done run trigger
@@ -266,34 +272,19 @@ export function useEffect(fn: () => void, options: effectOptions = {}): () => vo
 
     activeEffect = prev;
   }
-  const scheduler =
-    flush === 'sync'
-      ? () => {
-          queueJob(effectFn);
-        }
-      : flush === 'pre'
-        ? () => {
-            queuePreFlushCb(effectFn);
-          }
-        : () => {
-            nextTick(() => {
-              queueJob(effectFn);
-            });
-          };
+  const scheduler = createScheduler(effectFn, flush);
 
   // mark the effect as inited
-  effectFn.effect = scheduler;
+  effectFn.scheduler = scheduler;
   effectFn.init = true;
-
+  effectFn.active = true;
   // start tracking
   onTrack && onTrack();
 
   effectFn();
 
-  effectDeps.add(effectFn);
-
   return () => {
-    effectDeps.delete(effectFn);
+    effectFn.active = false;
     activeEffect = null;
   };
 }
@@ -368,26 +359,6 @@ export function isReactive(obj: any): boolean {
   return obj && obj[REACTIVE_MARKER] === true;
 }
 
-function createArrayProxy(initialValue: any[]) {
-  arrayMethods.forEach(method => {
-    const originalMethod = Array.prototype[method];
-    track(initialValue, 'length');
-
-    Object.defineProperty(initialValue, method, {
-      value(...args: any[]) {
-        const result = originalMethod.apply(this, args);
-        if (['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].includes(method)) {
-          trigger(initialValue, 'length');
-        }
-        return result;
-      },
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    });
-  });
-}
-
 /**
  * Creates a reactive object.
  * @param initialValue - The initial value for the reactive object.
@@ -444,6 +415,80 @@ export function unReactive<T extends object>(target: T): T {
   return unReactiveObj;
 }
 
+function isWorkReactive(
+  initialValue: unknown,
+): initialValue is
+  | object
+  | Array<unknown>
+  | Set<unknown>
+  | Map<unknown, unknown>
+  | WeakMap<object, unknown>
+  | WeakSet<object> {
+  return (
+    isObject(initialValue) ||
+    isArray(initialValue) ||
+    isMap(initialValue) ||
+    isSet(initialValue) ||
+    isWeakMap(initialValue) ||
+    isWeakSet(initialValue)
+  );
+}
+
+function createArrayProxy(initialValue: unknown[]) {
+  arrayMethods.forEach(method => {
+    const originalMethod = Array.prototype[method];
+    track(initialValue, 'length');
+
+    Object.defineProperty(initialValue, method, {
+      value(...args: any[]) {
+        const result = originalMethod.apply(this, args);
+        if (arrayMethods.includes(method)) {
+          trigger(initialValue, 'length');
+        }
+        return result;
+      },
+      enumerable: false,
+      writable: true,
+      configurable: true,
+    });
+  });
+}
+
+/**
+ * Creates a reactive proxy for a collection.
+ * @param target - The collection to proxy.
+ * @returns A reactive proxy of the collection.
+ */
+function createCollectionProxy<
+  T extends Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>,
+>(target: T, shallow = false): T {
+  const handler: ProxyHandler<T> = {
+    get(target, key, receiver) {
+      if (key === REACTIVE_MARKER) return true;
+
+      track(target, key);
+      const value = Reflect.get(target, key, receiver);
+      if (typeof value === 'function') {
+        return function (...args: any[]) {
+          const result = value.apply(target, args);
+          trigger(target, key);
+          return result;
+        };
+      }
+      // 针对索引和其他访问，进行依赖追踪
+      track(target, key);
+
+      // 如果是浅层模式则返回原值，否则递归进行响应式处理
+      if (!shallow && isWorkReactive(value)) {
+        return useReactive(value);
+      }
+
+      return value;
+    },
+  };
+  return new Proxy(target, handler);
+}
+
 /**
  * Creates a reactive object.
  * @param initialValue - The initial value for the reactive object.
@@ -456,7 +501,7 @@ function reactive<T extends object>(
   exclude?: ExcludeType,
   shallow: boolean = false,
 ): T {
-  if (!isObject(initialValue)) {
+  if (!isWorkReactive(initialValue)) {
     return initialValue;
   }
   if (isReactive(initialValue)) {
@@ -466,7 +511,7 @@ function reactive<T extends object>(
   if (reactiveMap.has(initialValue)) {
     return reactiveMap.get(initialValue) as T;
   }
-  if (Array.isArray(initialValue)) {
+  if (isArray(initialValue)) {
     createArrayProxy(initialValue);
   }
   if (
@@ -475,13 +520,12 @@ function reactive<T extends object>(
     isWeakSet(initialValue) ||
     isWeakMap(initialValue)
   ) {
-    // not support collection
-    return initialValue;
+    createCollectionProxy(initialValue);
   }
 
   const handler: ProxyHandler<T> = {
     get(target, key, receiver) {
-      if (key === REACTIVE_MARKER || startsWith(key, '_')) return true;
+      if (key === REACTIVE_MARKER) return true;
 
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;

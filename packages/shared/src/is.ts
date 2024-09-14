@@ -50,3 +50,6 @@ export function isHTMLElement(obj) {
   if (!obj) return false;
   return obj && typeof obj === 'object' && obj.nodeType === 1 && typeof obj.nodeName === 'string';
 }
+
+export const isPlainObject = (val: unknown): val is object =>
+  _toString.call(val) === '[object Object]';
