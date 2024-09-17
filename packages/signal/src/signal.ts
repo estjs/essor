@@ -4,10 +4,8 @@ import {
   hasOwn,
   isArray,
   isExclude,
-  isHTMLElement,
   isMap,
   isObject,
-  isPrimitive,
   isSet,
   isWeakMap,
   isWeakSet,
@@ -15,27 +13,60 @@ import {
 } from '@estjs/shared';
 import { nextTick, queueJob, queuePreFlushCb } from './scheduler';
 
+// Define the type for effect functions
 type EffectFn = (() => void) &
   Partial<{
     init: boolean;
     active: boolean;
   }>;
 
+// Global variables to track active effects and computed values
 let activeEffect: EffectFn | null = null;
 let activeComputed: EffectFn | null = null;
 
+// Type definition for the trigger map
 type TriggerMap = Map<string | symbol, Set<EffectFn>>;
 
+// WeakMaps to store dependencies and reactive objects
 const triggerMap = new WeakMap<object, TriggerMap>();
 const reactiveMap = new WeakMap<object, object>();
-const arrayMethods = ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'];
 
-/**
- * Tracks dependencies for reactive properties.
- * @param target - The target object being tracked.
- * @param key - The key on the target object.
- */
-function track(target: object, key: string | symbol) {
+const ReactiveSymbol = Symbol(__DEV__ ? 'ReactiveSymbol' : '');
+const ReactivePeekSymbol = Symbol(__DEV__ ? '__raw' : '');
+
+// trigger key
+const SignalValueKey = Symbol(__DEV__ ? 'SignalValueKey' : '');
+const ComputedValueKey = Symbol(__DEV__ ? 'ComputedValueKey' : '');
+const reactiveArrayKey = Symbol(__DEV__ ? 'ReactiveArrayKey' : '');
+const ReactiveCollectionKey = Symbol(__DEV__ ? 'ReactiveCollectionKey' : '');
+const ReactiveWeakCollectionKey = Symbol(__DEV__ ? 'ReactiveWeakCollectionKey' : '');
+
+// batch queue
+let inBatch = false;
+const batchQueue: Set<EffectFn> = new Set();
+
+// Define types that can be made reactive
+type ReactiveTypes =
+  | object
+  | Array<unknown>
+  | Set<unknown>
+  | Map<object, unknown>
+  | WeakMap<object, unknown>
+  | WeakSet<object>;
+
+// Check if a value can be made reactive
+function isCanReactive(value: unknown): value is ReactiveTypes {
+  return (
+    isObject(value) ||
+    isArray(value) ||
+    isSet(value) ||
+    isMap(value) ||
+    isWeakMap(value) ||
+    isWeakSet(value)
+  );
+}
+
+export function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
   let depsMap = triggerMap.get(target);
   if (!depsMap) {
@@ -50,12 +81,6 @@ function track(target: object, key: string | symbol) {
   if (activeEffect) dep.add(activeEffect);
   if (activeComputed) dep.add(activeComputed);
 }
-/**
- * Trigger function to notify all effects and computed functions
- * that are dependent on a specific target key.
- * @param target - The target object.
- * @param key - The key on the target object.
- */
 function trigger(target: object, key: string | symbol) {
   const depsMap = triggerMap.get(target);
   if (!depsMap) return;
@@ -66,78 +91,88 @@ function trigger(target: object, key: string | symbol) {
         dep.delete(effect);
         return;
       }
-      effect();
+      if (inBatch) {
+        batchQueue.add(effect);
+      } else {
+        effect();
+      }
     });
   }
 }
+
 /**
- * Signal class representing a reactive value.
- * Signals can be used to track and respond to changes in state.
- */
-/**
- * Signal class representing a reactive value.
- * Signals can be used to track and respond to changes in state.
+ * Signal class represents a reactive value.
+ * @template T The type of the value held by the Signal.
+ * @example
+ * const count = new Signal(0);
+ * console.log(count.value); // 0
+ * count.value = 1;
+ * console.log(count.value); // 1
  */
 export class Signal<T> {
   private _value: T;
   private _shallow: boolean;
 
+  // is should be read
   //@ts-ignore
   private readonly __signal = true;
 
-  constructor(value: T, shallow: boolean = false) {
-    this._value = value;
-    this._shallow = shallow;
-  }
   /**
-   * Get the current value of the Signal and track its usage.
+   * Creates a new Signal instance.
+   * @param {T} value - The initial value of the Signal.
+   * @param {boolean} [shallow] - Whether to create a shallow Signal.
+   */
+  constructor(value: T, shallow: boolean = false) {
+    this._shallow = shallow;
+    this._value = value;
+  }
+
+  /**
+   * Gets the current value of the Signal.
+   * @returns {T} The current value.
    */
   get value(): T {
-    track(this, '_sv');
-    this.__triggerObject();
+    track(this, SignalValueKey);
+    if (isCanReactive(this._value) && !this._shallow) {
+      return useReactive(this._value) as T;
+    }
     return this._value;
   }
+
   /**
-   * Trigger reactivity for non-primitive and non-HTMLElement values.
-   * Recursively applies reactivity to nested objects.
-   */
-  private __triggerObject() {
-    if (!isPrimitive(this._value) && !isHTMLElement(this._value) && !this._shallow) {
-      useReactive(this._value as object);
-    }
-  }
-  /**
-   * Set a new value to the Signal and trigger updates if the value has changed.
+   * Sets a new value for the Signal.
+   * @param {T} newValue - The new value to set.
    */
   set value(newValue: T) {
     if (isSignal(newValue)) {
-      if (__DEV__) {
-        console.warn(
-          'Do not set the signal as a signal, the original value of the signal will be used!',
-        );
-      }
       newValue = newValue.peek() as T;
     }
 
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      if (!isPrimitive(this._value) && !isHTMLElement(this._value)) {
-        this.__triggerObject();
-      }
-      trigger(this, '_sv');
+      trigger(this, SignalValueKey);
     }
   }
+
   /**
-   * Peek at the current value of the Signal without tracking it.
+   * Returns the current value without triggering reactivity.
+   * @returns {T} The current value.
    */
   peek(): T {
     return this._value;
   }
 }
+
 /**
- * Creates a Signal object.
- * @param value - The initial value for the Signal.
- * @returns A Signal object.
+ * Creates a new Signal object.
+ * @template T The type of the value held by the Signal.
+ * @param {T} [value] - The initial value of the Signal.
+ * @returns {Signal<T>} A new Signal instance.
+ * @example
+ * const count = useSignal(0);
+ * console.log(count.value); // 0
+ * count.value++;
+ * console.log(count.value); // 1
  */
 export function useSignal<T>(value?: T): Signal<T> {
   if (isSignal(value)) {
@@ -147,95 +182,135 @@ export function useSignal<T>(value?: T): Signal<T> {
 }
 
 /**
- * Creates a shallow Signal that does not recursively track the value.
- * Shallow signals are useful for performance optimization when the value
- * is an object or an array that is not expected to change.
- * @param value - The initial value for the Signal.
- * @returns A shallow Signal object.
+ * Creates a shallow Signal object.
+ * @template T The type of the value held by the Signal.
+ * @param {T} [value] - The initial value of the Signal.
+ * @returns {Signal<T>} A new shallow Signal instance.
+ * @example
+ * const obj = useShallowSignal({ nested: { count: 0 } });
+ * // Changes to obj.value.nested will not trigger reactivity
+ * obj.value.nested.count = 1;
+ */
+export function useShallowSignal<T>(value?: T): Signal<T> {
+  return new Signal<T>(value as T, true);
+}
+
+/**
+ * Alias for useShallowSignal.
+ * @template T The type of the value held by the Signal.
+ * @param {T} [value] - The initial value of the Signal.
+ * @returns {Signal<T>} A new shallow Signal instance.
+ * @example
+ * const obj = shallowSignal({ nested: { count: 0 } });
+ * // Changes to obj.value.nested will not trigger reactivity
+ * obj.value.nested.count = 1;
  */
 export function shallowSignal<T>(value?: T): Signal<T> {
   return new Signal<T>(value as T, true);
 }
+
 /**
  * Checks if a value is a Signal.
- * @param value - The value to check.
- * @returns True if the value is a Signal, otherwise false.
+ * @template T The type of the value held by the Signal.
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is a Signal, false otherwise.
+ * @example
+ * const count = useSignal(0);
+ * console.log(isSignal(count)); // true
+ * console.log(isSignal(0)); // false
  */
 export function isSignal<T>(value: any): value is Signal<T> {
-  return !!(value && value.__signal);
+  return !!(value && value?.__signal);
 }
 
 /**
- * Computed class representing a computed reactive value.
- * Computed values automatically update when their dependencies change.
+ * Computed class represents a computed reactive value.
+ * @template T The type of the value computed by the Computed instance.
+ * @example
+ * const doubleCount = useComputed(() => count.value * 2);
+ * console.log(doubleCount.value); // 0
+ * count.value = 1;
+ * console.log(doubleCount.value); // 2
  */
 export class Computed<T = unknown> {
   private _value: T;
+
+  // is should be read
   //@ts-ignore
   private readonly __computed = true;
   constructor(private readonly fn: () => T) {
-    // Track dependencies when the Computed is created
     const prev = activeComputed;
     activeComputed = this.run.bind(this);
     this._value = this.fn();
     activeComputed = prev;
   }
+
   /**
-   * Get the current computed value without tracking it.
+   * Returns the current value without triggering reactivity.
+   * @returns {T} The current value.
    */
   peek(): T {
     return this._value;
   }
+
   /**
-   * Run the computed function and update the value if it has changed.
+   * Runs the computation function and updates the value if it has changed.
    */
   run() {
     const newValue = this.fn();
     if (hasChanged(newValue, this._value)) {
       this._value = newValue;
-      trigger(this, '_cv');
+      trigger(this, ComputedValueKey);
     }
   }
 
   /**
-   * Get the current computed value and track its usage.
+   * Gets the current value of the Computed instance.
+   * @returns {T} The current value.
    */
   get value(): T {
-    track(this, '_cv');
+    track(this, ComputedValueKey);
     return this._value;
   }
 }
 
 /**
- * Creates a Computed object.
- * @param fn - The function to compute the value.
- * @returns A Computed object.
+ * Creates a new Computed instance.
+ * @template T The type of the value computed by the Computed instance.
+ * @param {() => T} fn - The computation function.
+ * @returns {Computed<T>} A new Computed instance.
+ * @example
+ * const doubleCount = useComputed(() => count.value * 2);
+ * console.log(doubleCount.value); // 0
+ * count.value = 1;
+ * console.log(doubleCount.value); // 2
  */
 export function useComputed<T>(fn: () => T): Computed<T> {
   return new Computed<T>(fn);
 }
 
 /**
- * Checks if a value is a Computed object.
- * @param value - The value to check.
- * @returns True if the value is a Computed object, otherwise false.
+ * Checks if a value is a Computed instance.
+ * @template T The type of the value computed by the Computed instance.
+ * @param {any} value - The value to check.
+ * @returns {boolean} True if the value is a Computed instance, false otherwise.
+ * @example
+ * const doubleCount = useComputed(() => count.value * 2);
+ * console.log(isComputed(doubleCount)); // true
+ * console.log(isComputed(0)); // false
  */
 export function isComputed<T>(value: any): value is Computed<T> {
   return !!(value && value.__computed);
 }
 
-export interface effectOptions {
-  flush?: 'pre' | 'post' | 'sync'; // default: 'pre'
+export interface EffectOptions {
+  flush?: 'pre' | 'post' | 'sync';
   onTrack?: () => void;
   onTrigger?: () => void;
 }
 
-/**
- * Creates a scheduler function for the given effect and flush type.
- * @param effect - The effect function to be scheduled.
- * @param flush - The flush type, one of 'pre', 'post', or 'sync'.
- * @returns A scheduler function.
- */
+// Create a scheduler function for the given effect and flush type
+// Example: const scheduler = createScheduler(effectFn, 'pre')
 function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
   if (flush === 'sync') {
     return () => effect();
@@ -249,36 +324,29 @@ function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
 }
 
 /**
- * Registers a side-effect function to be executed when a signal or computed property changes.
- * @param fn - The side-effect function to be executed when reactive data changes.
- * @param options - The options object.
- * @param options.flush - The flush type, one of 'pre', 'post', 'sync'. Default is 'pre'.
- * @param options.onTrack - A function to be called when a dependency is tracked.
- * @param options.onTrigger - A function to be called when the side-effect is triggered.
- * @returns A function to clean up the side-effect.
+ * Registers an effect function to run when signals or computed properties change.
+ * @param {() => void} fn - The effect function.
+ * @param {EffectOptions} [options] - The options for the effect.
+ * @returns {() => void} A function to stop the effect.
+ * @example
+ * useEffect(() => console.log(count.value), { flush: 'post' });
+ * // Logs the value of count whenever it changes
  */
-export function useEffect(fn: () => void, options: effectOptions = {}): () => void {
+export function useEffect(fn: () => void, options: EffectOptions = {}): () => void {
   const { flush = 'pre', onTrack, onTrigger } = options;
 
-  // 创建副作用函数
   function effectFn() {
     const prev = activeEffect;
-
     activeEffect = effectFn.init ? effectFn : effectFn.scheduler;
-
     fn();
-    // work done run trigger
     onTrigger && onTrigger();
-
     activeEffect = prev;
   }
   const scheduler = createScheduler(effectFn, flush);
 
-  // mark the effect as inited
   effectFn.scheduler = scheduler;
   effectFn.init = true;
   effectFn.active = true;
-  // start tracking
   onTrack && onTrack();
 
   effectFn();
@@ -294,10 +362,15 @@ export type SignalObject<T> = {
 };
 
 /**
- * Creates a SignalObject from the given initialValues, excluding specified keys.
- * @param initialValues - The initial values for the SignalObject.
- * @param exclude - A function or array that determines which keys to exclude from the SignalObject.
- * @returns The created SignalObject.
+ * Creates a SignalObject from given initial values, excluding specified keys.
+ * @template T The type of the initial values object.
+ * @param {T} initialValues - The initial values object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the SignalObject.
+ * @returns {SignalObject<T>} A new SignalObject instance.
+ * @example
+ * const userSignals = signalObject({ name: 'John', age: 30 }, ['age']);
+ * console.log(userSignals.name.value); // 'John'
+ * console.log(userSignals.age); // 30
  */
 export function signalObject<T extends object>(
   initialValues: T,
@@ -318,10 +391,15 @@ export function signalObject<T extends object>(
 }
 
 /**
- * Returns the current value of a signal, signal object, or plain object, excluding specified keys.
- * @param signal - The signal, signal object, or plain object to unwrap.
- * @param exclude - A function or array that determines which keys to exclude from the unwrapped object.
- * @returns The unwrapped value of the signal, signal object, or plain object.
+ * Returns the current value of signals, signal objects, or plain objects, excluding specified keys.
+ * @template T The type of the value.
+ * @param {SignalObject<T> | T | Signal<T>} signal - The signal, signal object, or plain object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the result.
+ * @returns {T} The current value.
+ * @example
+ * const user = unSignal(userSignals);
+ * console.log(user.name); // 'John'
+ * console.log(user.age); // 30
  */
 export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
@@ -336,11 +414,7 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
       if (isExclude(key, exclude)) {
         acc[key] = value;
       } else {
-        acc[key] = isSignal(value)
-          ? value.peek()
-          : isReactive(value)
-            ? unReactive(value as object)
-            : value;
+        acc[key] = isSignal(value) ? value.peek() : isReactive(value) ? unReactive(value) : value;
       }
       return acc;
     }, {} as T);
@@ -348,47 +422,73 @@ export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: E
   return signal as T;
 }
 
-const REACTIVE_MARKER = Symbol('useReactive');
+// Define the Reactive type
+export type Reactive<T> = T & {
+  [ReactivePeekSymbol]: T;
+  [ReactiveSymbol]?: true;
+};
 
 /**
  * Checks if an object is reactive.
- * @param obj - The object to check.
- * @returns True if the object is reactive, otherwise false.
+ * @param {unknown} obj - The object to check.
+ * @returns {boolean} True if the object is reactive, false otherwise.
+ * @example
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * console.log(isReactive(reactiveUser)); // true
+ * console.log(isReactive({ name: 'John', age: 30 })); // false
  */
-export function isReactive(obj: any): boolean {
-  return obj && obj[REACTIVE_MARKER] === true;
+export function isReactive(obj: unknown): obj is Reactive<any> {
+  return !!(obj && typeof obj === 'object' && obj[ReactiveSymbol]);
 }
 
 /**
  * Creates a reactive object.
- * @param initialValue - The initial value for the reactive object.
- * @param exclude - A function or array that determines which keys to exclude from the reactive object.
- * @returns A reactive object.
+ * @template T The type of the initial value.
+ * @param {T} initialValue - The initial value.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
+ * @returns {Reactive<T>} A new reactive object.
+ * @example
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * console.log(reactiveUser.name); // 'John'
+ * console.log(reactiveUser.age); // 30
  */
-
-export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
-  return reactive(initialValue, exclude, false);
+export function useReactive<T extends ReactiveTypes>(
+  initialValue: T,
+  exclude?: ExcludeType,
+): Reactive<T> {
+  return reactive(initialValue, exclude, false) as Reactive<T>;
 }
 
 /**
  * Creates a shallow reactive object.
- * Only the top level properties of the object are reactive. Nested objects are not reactive.
- * @param initialValue - The initial value for the reactive object.
- * @param exclude - A function or array that determines which keys to exclude from the reactive object.
- * @returns A shallow reactive object.
+ * @template T The type of the initial value.
+ * @param {T} initialValue - The initial value.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
+ * @returns {Reactive<T>} A new shallow reactive object.
+ * @example
+ * const shallowReactiveUser = shallowReactive({ name: 'John', age: 30 });
+ * console.log(shallowReactiveUser.name); // 'John'
+ * console.log(shallowReactiveUser.age); // 30
  */
-export function shallowReactive<T extends object>(initialValue: T, exclude?: ExcludeType): T {
-  return reactive(initialValue, exclude, true);
+export function shallowReactive<T extends object>(
+  initialValue: T,
+  exclude?: ExcludeType,
+): Reactive<T> {
+  return reactive(initialValue, exclude, true) as Reactive<T>;
 }
 
 /**
  * Creates a non-reactive copy of the target object.
- * This method is the opposite of `useReactive`.
- * @param target - The object to create a non-reactive copy of.
- * @returns A non-reactive copy of the target object.
+ * @template T The type of the target object.
+ * @param {Reactive<T>} target - The target reactive object.
+ * @returns {T} A non-reactive copy of the target object.
+ * @example
+ * const plainUser = unReactive(reactiveUser);
+ * console.log(plainUser.name); // 'John'
+ * console.log(plainUser.age); // 30
  */
-export function unReactive<T extends object>(target: T): T {
-  if (!isObject(target)) {
+export function unReactive<T>(target: Reactive<T> | T): T {
+  if (!isCanReactive(target)) {
     return target;
   }
 
@@ -396,136 +496,270 @@ export function unReactive<T extends object>(target: T): T {
     return target;
   }
 
-  const unReactiveObj: T = (Array.isArray(target) ? [] : {}) as T;
+  return target[ReactivePeekSymbol];
+}
 
-  for (const key in target) {
-    if (hasOwn(target, key)) {
-      const value = target[key] as T[keyof T];
+const arrayInstrumentations = createArrayInstrumentations();
 
-      if (isReactive(value)) {
-        unReactiveObj[key as keyof T] = unReactive(value as T[keyof T] & object);
-      } else if (isSignal(value)) {
-        unReactiveObj[key as keyof T] = value.peek() as unknown as T[keyof T];
-      } else {
-        unReactiveObj[key as keyof T] = value;
+// Create special handling for array methods
+function createArrayInstrumentations() {
+  const instrumentations: Record<string, Function> = {};
+
+  ['includes', 'indexOf', 'lastIndexOf'].forEach(key => {
+    instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+      const arr = this as any[];
+      for (let i = 0, l = this.length; i < l; i++) {
+        track(arr, `${i}`);
       }
-    }
-  }
-
-  return unReactiveObj;
-}
-
-function isWorkReactive(
-  initialValue: unknown,
-): initialValue is
-  | object
-  | Array<unknown>
-  | Set<unknown>
-  | Map<unknown, unknown>
-  | WeakMap<object, unknown>
-  | WeakSet<object> {
-  return (
-    isObject(initialValue) ||
-    isArray(initialValue) ||
-    isMap(initialValue) ||
-    isSet(initialValue) ||
-    isWeakMap(initialValue) ||
-    isWeakSet(initialValue)
-  );
-}
-
-function createArrayProxy(initialValue: unknown[]) {
-  arrayMethods.forEach(method => {
-    const originalMethod = Array.prototype[method];
-    track(initialValue, 'length');
-
-    Object.defineProperty(initialValue, method, {
-      value(...args: any[]) {
-        const result = originalMethod.apply(this, args);
-        if (arrayMethods.includes(method)) {
-          trigger(initialValue, 'length');
-        }
-        return result;
-      },
-      enumerable: false,
-      writable: true,
-      configurable: true,
-    });
+      const res = arr[key as keyof typeof arr](...args);
+      if (res === -1 || res === false) {
+        return arr[key as keyof typeof arr](...args);
+      }
+      return res;
+    };
   });
-}
 
-/**
- * Creates a reactive proxy for a collection.
- * @param target - The collection to proxy.
- * @returns A reactive proxy of the collection.
- */
-function createCollectionProxy<
-  T extends Set<any> | Map<any, any> | WeakSet<any> | WeakMap<any, any>,
->(target: T, shallow = false): T {
-  const handler: ProxyHandler<T> = {
-    get(target, key, receiver) {
-      if (key === REACTIVE_MARKER) return true;
-
-      track(target, key);
-      const value = Reflect.get(target, key, receiver);
-      if (typeof value === 'function') {
-        return function (...args: any[]) {
-          const result = value.apply(target, args);
-          trigger(target, key);
-          return result;
-        };
-      }
-      // 针对索引和其他访问，进行依赖追踪
-      track(target, key);
-
-      // 如果是浅层模式则返回原值，否则递归进行响应式处理
-      if (!shallow && isWorkReactive(value)) {
-        return useReactive(value);
-      }
-
-      return value;
+  ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(
+    key => {
+      instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+        const arr = unReactive(this) as any[];
+        const res = arr[key as keyof typeof this].apply(this, args);
+        trigger(arr, reactiveArrayKey);
+        return res;
+      };
     },
-  };
-  return new Proxy(target, handler);
+  );
+
+  [
+    'forEach',
+    'map',
+    'filter',
+    'reduce',
+    'reduceRight',
+    'some',
+    'every',
+    'find',
+    'findIndex',
+    'findLast',
+    'findLastIndex',
+    'entries',
+    'keys',
+    'values',
+  ].forEach(key => {
+    instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+      const arr = unReactive(this) as any[];
+      track(arr, reactiveArrayKey);
+      return arr[key as keyof typeof this].apply(this, args);
+    };
+  });
+
+  return instrumentations;
 }
+
+// Proxy handler for arrays
+const Arrayhandler: ProxyHandler<unknown[]> = {
+  get(target, key: string | symbol, receiver) {
+    if (key === ReactiveSymbol) return true;
+    if (key === ReactivePeekSymbol) return target;
+    if (arrayInstrumentations.hasOwnProperty(key)) {
+      return Reflect.get(arrayInstrumentations, key, receiver);
+    }
+
+    const value = Reflect.get(target, key, receiver);
+
+    if (typeof key === 'string' && !Number.isNaN(Number(key))) {
+      track(target, key);
+    }
+
+    if (isCanReactive(value)) {
+      return reactive(value);
+    }
+    return value;
+  },
+  set(target, key: string | symbol, value, receiver) {
+    const oldValue = Reflect.get(target, key, receiver);
+    const result = Reflect.set(target, key, value, receiver);
+    if (hasChanged(value, oldValue) && typeof key === 'string' && !Number.isNaN(Number(key))) {
+      trigger(target, key);
+    }
+    return result;
+  },
+};
+
+// Proxy handler for collections
+const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
+  get(target, key: string | symbol) {
+    if (key === ReactiveSymbol) return true;
+    if (key === ReactivePeekSymbol) return target;
+
+    if (key === Symbol.iterator || key === 'size') {
+      track(target, ReactiveCollectionKey);
+    }
+
+    return Reflect.get(
+      hasOwn(instrumentations, key) && key in target ? instrumentations : target,
+      key,
+      target,
+    );
+  },
+};
+
+// Proxy handler for WeakMap and WeakSet
+const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<object>> = {
+  get(target, key: string | symbol) {
+    if (key === ReactiveSymbol) return true;
+    if (key === ReactivePeekSymbol) return target;
+    return Reflect.get(
+      hasOwn(weakInstrumentations, key) && key in target ? weakInstrumentations : target,
+      key,
+      target,
+    );
+  },
+};
+
+// Overwrite all methods and properties of Map/Set
+const instrumentations = {
+  get(key: unknown) {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.get(key);
+  },
+  set(key: unknown, value: unknown) {
+    const target = unReactive(this);
+    const result = target.set(key, value);
+    trigger(target, ReactiveCollectionKey);
+    return result;
+  },
+  add(value: unknown) {
+    const target = unReactive(this);
+    const result = target.add(value);
+    trigger(target, ReactiveCollectionKey);
+    return result;
+  },
+  has(key: unknown) {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.has(key);
+  },
+  delete(key: unknown) {
+    const target = unReactive(this);
+    const hadKey = target.has(key);
+    const result = target.delete(key);
+    if (hadKey) {
+      trigger(target, ReactiveCollectionKey);
+    }
+    return result;
+  },
+  clear() {
+    const target = unReactive(this);
+    const hadItems = target.size > 0;
+    const result = target.clear();
+    if (hadItems) {
+      trigger(target, ReactiveCollectionKey);
+    }
+    return result;
+  },
+  forEach(
+    callback: (value: unknown, key: unknown, map: Map<unknown, unknown> | Set<unknown>) => void,
+    thisArg?: unknown,
+  ) {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    target.forEach((value: unknown, key: unknown) => {
+      callback.call(thisArg, value, key, target as unknown as Map<unknown, unknown> | Set<unknown>);
+    });
+  },
+  get size() {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.size;
+  },
+  keys() {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.keys();
+  },
+  values() {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.values();
+  },
+  entries() {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target.entries();
+  },
+  [Symbol.iterator]() {
+    const target = unReactive(this);
+    track(target, ReactiveCollectionKey);
+    return target[Symbol.iterator]();
+  },
+};
+
+// Overwrite methods of WeakMap/WeakSet
+const weakInstrumentations = {
+  get(key: object) {
+    const target = unReactive(this);
+    track(target, ReactiveWeakCollectionKey);
+    return target.get(key);
+  },
+  set(key: object, value: any) {
+    const target = unReactive(this);
+    const result = target.set(key, value);
+    trigger(target, ReactiveWeakCollectionKey);
+    return result;
+  },
+  add(value: object) {
+    const target = unReactive(this);
+    const result = target.add(value);
+    trigger(target, ReactiveWeakCollectionKey);
+    return result;
+  },
+  has(key: object) {
+    const target = unReactive(this);
+    track(target, ReactiveWeakCollectionKey);
+    return target.has(key);
+  },
+  delete(key: object) {
+    const target = unReactive(this);
+    const result = target.delete(key);
+    trigger(target, ReactiveWeakCollectionKey);
+    return result;
+  },
+};
 
 /**
  * Creates a reactive object.
- * @param initialValue - The initial value for the reactive object.
- * @param exclude - A function or array that determines which keys to exclude from the reactive object.
- * @param shallow - If true, only the top level properties of the object are reactive. Nested objects are not reactive.
- * @returns A reactive object.
+ * @template T The type of the initial value.
+ * @param {T} initialValue - The initial value.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
+ * @param {boolean} [shallow] - Whether to create a shallow reactive object.
+ * @returns {Reactive<T>} A new reactive object.
+ * @example
+ * const reactiveUser = reactive({ name: 'John', age: 30 });
+ * console.log(reactiveUser.name); // 'John'
+ * console.log(reactiveUser.age); // 30
  */
-function reactive<T extends object>(
+function reactive<T extends ReactiveTypes>(
   initialValue: T,
   exclude?: ExcludeType,
   shallow: boolean = false,
-): T {
-  if (!isWorkReactive(initialValue)) {
-    return initialValue;
+): Reactive<T> {
+  if (!isCanReactive(initialValue)) {
+    return initialValue as Reactive<T>;
   }
   if (isReactive(initialValue)) {
-    return initialValue;
+    return initialValue as Reactive<T>;
   }
 
   if (reactiveMap.has(initialValue)) {
-    return reactiveMap.get(initialValue) as T;
-  }
-  if (isArray(initialValue)) {
-    createArrayProxy(initialValue);
-  }
-  if (
-    isSet(initialValue) ||
-    isMap(initialValue) ||
-    isWeakSet(initialValue) ||
-    isWeakMap(initialValue)
-  ) {
-    createCollectionProxy(initialValue);
+    return reactiveMap.get(initialValue) as Reactive<T>;
   }
 
-  const handler: ProxyHandler<T> = {
+  let handler: ProxyHandler<T> = {
     get(target, key, receiver) {
-      if (key === REACTIVE_MARKER) return true;
+      if (key === ReactiveSymbol) return true;
+      if (key === ReactivePeekSymbol) return target;
 
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;
@@ -535,7 +769,7 @@ function reactive<T extends object>(
       }
 
       track(target, key);
-      if (isObject(value) && !shallow) {
+      if (isCanReactive(value) && !shallow) {
         return useReactive(value);
       }
       return value;
@@ -570,7 +804,93 @@ function reactive<T extends object>(
     },
   };
 
-  const proxy = new Proxy(initialValue, handler);
+  if (isArray(initialValue)) {
+    track(initialValue, reactiveArrayKey);
+    handler = Arrayhandler as ProxyHandler<T>;
+  }
+
+  if (isSet(initialValue) || isMap(initialValue)) {
+    track(initialValue, ReactiveCollectionKey);
+    handler = collectionHandlers as ProxyHandler<T>;
+  } else if (isWeakSet(initialValue) || isWeakMap(initialValue)) {
+    track(initialValue, ReactiveWeakCollectionKey);
+    handler = weakCollectionHandlers as ProxyHandler<T>;
+  }
+
+  const proxy = new Proxy(initialValue, handler) as Reactive<T>;
   reactiveMap.set(initialValue, proxy);
   return proxy;
+}
+
+/**
+ * Clears the reactive object, removing all its properties and values.
+ *
+ * @param reactiveObj The reactive object to clear.
+ * @example
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * clearReactive(reactiveUser);
+ * console.log(reactiveUser); // {}
+ */
+export function clearReactive<T extends object>(reactiveObj: Reactive<T>): void {
+  if (!isReactive(reactiveObj)) {
+    if (__DEV__) {
+      warn('clearReactive: argument must be a reactive object');
+    }
+    return;
+  }
+
+  const rawObj = unReactive(reactiveObj);
+  const obj = structuredClone(rawObj);
+
+  if (isArray(rawObj)) {
+    rawObj.length = 0;
+  } else if (isSet(rawObj) || isMap(rawObj)) {
+    rawObj.clear();
+  } else if (isObject(rawObj)) {
+    Object.keys(rawObj).forEach(key => {
+      delete rawObj[key];
+    });
+  }
+
+  // trigger effect
+  if (isArray(obj)) {
+    trigger(obj, reactiveArrayKey);
+  } else if (isSet(obj) || isMap(obj)) {
+    trigger(obj, ReactiveCollectionKey);
+  } else if (isWeakSet(obj) || isWeakMap(obj)) {
+    trigger(obj, ReactiveWeakCollectionKey);
+  } else {
+    Object.keys(obj).forEach(key => {
+      trigger(obj, key);
+    });
+  }
+}
+
+/**
+ * Call the function and batch all the reactive update operations.
+ * @remarks
+ * If there are multiple reactive updates in the same tick, they will be batched together.
+ * This is useful for improving performance when multiple reactive updates are triggered in the same tick.
+ * @example
+ * batch(() => {
+ *   reactiveState.a++;
+ *   reactiveState.b++;
+ * });
+ * // Only one reactive update is triggered.
+ */
+export function useBatch(fn: () => void): void {
+  try {
+    inBatch = true;
+    fn();
+  } finally {
+    inBatch = false;
+    runBatch();
+  }
+}
+
+function runBatch(): void {
+  if (batchQueue.size > 0) {
+    batchQueue.forEach(effect => effect());
+    batchQueue.clear();
+  }
 }

@@ -96,10 +96,10 @@ function doWatch(
   } else if (isArray(source)) {
     isMultiSource = true;
     getter = () =>
-      source.map(s => {
+      (source as WatchSource[]).map(s => {
         if (isSignal(s) || isComputed(s)) return s.value;
         if (isReactive(s)) return { ...s };
-        if (isFunction(s)) return s();
+        if (isFunction(s)) return (s as () => any)();
         return warn('Invalid source', s);
       });
   } else if (isFunction(source)) {
@@ -116,25 +116,25 @@ function doWatch(
     getter = () => traverse(baseGetter(), depth);
   }
 
-  const INITIAL_WATCHER_VALUE = {};
+  const INITIAL_WATCHER_VALUE = undefined;
   let oldValue: any = isMultiSource
     ? Array.from({ length: (source as []).length }).fill(INITIAL_WATCHER_VALUE)
     : INITIAL_WATCHER_VALUE;
 
-  // Effect function to be triggered on source changes
+  let runCb = false;
+
   const effectFn = () => {
     const newValue = getter();
-
-    // Check if the new value has changed compared to the old value
     if (hasChanged(newValue, oldValue)) {
-      cb && cb(newValue, oldValue);
-
+      runCb && cb && cb(newValue, oldValue);
       oldValue = newValue;
     }
   };
 
   // Register the effect with the reactive system
   const stop = useEffect(effectFn);
+
+  runCb = true;
 
   // If immediate execution is requested, trigger the effect function immediately
   if (immediate) {
@@ -143,6 +143,7 @@ function doWatch(
 
   return stop;
 }
+
 export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
   if (depth <= 0 || !isObject(value)) {
     return value;

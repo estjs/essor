@@ -200,7 +200,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
       replaceChild(expression.node, result);
     } else if (t.isJSXEmptyExpression(expression.node)) {
       // it is empty expression
-      // do nothing
+      // just for tracking value
     } else {
       throw new Error('Unsupported child type');
     }

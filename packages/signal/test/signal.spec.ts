@@ -65,7 +65,6 @@ describe('useSignal', () => {
     const effectFn = vitest.fn(() => {
       // trigger
       testSignal.value;
-      testSignal.value.push;
     });
 
     useEffect(effectFn);
@@ -100,143 +99,126 @@ describe('useSignal', () => {
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7, 6]);
     expect(effectFn).toHaveBeenCalledTimes(9);
 
-    // if the array is assigned, the effect will not be triggered
     testSignal.value?.pop();
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7]);
-    expect(effectFn).toHaveBeenCalledTimes(9);
+    expect(effectFn).toHaveBeenCalledTimes(10);
   });
 
-  it(
-    'should work with Set',
-    () => {
-      const testSignal = useSignal<Set<number> | null>(new Set([1, 2, 3]));
-      const effectFn = vitest.fn(() => {
-        // trigger
-        testSignal.value;
-      });
+  it('should work with Set', () => {
+    const testSignal = useSignal<Set<number>>(new Set([1, 2, 3]));
+    const effectFn = vitest.fn(() => {
+      // trigger
+      testSignal.value;
+    });
 
-      useEffect(effectFn);
-      expect(effectFn).toHaveBeenCalledTimes(1);
-      expect(Array.from(testSignal.value ?? [])).toEqual([1, 2, 3]);
+    useEffect(effectFn);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(Array.from(testSignal.value)).toEqual([1, 2, 3]);
 
-      testSignal.value?.add(4);
-      expect(Array.from(testSignal.value ?? [])).toEqual([1, 2, 3, 4]);
-      expect(effectFn).toHaveBeenCalledTimes(2);
+    testSignal.value?.add(4);
+    expect(Array.from(testSignal.value)).toEqual([1, 2, 3, 4]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
 
-      testSignal.value?.delete(2);
-      expect(Array.from(testSignal.value ?? [])).toEqual([1, 3, 4]);
-      expect(effectFn).toHaveBeenCalledTimes(3);
-    },
-    { skip: true },
-  );
-  it(
-    'should work with WeakSet',
-    () => {
-      const obj1 = { id: 1 };
-      const obj2 = { id: 2 };
-      const obj3 = { id: 3 };
-      const testSignal = useSignal<WeakSet<object> | null>(new WeakSet([obj1, obj2, obj3]));
-      const effectFn = vitest.fn(() => {
-        // trigger
-        testSignal.value;
-      });
+    testSignal.value?.delete(2);
+    expect(Array.from(testSignal.value)).toEqual([1, 3, 4]);
+    expect(effectFn).toHaveBeenCalledTimes(3);
+  });
+  it('should work with WeakSet', () => {
+    const obj1 = { id: 1 };
+    const obj2 = { id: 2 };
+    const obj3 = { id: 3 };
+    const testSignal = useSignal<WeakSet<object> | null>(new WeakSet([obj1, obj2, obj3]));
+    const effectFn = vitest.fn(() => {
+      // trigger
+      testSignal.value;
+    });
 
-      useEffect(effectFn);
-      expect(effectFn).toHaveBeenCalledTimes(1);
-      expect(testSignal.value?.has(obj1)).toBe(true);
-      expect(testSignal.value?.has(obj2)).toBe(true);
-      expect(testSignal.value?.has(obj3)).toBe(true);
+    useEffect(effectFn);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(testSignal.value?.has(obj1)).toBe(true);
+    expect(testSignal.value?.has(obj2)).toBe(true);
+    expect(testSignal.value?.has(obj3)).toBe(true);
 
-      const obj4 = { id: 4 };
-      testSignal.value?.add(obj4);
-      expect(testSignal.value?.has(obj4)).toBe(true);
-      expect(effectFn).toHaveBeenCalledTimes(2);
+    const obj4 = { id: 4 };
+    testSignal.value?.add(obj4);
+    expect(testSignal.value?.has(obj4)).toBe(true);
+    expect(effectFn).toHaveBeenCalledTimes(2);
 
-      testSignal.value?.delete(obj2);
-      expect(testSignal.value?.has(obj2)).toBe(false);
-      expect(effectFn).toHaveBeenCalledTimes(3);
-    },
-    { skip: true },
-  );
+    testSignal.value?.delete(obj2);
+    expect(testSignal.value?.has(obj2)).toBe(false);
+    expect(effectFn).toHaveBeenCalledTimes(3);
+  });
 
-  it(
-    'should work with Map',
-    () => {
-      const testSignal = useSignal<Map<string, number> | null>(
-        new Map([
-          ['a', 1],
-          ['b', 2],
-          ['c', 3],
-        ]),
-      );
-      const effectFn = vitest.fn(() => {
-        // trigger
-        testSignal.value;
-      });
-
-      useEffect(effectFn);
-      expect(effectFn).toHaveBeenCalledTimes(1);
-      expect(Array.from(testSignal.value ?? new Map())).toEqual([
+  it('should work with Map', () => {
+    const testSignal = useSignal<Map<string, number> | null>(
+      new Map([
         ['a', 1],
         ['b', 2],
         ['c', 3],
-      ]);
+      ]),
+    );
+    const effectFn = vitest.fn(() => {
+      // trigger
+      testSignal.value;
+    });
 
-      testSignal.value?.set('d', 4);
-      expect(Array.from(testSignal.value ?? new Map())).toEqual([
-        ['a', 1],
-        ['b', 2],
-        ['c', 3],
-        ['d', 4],
-      ]);
-      expect(effectFn).toHaveBeenCalledTimes(2);
+    useEffect(effectFn);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(Array.from(testSignal.value ?? new Map())).toEqual([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+    ]);
 
-      testSignal.value?.delete('b');
-      expect(Array.from(testSignal.value ?? new Map())).toEqual([
-        ['a', 1],
-        ['c', 3],
-        ['d', 4],
-      ]);
-      expect(effectFn).toHaveBeenCalledTimes(3);
-    },
-    { skip: true },
-  );
+    testSignal.value?.set('d', 4);
+    expect(Array.from(testSignal.value ?? new Map())).toEqual([
+      ['a', 1],
+      ['b', 2],
+      ['c', 3],
+      ['d', 4],
+    ]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
 
-  it(
-    'should work with WeakMap',
-    () => {
-      const key1 = { id: 1 };
-      const key2 = { id: 2 };
-      const key3 = { id: 3 };
-      const testSignal = useSignal<WeakMap<object, number> | null>(
-        new WeakMap([
-          [key1, 1],
-          [key2, 2],
-          [key3, 3],
-        ]),
-      );
-      const effectFn = vitest.fn(() => {
-        // trigger
-        testSignal.value;
-      });
+    testSignal.value?.delete('b');
+    expect(Array.from(testSignal.value ?? new Map())).toEqual([
+      ['a', 1],
+      ['c', 3],
+      ['d', 4],
+    ]);
+    expect(effectFn).toHaveBeenCalledTimes(3);
+  });
 
-      useEffect(effectFn);
-      expect(effectFn).toHaveBeenCalledTimes(1);
-      expect(testSignal.value?.get(key1)).toBe(1);
-      expect(testSignal.value?.get(key2)).toBe(2);
-      expect(testSignal.value?.get(key3)).toBe(3);
+  it('should work with WeakMap', () => {
+    const key1 = { id: 1 };
+    const key2 = { id: 2 };
+    const key3 = { id: 3 };
+    const testSignal = useSignal<WeakMap<object, number>>(
+      new WeakMap([
+        [key1, 1],
+        [key2, 2],
+        [key3, 3],
+      ]),
+    );
+    const effectFn = vitest.fn(() => {
+      // trigger
+      testSignal.value;
+    });
 
-      const key4 = { id: 4 };
-      testSignal.value?.set(key4, 4);
-      expect(testSignal.value?.get(key4)).toBe(4);
-      expect(effectFn).toHaveBeenCalledTimes(2);
+    useEffect(effectFn);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(testSignal.value?.get(key1)).toBe(1);
+    expect(testSignal.value?.get(key2)).toBe(2);
+    expect(testSignal.value?.get(key3)).toBe(3);
 
-      testSignal.value?.delete(key2);
-      expect(testSignal.value?.has(key2)).toBe(false);
-      expect(effectFn).toHaveBeenCalledTimes(3);
-    },
-    { skip: true },
-  );
+    const key4 = { id: 4 };
+    testSignal.value?.set(key4, 4);
+    expect(testSignal.value?.get(key4)).toBe(4);
+    expect(effectFn).toHaveBeenCalledTimes(2);
+
+    testSignal.value?.delete(key2);
+    expect(testSignal.value?.has(key2)).toBe(false);
+    expect(effectFn).toHaveBeenCalledTimes(3);
+  });
   it('should work with deep object', () => {
     const testSignal = useSignal<any>({
       one: {

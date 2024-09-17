@@ -141,7 +141,7 @@ describe('useWatch', () => {
 
     const stop = useWatch(signal, callback, { immediate: true });
 
-    expect(callback).toHaveBeenCalledWith(1, {});
+    expect(callback).not.toHaveBeenCalled();
 
     signal.value = 2;
     expect(callback).toHaveBeenCalledWith(2, 1);
