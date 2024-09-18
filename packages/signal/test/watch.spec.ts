@@ -42,16 +42,16 @@ describe('useWatch', () => {
     const signal = useSignal(1);
     const computed = useComputed(() => signal.value * 2);
     const obj = useReactive({ count: 1 });
-    const fn = () => signal.value + obj.count + computed.value;
     const callback = vi.fn();
 
-    const stop = useWatch([signal, computed, obj, fn], callback);
+    const stop = useWatch([signal, computed, obj], callback);
 
     signal.value = 2;
-    // 3 called
-    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }, 7], [2, 4, { count: 1 }, 7]);
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 1 }], [1, 2, { count: 1 }]);
     obj.count = 2;
-    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 2 }, 8], [2, 4, { count: 1 }, 7]);
+    expect(callback).toHaveBeenCalledTimes(2);
+    expect(callback).toHaveBeenLastCalledWith([2, 4, { count: 2 }], [2, 4, { count: 1 }]);
 
     stop();
   });
@@ -86,42 +86,38 @@ describe('useWatch', () => {
 
     signal.value = 1;
     // first call is triggered on creation
-    expect(callback).toHaveBeenCalledTimes(1);
-    signal.value = 1;
+    expect(callback).toHaveBeenCalledTimes(0);
+    signal.value = 2;
     expect(callback).toHaveBeenCalledTimes(1);
     stop();
   });
 
-  it(
-    'should work with collection',
-    () => {
-      const map = new Map();
-      const set = new Set();
-      const weakMap = new WeakMap();
-      const weakSet = new WeakSet();
+  it('should work with collection', () => {
+    const map = new Map();
+    const set = new Set();
+    const weakMap = new WeakMap();
+    const weakSet = new WeakSet();
 
-      const signalMap = useSignal(map);
-      const signalSet = useSignal(set);
-      const signalWeakMap = useSignal(weakMap);
-      const signalWeakSet = useSignal(weakSet);
+    const signalMap = useSignal(map);
+    const signalSet = useSignal(set);
+    const signalWeakMap = useSignal(weakMap);
+    const signalWeakSet = useSignal(weakSet);
 
-      const collection = useReactive({
-        signalMap,
-        signalSet,
-        signalWeakMap,
-        signalWeakSet,
-      });
-      const callBack = vi.fn();
-      const stop = useWatch(collection, callBack);
-      expect(callBack).toBeCalledTimes(1);
-      signalMap.value.set(1, 1);
-      expect(callBack).toBeCalledTimes(2);
-      signalSet.value.add(1);
-      expect(callBack).toBeCalledTimes(3);
-      stop();
-    },
-    { skip: true },
-  );
+    const collection = useReactive({
+      signalMap,
+      signalSet,
+      signalWeakMap,
+      signalWeakSet,
+    });
+    const callBack = vi.fn();
+    const stop = useWatch(collection, callBack);
+    expect(callBack).toBeCalledTimes(0);
+    signalMap.value.set(1, 1);
+    expect(callBack).toBeCalledTimes(1);
+    signalSet.value.add(1);
+    expect(callBack).toBeCalledTimes(2);
+    stop();
+  });
 
   it('should handle deep watch object correctly', () => {
     const obj = useReactive({ nested: { count: 1 } });
@@ -130,7 +126,8 @@ describe('useWatch', () => {
     const stop = useWatch(obj, callback, { deep: true });
 
     obj.nested.count = 2;
-    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, {});
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 1 } });
 
     stop();
   });

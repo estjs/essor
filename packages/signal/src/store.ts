@@ -62,9 +62,13 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   for (const key in getters) {
     const getter = getters[key];
     if (getter) {
-      useWatch(useComputed(getter.bind(reactiveState, reactiveState)), value => {
-        store[key] = value;
-      });
+      useWatch(
+        useComputed(getter.bind(reactiveState, reactiveState)),
+        value => {
+          store[key] = value;
+        },
+        { immediate: true },
+      );
     }
   }
 

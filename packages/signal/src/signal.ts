@@ -6,7 +6,9 @@ import {
   isExclude,
   isMap,
   isObject,
+  isPlainObject,
   isSet,
+  isStringNumber,
   isWeakMap,
   isWeakSet,
   warn,
@@ -22,7 +24,7 @@ type EffectFn = (() => void) &
 
 // Global variables to track active effects and computed values
 let activeEffect: EffectFn | null = null;
-let activeComputed: EffectFn | null = null;
+const activeComputed: EffectFn | null = null;
 
 // Type definition for the trigger map
 type TriggerMap = Map<string | symbol, Set<EffectFn>>;
@@ -47,24 +49,12 @@ const batchQueue: Set<EffectFn> = new Set();
 
 // Define types that can be made reactive
 type ReactiveTypes =
-  | object
+  | Record<string | symbol | number, unknown>
   | Array<unknown>
   | Set<unknown>
   | Map<object, unknown>
   | WeakMap<object, unknown>
   | WeakSet<object>;
-
-// Check if a value can be made reactive
-function isCanReactive(value: unknown): value is ReactiveTypes {
-  return (
-    isObject(value) ||
-    isArray(value) ||
-    isSet(value) ||
-    isMap(value) ||
-    isWeakMap(value) ||
-    isWeakSet(value)
-  );
-}
 
 export function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
@@ -79,7 +69,6 @@ export function track(target: object, key: string | symbol) {
     depsMap.set(key, dep);
   }
   if (activeEffect) dep.add(activeEffect);
-  if (activeComputed) dep.add(activeComputed);
 }
 function trigger(target: object, key: string | symbol) {
   const depsMap = triggerMap.get(target);
@@ -133,7 +122,7 @@ export class Signal<T> {
    */
   get value(): T {
     track(this, SignalValueKey);
-    if (isCanReactive(this._value) && !this._shallow) {
+    if (isObject(this._value) && !this._shallow) {
       return useReactive(this._value) as T;
     }
     return this._value;
@@ -234,27 +223,22 @@ export function isSignal<T>(value: any): value is Signal<T> {
  */
 export class Computed<T = unknown> {
   private _value: T;
-
-  // is should be read
   //@ts-ignore
   private readonly __computed = true;
   constructor(private readonly fn: () => T) {
-    const prev = activeComputed;
-    activeComputed = this.run.bind(this);
+    const prev = activeEffect;
+    activeEffect = this.run.bind(this);
     this._value = this.fn();
-    activeComputed = prev;
+    activeEffect = prev;
   }
-
   /**
-   * Returns the current value without triggering reactivity.
-   * @returns {T} The current value.
+   * Get the current computed value without tracking it.
    */
   peek(): T {
     return this._value;
   }
-
   /**
-   * Runs the computation function and updates the value if it has changed.
+   * Run the computed function and update the value if it has changed.
    */
   run() {
     const newValue = this.fn();
@@ -265,8 +249,7 @@ export class Computed<T = unknown> {
   }
 
   /**
-   * Gets the current value of the Computed instance.
-   * @returns {T} The current value.
+   * Get the current computed value and track its usage.
    */
   get value(): T {
     track(this, ComputedValueKey);
@@ -328,9 +311,6 @@ function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
  * @param {() => void} fn - The effect function.
  * @param {EffectOptions} [options] - The options for the effect.
  * @returns {() => void} A function to stop the effect.
- * @example
- * useEffect(() => console.log(count.value), { flush: 'post' });
- * // Logs the value of count whenever it changes
  */
 export function useEffect(fn: () => void, options: EffectOptions = {}): () => void {
   const { flush = 'pre', onTrack, onTrigger } = options;
@@ -403,13 +383,23 @@ export function signalObject<T extends object>(
  */
 export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
+
+  if (isWeakMap(signal) || isMap(signal) || isSet(signal) || isWeakSet(signal)) {
+    if (__DEV__) {
+      warn(
+        'unSignal does not support WeakMap, Map, Set or WeakSet, will return initial value!',
+        signal,
+      );
+    }
+    return signal as T;
+  }
   if (isSignal(signal)) {
     return signal.peek();
   }
   if (isArray(signal)) {
     return signal.map(value => unSignal(value, exclude)) as T;
   }
-  if (isObject(signal)) {
+  if (isPlainObject(signal)) {
     return Object.entries(signal).reduce((acc, [key, value]) => {
       if (isExclude(key, exclude)) {
         acc[key] = value;
@@ -443,8 +433,7 @@ export function isReactive(obj: unknown): obj is Reactive<any> {
 
 /**
  * Creates a reactive object.
- * @template T The type of the initial value.
- * @param {T} initialValue - The initial value.
+ * @param {ReactiveTypes} initialValue - The initial value.
  * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
  * @returns {Reactive<T>} A new reactive object.
  * @example
@@ -452,10 +441,7 @@ export function isReactive(obj: unknown): obj is Reactive<any> {
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
-export function useReactive<T extends ReactiveTypes>(
-  initialValue: T,
-  exclude?: ExcludeType,
-): Reactive<T> {
+export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
   return reactive(initialValue, exclude, false) as Reactive<T>;
 }
 
@@ -470,7 +456,7 @@ export function useReactive<T extends ReactiveTypes>(
  * console.log(shallowReactiveUser.name); // 'John'
  * console.log(shallowReactiveUser.age); // 30
  */
-export function shallowReactive<T extends object>(
+export function shallowReactive<T extends ReactiveTypes>(
   initialValue: T,
   exclude?: ExcludeType,
 ): Reactive<T> {
@@ -488,7 +474,7 @@ export function shallowReactive<T extends object>(
  * console.log(plainUser.age); // 30
  */
 export function unReactive<T>(target: Reactive<T> | T): T {
-  if (!isCanReactive(target)) {
+  if (!isObject(target)) {
     return target;
   }
 
@@ -557,7 +543,7 @@ function createArrayInstrumentations() {
 }
 
 // Proxy handler for arrays
-const Arrayhandler: ProxyHandler<unknown[]> = {
+const ArrayHandler: ProxyHandler<unknown[]> = {
   get(target, key: string | symbol, receiver) {
     if (key === ReactiveSymbol) return true;
     if (key === ReactivePeekSymbol) return target;
@@ -567,11 +553,13 @@ const Arrayhandler: ProxyHandler<unknown[]> = {
 
     const value = Reflect.get(target, key, receiver);
 
-    if (typeof key === 'string' && !Number.isNaN(Number(key))) {
+    if (isStringNumber(key)) {
       track(target, key);
     }
+    // hack for length, eg: const arr = reactive([1,2,3]); arr.length = 0
+    track(target, 'length');
 
-    if (isCanReactive(value)) {
+    if (isObject(value)) {
       return reactive(value);
     }
     return value;
@@ -579,8 +567,14 @@ const Arrayhandler: ProxyHandler<unknown[]> = {
   set(target, key: string | symbol, value, receiver) {
     const oldValue = Reflect.get(target, key, receiver);
     const result = Reflect.set(target, key, value, receiver);
-    if (hasChanged(value, oldValue) && typeof key === 'string' && !Number.isNaN(Number(key))) {
-      trigger(target, key);
+    if (hasChanged(value, oldValue)) {
+      if (isStringNumber(key)) {
+        trigger(target, key);
+      }
+
+      if (key === 'length') {
+        trigger(target, 'length');
+      }
     }
     return result;
   },
@@ -730,8 +724,7 @@ const weakInstrumentations = {
 
 /**
  * Creates a reactive object.
- * @template T The type of the initial value.
- * @param {T} initialValue - The initial value.
+ * @param {object} initialValue - The initial value.
  * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
  * @param {boolean} [shallow] - Whether to create a shallow reactive object.
  * @returns {Reactive<T>} A new reactive object.
@@ -740,12 +733,12 @@ const weakInstrumentations = {
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
-function reactive<T extends ReactiveTypes>(
+function reactive<T extends object>(
   initialValue: T,
   exclude?: ExcludeType,
   shallow: boolean = false,
 ): Reactive<T> {
-  if (!isCanReactive(initialValue)) {
+  if (!isObject(initialValue)) {
     return initialValue as Reactive<T>;
   }
   if (isReactive(initialValue)) {
@@ -769,7 +762,7 @@ function reactive<T extends ReactiveTypes>(
       }
 
       track(target, key);
-      if (isCanReactive(value) && !shallow) {
+      if (isObject(value) && !shallow) {
         return useReactive(value);
       }
       return value;
@@ -806,13 +799,15 @@ function reactive<T extends ReactiveTypes>(
 
   if (isArray(initialValue)) {
     track(initialValue, reactiveArrayKey);
-    handler = Arrayhandler as ProxyHandler<T>;
+    handler = ArrayHandler as ProxyHandler<T>;
   }
 
   if (isSet(initialValue) || isMap(initialValue)) {
     track(initialValue, ReactiveCollectionKey);
     handler = collectionHandlers as ProxyHandler<T>;
-  } else if (isWeakSet(initialValue) || isWeakMap(initialValue)) {
+  }
+
+  if (isWeakSet(initialValue) || isWeakMap(initialValue)) {
     track(initialValue, ReactiveWeakCollectionKey);
     handler = weakCollectionHandlers as ProxyHandler<T>;
   }
@@ -839,31 +834,25 @@ export function clearReactive<T extends object>(reactiveObj: Reactive<T>): void 
     return;
   }
 
-  const rawObj = unReactive(reactiveObj);
-  const obj = structuredClone(rawObj);
+  if (isWeakMap(reactiveObj) || isWeakSet(reactiveObj)) {
+    if (__DEV__) {
+      warn('clearReactive: WeakMap and WeakSet are not clearable');
+    }
 
-  if (isArray(rawObj)) {
-    rawObj.length = 0;
-  } else if (isSet(rawObj) || isMap(rawObj)) {
-    rawObj.clear();
-  } else if (isObject(rawObj)) {
-    Object.keys(rawObj).forEach(key => {
-      delete rawObj[key];
-    });
+    return;
   }
 
-  // trigger effect
-  if (isArray(obj)) {
-    trigger(obj, reactiveArrayKey);
-  } else if (isSet(obj) || isMap(obj)) {
-    trigger(obj, ReactiveCollectionKey);
-  } else if (isWeakSet(obj) || isWeakMap(obj)) {
-    trigger(obj, ReactiveWeakCollectionKey);
-  } else {
-    Object.keys(obj).forEach(key => {
-      trigger(obj, key);
-    });
-  }
+  useBatch(() => {
+    if (isArray(reactiveObj)) {
+      reactiveObj.length = 0;
+    } else if (isSet(reactiveObj) || isMap(reactiveObj)) {
+      reactiveObj.clear();
+    } else if (isObject(reactiveObj)) {
+      Object.keys(reactiveObj).forEach(key => {
+        delete reactiveObj[key];
+      });
+    }
+  });
 }
 
 /**

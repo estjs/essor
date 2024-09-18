@@ -456,6 +456,35 @@ describe('clearReactive', () => {
 
     clearReactive(obj);
     expect(effectFn).toHaveBeenCalledTimes(2); // Called once during initialization, and once after clearing
+
+    const arr = useReactive([1, 2, 3]);
+    const effectFn2 = vi.fn();
+    useEffect(() => {
+      effectFn2(arr[0]);
+    });
+
+    clearReactive(arr);
+    expect(effectFn2).toHaveBeenCalledTimes(2); // Called once during initialization, and once after clearing
+
+    const set = useReactive(new Set([1, 2, 3]));
+    const effectFn3 = vi.fn();
+    useEffect(() => {
+      effectFn3(set.size);
+    });
+
+    clearReactive(set);
+    expect(effectFn3).toHaveBeenCalledTimes(2); // Called once during initialization, and once after clearing
+
+    const map = useReactive(
+      new Map([
+        ['a', 1],
+        ['b', 2],
+      ]),
+    );
+    const effectFn4 = vi.fn();
+    useEffect(() => {
+      effectFn4(map.size);
+    });
   });
 
   it('should warn for non-reactive objects', () => {

@@ -9,6 +9,7 @@ import {
   noop,
   warn,
 } from '@estjs/shared';
+import CloneDeep from 'lodash.clonedeep';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
@@ -37,7 +38,7 @@ export interface WatchOptionsBase {
 
 export interface WatchOptions<Immediate = boolean> extends WatchOptionsBase {
   immediate?: Immediate;
-  deep?: boolean;
+  deep?: boolean | number;
 }
 
 // Overload #1: Watching multiple sources (array of sources) + callback
@@ -73,6 +74,8 @@ export function useWatch<T = any>(
   return doWatch(source, cb, options);
 }
 
+const INITIAL_WATCHER_VALUE = {};
+
 /**
  * Internal function to handle the actual watching logic.
  * @param source - The source to watch (can be a Signal, Computed, function, or reactive object)
@@ -87,18 +90,19 @@ function doWatch(
 ): WatchStopHandle {
   let getter: () => any;
   let isMultiSource = false;
-  const { deep, immediate } = options || {};
+  const { deep, immediate, flush = 'pre' } = options || {};
+
   // Determine the correct getter function based on the source type
   if (isSignal(source) || isComputed(source)) {
     getter = () => source.value;
   } else if (isReactive(source)) {
-    getter = () => ({ ...source }); // Create a shallow copy for reactive objects
+    getter = () => ({ ...source });
   } else if (isArray(source)) {
     isMultiSource = true;
     getter = () =>
       (source as WatchSource[]).map(s => {
         if (isSignal(s) || isComputed(s)) return s.value;
-        if (isReactive(s)) return { ...s };
+        if (isReactive(s)) return { ...s } as any;
         if (isFunction(s)) return (s as () => any)();
         return warn('Invalid source', s);
       });
@@ -116,7 +120,6 @@ function doWatch(
     getter = () => traverse(baseGetter(), depth);
   }
 
-  const INITIAL_WATCHER_VALUE = undefined;
   let oldValue: any = isMultiSource
     ? Array.from({ length: (source as []).length }).fill(INITIAL_WATCHER_VALUE)
     : INITIAL_WATCHER_VALUE;
@@ -124,16 +127,17 @@ function doWatch(
   let runCb = false;
 
   const effectFn = () => {
-    const newValue = getter();
-    if (hasChanged(newValue, oldValue)) {
-      runCb && cb && cb(newValue, oldValue);
-      oldValue = newValue;
+    const getterValue = getter();
+
+    if (hasChanged(getterValue, oldValue)) {
+      if (runCb && cb) {
+        cb(getterValue, oldValue);
+      }
+      oldValue = CloneDeep(getterValue);
     }
   };
-
   // Register the effect with the reactive system
-  const stop = useEffect(effectFn);
-
+  const stop = useEffect(effectFn, { flush });
   runCb = true;
 
   // If immediate execution is requested, trigger the effect function immediately
@@ -156,23 +160,18 @@ export function traverse(value: unknown, depth: number = Infinity, seen?: Set<un
   seen.add(value);
   depth--;
   if (isSignal(value)) {
-    traverse(value.value, depth, seen);
+    traverse((value as Signal<any>).value, depth, seen);
   } else if (isArray(value)) {
     for (const element of value) {
       traverse(element, depth, seen);
     }
   } else if (isSet(value) || isMap(value)) {
-    value.forEach((v: any) => {
+    (value as Set<any> | Map<any, any>).forEach((v: any) => {
       traverse(v, depth, seen);
     });
   } else if (isPlainObject(value)) {
     for (const key in value) {
       traverse(value[key], depth, seen);
-    }
-    for (const key of Object.getOwnPropertySymbols(value)) {
-      if (Object.prototype.propertyIsEnumerable.call(value, key)) {
-        traverse(value[key as any], depth, seen);
-      }
     }
   }
   return value;
