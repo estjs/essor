@@ -56,7 +56,6 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@estjs/shared": "workspace:*",
-    "lodash.clonedeep": "^4.5.0"
+    "@estjs/shared": "workspace:*"
   }
 }

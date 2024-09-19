@@ -442,7 +442,7 @@ export function isReactive(obj: unknown): obj is Reactive<any> {
  * console.log(reactiveUser.age); // 30
  */
 export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
-  return reactive(initialValue, exclude, false) as Reactive<T>;
+  return reactive(initialValue, false, exclude) as Reactive<T>;
 }
 
 /**
@@ -460,7 +460,7 @@ export function shallowReactive<T extends ReactiveTypes>(
   initialValue: T,
   exclude?: ExcludeType,
 ): Reactive<T> {
-  return reactive(initialValue, exclude, true) as Reactive<T>;
+  return reactive(initialValue, true, exclude) as Reactive<T>;
 }
 
 /**
@@ -484,6 +484,56 @@ export function unReactive<T>(target: Reactive<T> | T): T {
 
   return target[ReactivePeekSymbol];
 }
+
+const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
+  return {
+    get(target, key, receiver) {
+      if (key === ReactiveSymbol) return true;
+      if (key === ReactivePeekSymbol) return target;
+
+      const getValue = Reflect.get(target, key, receiver);
+      const value = isSignal(getValue) ? getValue.value : getValue;
+
+      if (isExclude(key, exclude)) {
+        return value;
+      }
+
+      track(target, key);
+      if (isObject(value) && !shallow) {
+        return useReactive(value);
+      }
+      return value;
+    },
+    set(target, key, value, receiver) {
+      if (isExclude(key, exclude)) {
+        Reflect.set(target, key, value, receiver);
+        return true;
+      }
+      let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
+
+      if (isSignal(oldValue)) {
+        oldValue = oldValue.value;
+      }
+      if (isSignal(value)) {
+        value = value.value;
+      }
+      const obj = Reflect.set(target, key, value, receiver);
+
+      if (hasChanged(value, oldValue)) {
+        trigger(target, key);
+      }
+      return obj;
+    },
+    deleteProperty(target, key) {
+      const oldValue = Reflect.get(target, key);
+      const result = Reflect.deleteProperty(target, key);
+      if (oldValue !== undefined) {
+        trigger(target, key);
+      }
+      return result;
+    },
+  };
+};
 
 const arrayInstrumentations = createArrayInstrumentations();
 
@@ -543,41 +593,48 @@ function createArrayInstrumentations() {
 }
 
 // Proxy handler for arrays
-const ArrayHandler: ProxyHandler<unknown[]> = {
-  get(target, key: string | symbol, receiver) {
-    if (key === ReactiveSymbol) return true;
-    if (key === ReactivePeekSymbol) return target;
-    if (arrayInstrumentations.hasOwnProperty(key)) {
-      return Reflect.get(arrayInstrumentations, key, receiver);
-    }
+const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
+  return {
+    get(target, key: string | symbol, receiver) {
+      if (key === ReactiveSymbol) return true;
+      if (key === ReactivePeekSymbol) return target;
 
-    const value = Reflect.get(target, key, receiver);
+      if (arrayInstrumentations.hasOwnProperty(key)) {
+        return Reflect.get(arrayInstrumentations, key, receiver);
+      }
 
-    if (isStringNumber(key)) {
-      track(target, key);
-    }
-    // hack for length, eg: const arr = reactive([1,2,3]); arr.length = 0
-    track(target, 'length');
+      const value = Reflect.get(target, key, receiver);
 
-    if (isObject(value)) {
-      return reactive(value);
-    }
-    return value;
-  },
-  set(target, key: string | symbol, value, receiver) {
-    const oldValue = Reflect.get(target, key, receiver);
-    const result = Reflect.set(target, key, value, receiver);
-    if (hasChanged(value, oldValue)) {
+      if (isExclude(key, exclude)) {
+        return value;
+      }
+
       if (isStringNumber(key)) {
-        trigger(target, key);
+        track(target, key);
       }
+      // hack for length, eg: const arr = reactive([1,2,3]); arr.length = 0
+      track(target, 'length');
 
-      if (key === 'length') {
-        trigger(target, 'length');
+      if (isObject(value) && !shallow) {
+        return reactive(value);
       }
-    }
-    return result;
-  },
+      return value;
+    },
+    set(target, key: string | symbol, value, receiver) {
+      const oldValue = Reflect.get(target, key, receiver);
+      const result = Reflect.set(target, key, value, receiver);
+      if (hasChanged(value, oldValue)) {
+        if (isStringNumber(key)) {
+          trigger(target, key);
+        }
+
+        if (key === 'length') {
+          trigger(target, 'length');
+        }
+      }
+      return result;
+    },
+  };
 };
 
 // Proxy handler for collections
@@ -725,8 +782,9 @@ const weakInstrumentations = {
 /**
  * Creates a reactive object.
  * @param {object} initialValue - The initial value.
- * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
  * @param {boolean} [shallow] - Whether to create a shallow reactive object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
+ *
  * @returns {Reactive<T>} A new reactive object.
  * @example
  * const reactiveUser = reactive({ name: 'John', age: 30 });
@@ -735,8 +793,8 @@ const weakInstrumentations = {
  */
 function reactive<T extends object>(
   initialValue: T,
-  exclude?: ExcludeType,
   shallow: boolean = false,
+  exclude?: ExcludeType,
 ): Reactive<T> {
   if (!isObject(initialValue)) {
     return initialValue as Reactive<T>;
@@ -749,67 +807,19 @@ function reactive<T extends object>(
     return reactiveMap.get(initialValue) as Reactive<T>;
   }
 
-  let handler: ProxyHandler<T> = {
-    get(target, key, receiver) {
-      if (key === ReactiveSymbol) return true;
-      if (key === ReactivePeekSymbol) return target;
-
-      const getValue = Reflect.get(target, key, receiver);
-      const value = isSignal(getValue) ? getValue.value : getValue;
-
-      if (isExclude(key, exclude)) {
-        return value;
-      }
-
-      track(target, key);
-      if (isObject(value) && !shallow) {
-        return useReactive(value);
-      }
-      return value;
-    },
-    set(target, key, value, receiver) {
-      if (isExclude(key, exclude)) {
-        Reflect.set(target, key, value, receiver);
-        return true;
-      }
-      let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
-
-      if (isSignal(oldValue)) {
-        oldValue = oldValue.value;
-      }
-      if (isSignal(value)) {
-        value = value.value;
-      }
-      const obj = Reflect.set(target, key, value, receiver);
-
-      if (hasChanged(value, oldValue)) {
-        trigger(target, key);
-      }
-      return obj;
-    },
-    deleteProperty(target, key) {
-      const oldValue = Reflect.get(target, key);
-      const result = Reflect.deleteProperty(target, key);
-      if (oldValue !== undefined) {
-        trigger(target, key);
-      }
-      return result;
-    },
-  };
+  let handler;
 
   if (isArray(initialValue)) {
     track(initialValue, reactiveArrayKey);
-    handler = ArrayHandler as ProxyHandler<T>;
-  }
-
-  if (isSet(initialValue) || isMap(initialValue)) {
+    handler = ArrayHandler(shallow, exclude) as ProxyHandler<T>;
+  } else if (isSet(initialValue) || isMap(initialValue)) {
     track(initialValue, ReactiveCollectionKey);
     handler = collectionHandlers as ProxyHandler<T>;
-  }
-
-  if (isWeakSet(initialValue) || isWeakMap(initialValue)) {
+  } else if (isWeakSet(initialValue) || isWeakMap(initialValue)) {
     track(initialValue, ReactiveWeakCollectionKey);
     handler = weakCollectionHandlers as ProxyHandler<T>;
+  } else {
+    handler = basicHandler(shallow, exclude);
   }
 
   const proxy = new Proxy(initialValue, handler) as Reactive<T>;

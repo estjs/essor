@@ -9,57 +9,43 @@ import {
   noop,
   warn,
 } from '@estjs/shared';
-import CloneDeep from 'lodash.clonedeep';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
+import { nextTick } from './scheduler';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
 export type WatchStopHandle = () => void;
 
 type MapSources<T> = {
-  [K in keyof T]: T[K] extends WatchSource<infer V> ? V : T[K] extends object ? T[K] : never;
+  [K in keyof T]: T[K] extends WatchSource<infer V> ? V : T[K];
 };
 
 type MapOldSources<T, Immediate> = {
-  [K in keyof T]: T[K] extends WatchSource<infer V>
-    ? Immediate extends true
-      ? V | undefined
-      : V
-    : T[K] extends object
-      ? Immediate extends true
-        ? T[K] | undefined
-        : T[K]
-      : never;
+  [K in keyof T]: Immediate extends true ? T[K] | undefined : T[K];
 };
 
-export interface WatchOptionsBase {
-  flush?: 'sync' | 'pre' | 'post';
-}
-
-export interface WatchOptions<Immediate = boolean> extends WatchOptionsBase {
+export interface WatchOptions<Immediate = boolean> {
   immediate?: Immediate;
   deep?: boolean | number;
 }
 
-// Overload #1: Watching multiple sources (array of sources) + callback
+// Overload signatures
 export function useWatch<
-  T extends Readonly<Array<WatchSource<unknown> | object>>,
-  Immediate extends Readonly<boolean> = false,
+  T extends Readonly<WatchSource<unknown>[] | object>,
+  Immediate extends boolean = false,
 >(
   sources: T,
   cb: WatchCallback<MapSources<T>, MapOldSources<T, Immediate>>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Overload #2: Watching a single source + callback
-export function useWatch<T, Immediate extends Readonly<boolean> = false>(
+export function useWatch<T, Immediate extends boolean = false>(
   source: WatchSource<T>,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Overload #3: Watching a reactive object + callback
-export function useWatch<T extends object, Immediate extends Readonly<boolean> = false>(
+export function useWatch<T extends object, Immediate extends boolean = false>(
   source: T,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
@@ -74,43 +60,42 @@ export function useWatch<T = any>(
   return doWatch(source, cb, options);
 }
 
-const INITIAL_WATCHER_VALUE = {};
+const INITIAL_WATCHER_VALUE = undefined;
+let watcher: Function | null;
+let flushing = false;
 
-/**
- * Internal function to handle the actual watching logic.
- * @param source - The source to watch (can be a Signal, Computed, function, or reactive object)
- * @param cb - The callback to trigger when the watched source changes
- * @param options - Configuration options for watching (e.g., immediate execution, deep watching)
- * @returns A function to stop watching
- */
+function queueWatcher(fn: Function) {
+  watcher = fn;
+  if (!flushing) {
+    flushing = true;
+    nextTick(flushWatchers);
+  }
+}
+
+function flushWatchers() {
+  watcher?.();
+  watcher = null;
+  flushing = false;
+}
+
 function doWatch(
   source: WatchSource | WatchSource[] | object,
   cb: WatchCallback | null,
-  options?: WatchOptions,
+  { deep, immediate }: WatchOptions = {},
 ): WatchStopHandle {
   let getter: () => any;
-  let isMultiSource = false;
-  const { deep, immediate, flush = 'pre' } = options || {};
+  const isMultiSource = isArray(source);
 
-  // Determine the correct getter function based on the source type
   if (isSignal(source) || isComputed(source)) {
     getter = () => source.value;
   } else if (isReactive(source)) {
     getter = () => ({ ...source });
-  } else if (isArray(source)) {
-    isMultiSource = true;
-    getter = () =>
-      (source as WatchSource[]).map(s => {
-        if (isSignal(s) || isComputed(s)) return s.value;
-        if (isReactive(s)) return { ...s } as any;
-        if (isFunction(s)) return (s as () => any)();
-        return warn('Invalid source', s);
-      });
+  } else if (isMultiSource) {
+    getter = () => (source as WatchSource[]).map(s => resolveSource(s));
   } else if (isFunction(source)) {
     getter = source as () => any;
   } else {
     warn('Invalid source type', source);
-    getter = noop;
     return noop;
   }
 
@@ -121,31 +106,43 @@ function doWatch(
   }
 
   let oldValue: any = isMultiSource
-    ? Array.from({ length: (source as []).length }).fill(INITIAL_WATCHER_VALUE)
+    ? Array.from({ length: source.length }).fill(INITIAL_WATCHER_VALUE)
     : INITIAL_WATCHER_VALUE;
-
   let runCb = false;
 
   const effectFn = () => {
-    const getterValue = getter();
-
-    if (hasChanged(getterValue, oldValue)) {
-      if (runCb && cb) {
-        cb(getterValue, oldValue);
+    const newValue = getter();
+    if (hasChanged(newValue, oldValue)) {
+      if (immediate && cb) {
+        cb(newValue, oldValue);
+        oldValue = newValue;
       }
-      oldValue = CloneDeep(getterValue);
+      if (runCb && cb) {
+        queueWatcher(() => {
+          cb(newValue, oldValue);
+          oldValue = newValue;
+        });
+      }
+      !runCb && (oldValue = newValue);
     }
   };
-  // Register the effect with the reactive system
-  const stop = useEffect(effectFn, { flush });
+
+  const stop = useEffect(effectFn, { flush: 'sync' });
   runCb = true;
 
-  // If immediate execution is requested, trigger the effect function immediately
   if (immediate) {
     effectFn();
   }
 
   return stop;
+}
+
+function resolveSource(s: WatchSource | object) {
+  if (isSignal(s) || isComputed(s)) return s.value;
+  if (isReactive(s)) return { ...s };
+  if (isFunction(s)) return (s as Function)();
+  warn('Invalid source', s);
+  return noop;
 }
 
 export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
