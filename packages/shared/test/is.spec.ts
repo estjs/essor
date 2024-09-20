@@ -5,9 +5,11 @@ import {
   isMap,
   isNil,
   isObject,
+  isPlainObject,
   isPrimitive,
   isPromise,
   isSet,
+  isStringNumber,
   isSymbol,
   isWeakMap,
   isWeakSet,
@@ -66,6 +68,8 @@ describe('isObject function', () => {
     expect(isObject([])).toBe(true);
     expect(isObject(new Map())).toBe(true);
     expect(isObject(new Set())).toBe(true);
+    expect(isObject(new WeakMap())).toBe(true);
+    expect(isObject(new WeakSet())).toBe(true);
   });
 
   it('should return false for non-objects', () => {
@@ -201,5 +205,48 @@ describe('isHTMLElement', () => {
     expect(isHTMLElement(undefined)).toBe(false);
     expect(isHTMLElement('string')).toBe(false);
     expect(isHTMLElement(123)).toBe(false);
+  });
+});
+
+describe('isPlainObject', () => {
+  it('should return true for plain objects', () => {
+    expect(isPlainObject({})).toBe(true);
+    expect(isPlainObject({ a: 1, b: 2 })).toBe(true);
+  });
+
+  it('should return false for non-plain objects', () => {
+    expect(isPlainObject([])).toBe(false);
+    expect(isPlainObject(null)).toBe(false);
+    expect(isPlainObject(undefined)).toBe(false);
+    expect(isPlainObject('string')).toBe(false);
+    expect(isPlainObject(123)).toBe(false);
+
+    expect(isPlainObject(() => {})).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/no-extraneous-class
+    expect(isPlainObject(class A {})).toBe(false);
+    expect(isPlainObject(Symbol())).toBe(false);
+    expect(isPlainObject(Promise.resolve())).toBe(false);
+    expect(isPlainObject(new Date())).toBe(false);
+    // eslint-disable-next-line unicorn/error-message
+    expect(isPlainObject(new Error())).toBe(false);
+    expect(isPlainObject(new Map())).toBe(false);
+    expect(isPlainObject(new Set())).toBe(false);
+    expect(isPlainObject(new WeakMap())).toBe(false);
+    expect(isPlainObject(new WeakSet())).toBe(false);
+  });
+});
+
+describe('isStringNumber', () => {
+  it('should return true for string numbers', () => {
+    expect(isStringNumber('1')).toBe(true);
+    expect(isStringNumber('123')).toBe(true);
+    expect(isStringNumber('123.123e3')).toBe(true);
+  });
+
+  it('should return false for non-string numbers', () => {
+    //@ts-ignore
+    expect(isStringNumber(1)).toBe(false);
+    //@ts-ignore
+    expect(isStringNumber(123)).toBe(false);
   });
 });

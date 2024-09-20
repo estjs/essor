@@ -8,19 +8,41 @@ describe('createStore', () => {
         doubleCount: state => {
           return state.count * 2;
         },
+        thirdCount: state => {
+          return state.count * 3;
+        },
       },
       actions: {
         increment() {
           this.count++;
+        },
+        decrement() {
+          this.count--;
+        },
+
+        addDoubleCount() {
+          this.count += 2;
         },
       },
     });
     const store = useStore();
     expect(store.state.count).toBe(0);
     expect(store.doubleCount).toBe(0);
+    expect(store.thirdCount).toBe(0);
     store.increment();
     expect(store.state.count).toBe(1);
     expect(store.doubleCount).toBe(2);
+    expect(store.thirdCount).toBe(3);
+
+    store.decrement();
+    expect(store.state.count).toBe(0);
+    expect(store.doubleCount).toBe(0);
+    expect(store.thirdCount).toBe(0);
+
+    store.addDoubleCount();
+    expect(store.state.count).toBe(2);
+    expect(store.doubleCount).toBe(4);
+    expect(store.thirdCount).toBe(6);
   });
 });
 describe('store Methods', () => {
