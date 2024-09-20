@@ -10,55 +10,42 @@ import {
   warn,
 } from '@estjs/shared';
 import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
+import { nextTick } from './scheduler';
 
 export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
 export type WatchStopHandle = () => void;
 
 type MapSources<T> = {
-  [K in keyof T]: T[K] extends WatchSource<infer V> ? V : T[K] extends object ? T[K] : never;
+  [K in keyof T]: T[K] extends WatchSource<infer V> ? V : T[K];
 };
 
 type MapOldSources<T, Immediate> = {
-  [K in keyof T]: T[K] extends WatchSource<infer V>
-    ? Immediate extends true
-      ? V | undefined
-      : V
-    : T[K] extends object
-      ? Immediate extends true
-        ? T[K] | undefined
-        : T[K]
-      : never;
+  [K in keyof T]: Immediate extends true ? T[K] | undefined : T[K];
 };
 
-export interface WatchOptionsBase {
-  flush?: 'sync' | 'pre' | 'post';
-}
-
-export interface WatchOptions<Immediate = boolean> extends WatchOptionsBase {
+export interface WatchOptions<Immediate = boolean> {
   immediate?: Immediate;
-  deep?: boolean;
+  deep?: boolean | number;
 }
 
-// Overload #1: Watching multiple sources (array of sources) + callback
+// Overload signatures
 export function useWatch<
-  T extends Readonly<Array<WatchSource<unknown> | object>>,
-  Immediate extends Readonly<boolean> = false,
+  T extends Readonly<WatchSource<unknown>[] | object>,
+  Immediate extends boolean = false,
 >(
   sources: T,
   cb: WatchCallback<MapSources<T>, MapOldSources<T, Immediate>>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Overload #2: Watching a single source + callback
-export function useWatch<T, Immediate extends Readonly<boolean> = false>(
+export function useWatch<T, Immediate extends boolean = false>(
   source: WatchSource<T>,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Overload #3: Watching a reactive object + callback
-export function useWatch<T extends object, Immediate extends Readonly<boolean> = false>(
+export function useWatch<T extends object, Immediate extends boolean = false>(
   source: T,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
@@ -73,40 +60,68 @@ export function useWatch<T = any>(
   return doWatch(source, cb, options);
 }
 
+const INITIAL_WATCHER_VALUE = undefined;
+let watcher: Function | null;
+let flushing = false;
+
+function queueWatcher(fn: Function) {
+  watcher = fn;
+  if (!flushing) {
+    flushing = true;
+    nextTick(flushWatchers);
+  }
+}
+
+function flushWatchers() {
+  watcher?.();
+  watcher = null;
+  flushing = false;
+}
+
 /**
- * Internal function to handle the actual watching logic.
- * @param source - The source to watch (can be a Signal, Computed, function, or reactive object)
- * @param cb - The callback to trigger when the watched source changes
- * @param options - Configuration options for watching (e.g., immediate execution, deep watching)
- * @returns A function to stop watching
+ * Creates a watcher for the given source, which can be a signal, computed, reactive object, or an array of them.
+ * The watcher will be triggered whenever the source value changes, and will call the given callback function with the new value and old value.
+ * If the source is an array, the watcher will be triggered when any one of the elements changes.
+ * If the source is a reactive object, the watcher will be triggered when any one of the properties changes.
+ * If the source is an array of reactive objects, the watcher will be triggered when any one of the properties of any one of the objects changes.
+ * If the source is a computed value, the watcher will be triggered when the value of the computed changes.
+ * @param {WatchSource | WatchSource[] | object} source The source to watch.
+ * @param {WatchCallback | null} cb The callback function to call when the source value changes.
+ * @param {WatchOptions} [options] Options for the watcher.
+ * @param {boolean} [options.immediate] Whether to call the callback function immediately when the watcher is created.
+ * @param {boolean | number} [options.deep] Whether to watch the source recursively. If true, the watcher will watch all nested objects. If number, the watcher will watch up to the given depth.
+ * @returns {WatchStopHandle} A function to stop the watcher.
+ *
+ * @examples
+ *
+ * const count = useSignal(0);
+ * const name = useSignal('Alice');
+ *
+ * useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
+ *   console.log(`Count changed from ${oldCount} to ${newCount}`);
+ *  })
+ *
+ * count.value++;
+ * name.value = 'Bob';
  */
 function doWatch(
   source: WatchSource | WatchSource[] | object,
   cb: WatchCallback | null,
-  options?: WatchOptions,
+  { deep, immediate }: WatchOptions = {},
 ): WatchStopHandle {
   let getter: () => any;
-  let isMultiSource = false;
-  const { deep, immediate } = options || {};
-  // Determine the correct getter function based on the source type
+  const isMultiSource = isArray(source);
+
   if (isSignal(source) || isComputed(source)) {
     getter = () => source.value;
   } else if (isReactive(source)) {
-    getter = () => ({ ...source }); // Create a shallow copy for reactive objects
-  } else if (isArray(source)) {
-    isMultiSource = true;
-    getter = () =>
-      source.map(s => {
-        if (isSignal(s) || isComputed(s)) return s.value;
-        if (isReactive(s)) return { ...s };
-        if (isFunction(s)) return s();
-        return warn('Invalid source', s);
-      });
+    getter = () => ({ ...source });
+  } else if (isMultiSource) {
+    getter = () => (source as WatchSource[]).map(s => resolveSource(s));
   } else if (isFunction(source)) {
     getter = source as () => any;
   } else {
     warn('Invalid source type', source);
-    getter = noop;
     return noop;
   }
 
@@ -116,33 +131,46 @@ function doWatch(
     getter = () => traverse(baseGetter(), depth);
   }
 
-  const INITIAL_WATCHER_VALUE = {};
   let oldValue: any = isMultiSource
-    ? Array.from({ length: (source as []).length }).fill(INITIAL_WATCHER_VALUE)
+    ? Array.from({ length: source.length }).fill(INITIAL_WATCHER_VALUE)
     : INITIAL_WATCHER_VALUE;
+  let runCb = false;
 
-  // Effect function to be triggered on source changes
   const effectFn = () => {
     const newValue = getter();
-
-    // Check if the new value has changed compared to the old value
     if (hasChanged(newValue, oldValue)) {
-      cb && cb(newValue, oldValue);
-
-      oldValue = newValue;
+      if (immediate && cb) {
+        cb(newValue, oldValue);
+        oldValue = newValue;
+      }
+      if (runCb && cb) {
+        queueWatcher(() => {
+          cb(newValue, oldValue);
+          oldValue = newValue;
+        });
+      }
+      !runCb && (oldValue = newValue);
     }
   };
 
-  // Register the effect with the reactive system
-  const stop = useEffect(effectFn);
+  const stop = useEffect(effectFn, { flush: 'sync' });
+  runCb = true;
 
-  // If immediate execution is requested, trigger the effect function immediately
   if (immediate) {
     effectFn();
   }
 
   return stop;
 }
+
+function resolveSource(s: WatchSource | object) {
+  if (isSignal(s) || isComputed(s)) return s.value;
+  if (isReactive(s)) return { ...s };
+  if (isFunction(s)) return (s as Function)();
+  warn('Invalid source', s);
+  return noop;
+}
+
 export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
   if (depth <= 0 || !isObject(value)) {
     return value;
@@ -155,23 +183,18 @@ export function traverse(value: unknown, depth: number = Infinity, seen?: Set<un
   seen.add(value);
   depth--;
   if (isSignal(value)) {
-    traverse(value.value, depth, seen);
+    traverse((value as Signal<any>).value, depth, seen);
   } else if (isArray(value)) {
     for (const element of value) {
       traverse(element, depth, seen);
     }
   } else if (isSet(value) || isMap(value)) {
-    value.forEach((v: any) => {
+    (value as Set<any> | Map<any, any>).forEach((v: any) => {
       traverse(v, depth, seen);
     });
   } else if (isPlainObject(value)) {
     for (const key in value) {
       traverse(value[key], depth, seen);
-    }
-    for (const key of Object.getOwnPropertySymbols(value)) {
-      if (Object.prototype.propertyIsEnumerable.call(value, key)) {
-        traverse(value[key as any], depth, seen);
-      }
     }
   }
   return value;

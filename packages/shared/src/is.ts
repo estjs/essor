@@ -2,7 +2,7 @@ import { _toString } from './comm';
 
 export const isObject = (val: unknown): val is Record<any, any> =>
   val !== null && typeof val === 'object';
-export function isPromise(val: any): boolean {
+export function isPromise(val: any): val is Promise<any> {
   return _toString.call(val) === '[object Promise]';
 }
 
@@ -53,3 +53,11 @@ export function isHTMLElement(obj) {
 
 export const isPlainObject = (val: unknown): val is object =>
   _toString.call(val) === '[object Object]';
+
+export type StringNumber = `${number}`;
+export function isStringNumber(val: unknown): val is StringNumber {
+  if (!isString(val)) {
+    return false;
+  }
+  return !Number.isNaN(Number(val));
+}
