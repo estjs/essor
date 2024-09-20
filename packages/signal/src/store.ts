@@ -122,6 +122,8 @@ export function createStore<S, G, A>(
     getters?: G;
     actions?: A;
   } & ThisType<S & Getters<G> & A>,
-): S & Getters<G> & A & StoreActions & { state: S } {
-  return createOptionsStore<S, G, A>(options);
+): () => S & Getters<G> & A & StoreActions & { state: S } {
+  return function () {
+    return createOptionsStore<S, G, A>(options);
+  };
 }
