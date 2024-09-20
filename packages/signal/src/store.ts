@@ -15,8 +15,9 @@ export interface StoreActions {
   reset$: () => void;
 }
 
-let _id = 0;
-const StoreMap = new Map<number, any>();
+type Getters<S> = {
+  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
+};
 
 function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   const { state, getters, actions } = options as StoreOptions<
@@ -56,7 +57,7 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   const store = {
     state: reactiveState,
     ...default_actions,
-  };
+  } as S & Getters<G> & A & StoreActions & { state: S };
 
   for (const key in getters) {
     const getter = getters[key];
@@ -78,15 +79,8 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
     }
   }
 
-  StoreMap.set(_id, store);
-  ++_id;
-
   return store;
 }
-
-type Getters<S> = {
-  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
-};
 
 /**
  * Creates a reactive store with the given options.
@@ -128,12 +122,6 @@ export function createStore<S, G, A>(
     getters?: G;
     actions?: A;
   } & ThisType<S & Getters<G> & A>,
-): () => S & Getters<G> & A & StoreActions & { state: S } {
-  return function () {
-    if (StoreMap.has(_id)) {
-      return StoreMap.get(_id)!;
-    }
-
-    return createOptionsStore<S, G, A>(options);
-  };
+): S & Getters<G> & A & StoreActions & { state: S } {
+  return createOptionsStore<S, G, A>(options);
 }
