@@ -335,6 +335,29 @@ describe('unSignal', () => {
     expect(unwrapped).toEqual([1, 2]);
   });
 
+  it('should handle collections of signals', () => {
+    const sets = new Set();
+    const maps = new Map();
+    const weakSets = new WeakSet();
+    const weakMaps = new WeakMap();
+
+    const signalsArray = [
+      useSignal(sets),
+      useSignal(maps),
+      useSignal(weakMaps),
+      unSignal(weakSets),
+    ];
+
+    const unwrapped = unSignal(signalsArray);
+    expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
+
+    sets.add(1);
+    maps.set(1, 2);
+    weakMaps.set({}, 2);
+    weakSets.add({});
+    expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
+  });
+
   it('should exclude properties based on exclude function during unwrapping', () => {
     const initialValues = { a: useSignal(1), b: useSignal(2) };
     const exclude = (key: string | symbol) => key === 'a';
