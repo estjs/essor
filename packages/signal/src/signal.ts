@@ -56,6 +56,13 @@ type ReactiveTypes =
   | WeakMap<object, unknown>
   | WeakSet<object>;
 
+/**
+ * Tracks the dependency of the current active effect or computed value.
+ *
+ * @param target The reactive object.
+ * @param key The key of the reactive object.
+ *
+ */
 export function track(target: object, key: string | symbol) {
   if (!activeEffect && !activeComputed) return;
   let depsMap = triggerMap.get(target);
@@ -70,6 +77,16 @@ export function track(target: object, key: string | symbol) {
   }
   if (activeEffect) dep.add(activeEffect);
 }
+/**
+ * Triggers all the effects that depend on the specified key of the reactive object.
+ * If the effect is inactive, it will be removed from the dependency set.
+ * If the effect is active and in the batch queue, it will be added to the batch queue.
+ * If the effect is active and not in the batch queue, it will be called immediately.
+ *
+ * @param target The reactive object.
+ * @param key The key of the reactive object.
+ */
+
 function trigger(target: object, key: string | symbol) {
   const depsMap = triggerMap.get(target);
   if (!depsMap) return;
@@ -293,7 +310,6 @@ export interface EffectOptions {
 }
 
 // Create a scheduler function for the given effect and flush type
-// Example: const scheduler = createScheduler(effectFn, 'pre')
 function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
   if (flush === 'sync') {
     return () => effect();
@@ -384,15 +400,6 @@ export function signalObject<T extends object>(
 export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
   if (!signal) return {} as T;
 
-  if (isWeakMap(signal) || isMap(signal) || isSet(signal) || isWeakSet(signal)) {
-    if (__DEV__) {
-      warn(
-        'unSignal does not support WeakMap, Map, Set or WeakSet, will return initial value!',
-        signal,
-      );
-    }
-    return signal as T;
-  }
   if (isSignal(signal)) {
     return signal.peek();
   }
@@ -481,7 +488,6 @@ export function unReactive<T>(target: Reactive<T> | T): T {
   if (!isReactive(target)) {
     return target;
   }
-
   return target[ReactivePeekSymbol];
 }
 
@@ -499,6 +505,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       }
 
       track(target, key);
+      // deep track
       if (isObject(value) && !shallow) {
         return useReactive(value);
       }
@@ -524,6 +531,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       }
       return obj;
     },
+    // handle  delete
     deleteProperty(target, key) {
       const oldValue = Reflect.get(target, key);
       const result = Reflect.deleteProperty(target, key);
@@ -608,13 +616,14 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
       if (isExclude(key, exclude)) {
         return value;
       }
-
+      // track arr[0]
       if (isStringNumber(key)) {
         track(target, key);
       }
       // hack for length, eg: const arr = reactive([1,2,3]); arr.length = 0
       track(target, 'length');
 
+      // deep track
       if (isObject(value) && !shallow) {
         return reactive(value);
       }
@@ -624,10 +633,12 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
       const oldValue = Reflect.get(target, key, receiver);
       const result = Reflect.set(target, key, value, receiver);
       if (hasChanged(value, oldValue)) {
+        // trigger arr[0]
         if (isStringNumber(key)) {
           trigger(target, key);
         }
 
+        // hack trigger arr.length = 0
         if (key === 'length') {
           trigger(target, 'length');
         }
@@ -843,7 +854,7 @@ export function clearReactive<T extends object>(reactiveObj: Reactive<T>): void 
     }
     return;
   }
-
+  // weakMap and weakSet not
   if (isWeakMap(reactiveObj) || isWeakSet(reactiveObj)) {
     if (__DEV__) {
       warn('clearReactive: WeakMap and WeakSet are not clearable');
