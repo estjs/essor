@@ -1,9 +1,13 @@
 import { isFalsy, kebabCase } from '@estjs/shared';
-import { isJsxElement } from './template';
+import { isSSR } from './render-config';
+import { isJsxElement } from './factory';
 
-const selfClosingTags = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
+const selfClosingTags =
+  'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
 const htmlTags =
-  'a,abbr,acronym,address,applet,area,article,aside,audio,b,base,basefont,bdi,bdo,bgsound,big,blink,blockquote,body,br,button,canvas,caption,center,cite,code,col,colgroup,command,content,data,datalist,dd,del,details,dfn,dialog,dir,div,dl,dt,em,embed,fieldset,figcaption,figure,font,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hgroup,hr,html,i,iframe,image,img,input,ins,kbd,keygen,label,legend,li,link,listing,main,map,mark,marquee,menu,menuitem,meta,meter,nav,nobr,noframes,noscript,object,ol,optgroup,option,output,p,param,picture,plaintext,pre,progress,q,rb,rp,rt,rtc,ruby,s,samp,script,section,select,shadow,small,source,spacer,span,strike,strong,style,sub,summary,sup,table,tbody,td,template,textarea,tfoot,th,thead,time,title,tr,track,tt,u,ul,var,video,wbr,xmp';
+  'a,abbr,acronym,address,applet,area,article,aside,audio,b,base,basefont,bdi,bdo,bgsound,big,blink,blockquote,body,br,button,canvas,caption,center,cite,code,col,colgroup,command,content,data,datalist,dd,del,details,dfn,dialog,dir,div,dl,dt,em,embed,fieldset,figcaption,figure,font,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hgroup,hr,html,i,iframe,image,img,input,ins,kbd,keygen,label,legend,li,link,listing,main,map,mark,marquee,menu,menuitem,meta,meter,nav,nobr,noframes,noscript,object,ol,optgroup,option,output,p,param,picture,plaintext,pre,progress,q,rb,rp,rt,rtc,ruby,s,samp,script,section,select,shadow,small,source,spacer,span,strike,strong,style,sub,summary,sup,table,tbody,td,template,textarea,tfoot,th,thead,time,title,tr,track,tt,u,ul,var,video,wbr,xmp'.split(
+    ',',
+  );
 
 /**
  * Converts any data to a Node or JSX.Element type.
@@ -30,11 +34,12 @@ export function insertChild(
   before: Node | JSX.Element | null = null,
 ): void {
   const beforeNode = isJsxElement(before) ? before.firstChild : before;
+  const ssr = isSSR();
   if (isJsxElement(child)) {
     child.mount(parent, beforeNode);
-  } else if (beforeNode) {
+  } else if (beforeNode && !ssr) {
     (beforeNode as HTMLElement).before(child);
-  } else {
+  } else if (!ssr) {
     (parent as HTMLElement).append(child);
   }
 }
@@ -120,7 +125,7 @@ export function setAttribute(element: HTMLElement, attr: string, value: unknown)
  * @param node - The input HTML element to bind the event listener to.
  * @param setter - The function to call when the input value changes.
  */
-export function binNode(node: Node, setter: (value: any) => void) {
+export function bindNode(node: Node, setter: (value: any) => void) {
   if (node instanceof HTMLInputElement) {
     switch (node.type) {
       case 'checkbox':
@@ -205,7 +210,7 @@ export function addEventListener(
  * @returns The HTML string with unclosed tags properly closed.
  */
 export function closeHtmlTags(input: string): string {
-  const selfClosingTagList = selfClosingTags.split(',');
+  const selfClosingTagList = selfClosingTags;
   const tagStack: string[] = [];
   const output: string[] = [];
   const tagPattern = /<\/?([\da-z-]+)([^>]*)>/gi;
@@ -258,7 +263,7 @@ export function closeHtmlTags(input: string): string {
  * @returns A boolean indicating if the tag name is valid.
  */
 export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagNameMap {
-  const htmlTagsList = htmlTags.split(',');
+  const htmlTagsList = htmlTags;
   return htmlTagsList.includes(tagName);
 }
 
@@ -268,7 +273,7 @@ export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagN
  * @returns The valid HTML tag name.
  */
 export function convertToHtmlTag(tagName: string): string {
-  const selfClosingTagList = selfClosingTags.split(',');
+  const selfClosingTagList = selfClosingTags;
   if (selfClosingTagList.includes(tagName)) {
     return `<${tagName}/>`;
   } else {

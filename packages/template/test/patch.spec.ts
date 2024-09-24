@@ -1,8 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
 import { getKey, mapKeys, patchChildren } from '../src/patch';
-import { ComponentNode } from '../src';
+import { ComponentRender } from '../src/render/component';
 
-// Mock 浏览器 API 和相关函数
 vi.mock('./utils', () => ({
   insertChild: vi.fn(),
   removeChild: vi.fn(),
@@ -78,7 +76,7 @@ describe('getKey', () => {
 
   it('should return jsx key if present', () => {
     //@ts-ignore
-    const jsxElement = new ComponentNode('', {}, 123);
+    const jsxElement = new ComponentRender('', {}, 123);
 
     const key = getKey(jsxElement, 1);
 

@@ -118,15 +118,14 @@ const _tmpl$ = ["<div><p>", "<!>", "'s Profile", "</p><ul>", "</ul>", "</div>"],
   _tmpl$2 = ["<li", ">", "Item ", "</li>"];
 const name = 'John';
 const element = _ssg$(_tmpl$, {
-  "1": {
+  "2": {
     "children": [[() => name, 3]]
   },
-  "4": {
+  "5": {
     "children": [[() => Array.from({
       length: 3
     }, (_, i) => _ssg$(_tmpl$2, {
-      "1": {},
-      "2": {
+      "1": {
         "children": [[() => i + 1, null]]
       }
     })), null]]
@@ -161,7 +160,10 @@ const _tmpl$ = ["<div><p>", "<!>", "'s Profile", "</p>", "<!><p>", "Paragraph 2"
 const name = null;
 const element = _ssg$(_tmpl$, {
   "1": {
-    "children": [[() => name, 3], [() => undefined, 5]]
+    "children": [[() => undefined, 5]]
+  },
+  "2": {
+    "children": [[() => name, 3]]
   }
 });"
 `;

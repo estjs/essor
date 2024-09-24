@@ -1,41 +1,18 @@
+import { isJsxElement } from './factory';
 import { insertChild, removeChild, replaceChild } from './utils';
-import { isJsxElement } from './template';
-
-type AnyNode = Node | JSX.Element;
+import type { AnyNode } from '../types';
 
 export function patchChildren(
   parent: Node,
-  childrenMap: Map<string, AnyNode>,
+  currentChildren: Map<string, AnyNode>,
   nextChildren: AnyNode[],
   before: Node | null,
 ): Map<string, AnyNode> {
   const result = new Map<string, AnyNode>();
-  const children = Array.from(childrenMap.values());
-  const childrenLength = children.length;
+  const children = Array.from(currentChildren.values());
 
-  if (childrenMap.size > 0 && nextChildren.length === 0) {
-    if (parent.childNodes.length === childrenLength + (before ? 1 : 0)) {
-      (parent as Element).innerHTML = '';
-      if (before) {
-        insertChild(parent, before);
-      }
-    } else {
-      const range = document.createRange();
-      const child = children[0];
-      const start = isJsxElement(child) ? child.firstChild : child;
-      range.setStartBefore(start!);
-      if (before) {
-        range.setEndBefore(before);
-      } else {
-        range.setEndAfter(parent);
-      }
-      range.deleteContents();
-    }
-    children.forEach(node => {
-      if (isJsxElement(node)) {
-        node.unmount();
-      }
-    });
+  if (currentChildren.size > 0 && nextChildren.length === 0) {
+    clearChildren(parent, children, before);
     return result;
   }
 
@@ -49,16 +26,16 @@ export function patchChildren(
 
     while (currChild && !nextChildrenMap.has(currKey)) {
       removeChild(currChild);
-      childrenMap.delete(currKey);
+      currentChildren.delete(currKey);
       currChild = children[++childIndex];
       currKey = getKey(currChild, i);
     }
 
     const key = getKey(child, i);
-    const origChild = childrenMap.get(key);
+    const origChild = currentChildren.get(key);
 
     if (origChild) {
-      child = patch(parent, origChild, child);
+      child = diffNode(parent, origChild, child);
     }
 
     if (currChild) {
@@ -78,8 +55,8 @@ export function patchChildren(
 
   replaces.forEach(([placeholder, child]) => replaceChild(parent, child, placeholder));
 
-  childrenMap.forEach((child, key) => {
-    if (child.isConnected && !result.has(key)) {
+  currentChildren.forEach((child, key) => {
+    if ((child as any).isConnected && !result.has(key)) {
       removeChild(child);
     }
   });
@@ -87,7 +64,32 @@ export function patchChildren(
   return result;
 }
 
-function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
+function clearChildren(parent: Node, children: AnyNode[], before: Node | null) {
+  if (parent.childNodes.length === children.length + (before ? 1 : 0)) {
+    (parent as Element).innerHTML = '';
+    if (before) {
+      insertChild(parent, before);
+    }
+  } else {
+    const range = document.createRange();
+    const child = children[0];
+    const start = isJsxElement(child) ? child.firstChild : child;
+    range.setStartBefore(start!);
+    if (before) {
+      range.setEndBefore(before);
+    } else {
+      range.setEndAfter(parent);
+    }
+    range.deleteContents();
+  }
+  children.forEach(node => {
+    if (isJsxElement(node)) {
+      node.unmount();
+    }
+  });
+}
+
+function diffNode(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
   if (node === next) {
     return node;
   }
@@ -106,22 +108,15 @@ function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
 }
 
 export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
-  const result = new Map();
-  for (const [i, child] of children.entries()) {
-    const key = getKey(child, i);
-    result.set(key, child);
-  }
-  return result;
+  return new Map(children.map((child, i) => [getKey(child, i), child]));
 }
+
 export function getKey(node: AnyNode, index: number): string {
   if (isJsxElement(node)) {
-    // use jsx key
     const jsxKey = (node as any).key;
-    if (jsxKey !== undefined && jsxKey !== null) {
+    if (jsxKey != null) {
       return String(jsxKey);
     }
   }
-
-  // use index
   return `_$${index}$`;
 }

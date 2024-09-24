@@ -16,3 +16,6 @@ export interface NodeTrack {
   isRoot?: boolean;
   lastNodes?: Map<string, Node | JSX.Element>;
 }
+
+export type Props = Record<string, any>;
+type AnyNode = Node | JSX.Element;

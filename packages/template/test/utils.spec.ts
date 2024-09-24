@@ -1,9 +1,9 @@
-import { h, isJsxElement, template } from '../src/template';
+import { h, isJsxElement, template } from '../src';
 import {
   type EventTarget,
   type Listener,
   addEventListener,
-  binNode,
+  bindNode,
   coerceNode,
   convertToHtmlTag,
   insertChild,
@@ -171,7 +171,7 @@ describe('binNode', () => {
     const node = document.createElement('input');
     node.type = 'checkbox';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.checked = true;
     node.dispatchEvent(new Event('change'));
     expect(setter).toHaveBeenCalledWith(true);
@@ -181,7 +181,7 @@ describe('binNode', () => {
     const node = document.createElement('input');
     node.type = 'date';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.value = '2024-03-05';
     node.dispatchEvent(new Event('change'));
     expect(setter).toHaveBeenCalledWith('2024-03-05');
@@ -191,7 +191,7 @@ describe('binNode', () => {
     const node = document.createElement('input');
     node.type = 'file';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     const file = new File([''], 'test.txt', { type: 'text/plain' });
     Object.defineProperty(node, 'files', { value: [file] });
     node.dispatchEvent(new Event('change'));
@@ -202,7 +202,7 @@ describe('binNode', () => {
     const node = document.createElement('input');
     node.type = 'number';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.value = '123';
     node.dispatchEvent(new Event('input'));
     expect(setter).toHaveBeenCalledWith('123');
@@ -213,7 +213,7 @@ describe('binNode', () => {
     node.type = 'radio';
     node.value = 'test';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.checked = true;
     node.dispatchEvent(new Event('change'));
     expect(setter).toHaveBeenCalledWith('test');
@@ -223,7 +223,7 @@ describe('binNode', () => {
     const node = document.createElement('input');
     node.type = 'text';
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.value = 'hello';
     node.dispatchEvent(new Event('input'));
     expect(setter).toHaveBeenCalledWith('hello');
@@ -235,7 +235,7 @@ describe('binNode', () => {
     option.value = 'test';
     node.append(option);
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.value = 'test';
     node.dispatchEvent(new Event('change'));
     expect(setter).toHaveBeenCalledWith('test');
@@ -244,7 +244,7 @@ describe('binNode', () => {
   it('should bind input event for textarea element', () => {
     const node = document.createElement('textarea');
     const setter = vitest.fn();
-    binNode(node, setter);
+    bindNode(node, setter);
     node.value = 'hello';
     node.dispatchEvent(new Event('input'));
     expect(setter).toHaveBeenCalledWith('hello');

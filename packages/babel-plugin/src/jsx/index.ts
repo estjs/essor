@@ -167,7 +167,7 @@ function transformJSXElement(
 }
 
 function transformChildren(path: NodePath<JSXElement>, result: Result): void {
-  const parentIndex = isSsg ? result.template.length : result.index;
+  const parentIndex = result.index;
   path
     .get('children')
     .reduce((pre, cur) => {

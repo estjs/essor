@@ -31,7 +31,6 @@ describe('hasChanged function', () => {
     expect(hasChanged(Number.NaN, 5)).toBe(true);
   });
 });
-// 引入startsWith函数
 
 describe('startsWith function', () => {
   it('should return true if str starts with searchString', () => {

@@ -1,5 +1,5 @@
 import { useSignal } from '@estjs/signal';
-import { h as _h$, template as _template$ } from '../src/template';
+import { h as _h$, template as _template$ } from '../src';
 import { mount } from './test-utils';
 
 describe('bind value', () => {
@@ -16,7 +16,7 @@ describe('bind value', () => {
     });
   }
   function Component(props) {
-    return _h$(_template$('<p></p>'), {
+    return _h$(_template$('<p>'), {
       '1': {
         onClick: () => {
           props.updateValue('Component');
@@ -33,7 +33,7 @@ describe('bind value', () => {
           [
             () =>
               _h$(Component, {
-                value: signal.value,
+                value: signal,
                 updateValue: _value2 => (signal.value = _value2),
               }),
             null,

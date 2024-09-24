@@ -1,6 +1,5 @@
 import { useSignal } from '@estjs/signal';
-import { h as _h$, template as _template$ } from '../src/template';
-import { useRef } from '../src';
+import { h as _h$, template as _template$, useRef } from '../src';
 import { mount } from './test-utils';
 
 describe('html element ref', () => {

@@ -1,15 +1,5 @@
-const C1 = () => <div>test1</div>;
-const C2 = () => <div>test2</div>;
-const C3 = () => <div>test3</div>;
+import { hydrate, renderToString } from 'essor';
 
-const C4 = () => (
-  <div>
-    <C2></C2>
-    <div>test4</div>
-    <C1></C1>
-    <C3></C3>
-  </div>
-);
 function App() {
   const $list: string[] = [];
   let $val: string = '';
@@ -35,8 +25,7 @@ function App() {
   return (
     <div>
       <input type="text" bind:value={$val} />
-      <button onClick={addTodo}>Add</button>
-
+      <button onClick={() => addTodo()}>Add</button>
       <ul>
         {$list.map((item, index) => (
           <li>
@@ -46,9 +35,14 @@ function App() {
           </li>
         ))}
       </ul>
-
-      <C4></C4>
     </div>
   );
 }
-(<App />).mount(document.querySelector('#app')!);
+
+const html = renderToString(App);
+
+document.querySelector('#app')!.innerHTML = html;
+
+hydrate(App, '#app');
+
+// (<App></App>).mount(document.querySelector('#app')!);

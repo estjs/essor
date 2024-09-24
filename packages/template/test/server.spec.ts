@@ -35,6 +35,6 @@ describe('server render', () => {
   it('should work renderToString', () => {
     const html = renderToString(App);
     // eslint-disable-next-line prettier/prettier
-    expect(html).toMatchInlineSnapshot(`"<div><p>hello world </p><div>hello world </div><input type="text" value="hello world"/></div>"`);
+    expect(html).toMatchInlineSnapshot(`"<div><p>hello world</p><div>hello world</div><input type="text" value="hello world"/></div>"`);
   });
 });
