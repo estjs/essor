@@ -1,5 +1,5 @@
-import { isJsxElement } from './factory';
 import { insertChild, removeChild, replaceChild } from './utils';
+import { isJsxElement } from './jsx-renderer';
 import type { AnyNode } from '../types';
 
 export function patchChildren(

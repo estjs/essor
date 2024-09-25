@@ -1,6 +1,6 @@
 import { isArray, isFalsy, kebabCase } from '@estjs/shared';
-import { isSSR } from './render-config';
-import { isJsxElement } from './factory';
+import { isJsxElement } from './jsx-renderer';
+import { renderContext } from './render-context';
 
 const selfClosingTags =
   'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
@@ -34,7 +34,7 @@ export function insertChild(
   before: Node | JSX.Element | null = null,
 ): void {
   const beforeNode = isJsxElement(before) ? before.firstChild : before;
-  const ssr = isSSR();
+  const ssr = renderContext.isSSR;
   if (isJsxElement(child)) {
     child.mount(parent, beforeNode);
   } else if (beforeNode && !ssr) {

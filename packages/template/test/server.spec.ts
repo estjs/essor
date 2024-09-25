@@ -1,3 +1,4 @@
+//  eslint-disable
 import { useSignal as _signal$ } from '@estjs/signal';
 import { ssg as _ssg$, renderToString } from '../src';
 export function Com(props) {
@@ -7,21 +8,15 @@ export function Com(props) {
     },
   });
 }
-const _tmpl$ = ['<div>', '</div>'],
-  _tmpl$2 = ['<div><p>', '</p>', '<!><input', ' type="text"', '/>', '</div>'];
+const _tmpl$ = ['<div>', '</div>'];
+const _tmpl$2 = ['<div><p>', '</p>', '<!><input', ' type="text"', '/>', '</div>'];
 function App() {
   const $value = _signal$('hello world');
   return _ssg$(_tmpl$2, {
     '1': {
       children: [
         [() => $value.value, null],
-        [
-          () =>
-            _ssg$(Com, {
-              count: $value,
-            }),
-          3,
-        ],
+        [() => _ssg$(Com, { count: $value }), 3],
       ],
     },
     '4': {
@@ -31,10 +26,14 @@ function App() {
   });
 }
 
-describe('server render', () => {
+describe('ssg render', () => {
+  const html = renderToString(App);
+
+  const container = document.createElement('div');
+  container.innerHTML = html;
   it('should work renderToString', () => {
-    const html = renderToString(App);
-    // eslint-disable-next-line prettier/prettier
-    expect(html).toMatchInlineSnapshot(`"<div><p>hello world</p><div>hello world</div><input type="text" value="hello world"/></div>"`);
+    expect(html).toMatchInlineSnapshot(
+      `"<div><p>hello world</p><div>hello world</div><input type="text" value="hello world"/></div>"`,
+    );
   });
 });

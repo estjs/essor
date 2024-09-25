@@ -1,6 +1,6 @@
-export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './factory';
+export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './jsx-renderer';
 export { onMount, onDestroy, useInject, useProvide, useRef } from './hooks';
-export { renderToString, hydrate, ssg } from './server';
+export { renderToString, hydrate, ssg } from './hydration';
 
 export type { InjectionKey } from './hooks';
 

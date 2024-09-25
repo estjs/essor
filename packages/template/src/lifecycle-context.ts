@@ -1,11 +1,13 @@
 import type { Signal } from '@estjs/signal';
-import type { Hook } from '../../types';
+import type { Hook } from '../types';
 
-export class HooksManager {
+// create lifecycle and context
+export class LifecycleContext {
   addEventListener(): void {}
   removeEventListener(): void {}
 
-  static ref: HooksManager | null = null;
+  // current context ref
+  static ref: LifecycleContext | null = null;
   static context: Record<symbol, Signal<any>> = {};
 
   hooks: Record<Hook, Set<() => void>> = {
@@ -18,18 +20,18 @@ export class HooksManager {
   }
 
   getContext<T>(context: symbol | string | number): T | undefined {
-    return HooksManager.context[context];
+    return LifecycleContext.context[context];
   }
 
   setContext<T>(context: symbol | string | number, value: T): void {
-    HooksManager.context[context] = value;
+    LifecycleContext.context[context] = value;
   }
 
   initRef() {
-    HooksManager.ref = this;
+    LifecycleContext.ref = this;
   }
   removeRef() {
-    HooksManager.ref = null;
+    LifecycleContext.ref = null;
   }
 
   clearHooks(): void {

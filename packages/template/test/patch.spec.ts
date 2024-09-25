@@ -1,5 +1,5 @@
+import { ComponentNode } from '../src/component-node';
 import { getKey, mapKeys, patchChildren } from '../src/patch';
-import { ComponentRender } from '../src/render/component';
 
 vi.mock('./utils', () => ({
   insertChild: vi.fn(),
@@ -76,7 +76,7 @@ describe('getKey', () => {
 
   it('should return jsx key if present', () => {
     //@ts-ignore
-    const jsxElement = new ComponentRender('', {}, 123);
+    const jsxElement = new ComponentNode('', {}, 123);
 
     const key = getKey(jsxElement, 1);
 
