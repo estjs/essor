@@ -30,7 +30,7 @@ export class SSGRender extends HooksManager {
   }
 
   private initTemplates() {
-    const templateCollection: TemplateCollection = Array.isArray(this.template)
+    const templateCollection: TemplateCollection = isArray(this.template)
       ? this.template.reduce((acc, tmp, index) => {
           acc[index + 1] = { template: tmp };
           return acc;

@@ -1,4 +1,4 @@
-import { isFunction, isString } from './is';
+import { isArray, isFunction, isString } from './is';
 
 export const _toString = Object.prototype.toString;
 export const extend = Object.assign;
@@ -7,7 +7,7 @@ export const hasOwn = (val: object, key: string | symbol): key is keyof typeof v
   hasOwnProperty.call(val, key);
 
 export function coerceArray<T>(data: T | T[]): T[] {
-  return Array.isArray(data) ? (data.flat() as T[]) : [data];
+  return isArray(data) ? (data.flat() as T[]) : [data];
 }
 export const hasChanged = (value, oldValue) =>
   value !== oldValue && (value === value || oldValue === oldValue);
@@ -62,11 +62,7 @@ export type ExcludeType = ((key: string | symbol) => boolean) | (string | symbol
  * @returns True if the key should be excluded, otherwise false.
  */
 export function isExclude(key: string | symbol, exclude?: ExcludeType): boolean {
-  return Array.isArray(exclude)
-    ? exclude.includes(key)
-    : isFunction(exclude)
-      ? exclude(key)
-      : false;
+  return isArray(exclude) ? exclude.includes(key) : isFunction(exclude) ? exclude(key) : false;
 }
 
 /**

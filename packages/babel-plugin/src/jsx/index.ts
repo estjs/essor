@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalizeFirstLetter } from '@estjs/shared';
+import { capitalizeFirstLetter, isArray } from '@estjs/shared';
 import { imports } from '../program';
 import {
   type JSXChild,
@@ -83,7 +83,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
 
 function createProps(props) {
   const toAstNode = value => {
-    if (Array.isArray(value)) {
+    if (isArray(value)) {
       return t.arrayExpression(value.map(toAstNode));
     }
     if (value && typeof value === 'object' && !t.isNode(value)) {

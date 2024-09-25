@@ -1,4 +1,4 @@
-import { isFalsy, kebabCase } from '@estjs/shared';
+import { isArray, isFalsy, kebabCase } from '@estjs/shared';
 import { isSSR } from './render-config';
 import { isJsxElement } from './factory';
 
@@ -84,7 +84,7 @@ export function setAttribute(element: HTMLElement, attr: string, value: unknown)
   if (attr === 'class') {
     if (typeof value === 'string') {
       element.className = value;
-    } else if (Array.isArray(value)) {
+    } else if (isArray(value)) {
       element.className = value.join(' ');
     } else if (value && typeof value === 'object') {
       element.className = Object.entries(value)
