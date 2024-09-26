@@ -21,91 +21,6 @@ import { renderContext } from './render-context';
 import { createTemplate } from './jsx-renderer';
 import type { NodeTrack, Props } from '../types';
 
-function handleSvgContent(cloneNode: Node): void {
-  const firstChild = cloneNode.firstChild as HTMLElement | null;
-  if (firstChild?.hasAttribute?.('_svg_')) {
-    firstChild.remove();
-    firstChild.childNodes.forEach(node => cloneNode.appendChild(node));
-  }
-}
-
-function mapNodes(parent: Node, tree: Node, treeMap: Map<number, Node>): void {
-  const ssr = renderContext.isSSR;
-  let index = ssr ? 0 : 1;
-  if (!ssr) treeMap.set(0, parent);
-
-  const walk = (node: Node) => {
-    if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-      treeMap.set(index++, node);
-    }
-    let child = node.firstChild;
-
-    while (child) {
-      walk(child);
-      child = child.nextSibling;
-    }
-  };
-  walk(ssr ? parent : tree);
-}
-
-function handleEventProp(
-  key: string,
-  attr: string,
-  listener: EventListener,
-  node: Node,
-  trackMap: Map<string, NodeTrack>,
-): void {
-  const eventName = attr.slice(2).toLowerCase();
-  const track = getNodeTrack(trackMap, `${key}:${attr}`);
-  track.cleanup = addEventListener(node, eventName, listener);
-}
-
-function handleStandardProp(
-  key: string,
-  attr: string,
-  value: unknown,
-  props: Record<string, unknown>,
-  element: HTMLElement,
-  trackMap: Map<string, NodeTrack>,
-): void {
-  const track = getNodeTrack(trackMap, `${key}:${attr}`);
-  const triggerValue = isSignal(value) ? value : useSignal(value);
-  setAttribute(element, attr, triggerValue.value);
-  const cleanup = useEffect(() => {
-    triggerValue.value = isSignal(value) ? value.value : value;
-    setAttribute(element, attr, triggerValue.value);
-  });
-  const updateKey = `update${capitalizeFirstLetter(attr)}`;
-
-  let cleanupBind;
-  if (props?.[updateKey]) {
-    cleanupBind = bindNode(element, (value: unknown) => {
-      (props[updateKey] as (value: unknown) => void)(value);
-    });
-  }
-  track.cleanup = () => {
-    cleanup();
-    cleanupBind?.();
-  };
-}
-
-function getNodeTrack(
-  trackMap: Map<string, NodeTrack>,
-  trackKey: string,
-  trackLastNodes = false,
-  isRoot = false,
-): NodeTrack {
-  let track = trackMap.get(trackKey);
-  if (!track) {
-    track = { cleanup: () => {} };
-    if (trackLastNodes) track.lastNodes = new Map();
-    if (isRoot) track.isRoot = true;
-    trackMap.set(trackKey, track);
-  }
-  track.cleanup();
-  return track;
-}
-
 export class TemplateNode implements JSX.Element {
   private treeMap = new Map<number, Node>();
   private mounted = false;
@@ -241,4 +156,88 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
       }
     });
   }
+}
+function handleSvgContent(cloneNode: Node): void {
+  const firstChild = cloneNode.firstChild as HTMLElement | null;
+  if (firstChild?.hasAttribute?.('_svg_')) {
+    firstChild.remove();
+    firstChild.childNodes.forEach(node => cloneNode.appendChild(node));
+  }
+}
+
+function mapNodes(parent: Node, tree: Node, treeMap: Map<number, Node>): void {
+  const ssr = renderContext.isSSR;
+  let index = ssr ? 0 : 1;
+  if (!ssr) treeMap.set(0, parent);
+
+  const walk = (node: Node) => {
+    if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+      treeMap.set(index++, node);
+    }
+    let child = node.firstChild;
+
+    while (child) {
+      walk(child);
+      child = child.nextSibling;
+    }
+  };
+  walk(ssr ? parent : tree);
+}
+
+function handleEventProp(
+  key: string,
+  attr: string,
+  listener: EventListener,
+  node: Node,
+  trackMap: Map<string, NodeTrack>,
+): void {
+  const eventName = attr.slice(2).toLowerCase();
+  const track = getNodeTrack(trackMap, `${key}:${attr}`);
+  track.cleanup = addEventListener(node, eventName, listener);
+}
+
+function handleStandardProp(
+  key: string,
+  attr: string,
+  value: unknown,
+  props: Record<string, unknown>,
+  element: HTMLElement,
+  trackMap: Map<string, NodeTrack>,
+): void {
+  const track = getNodeTrack(trackMap, `${key}:${attr}`);
+  const triggerValue = isSignal(value) ? value : useSignal(value);
+  setAttribute(element, attr, triggerValue.value);
+  const cleanup = useEffect(() => {
+    triggerValue.value = isSignal(value) ? value.value : value;
+    setAttribute(element, attr, triggerValue.value);
+  });
+  const updateKey = `update${capitalizeFirstLetter(attr)}`;
+
+  let cleanupBind;
+  if (props?.[updateKey]) {
+    cleanupBind = bindNode(element, (value: unknown) => {
+      (props[updateKey] as (value: unknown) => void)(value);
+    });
+  }
+  track.cleanup = () => {
+    cleanup();
+    cleanupBind?.();
+  };
+}
+
+function getNodeTrack(
+  trackMap: Map<string, NodeTrack>,
+  trackKey: string,
+  trackLastNodes = false,
+  isRoot = false,
+): NodeTrack {
+  let track = trackMap.get(trackKey);
+  if (!track) {
+    track = { cleanup: () => {} };
+    if (trackLastNodes) track.lastNodes = new Map();
+    if (isRoot) track.isRoot = true;
+    trackMap.set(trackKey, track);
+  }
+  track.cleanup();
+  return track;
 }

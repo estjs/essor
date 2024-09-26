@@ -23,20 +23,19 @@ export function renderToString(component: EssorComponent, props?: Record<string,
 /**
  * Hydrate a component in a container.
  *
- * This function hydrates a component into a container. It is used for server-side rendering (SSR) and client-side hydration.
+ * This function hydrates a component in a container element. It is used for server-side rendering (SSR) and client-side rendering (CSR).
  *
  * @param component The component to hydrate.
- * @param container The container element to hydrate into. Can be a string representing a DOM query selector or an Element.
- * @returns void
+ * @param container The container element to hydrate in. Can be a string selector or an Element.
  */
 export function hydrate(component: EssorComponent, container: string | Element): void {
   const rootElement = typeof container === 'string' ? document.querySelector(container) : container;
+
+  // if the container is not found, throw an error
   if (!rootElement) {
     throw new Error(`Could not find container: ${container}`);
   }
-
   renderContext.setSSR();
-
   h(component).mount(rootElement);
   renderContext.setClient();
 }

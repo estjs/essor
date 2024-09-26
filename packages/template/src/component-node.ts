@@ -133,10 +133,13 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
         const cleanup = addEventListener(this.rootNode.nodes[0], event, prop);
         this.emitter.add(cleanup);
       } else if (key === 'ref') {
+        // just support useRef
         prop.value = this.rootNode?.firstChild;
       } else if (startsWith(key, 'update')) {
+        // hack bind:value to valueUpdate
         this.props![key] = isSignal(prop) ? prop.value : prop;
       } else if (key !== 'children') {
+        // bind signal or normal prop
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {
