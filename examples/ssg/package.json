@@ -1,0 +1,26 @@
+{
+  "name": "essor-example-ssg",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --open --port 3001",
+    "typecheck": "tsc  --noEmit",
+    "preview": "vite preview",
+    "test": "vitest -r test"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@estjs/eslint-config": "^1.2.6",
+    "@types/node": "^22.5.5",
+    "eslint": "^9.10.0",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.6.2",
+    "unplugin-essor": "workspace:*",
+    "vite": "^5.4.6",
+    "vite-plugin-inspect": "^0.8.7",
+    "vitest": "^2.1.1"
+  }
+}
