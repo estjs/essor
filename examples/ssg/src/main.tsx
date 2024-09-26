@@ -14,7 +14,6 @@ function App() {
     <div>
       <Com></Com>
       {value.count}
-      <Com></Com>
     </div>
   );
 }
