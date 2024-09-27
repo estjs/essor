@@ -1,4 +1,5 @@
 import { isArray, isFalsy, kebabCase } from '@estjs/shared';
+import { type Signal, isSignal } from '@estjs/signal';
 import { isJsxElement } from './jsx-renderer';
 import { renderContext } from './render-context';
 
@@ -37,8 +38,10 @@ export function insertChild(
   const ssr = renderContext.isSSR;
   if (isJsxElement(child)) {
     child.mount(parent, beforeNode);
+    // hack ssr compile node
   } else if (beforeNode && !ssr) {
     (beforeNode as HTMLElement).before(child);
+    // hack ssr compile node
   } else if (!ssr) {
     (parent as HTMLElement).append(child);
   }
@@ -112,7 +115,7 @@ export function setAttribute(element: HTMLElement, attr: string, value: unknown)
   } else if (value === true) {
     element.setAttribute(attr, '');
   } else {
-    if (element instanceof HTMLInputElement) {
+    if (element instanceof HTMLInputElement && attr === 'value') {
       element.value = String(value);
     } else {
       element.setAttribute(attr, String(value));
@@ -278,5 +281,13 @@ export function convertToHtmlTag(tagName: string): string {
     return `<${tagName}/>`;
   } else {
     return `<${tagName}></${tagName}>`;
+  }
+}
+
+export function extractSignal<T>(signal: T | Signal<T>): T {
+  if (isSignal(signal)) {
+    return signal.value;
+  } else {
+    return signal;
   }
 }

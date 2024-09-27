@@ -1,12 +1,30 @@
 import * as t from '@babel/types';
+import { transformSync } from '@babel/core';
 import {
   getAttrName,
   getTagName,
   hasSiblingElement,
   isComponent,
   isSymbolStart,
+  isTextChild,
   jsxElementNameToString,
+  setNodeText,
 } from '../src/shared';
+
+const getPathFromJSX = (code, visitor) => {
+  transformSync(code, {
+    plugins: [
+      function () {
+        return {
+          manipulateOptions(_, parserOpts) {
+            parserOpts.plugins.push('jsx');
+          },
+          visitor,
+        };
+      },
+    ],
+  });
+};
 
 describe('babel Utility Functions', () => {
   describe('hasSiblingElement', () => {
@@ -47,7 +65,7 @@ describe('babel Utility Functions', () => {
     });
 
     it('should throw an error for unsupported attribute types', () => {
-      const attribute = { name: {} };
+      const attribute = { name: {} } as any;
 
       expect(() => getAttrName(attribute)).toThrow('Unsupported attribute type');
     });
@@ -117,6 +135,61 @@ describe('babel Utility Functions', () => {
       expect(isSymbolStart(path, 'test')).toBe(false);
       expect(isSymbolStart(path, '$test')).toBe(true);
       expect(isSymbolStart(path, '$$test')).toBe(true);
+    });
+  });
+
+  describe('isTextChild', () => {
+    it('should return true for JSXText node', () => {
+      getPathFromJSX('<div>text</div>', {
+        JSXText(path) {
+          expect(isTextChild(path)).toBe(true);
+        },
+      });
+    });
+
+    it('should return true for StringLiteral in JSXExpressionContainer', () => {
+      getPathFromJSX('<div>{"text"}</div>', {
+        JSXExpressionContainer(path) {
+          expect(isTextChild(path)).toBe(true);
+        },
+      });
+    });
+
+    it('should return false for other node types', () => {
+      getPathFromJSX('<div>{null}</div>', {
+        JSXExpressionContainer(path) {
+          expect(isTextChild(path)).toBe(false);
+        },
+      });
+    });
+  });
+
+  describe('setNodeText', () => {
+    it('should set text for JSXText node', () => {
+      getPathFromJSX('<div>old text</div>', {
+        JSXText(path) {
+          setNodeText(path, 'new text');
+          expect(path.node.value).toBe('new text');
+        },
+      });
+    });
+
+    it('should replace string literal in JSXExpressionContainer', () => {
+      getPathFromJSX('<div>{"old text"}</div>', {
+        JSXExpressionContainer(path) {
+          setNodeText(path, 'new text');
+          expect(path.get('expression').node.value).toBe('new text');
+        },
+      });
+    });
+
+    it('should do nothing for non-text nodes', () => {
+      getPathFromJSX('<div>{null}</div>', {
+        JSXExpressionContainer(path) {
+          setNodeText(path, 'new text');
+          // No assertions here, just making sure nothing breaks
+        },
+      });
     });
   });
 });

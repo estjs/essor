@@ -89,12 +89,15 @@ export function patchChildren(
  * @param before The node before which the children should be cleared.
  */
 function clearChildren(parent: Node, children: AnyNode[], before: Node | null) {
+  // if parent has same number of children, just clear
   if (parent.childNodes.length === children.length + (before ? 1 : 0)) {
     (parent as Element).innerHTML = '';
+    // if parent has more children, insert before
     if (before) {
       insertChild(parent, before);
     }
   } else {
+    // set in range,and all delete in range
     const range = document.createRange();
     const child = children[0];
     const start = isJsxElement(child) ? child.firstChild : child;
@@ -106,6 +109,7 @@ function clearChildren(parent: Node, children: AnyNode[], before: Node | null) {
     }
     range.deleteContents();
   }
+  // clear jsx children
   children.forEach(node => {
     if (isJsxElement(node)) {
       node.unmount();
@@ -121,19 +125,23 @@ function clearChildren(parent: Node, children: AnyNode[], before: Node | null) {
  * @returns The updated first node.
  */
 function diffNode(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
+  // equal node
   if (node === next) {
     return node;
   }
+  // jsx element
   if (isJsxElement(node) && isJsxElement(next) && node.template === next.template) {
     next.inheritNode(node);
     return next;
   }
+  // text node
   if (node instanceof Text && next instanceof Text) {
     if (node.textContent !== next.textContent) {
       node.textContent = next.textContent;
     }
     return node;
   }
+  // insert node,and remove node
   replaceChild(parent, next, node);
   return next;
 }

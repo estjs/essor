@@ -1,4 +1,4 @@
-import { coerceArray, generateUniqueId, hasChanged, isBrowser, startsWith } from '../src';
+import { coerceArray, generateUniqueId, hasChanged, hasOwn, isBrowser, startsWith } from '../src';
 
 describe('coerceArray function', () => {
   it('should return an array containing the input value if it is not an array', () => {
@@ -32,25 +32,60 @@ describe('hasChanged function', () => {
   });
 });
 
-describe('startsWith function', () => {
-  it('should return true if str starts with searchString', () => {
-    expect(startsWith('https://www.google.com', 'https')).toBe(true);
+describe('startsWith', () => {
+  it('should return true if the string starts with the specified substring', () => {
+    expect(startsWith('hello world', 'hello')).toBe(true);
   });
 
-  it('should return true if searchString is an empty string', () => {
-    expect(startsWith('any string', '')).toBe(true);
+  it('should return false if the string does not start with the specified substring', () => {
+    expect(startsWith('hello world', 'world')).toBe(false);
   });
 
-  it('should return true if str and searchString are the same', () => {
-    expect(startsWith('https', 'https')).toBe(true);
+  it('should return false if the first argument is not a string', () => {
+    expect(startsWith(null, 'hello')).toBe(false);
+    expect(startsWith(123, 'hello')).toBe(false);
+    expect(startsWith({}, 'hello')).toBe(false);
   });
 
-  it('should return false if str is an empty string and searchString is not', () => {
-    expect(startsWith('', 'https')).toBe(false);
+  it('should handle empty strings correctly', () => {
+    expect(startsWith('', '')).toBe(true); // An empty string starts with an empty string
+    expect(startsWith('hello', '')).toBe(true); // Any string starts with an empty string
   });
 
-  it('should be case-sensitive', () => {
-    expect(startsWith('https://www.google.com', 'HTTP')).toBe(false);
+  it('should return false if the search string is longer than the input string', () => {
+    expect(startsWith('hi', 'hello')).toBe(false);
+  });
+});
+
+describe('hasOwn', () => {
+  it('should return true if the object has the specified own property', () => {
+    const obj = { key: 'value' };
+    expect(hasOwn(obj, 'key')).toBe(true);
+  });
+
+  it('should return false if the object does not have the specified own property', () => {
+    const obj = { key: 'value' };
+    expect(hasOwn(obj, 'nonExistentKey')).toBe(false);
+  });
+
+  it('should return false if the property is inherited, not own', () => {
+    const parent = { inheritedKey: 'value' };
+    const child = Object.create(parent);
+    child.ownKey = 'ownValue';
+    expect(hasOwn(child, 'inheritedKey')).toBe(false);
+    expect(hasOwn(child, 'ownKey')).toBe(true);
+  });
+
+  it('should return true for symbol properties', () => {
+    const sym = Symbol('symKey');
+    const obj = { [sym]: 'symbolValue' };
+    expect(hasOwn(obj, sym)).toBe(true);
+  });
+
+  it('should return false for not own values', () => {
+    expect(hasOwn({}, 'key')).toBe(false);
+    expect(hasOwn(() => {}, 'key')).toBe(false);
+    expect(hasOwn(new Set(), 'key')).toBe(false);
   });
 });
 describe('generateUniqueId', () => {

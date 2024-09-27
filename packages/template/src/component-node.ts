@@ -1,7 +1,7 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { isSignal, signalObject } from '@estjs/signal';
 import { type Signal, useEffect, useReactive, useSignal } from '@estjs/signal';
-import { addEventListener } from './utils';
+import { signalObject } from '@estjs/signal';
+import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycle-context';
 import type { TemplateNode } from './template-node';
 import type { EssorComponent, NodeTrack, Props } from '../types';
@@ -137,7 +137,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
         prop.value = this.rootNode?.firstChild;
       } else if (startsWith(key, 'update')) {
         // hack bind:value to valueUpdate
-        this.props![key] = isSignal(prop) ? prop.value : prop;
+        this.props![key] = extractSignal(prop);
       } else if (key !== 'children') {
         // bind signal or normal prop
         const newValue = (this.proxyProps[key] ??= useSignal(prop));
