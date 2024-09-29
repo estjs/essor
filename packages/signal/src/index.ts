@@ -2,17 +2,16 @@ export {
   useSignal,
   useEffect,
   useComputed,
-  signalObject,
   isSignal,
   isComputed,
-  unSignal,
   useReactive,
   isReactive,
-  unReactive,
   shallowReactive,
   shallowSignal,
   clearReactive,
+  signalObject,
   useBatch,
+  toRaw,
 } from './signal';
 export { useWatch } from './watch';
 export { type Signal, type Computed } from './signal';

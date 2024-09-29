@@ -47,6 +47,15 @@ const ReactiveWeakCollectionKey = Symbol(__DEV__ ? 'ReactiveWeakCollectionKey' :
 let inBatch = false;
 const batchQueue: Set<EffectFn> = new Set();
 
+export type SignalObject<T> = {
+  [K in keyof T]: Signal<T[K]>;
+};
+
+// Define the Reactive type
+export type Reactive<T> = T & {
+  [ReactivePeekSymbol]: T;
+  [ReactiveSymbol]?: true;
+};
 // Define types that can be made reactive
 type ReactiveTypes =
   | Record<string | symbol | number, unknown>
@@ -140,7 +149,7 @@ export class Signal<T> {
   get value(): T {
     track(this, SignalValueKey);
     if (isObject(this._value) && !this._shallow) {
-      return useReactive(this._value) as T;
+      return reactive(this._value) as T;
     }
     return this._value;
   }
@@ -353,10 +362,6 @@ export function useEffect(fn: () => void, options: EffectOptions = {}): () => vo
   };
 }
 
-export type SignalObject<T> = {
-  [K in keyof T]: Signal<T[K]>;
-};
-
 /**
  * Creates a SignalObject from given initial values, excluding specified keys.
  * @template T The type of the initial values object.
@@ -387,43 +392,34 @@ export function signalObject<T extends object>(
 }
 
 /**
- * Returns the current value of signals, signal objects, or plain objects, excluding specified keys.
+ * Returns the current value of signals, reactive, or plain objects, excluding specified keys.
  * @template T The type of the value.
- * @param {SignalObject<T> | T | Signal<T>} signal - The signal, signal object, or plain object.
- * @param {ExcludeType} [exclude] - The keys to exclude from the result.
+ * @param {Reactive<T> | T | Signal<T>} value - The signal, reactive, or plain object.
  * @returns {T} The current value.
  * @example
  * const user = unSignal(userSignals);
  * console.log(user.name); // 'John'
  * console.log(user.age); // 30
  */
-export function unSignal<T>(signal: SignalObject<T> | T | Signal<T>, exclude?: ExcludeType): T {
-  if (!signal) return {} as T;
+export function toRaw<T>(value: Reactive<T> | T | Signal<T>): T {
+  if (!value) return value as T;
 
-  if (isSignal(signal)) {
-    return signal.peek();
+  if (isReactive(value)) {
+    return value[ReactivePeekSymbol];
   }
-  if (isArray(signal)) {
-    return signal.map(value => unSignal(value, exclude)) as T;
+  if (isSignal(value)) {
+    return (value as Signal<T>).peek();
   }
-  if (isPlainObject(signal)) {
-    return Object.entries(signal).reduce((acc, [key, value]) => {
-      if (isExclude(key, exclude)) {
-        acc[key] = value;
-      } else {
-        acc[key] = isSignal(value) ? value.peek() : isReactive(value) ? unReactive(value) : value;
-      }
-      return acc;
-    }, {} as T);
+  if (isArray(value)) {
+    return (value as T[]).map(value => toRaw(value)) as T;
   }
-  return signal as T;
+  if (isPlainObject(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, value]) => [key, toRaw(value)]),
+    ) as T;
+  }
+  return value as T;
 }
-
-// Define the Reactive type
-export type Reactive<T> = T & {
-  [ReactivePeekSymbol]: T;
-  [ReactiveSymbol]?: true;
-};
 
 /**
  * Checks if an object is reactive.
@@ -470,27 +466,6 @@ export function shallowReactive<T extends ReactiveTypes>(
   return reactive(initialValue, true, exclude) as Reactive<T>;
 }
 
-/**
- * Creates a non-reactive copy of the target object.
- * @template T The type of the target object.
- * @param {Reactive<T>} target - The target reactive object.
- * @returns {T} A non-reactive copy of the target object.
- * @example
- * const plainUser = unReactive(reactiveUser);
- * console.log(plainUser.name); // 'John'
- * console.log(plainUser.age); // 30
- */
-export function unReactive<T>(target: Reactive<T> | T): T {
-  if (!isObject(target)) {
-    return target;
-  }
-
-  if (!isReactive(target)) {
-    return target;
-  }
-  return target[ReactivePeekSymbol];
-}
-
 const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
   return {
     get(target, key, receiver) {
@@ -507,7 +482,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       track(target, key);
       // deep track
       if (isObject(value) && !shallow) {
-        return useReactive(value);
+        return reactive(value);
       }
       return value;
     },
@@ -551,7 +526,7 @@ function createArrayInstrumentations() {
 
   ['includes', 'indexOf', 'lastIndexOf'].forEach(key => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-      const arr = this as any[];
+      const arr = toRaw(this) as any[];
       for (let i = 0, l = this.length; i < l; i++) {
         track(arr, `${i}`);
       }
@@ -566,7 +541,7 @@ function createArrayInstrumentations() {
   ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(
     key => {
       instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-        const arr = unReactive(this) as any[];
+        const arr = toRaw(this) as any[];
         const res = arr[key as keyof typeof this].apply(this, args);
         trigger(arr, reactiveArrayKey);
         return res;
@@ -591,7 +566,7 @@ function createArrayInstrumentations() {
     'values',
   ].forEach(key => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-      const arr = unReactive(this) as any[];
+      const arr = toRaw(this) as any[];
       track(arr, reactiveArrayKey);
       return arr[key as keyof typeof this].apply(this, args);
     };
@@ -682,29 +657,29 @@ const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<ob
 // Overwrite all methods and properties of Map/Set
 const instrumentations = {
   get(key: unknown) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.get(key);
   },
   set(key: unknown, value: unknown) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const result = target.set(key, value);
     trigger(target, ReactiveCollectionKey);
     return result;
   },
   add(value: unknown) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const result = target.add(value);
     trigger(target, ReactiveCollectionKey);
     return result;
   },
   has(key: unknown) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.has(key);
   },
   delete(key: unknown) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const hadKey = target.has(key);
     const result = target.delete(key);
     if (hadKey) {
@@ -713,7 +688,7 @@ const instrumentations = {
     return result;
   },
   clear() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const hadItems = target.size > 0;
     const result = target.clear();
     if (hadItems) {
@@ -725,34 +700,34 @@ const instrumentations = {
     callback: (value: unknown, key: unknown, map: Map<unknown, unknown> | Set<unknown>) => void,
     thisArg?: unknown,
   ) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     target.forEach((value: unknown, key: unknown) => {
       callback.call(thisArg, value, key, target as unknown as Map<unknown, unknown> | Set<unknown>);
     });
   },
   get size() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.size;
   },
   keys() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.keys();
   },
   values() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.values();
   },
   entries() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target.entries();
   },
   [Symbol.iterator]() {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveCollectionKey);
     return target[Symbol.iterator]();
   },
@@ -761,29 +736,29 @@ const instrumentations = {
 // Overwrite methods of WeakMap/WeakSet
 const weakInstrumentations = {
   get(key: object) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveWeakCollectionKey);
     return target.get(key);
   },
   set(key: object, value: any) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const result = target.set(key, value);
     trigger(target, ReactiveWeakCollectionKey);
     return result;
   },
   add(value: object) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const result = target.add(value);
     trigger(target, ReactiveWeakCollectionKey);
     return result;
   },
   has(key: object) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     track(target, ReactiveWeakCollectionKey);
     return target.has(key);
   },
   delete(key: object) {
-    const target = unReactive(this);
+    const target = toRaw(this);
     const result = target.delete(key);
     trigger(target, ReactiveWeakCollectionKey);
     return result;

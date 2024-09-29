@@ -1,4 +1,5 @@
-import { isSignal, shallowSignal, signalObject, unSignal, useEffect, useSignal } from '../src';
+import { isSignal, shallowSignal, toRaw, useEffect, useSignal } from '../src';
+import { signalObject, useShallowSignal } from '../src/signal';
 
 describe('useSignal', () => {
   it('should initialize with the correct value', () => {
@@ -123,6 +124,7 @@ describe('useSignal', () => {
     expect(Array.from(testSignal.value)).toEqual([1, 3, 4]);
     expect(effectFn).toHaveBeenCalledTimes(3);
   });
+
   it('should work with WeakSet', () => {
     const obj1 = { id: 1 };
     const obj2 = { id: 2 };
@@ -271,6 +273,30 @@ describe('useSignal', () => {
     expect(fn).toHaveBeenCalledTimes(2);
     expect(testSignal.value).toEqual({ a: 2, b: 3, c: 4, d: 5 });
   });
+
+  it('should work with set signal value to original value', () => {
+    const value1 = useSignal<any>(1);
+    const value2 = useSignal({});
+    const value3 = useSignal<any>([1, 2, 3]);
+
+    value1.value = useSignal(2);
+    value2.value = useSignal({ a: 'b' });
+    value3.value = useSignal([2, 3, 4]);
+
+    expect(value1.value).toBe(2);
+    expect(value2.value).toEqual({ a: 'b' });
+    expect(value3.value).toEqual([2, 3, 4]);
+  });
+
+  it('should work use signal is signal value', () => {
+    const value1 = useSignal<any>(useSignal(1));
+    const value2 = useSignal<any>(useSignal({ a: 'b' }));
+    const value3 = useSignal<any>(useSignal([1, 2, 3]));
+
+    expect(value1.value).toBe(1);
+    expect(value2.value).toEqual({ a: 'b' });
+    expect(value3.value).toEqual([1, 2, 3]);
+  });
 });
 
 describe('signalObject', () => {
@@ -313,24 +339,24 @@ describe('signalObject', () => {
   });
 });
 
-describe('unSignal', () => {
+describe('toRaw signal', () => {
   it('should unwrap signal values', () => {
     const signal = useSignal(1);
-    const unwrapped = unSignal(signal);
+    const unwrapped = toRaw(signal);
 
     expect(unwrapped).toBe(1);
   });
 
   it('should unwrap signal objects', () => {
     const initialValues = { a: useSignal(1), b: useSignal(2) };
-    const unwrapped = unSignal(signalObject(initialValues));
+    const unwrapped = toRaw(initialValues);
 
     expect(unwrapped).toEqual({ a: 1, b: 2 });
   });
 
   it('should handle arrays of signals', () => {
     const signalsArray = [useSignal(1), useSignal(2)];
-    const unwrapped = unSignal(signalsArray);
+    const unwrapped = toRaw(signalsArray);
 
     expect(unwrapped).toEqual([1, 2]);
   });
@@ -341,14 +367,9 @@ describe('unSignal', () => {
     const weakSets = new WeakSet();
     const weakMaps = new WeakMap();
 
-    const signalsArray = [
-      useSignal(sets),
-      useSignal(maps),
-      useSignal(weakMaps),
-      unSignal(weakSets),
-    ];
+    const signalsArray = [useSignal(sets), useSignal(maps), useSignal(weakMaps), toRaw(weakSets)];
 
-    const unwrapped = unSignal(signalsArray);
+    const unwrapped = toRaw(signalsArray);
     expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
 
     sets.add(1);
@@ -358,29 +379,133 @@ describe('unSignal', () => {
     expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
   });
 
-  it('should exclude properties based on exclude function during unwrapping', () => {
-    const initialValues = { a: useSignal(1), b: useSignal(2) };
-    const exclude = (key: string | symbol) => key === 'a';
-    const unwrapped = unSignal(signalObject(initialValues), exclude);
-
-    expect(unwrapped).toEqual({ a: initialValues.a, b: 2 });
-  });
-
   it('should handle plain objects without signals', () => {
     const obj = { a: 1, b: 2 };
-    const unwrapped = unSignal(obj);
+    const unwrapped = toRaw(obj);
 
     expect(unwrapped).toEqual(obj);
   });
 
   it('should return the same value if not a signal, object, or array', () => {
-    expect(unSignal(42)).toBe(42);
-    expect(unSignal('string')).toBe('string');
+    expect(toRaw(42)).toBe(42);
+    expect(toRaw('string')).toBe('string');
   });
 
   it('should handle empty objects', () => {
     const obj = {};
-    const unwrapped = unSignal(obj);
+    const unwrapped = toRaw(obj);
     expect(unwrapped).toEqual({});
+  });
+});
+
+describe('useShallowSignal', () => {
+  it('should work with basic types', () => {
+    const value1 = useShallowSignal(1);
+    const value2 = useShallowSignal(null);
+    const value3 = useShallowSignal(undefined);
+    const value4 = useShallowSignal('hello');
+    const value5 = useShallowSignal(true);
+
+    expect(value1.value).toBe(1);
+    expect(value2.value).toBe(null);
+    expect(value3.value).toBe(undefined);
+    expect(value4.value).toBe('hello');
+    expect(value5.value).toBe(true);
+  });
+
+  it('should work with objects', () => {
+    const value1 = useShallowSignal<any>({ a: 1, b: 2 });
+    const value2 = useShallowSignal<any>({ a: null, b: 2 });
+    const value3 = useShallowSignal<any>({ a: undefined, b: 2 });
+    const value4 = useShallowSignal<any>({ a: 'hello', b: 2 });
+    const value5 = useShallowSignal<any>({ a: true, b: 2 });
+
+    let triggerCount = 0;
+
+    useEffect(() => {
+      // trigger value
+      value1.value;
+      value2.value;
+      value3.value;
+      value4.value;
+      value5.value;
+
+      triggerCount++;
+    });
+
+    expect(value1.value).toEqual({ a: 1, b: 2 });
+    expect(value2.value).toEqual({ a: null, b: 2 });
+    expect(value3.value).toEqual({ a: undefined, b: 2 });
+    expect(value4.value).toEqual({ a: 'hello', b: 2 });
+    expect(value5.value).toEqual({ a: true, b: 2 });
+
+    // not trigger,it shallow,just set value will be trigger
+    value1.value.a = 10;
+    value2.value.a = 2;
+    value3.value.a = 3;
+    value4.value.a = 4;
+    value5.value.a = 5;
+
+    expect(triggerCount).toBe(1);
+
+    expect(value1.value).toEqual({ a: 10, b: 2 });
+    expect(value2.value).toEqual({ a: 2, b: 2 });
+    expect(value3.value).toEqual({ a: 3, b: 2 });
+    expect(value4.value).toEqual({ a: 4, b: 2 });
+    expect(value5.value).toEqual({ a: 5, b: 2 });
+
+    // trigger effect
+    value1.value = { a: 11, b: 2 };
+    value2.value = { a: 12, b: 2 };
+    value3.value = { a: 13, b: 2 };
+    value4.value = { a: 14, b: 2 };
+    value5.value = { a: 15, b: 2 };
+
+    expect(triggerCount).toBe(6);
+
+    expect(value1.value).toEqual({ a: 11, b: 2 });
+    expect(value2.value).toEqual({ a: 12, b: 2 });
+    expect(value3.value).toEqual({ a: 13, b: 2 });
+    expect(value4.value).toEqual({ a: 14, b: 2 });
+    expect(value5.value).toEqual({ a: 15, b: 2 });
+  });
+
+  it('should work with collection', () => {
+    const value1 = useShallowSignal<any>(new Set([1, 2, 3]));
+    const value2 = useShallowSignal<any>(
+      new Map([
+        ['a', 1],
+        ['b', 2],
+      ]),
+    );
+    const value3 = useShallowSignal<any>(new WeakMap());
+    const value4 = useShallowSignal<any>(new WeakSet([]));
+
+    let triggerCount = 0;
+
+    useEffect(() => {
+      // trigger value
+      value1.value;
+      value2.value;
+      value3.value;
+      value4.value;
+
+      triggerCount++;
+    });
+
+    value1.value.add(4);
+    value2.value.set('c', 3);
+    value3.value.set({}, 2);
+    value4.value.add({});
+
+    expect(triggerCount).toBe(1);
+
+    value1.value = new Set([1, 2, 3, 4]);
+    value2.value = new Map([['a', 1]]);
+
+    value3.value = new WeakMap();
+    value4.value = new WeakSet([]);
+
+    expect(triggerCount).toBe(5);
   });
 });
