@@ -3,6 +3,7 @@ function App() {
   return (
     <div>
       <p>{$value}</p>
+
       <input type="text" bind:value={$value} />
     </div>
   );

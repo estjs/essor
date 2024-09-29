@@ -538,16 +538,14 @@ function createArrayInstrumentations() {
     };
   });
 
-  ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(
-    key => {
-      instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-        const arr = toRaw(this) as any[];
-        const res = arr[key as keyof typeof this].apply(this, args);
-        trigger(arr, reactiveArrayKey);
-        return res;
-      };
-    },
-  );
+  ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse'].forEach(key => {
+    instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+      const arr = toRaw(this) as any[];
+      const res = arr[key as keyof typeof this].apply(this, args);
+      trigger(arr, reactiveArrayKey);
+      return res;
+    };
+  });
 
   [
     'forEach',
@@ -595,7 +593,7 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
       if (isStringNumber(key)) {
         track(target, key);
       }
-      // hack for length, eg: const arr = reactive([1,2,3]); arr.length = 0
+
       track(target, 'length');
 
       // deep track
@@ -607,14 +605,15 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
     set(target, key: string | symbol, value, receiver) {
       const oldValue = Reflect.get(target, key, receiver);
       const result = Reflect.set(target, key, value, receiver);
+
       if (hasChanged(value, oldValue)) {
         // trigger arr[0]
         if (isStringNumber(key)) {
           trigger(target, key);
         }
 
-        // hack trigger arr.length = 0
-        if (key === 'length') {
+        //  trigger arr.length = 0 or add new item
+        if (key === 'length' || !oldValue) {
           trigger(target, 'length');
         }
       }

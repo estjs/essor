@@ -1,15 +1,3 @@
-const C1 = () => <div>test1</div>;
-const C2 = () => <div>test2</div>;
-const C3 = () => <div>test3</div>;
-
-const C4 = () => (
-  <div>
-    <C2></C2>
-    <div>test4</div>
-    <C1></C1>
-    <C3></C3>
-  </div>
-);
 function App() {
   const $list: string[] = [];
   let $val: string = '';
@@ -46,8 +34,6 @@ function App() {
           </li>
         ))}
       </ul>
-
-      <C4></C4>
     </div>
   );
 }
