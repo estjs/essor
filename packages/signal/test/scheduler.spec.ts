@@ -1,6 +1,20 @@
-import { nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+import { createScheduler, nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+describe('nextTick', () => {
+  it('should execute the function in the next microtask', async () => {
+    const fn = vi.fn();
+    nextTick(fn);
+    expect(fn).not.toHaveBeenCalled(); // should not be called immediately
+    await nextTick();
+    expect(fn).toHaveBeenCalled(); // called after the next tick
+  });
 
-describe('tscheduler', () => {
+  it('should return a Promise that resolves', async () => {
+    const result = nextTick();
+    expect(result).toBeInstanceOf(Promise);
+    await expect(result).resolves.toBeUndefined();
+  });
+});
+describe('queueJob', () => {
   it('should execute jobs in the queue', async () => {
     const mockJob1 = vi.fn();
     const mockJob2 = vi.fn();
@@ -63,5 +77,32 @@ describe('tscheduler', () => {
     await nextTick();
 
     expect(preFlushCb).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createScheduler', () => {
+  it('should schedule effect immediately for "sync" flush type', () => {
+    const effect = vi.fn();
+    const scheduler = createScheduler(effect, 'sync');
+    scheduler();
+    expect(effect).toHaveBeenCalled();
+  });
+
+  it('should schedule effect as a pre-flush callback for "pre" flush type', async () => {
+    const effect = vi.fn();
+    const scheduler = createScheduler(effect, 'pre');
+    scheduler();
+    await nextTick();
+    expect(effect).toHaveBeenCalled();
+  });
+
+  it('should schedule effect in the next tick for "post" flush type', async () => {
+    const effect = vi.fn();
+    const scheduler = createScheduler(effect, 'post');
+    scheduler();
+    expect(effect).not.toHaveBeenCalled(); // should not be called immediately
+    await nextTick();
+    await nextTick();
+    expect(effect).toHaveBeenCalled();
   });
 });

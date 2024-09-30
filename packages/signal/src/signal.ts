@@ -13,10 +13,10 @@ import {
   isWeakSet,
   warn,
 } from '@estjs/shared';
-import { nextTick, queueJob, queuePreFlushCb } from './scheduler';
+import { createScheduler } from './scheduler';
 
 // Define the type for effect functions
-type EffectFn = (() => void) &
+export type EffectFn = (() => void) &
   Partial<{
     init: boolean;
     active: boolean;
@@ -24,7 +24,6 @@ type EffectFn = (() => void) &
 
 // Global variables to track active effects and computed values
 let activeEffect: EffectFn | null = null;
-const activeComputed: EffectFn | null = null;
 
 // Type definition for the trigger map
 type TriggerMap = Map<string | symbol, Set<EffectFn>>;
@@ -73,7 +72,7 @@ type ReactiveTypes =
  *
  */
 export function track(target: object, key: string | symbol) {
-  if (!activeEffect && !activeComputed) return;
+  if (!activeEffect) return;
   let depsMap = triggerMap.get(target);
   if (!depsMap) {
     depsMap = new Map();
@@ -316,19 +315,6 @@ export interface EffectOptions {
   flush?: 'pre' | 'post' | 'sync';
   onTrack?: () => void;
   onTrigger?: () => void;
-}
-
-// Create a scheduler function for the given effect and flush type
-function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
-  if (flush === 'sync') {
-    return () => effect();
-  } else if (flush === 'pre') {
-    return () => queuePreFlushCb(effect);
-  } else {
-    return () => {
-      nextTick(() => queueJob(effect));
-    };
-  }
 }
 
 /**

@@ -135,6 +135,7 @@ export class TemplateNode implements JSX.Element {
     this.nodes = node.nodes;
     this.trackMap = node.trackMap;
     this.treeMap = node.treeMap;
+    // update props
     const props = this.props;
     this.props = node.props;
     // run patch

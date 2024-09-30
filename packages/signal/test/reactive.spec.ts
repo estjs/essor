@@ -578,12 +578,63 @@ describe('reactive Set with Effects', () => {
     expect(effectFn).toHaveBeenCalledTimes(1); // has shouldn't trigger effect
   });
 
-  it('should handle size and not trigger effect', () => {
+  it('should handle size and trigger effect', () => {
     expect(effectFn).toHaveBeenCalledTimes(1);
 
-    const size = state.size;
-    expect(size).toBe(3);
-    expect(effectFn).toHaveBeenCalledTimes(1); // size shouldn't trigger effect
+    expect(state.size).toBe(3);
+
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    state.add(4);
+    expect(state.size).toBe(4);
+    expect(effectFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle values and trigger effect', () => {
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    let values = Array.from(state.values());
+    expect(values).toEqual([1, 2, 3]);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    state.add(4);
+    values = Array.from(state.values());
+    expect(values).toEqual([1, 2, 3, 4]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle keys and trigger effect', () => {
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    let keys = Array.from(state.keys());
+    expect(keys).toEqual([1, 2, 3]);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    state.add(4);
+    keys = Array.from(state.keys());
+    expect(keys).toEqual([1, 2, 3, 4]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
+  });
+  it('should handle entries and trigger effect', () => {
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    let entries = Array.from(state.entries());
+    expect(entries).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+    ]);
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    state.add(4);
+    entries = Array.from(state.entries());
+    expect(entries).toEqual([
+      [1, 1],
+      [2, 2],
+      [3, 3],
+      [4, 4],
+    ]);
+    expect(effectFn).toHaveBeenCalledTimes(2);
   });
 });
 describe('reactive Map with Effects', () => {

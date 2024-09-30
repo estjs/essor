@@ -1,3 +1,5 @@
+import type { EffectFn } from './signal';
+
 type Job = () => void;
 type PreFlushCb = () => void;
 
@@ -86,5 +88,31 @@ function flushPreFlushCbs(): void {
     if (cb) {
       cb();
     }
+  }
+}
+
+/**
+ * Creates a scheduler function that runs the given effect function
+ * with the specified flush strategy.
+ *
+ * The flush strategy can be one of the following:
+ *
+ * - `'pre'`: Run the effect function as a pre-flush callback.
+ * - `'post'`: Run the effect function in the next event loop.
+ * - `'sync'`: Run the effect function immediately.
+ *
+ * The scheduler function is a function that takes no arguments.
+ * When called, it schedules the effect function to be executed
+ * according to the specified flush strategy.
+ */
+export function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
+  if (flush === 'sync') {
+    return () => effect();
+  } else if (flush === 'pre') {
+    return () => queuePreFlushCb(effect);
+  } else {
+    return () => {
+      nextTick(() => queueJob(effect));
+    };
   }
 }

@@ -42,4 +42,10 @@ describe('escape', () => {
     expect(escape('""""')).toBe('&quot;&quot;&quot;&quot;');
     expect(escape("''''")).toBe('&#039;&#039;&#039;&#039;');
   });
+
+  it('should not modify the original string', () => {
+    const str = 'Hello, World!';
+    const escaped = escape(str);
+    expect(escaped).toBe('Hello, World!');
+  });
 });
