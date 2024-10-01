@@ -57,11 +57,12 @@ export class TemplateNode implements JSX.Element {
       return this.nodes;
     }
 
-    //hack ssr compile node
+    // ssr compile node
     //if ssr template will compile to: ["<div>","<span>","</span>","</div>"]
     if (isArray(this.template)) {
       this.template = createTemplate(this.template.join(''));
     }
+
     // get clone node
     const cloneNode = this.template.content.cloneNode(true);
     const firstChild = cloneNode.firstChild as HTMLElement | null;
@@ -200,8 +201,6 @@ export class TemplateNode implements JSX.Element {
           patchChild(track, node, props.children, null);
         } else {
           props.children.filter(Boolean).forEach((item, index) => {
-            console.log({ item, index });
-
             const [child, path] = isArray(item) ? item : [item, null];
             // get before node in treeMap
             const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);
@@ -224,15 +223,14 @@ export class TemplateNode implements JSX.Element {
         // attr
       } else {
         const updateKey = `update${capitalizeFirstLetter(attr)}`;
+        // if has bind key, break
+        if (this.bindValueKeys.includes(attr)) {
+          break;
+        }
 
         // get bindXxxx key, set in bindValueKeys
         if (props[updateKey]) {
           this.bindValueKeys.push(updateKey);
-        }
-
-        // if has bind key, break
-        if (this.bindValueKeys.includes(attr)) {
-          break;
         }
 
         const track = this.getNodeTrack(`${key}:${attr}`);

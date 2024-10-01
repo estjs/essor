@@ -1,6 +1,5 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, toRaw, useEffect, useSignal } from '@estjs/signal';
-import { signalObject } from '@estjs/signal';
+import { type Signal, useEffect, useReactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycle-context';
 import type { TemplateNode } from './template-node';
@@ -21,7 +20,10 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     super();
     // create proxy props
     this.proxyProps = props
-      ? signalObject(props, key => startsWith(key, 'on') || startsWith(key, 'update'))
+      ? useReactive(
+          props,
+          key => startsWith(key, 'on') || startsWith(key, 'update') || key === 'children',
+        )
       : {};
   }
 
@@ -46,7 +48,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.initRef();
 
     // render template node
-    this.rootNode = this.template(toRaw(this.proxyProps));
+    this.rootNode = this.template(this.proxyProps);
 
     // mount template node
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
@@ -140,10 +142,9 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
         this.props![key] = extractSignal(prop);
       } else if (key !== 'children') {
         // bind signal or normal prop
-        const newValue = (this.proxyProps[key] ??= useSignal(prop));
         const track = this.getNodeTrack(key);
         track.cleanup = useEffect(() => {
-          newValue.value = isFunction(prop) ? prop() : prop;
+          this.proxyProps[key] = isFunction(prop) ? prop() : prop;
         });
       }
     }

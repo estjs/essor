@@ -2,6 +2,7 @@ import { isArray, isFalsy, kebabCase } from '@estjs/shared';
 import { type Signal, isSignal } from '@estjs/signal';
 import { isJsxElement } from './jsx-renderer';
 import { renderContext } from './render-context';
+import { isSSGNode } from './ssg-node';
 
 const selfClosingTags =
   'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
@@ -16,7 +17,7 @@ const htmlTags =
  * @returns A Node or JSX.Element.
  */
 export function coerceNode(data: unknown) {
-  if (isJsxElement(data) || data instanceof Node) {
+  if (isJsxElement(data) || data instanceof Node || isSSGNode(data)) {
     return data;
   }
   const text = isFalsy(data) ? '' : String(data);

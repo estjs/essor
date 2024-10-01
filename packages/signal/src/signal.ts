@@ -124,8 +124,8 @@ function trigger(target: object, key: string | symbol) {
  * console.log(count.value); // 1
  */
 export class Signal<T> {
-  private _value: T;
-  private _shallow: boolean;
+  private __value: T;
+  private __shallow: boolean;
 
   // is should be read
   //@ts-ignore
@@ -137,8 +137,8 @@ export class Signal<T> {
    * @param {boolean} [shallow] - Whether to create a shallow Signal.
    */
   constructor(value: T, shallow: boolean = false) {
-    this._shallow = shallow;
-    this._value = value;
+    this.__shallow = shallow;
+    this.__value = value;
   }
 
   /**
@@ -147,10 +147,10 @@ export class Signal<T> {
    */
   get value(): T {
     track(this, SignalValueKey);
-    if (isObject(this._value) && !this._shallow) {
-      return reactive(this._value) as T;
+    if (isObject(this.__value) && !this.__shallow) {
+      return reactive(this.__value) as T;
     }
-    return this._value;
+    return this.__value;
   }
 
   /**
@@ -162,8 +162,8 @@ export class Signal<T> {
       newValue = newValue.peek() as T;
     }
 
-    if (hasChanged(newValue, this._value)) {
-      this._value = newValue;
+    if (hasChanged(newValue, this.__value)) {
+      this.__value = newValue;
       trigger(this, SignalValueKey);
     }
   }
@@ -173,7 +173,7 @@ export class Signal<T> {
    * @returns {T} The current value.
    */
   peek(): T {
-    return this._value;
+    return this.__value;
   }
 }
 
@@ -247,28 +247,28 @@ export function isSignal<T>(value: any): value is Signal<T> {
  * console.log(doubleCount.value); // 2
  */
 export class Computed<T = unknown> {
-  private _value: T;
+  private __value: T;
   //@ts-ignore
   private readonly __computed = true;
   constructor(private readonly fn: () => T) {
     const prev = activeEffect;
     activeEffect = this.run.bind(this);
-    this._value = this.fn();
+    this.__value = this.fn();
     activeEffect = prev;
   }
   /**
    * Get the current computed value without tracking it.
    */
   peek(): T {
-    return this._value;
+    return this.__value;
   }
   /**
    * Run the computed function and update the value if it has changed.
    */
   run() {
     const newValue = this.fn();
-    if (hasChanged(newValue, this._value)) {
-      this._value = newValue;
+    if (hasChanged(newValue, this.__value)) {
+      this.__value = newValue;
       trigger(this, ComputedValueKey);
     }
   }
@@ -278,7 +278,7 @@ export class Computed<T = unknown> {
    */
   get value(): T {
     track(this, ComputedValueKey);
-    return this._value;
+    return this.__value;
   }
 }
 

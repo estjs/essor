@@ -11,7 +11,7 @@ interface TemplateEntry {
 
 type TemplateCollection = Record<number, TemplateEntry>;
 
-function isSSGNode(node: unknown): node is SSGNode {
+export function isSSGNode(node: unknown): node is SSGNode {
   return node instanceof SSGNode;
 }
 export class SSGNode extends LifecycleContext {
@@ -24,6 +24,10 @@ export class SSGNode extends LifecycleContext {
     public key?: string,
   ) {
     super();
+    // shallow clone array, template used in template-node
+    if (Array.isArray(this.template)) {
+      this.template = [...this.template];
+    }
   }
   mount(): string {
     this.initRef();
