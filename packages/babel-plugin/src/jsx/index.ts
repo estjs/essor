@@ -18,6 +18,7 @@ import type { NodePath } from '@babel/core';
 
 export interface Result {
   index: number;
+  ssgIndex: Record<string, any>;
   isLastChild: boolean;
   parentIndex: number;
   props: Record<string, any>;
@@ -32,6 +33,7 @@ function addToTemplate(result: Result, content: string, join = false): void {
     } else {
       (result.template as string[]).push(content);
     }
+    setSSGIndex(result);
   } else {
     result.template += content;
   }
@@ -45,11 +47,28 @@ export function transformJSX(path: NodePath<JSXElement>): void {
     isLastChild: false,
     parentIndex: 0,
     props: {},
+    ssgIndex: {},
     template: isSsg ? [] : '',
   };
   transformJSXElement(path, result, true);
 
   path.replaceWith(createEssorNode(path, result));
+}
+
+// Trim and replace multiple spaces/newlines with a single space
+function replaceSpace(node: t.JSXText): string {
+  return node.value.replaceAll(/\s+/g, ' ').trim();
+}
+
+function setSSGIndex(result: Result): void {
+  if (isSsg && result.props) {
+    Object.keys(result.props).forEach(key => {
+      const idx = result.ssgIndex[key];
+      if (idx) {
+        result.props[key].__i = `${idx}`;
+      }
+    });
+  }
 }
 
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
@@ -69,7 +88,6 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
       imports.add('template');
     }
   }
-
   const args = [tmpl, createProps(result.props)];
   const key = result.props.key || result.props[0]?.key;
   if (key) {
@@ -133,10 +151,10 @@ function transformJSXElement(
     if (tagIsComponent) {
       if (isRoot) {
         result.props = props;
-        const children = getChildren(path) as any;
+        const children = getChildren(path);
         if (children.length > 0) {
           const childrenGenerator =
-            children.length === 1 ? children[0] : t.arrayExpression(children);
+            children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
           result.props.children = childrenGenerator;
         }
       } else {
@@ -150,7 +168,6 @@ function transformJSXElement(
 
       addToTemplate(result, `<${tagName}`, true);
       handleAttributes(props, result);
-
       addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
 
       if (!isSelfClose) {
@@ -183,6 +200,7 @@ function transformChildren(path: NodePath<JSXElement>, result: Result): void {
     }, [] as NodePath<JSXChild>[])
     .forEach((child, i, arr) => {
       result.parentIndex = parentIndex;
+      result.ssgIndex[parentIndex] = result.template.length;
       result.isLastChild = i === arr.length - 1;
       transformChild(child, result);
     });
@@ -205,7 +223,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
       throw new Error('Unsupported child type');
     }
   } else if (child.isJSXText()) {
-    addToTemplate(result, String(child.node.value));
+    addToTemplate(result, replaceSpace(child.node), true);
   } else {
     throw new Error('Unsupported child type');
   }
@@ -213,7 +231,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
 
 function getNodeText(path: NodePath<JSXChild>): string {
   if (path.isJSXText()) {
-    return path.node.value;
+    return replaceSpace(path.node);
   }
   if (path.isJSXExpressionContainer()) {
     const expression = path.get('expression');
@@ -256,6 +274,8 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
 
   klass = klass.trim();
   style = style.trim();
+
+  result.ssgIndex[result.index] = result.template.length;
 
   if (klass) {
     addToTemplate(result, ` class="${klass}"`);
@@ -314,7 +334,7 @@ function getChildren(path: NodePath<JSXElement>): JSXChild[] {
       } else if (child.isJSXExpressionContainer()) {
         child.replaceWith(child.get('expression'));
       } else if (child.isJSXText()) {
-        child.replaceWith(t.stringLiteral(child.node.value));
+        child.replaceWith(t.stringLiteral(replaceSpace(child.node)));
       } else {
         throw new Error('Unsupported child type');
       }
@@ -391,7 +411,6 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
         throw new Error('Unsupported attribute type');
       }
     });
-
   return {
     props,
     hasExpression,

@@ -213,7 +213,6 @@ export function addEventListener(
  * @returns The HTML string with unclosed tags properly closed.
  */
 export function closeHtmlTags(input: string): string {
-  const selfClosingTagList = selfClosingTags;
   const tagStack: string[] = [];
   const output: string[] = [];
   const tagPattern = /<\/?([\da-z-]+)([^>]*)>/gi;
@@ -241,7 +240,7 @@ export function closeHtmlTags(input: string): string {
       if (tagStack.length > 0) {
         tagStack.pop(); // pop the matching start tag
       }
-    } else if (!selfClosingTagList.includes(tagName)) {
+    } else if (!selfClosingTags.includes(tagName)) {
       // Handle start tag
       tagStack.push(tagName);
     }
@@ -266,8 +265,7 @@ export function closeHtmlTags(input: string): string {
  * @returns A boolean indicating if the tag name is valid.
  */
 export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagNameMap {
-  const htmlTagsList = htmlTags;
-  return htmlTagsList.includes(tagName);
+  return htmlTags.includes(tagName);
 }
 
 /**
@@ -276,8 +274,7 @@ export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagN
  * @returns The valid HTML tag name.
  */
 export function convertToHtmlTag(tagName: string): string {
-  const selfClosingTagList = selfClosingTags;
-  if (selfClosingTagList.includes(tagName)) {
+  if (selfClosingTags.includes(tagName)) {
     return `<${tagName}/>`;
   } else {
     return `<${tagName}></${tagName}>`;

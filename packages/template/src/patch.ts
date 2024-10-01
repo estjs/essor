@@ -11,31 +11,9 @@ export function patchChildren(
 ): Map<string, AnyNode> {
   const result = new Map<string, AnyNode>();
   const children = Array.from(childrenMap.values());
-  const childrenLength = children.length;
 
   if (childrenMap.size > 0 && nextChildren.length === 0) {
-    if (parent.childNodes.length === childrenLength + (before ? 1 : 0)) {
-      (parent as Element).innerHTML = '';
-      if (before) {
-        insertChild(parent, before);
-      }
-    } else {
-      const range = document.createRange();
-      const child = children[0];
-      const start = isJsxElement(child) ? child.firstChild : child;
-      range.setStartBefore(start!);
-      if (before) {
-        range.setEndBefore(before);
-      } else {
-        range.setEndAfter(parent);
-      }
-      range.deleteContents();
-    }
-    children.forEach(node => {
-      if (isJsxElement(node)) {
-        node.unmount();
-      }
-    });
+    clearChildren(parent, children, before);
     return result;
   }
 
@@ -86,8 +64,45 @@ export function patchChildren(
 
   return result;
 }
+/**
+ * Clear the children of the parent node.
+ * @param parent The parent node.
+ * @param children The children to be cleared.
+ * @param before The node before which the children should be cleared.
+ */
+export function clearChildren(parent: Node, children: AnyNode[], before: Node | null) {
+  if (parent.childNodes.length === children.length + (before ? 1 : 0)) {
+    (parent as Element).innerHTML = '';
+    if (before) {
+      insertChild(parent, before);
+    }
+  } else {
+    const range = document.createRange();
+    const child = children[0];
+    const start = isJsxElement(child) ? child.firstChild : child;
+    range.setStartBefore(start!);
+    if (before) {
+      range.setEndBefore(before);
+    } else {
+      range.setEndAfter(parent);
+    }
+    range.deleteContents();
+  }
+  children.forEach(node => {
+    if (isJsxElement(node)) {
+      node.unmount();
+    }
+  });
+}
 
-function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
+/**
+ * Compare two nodes and update the first node to be the same as the second node.
+ * @param parent The parent node of the first node.
+ * @param node The first node.
+ * @param next The second node.
+ * @returns The updated first node.
+ */
+export function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
   if (node === next) {
     return node;
   }

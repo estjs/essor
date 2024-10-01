@@ -1,5 +1,5 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, useEffect, useReactive, useSignal } from '@estjs/signal';
+import { type Signal, toRaw, useEffect, useSignal } from '@estjs/signal';
 import { signalObject } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycle-context';
@@ -46,7 +46,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.initRef();
 
     // render template node
-    this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
+    this.rootNode = this.template(toRaw(this.proxyProps));
 
     // mount template node
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];

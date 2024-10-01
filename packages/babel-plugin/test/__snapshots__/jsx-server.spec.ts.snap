@@ -2,37 +2,39 @@
 
 exports[`jsx ssg transform > should work with bind api 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p", ">", "Paragraph 1", "</p><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div><p", ">Paragraph 1", "</p><p>Paragraph 2", "</p>", "</div>"];
 const value = 1;
 _ssg$(_tmpl$, {
   "2": {
     "value": value,
-    "updateValue": _value => value = _value
+    "updateValue": _value => value = _value,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > should work with comment in JSX 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p", ">", "Paragraph 1", "</p><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div><p", ">Paragraph 1", "</p><p>Paragraph 2", "</p>", "</div>"];
 const value = 1;
 _ssg$(_tmpl$, {
   "3": {
     "value": value,
-    "updateValue": _value => value = _value
+    "updateValue": _value => value = _value,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with JSX fragment 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<p>", "Paragraph 1", "</p><p>", "Paragraph 2", "</p>"];
+const _tmpl$ = ["<p>Paragraph 1", "</p><p>Paragraph 2", "</p>"];
 const element = _ssg$(_tmpl$, {});"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with JSX fragment as children 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p>", "Paragraph 1", "</p><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div><p>Paragraph 1", "</p><p>Paragraph 2", "</p>", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;
 
@@ -44,7 +46,7 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", " id=\\"myId\\"", " class=\\"myClass\\">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", " id=\\"myId\\"", " class=\\"myClass\\">Hello World", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;
 
@@ -56,13 +58,13 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with children 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p>", "Paragraph 1", "</p><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div><p>Paragraph 1", "</p><p>Paragraph 2", "</p>", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with class and style attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", ">Hello World", "</div>"];
 const hasClass = true;
 const style = {
   color: 'red',
@@ -71,29 +73,32 @@ const style = {
 const element = _ssg$(_tmpl$, {
   "1": {
     "class": () => hasClass ? 'myClass' : '',
-    "style": style
+    "style": style,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with conditional attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", ">Hello World", "</div>"];
 const hasClass = true;
 const element = _ssg$(_tmpl$, {
   "1": {
-    "class": () => hasClass ? 'myClass' : 'otherClass'
+    "class": () => hasClass ? 'myClass' : 'otherClass',
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with dynamic expressions 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div>", "Hello, ", "<!>", "!", "</div>"];
+const _tmpl$ = ["<div>Hello,", "<!>!", "</div>"];
 const name = 'John';
 const element = _ssg$(_tmpl$, {
   "1": {
-    "children": [[() => name, 3]]
+    "children": [[() => name, 3]],
+    "__i": "2"
   }
 });"
 `;
@@ -107,63 +112,71 @@ const element = _ssg$(_tmpl$, {
       "text": "Component 1"
     }), 2], [() => _ssg$(MyComponent, {
       "text": "Component 2"
-    }), null]]
+    }), null]],
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with nested expressions and children 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p>", "<!>", "'s Profile", "</p><ul>", "</ul>", "</div>"],
-  _tmpl$2 = ["<li", ">", "Item ", "</li>"];
+const _tmpl$ = ["<div><p>", "<!>'s Profile", "</p><ul>", "</ul>", "</div>"],
+  _tmpl$2 = ["<li", ">Item", "</li>"];
 const name = 'John';
 const element = _ssg$(_tmpl$, {
   "2": {
-    "children": [[() => name, 3]]
+    "children": [[() => name, 3]],
+    "__i": "2"
   },
   "5": {
     "children": [[() => Array.from({
       length: 3
     }, (_, i) => _ssg$(_tmpl$2, {
       "1": {
+        "__i": "2",
         "children": [[() => i + 1, null]]
       }
-    })), null]]
+    })), null]],
+    "__i": "3"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with null and undefined attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", ">Hello World", "</div>"];
 const element = _ssg$(_tmpl$, {
   "1": {
     "id": null,
-    "class": undefined
+    "class": undefined,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with null and undefined children 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div>", "<!><p>", "Paragraph 1", "</p>", "<!>", "<!><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div>", "<!><p>Paragraph 1", "</p>", "<!>", "<!><p>Paragraph 2", "</p>", "</div>"];
 const element = _ssg$(_tmpl$, {
   "1": {
-    "children": [[() => null, 2], [() => undefined, 5], [() => false, 6]]
+    "children": [[() => null, 2], [() => undefined, 5], [() => false, 6]],
+    "__i": "5"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with null and undefined in expressions 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div><p>", "<!>", "'s Profile", "</p>", "<!><p>", "Paragraph 2", "</p>", "</div>"];
+const _tmpl$ = ["<div><p>", "<!>'s Profile", "</p>", "<!><p>Paragraph 2", "</p>", "</div>"];
 const name = null;
 const element = _ssg$(_tmpl$, {
   "1": {
-    "children": [[() => undefined, 5]]
+    "children": [[() => undefined, 5]],
+    "__i": "4"
   },
   "2": {
-    "children": [[() => name, 3]]
+    "children": [[() => name, 3]],
+    "__i": "2"
   }
 });"
 `;
@@ -176,34 +189,36 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with spread attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", ">Hello World", "</div>"];
 const props = {
   id: 'myId',
   class: 'myClass'
 };
 const element = _ssg$(_tmpl$, {
   "1": {
-    ...props
+    ...props,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms JSX element with style attribute 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div", ">", "Hello World", "</div>"];
+const _tmpl$ = ["<div", ">Hello World", "</div>"];
 const style = {
   color: 'red',
   fontSize: '16px'
 };
 const element = _ssg$(_tmpl$, {
   "1": {
-    "style": style
+    "style": style,
+    "__i": "2"
   }
 });"
 `;
 
 exports[`jsx ssg transform > transforms simple JSX element 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div>", "Hello World", "</div>"];
+const _tmpl$ = ["<div>Hello World", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;

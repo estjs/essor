@@ -95,13 +95,6 @@ export class TemplateNode implements JSX.Element {
   unmount(): void {
     this.trackMap.forEach(track => {
       track.cleanup?.();
-      track.lastNodes?.forEach(node => {
-        if (track.isRoot) {
-          removeChild(node);
-        } else if (node instanceof TemplateNode) {
-          node.unmount();
-        }
-      });
     });
     this.trackMap.clear();
     this.treeMap.clear();
@@ -153,12 +146,11 @@ export class TemplateNode implements JSX.Element {
    */
 
   mapNodeTree(parent: Node, tree: Node): void {
-    const ssr = renderContext.isSSR;
     // ssr node start with 0
     // client node start with 1
-    let index = ssr ? 0 : 1;
+    let index = 1;
     // ssr node has parent, not set in treeMap
-    if (!ssr) this.treeMap.set(0, parent);
+    this.treeMap.set(0, parent);
 
     // loop the tree
     const walk = (node: Node) => {
@@ -171,8 +163,7 @@ export class TemplateNode implements JSX.Element {
         child = child.nextSibling;
       }
     };
-    // ssr must be `renderToString` in root, parent is dom tree.
-    walk(ssr ? parent : tree);
+    walk(tree);
   }
 
   /**
@@ -209,6 +200,8 @@ export class TemplateNode implements JSX.Element {
           patchChild(track, node, props.children, null);
         } else {
           props.children.filter(Boolean).forEach((item, index) => {
+            console.log({ item, index });
+
             const [child, path] = isArray(item) ? item : [item, null];
             // get before node in treeMap
             const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);

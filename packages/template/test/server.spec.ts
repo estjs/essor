@@ -1,6 +1,6 @@
 //  eslint-disable
 import { useSignal as _signal$ } from '@estjs/signal';
-import { ssg as _ssg$, renderToString } from '../src';
+import { ssg as _ssg$, hydrate, renderToString } from '../src';
 export function Com(props) {
   return _ssg$(_tmpl$, {
     '1': {
@@ -28,12 +28,17 @@ function App() {
 
 describe('ssg render', () => {
   const html = renderToString(App);
-
   const container = document.createElement('div');
   container.innerHTML = html;
   it('should work renderToString', () => {
     expect(html).toMatchInlineSnapshot(
-      `"<div><p>hello world</p><div>hello world</div><input type="text" value="hello world"/></div>"`,
+      `"<div><p></p><!><input type="text"<div></div>/></div>"`,
+    );
+  });
+  it('should work hydrate', () => {
+    hydrate(App, container);
+    expect(container.innerHTML).toMatchInlineSnapshot(
+      `"<div><p></p><!----><input type="text" <div=""></div>/&gt;"`,
     );
   });
 });

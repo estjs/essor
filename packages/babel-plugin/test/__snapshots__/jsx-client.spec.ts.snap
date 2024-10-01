@@ -95,7 +95,7 @@ const element = _h$(_tmpl$, {
 
 exports[`jsx transform > transforms JSX element with dynamic expressions 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello, <!>!");
+const _tmpl$ = _template$("<div>Hello,<!>!");
 const name = 'John';
 const element = _h$(_tmpl$, {
   "1": {
@@ -121,7 +121,7 @@ const element = _h$(_tmpl$, {
 exports[`jsx transform > transforms JSX element with nested expressions and children 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div><p><!>'s Profile</p><ul></ul>"),
-  _tmpl$2 = _template$("<li>Item ");
+  _tmpl$2 = _template$("<li>Item");
 const name = 'John';
 const element = _h$(_tmpl$, {
   "2": {
