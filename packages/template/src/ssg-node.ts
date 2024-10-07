@@ -25,16 +25,39 @@ export class SSGNode extends LifecycleContext {
   ) {
     super();
     // shallow clone array, template used in template-node
-    if (Array.isArray(this.template)) {
-      this.template = [...this.template];
+    if (isArray(this.template)) {
+      let index = 1;
+      const PLACEHOLDER = ' __PLACEHOLDER__ ';
+
+      const htmlString = this.template.join(PLACEHOLDER);
+
+      // process add key
+      const processedString = htmlString.replaceAll(/(<[^>]+>)|([^<]+)/g, (match, p1, p2) => {
+        if (p1) {
+          // if has key,skip
+          if (p1.includes('__key')) return match;
+          return p1.replace(/<\s*([\da-z]+)(\s[^>]*)?>/i, (fullMatch, tagName, attrs) => {
+            return `<${tagName} __key="${index++}"${attrs || ''}>`;
+          });
+        } else {
+          if (p2 && p2.replace(PLACEHOLDER, '').trim()) {
+            index++; // text node plus index
+          }
+        }
+        return match;
+      });
+
+      this.template = processedString.split(PLACEHOLDER);
     }
   }
   mount(): string {
     this.initRef();
     const output = this.render();
+
     this.removeRef();
     return output;
   }
+
   private initTemplates(): void {
     const normalizeProps = Object.values(this.props).reduce((acc, cur) => {
       const ssgIndex = cur.__i;
@@ -69,6 +92,7 @@ export class SSGNode extends LifecycleContext {
       }
     }
     this.initTemplates();
+
     return Object.entries(this.templates)
       .map(([key, { template, props }]) => {
         let content = template;

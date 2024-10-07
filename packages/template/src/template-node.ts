@@ -58,7 +58,7 @@ export class TemplateNode implements JSX.Element {
     }
 
     // ssr compile node
-    //if ssr template will compile to: ["<div>","<span>","</span>","</div>"]
+    // if ssr template will compile to: ["<div>","<span>","</span>","</div>"]
     if (isArray(this.template)) {
       this.template = createTemplate(this.template.join(''));
     }
@@ -77,22 +77,21 @@ export class TemplateNode implements JSX.Element {
 
     // normalize node
     this.nodes = Array.from(cloneNode.childNodes);
-    /**
-     * init treeMap,translate dom tree to:
-     *   0: div
-     *   1: span
-     *   2: text
-     */
-    this.mapNodeTree(parent, cloneNode);
-    // insert clone node to parent
-    insertChild(parent, cloneNode, before);
+
+    if (renderContext.isSSR) {
+      this.mapSSGNodeTree(parent as HTMLElement);
+    } else {
+      this.mapNodeTree(parent, cloneNode);
+      // insert clone node to parent
+      insertChild(parent, cloneNode, before);
+    }
+
     // patch
     this.patchProps(this.props);
     this.mounted = true;
     return this.nodes;
   }
 
-  // unmount just run in patch
   unmount(): void {
     this.trackMap.forEach(track => {
       track.cleanup?.();
@@ -104,12 +103,6 @@ export class TemplateNode implements JSX.Element {
     this.mounted = false;
   }
 
-  /**
-   * Patch the nodes of the template node.
-   * It will iterate the props and patch the node in the treeMap.
-   * If the index of the prop is 0, it will patch the root node.
-   * @param props The props to patch.
-   */
   patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
     Object.entries(props).forEach(([key, value]) => {
@@ -145,15 +138,10 @@ export class TemplateNode implements JSX.Element {
    * In non-SSR mode, the parent node is included in the map,
    * since it is part of the rendered tree.
    */
-
   mapNodeTree(parent: Node, tree: Node): void {
-    // ssr node start with 0
-    // client node start with 1
     let index = 1;
-    // ssr node has parent, not set in treeMap
     this.treeMap.set(0, parent);
 
-    // loop the tree
     const walk = (node: Node) => {
       if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
         this.treeMap.set(index++, node);
@@ -165,6 +153,22 @@ export class TemplateNode implements JSX.Element {
       }
     };
     walk(tree);
+  }
+
+  mapSSGNodeTree(parent: HTMLElement): void {
+    const walk = (node: HTMLElement) => {
+      const nodeKey = node.attributes?.getNamedItem('__key')?.value;
+
+      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE && nodeKey) {
+        this.treeMap.set(+nodeKey, node);
+      }
+      let child = node.firstChild;
+      while (child) {
+        walk(child as HTMLElement);
+        child = child.nextSibling;
+      }
+    };
+    walk(parent);
   }
 
   /**
@@ -274,7 +278,7 @@ export class TemplateNode implements JSX.Element {
 function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
   if (isFunction(child)) {
     track.cleanup = useEffect(() => {
-      const nextNodes = coerceArray((child as Function)()).map(coerceNode);
+      const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
       // the process of hydrating,not change dom
       if (!renderContext.isSSR) {
         track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
@@ -282,7 +286,7 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
     });
   } else {
     coerceArray(child).forEach((node, i) => {
-      const newNode = coerceNode(node);
+      const newNode = coerceNode(node) as Node;
       // the process of hydrating,not change dom
       if (!renderContext.isSSR) {
         track.lastNodes!.set(String(i), newNode);
