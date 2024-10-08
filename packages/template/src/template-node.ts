@@ -21,6 +21,7 @@ import { renderContext } from './render-context';
 import { createTemplate, isComponent } from './jsx-renderer';
 import type { NodeTrack, Props } from '../types';
 
+let componentIndex = 1;
 export class TemplateNode implements JSX.Element {
   private treeMap = new Map<number, Node>();
   private mounted = false;
@@ -51,23 +52,18 @@ export class TemplateNode implements JSX.Element {
   parent: Node | null = null;
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
-    // if it mounted in the template, insert child
     if (this.isConnected) {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
     }
 
-    // ssr compile node
-    // if ssr template will compile to: ["<div>","<span>","</span>","</div>"]
     if (isArray(this.template)) {
       this.template = createTemplate(this.template.join(''));
     }
 
-    // get clone node
     const cloneNode = this.template.content.cloneNode(true);
     const firstChild = cloneNode.firstChild as HTMLElement | null;
 
-    // handle svg
     if (firstChild?.hasAttribute?.('_svg_')) {
       firstChild.remove();
       firstChild?.childNodes.forEach(node => {
@@ -75,18 +71,15 @@ export class TemplateNode implements JSX.Element {
       });
     }
 
-    // normalize node
     this.nodes = Array.from(cloneNode.childNodes);
 
     if (renderContext.isSSR) {
       this.mapSSGNodeTree(parent as HTMLElement);
     } else {
       this.mapNodeTree(parent, cloneNode);
-      // insert clone node to parent
       insertChild(parent, cloneNode, before);
     }
 
-    // patch
     this.patchProps(this.props);
     this.mounted = true;
     return this.nodes;
@@ -105,10 +98,13 @@ export class TemplateNode implements JSX.Element {
 
   patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
+
     Object.entries(props).forEach(([key, value]) => {
       const index = Number(key);
+
       // get node in treeMap
       const node = this.treeMap.get(index);
+
       if (node) {
         this.patchProp(key, node, value, index === 0);
       }
@@ -128,20 +124,42 @@ export class TemplateNode implements JSX.Element {
     // run patch
     this.patchProps(props);
   }
-  /**
-   * Maps the nodes in the given tree to a map of index to Node.
-   * @param parent The parent node of the tree.
-   * @param tree The tree to map.
-   * @remarks
-   * In SSR mode, the parent node is not included in the map,
-   * since it is not part of the rendered tree.
-   * In non-SSR mode, the parent node is included in the map,
-   * since it is part of the rendered tree.
-   */
+
+  mapSSGNodeTree(parent: Node): void {
+    this.treeMap.set(0, parent);
+
+    const walk = (node: Node) => {
+      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+        if (node.nodeType === Node.COMMENT_NODE) {
+          if (node.textContent?.startsWith('__text__')) {
+            const [index, textKey] = node.textContent.replace('__text__', '').split('-');
+            if (+index === componentIndex) {
+              const textNode = node.nextSibling as Text;
+              this.treeMap.set(+textKey, textNode);
+            }
+          }
+        } else if (node.nodeType !== Node.TEXT_NODE) {
+          const [index, keyAttr] = (node as HTMLElement)?.getAttribute('__key')?.split('-') || [];
+          if (keyAttr && +index === componentIndex) {
+            this.treeMap.set(+keyAttr, node);
+          }
+        }
+      }
+      let child = node.firstChild;
+      while (child) {
+        walk(child);
+        child = child.nextSibling;
+      }
+    };
+
+    walk(parent);
+
+    componentIndex++;
+  }
+
   mapNodeTree(parent: Node, tree: Node): void {
     let index = 1;
     this.treeMap.set(0, parent);
-
     const walk = (node: Node) => {
       if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
         this.treeMap.set(index++, node);
@@ -154,23 +172,6 @@ export class TemplateNode implements JSX.Element {
     };
     walk(tree);
   }
-
-  mapSSGNodeTree(parent: HTMLElement): void {
-    const walk = (node: HTMLElement) => {
-      const nodeKey = node.attributes?.getNamedItem('__key')?.value;
-
-      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE && nodeKey) {
-        this.treeMap.set(+nodeKey, node);
-      }
-      let child = node.firstChild;
-      while (child) {
-        walk(child as HTMLElement);
-        child = child.nextSibling;
-      }
-    };
-    walk(parent);
-  }
-
   /**
    * Get a NodeTrack from the trackMap. If the track is not in the trackMap, create a new one.
    * Then, call the cleanup function to remove any previously registered hooks.
@@ -199,58 +200,42 @@ export class TemplateNode implements JSX.Element {
       if (attr === 'children' && props.children) {
         if (!isArray(props.children)) {
           const trackKey = `${key}:${attr}:${0}`;
-          // generate track
           const track = this.getNodeTrack(trackKey, true, isRoot);
-          // patch child
           patchChild(track, node, props.children, null);
         } else {
           props.children.filter(Boolean).forEach((item, index) => {
             const [child, path] = isArray(item) ? item : [item, null];
-            // get before node in treeMap
             const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);
             const trackKey = `${key}:${attr}:${index}`;
-            // generate track
             const track = this.getNodeTrack(trackKey, true, isRoot);
             patchChild(track, node, child, before);
           });
         }
       } else if (attr === 'ref') {
-        // just support useRef
         props[attr].value = node;
-      }
-      // handle events
-      else if (startsWith(attr, 'on')) {
+      } else if (startsWith(attr, 'on')) {
         const eventName = attr.slice(2).toLocaleLowerCase();
         const track = this.getNodeTrack(`${key}:${attr}`);
         const listener = props[attr];
         track.cleanup = addEventListener(node, eventName, listener);
-        // attr
       } else {
         const updateKey = `update${capitalizeFirstLetter(attr)}`;
-        // if has bind key, break
         if (this.bindValueKeys.includes(attr)) {
           break;
         }
-
-        // get bindXxxx key, set in bindValueKeys
         if (props[updateKey]) {
           this.bindValueKeys.push(updateKey);
         }
-
         const track = this.getNodeTrack(`${key}:${attr}`);
-
         const val = props[attr];
-        // handle signal value to trigger
         const triggerValue = isSignal(val) ? val : useSignal(val);
         patchAttribute(track, node, attr, triggerValue.value);
-        // value changed to trigger
         const cleanup = useEffect(() => {
           triggerValue.value = isSignal(val) ? val.value : val;
           patchAttribute(track, node, attr, triggerValue.value);
         });
 
         let cleanupBind;
-        // handle bind value
         if (props[updateKey] && !isComponent(attr)) {
           cleanupBind = bindNode(node, value => {
             props[updateKey](value);
@@ -279,7 +264,6 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
   if (isFunction(child)) {
     track.cleanup = useEffect(() => {
       const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
-      // the process of hydrating,not change dom
       if (!renderContext.isSSR) {
         track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
       }
@@ -287,7 +271,6 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
   } else {
     coerceArray(child).forEach((node, i) => {
       const newNode = coerceNode(node) as Node;
-      // the process of hydrating,not change dom
       if (!renderContext.isSSR) {
         track.lastNodes!.set(String(i), newNode);
         insertChild(parent, newNode, before);
@@ -295,7 +278,6 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
     });
   }
 }
-
 /**
  * Patch an attribute of a node.
  * If the data is a function, it will be called when the attribute is updated.

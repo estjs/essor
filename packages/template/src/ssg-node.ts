@@ -14,6 +14,7 @@ type TemplateCollection = Record<number, TemplateEntry>;
 export function isSSGNode(node: unknown): node is SSGNode {
   return node instanceof SSGNode;
 }
+let componentIndex = 1;
 export class SSGNode extends LifecycleContext {
   private childNodesMap: Record<string, EssorNode[]> = {};
   private templates: TemplateCollection = {};
@@ -36,13 +37,12 @@ export class SSGNode extends LifecycleContext {
         if (p1) {
           // if has key,skip
           if (p1.includes('__key')) return match;
-          return p1.replace(/<\s*([\da-z]+)(\s[^>]*)?>/i, (fullMatch, tagName, attrs) => {
-            return `<${tagName} __key="${index++}"${attrs || ''}>`;
+          return p1.replace(/<\s*([\da-z]+)(\s[^>]*)?>/i, (_, tagName, attrs) => {
+            return `<${tagName} __key="${componentIndex}-${index++}"${attrs || ''}>`;
           });
-        } else {
-          if (p2 && p2.replace(PLACEHOLDER, '').trim()) {
-            index++; // text node plus index
-          }
+        } else if (p2 && p2.replace(PLACEHOLDER, '').trim()) {
+          // Use comments to track text nodes
+          return `<!--__text__${componentIndex}-${index++}-->${p2}`;
         }
         return match;
       });
@@ -109,7 +109,7 @@ export class SSGNode extends LifecycleContext {
           if (content.includes('<!>')) {
             content = content.replace('<!>', this.renderChildren(this.childNodesMap[key]));
           } else {
-            content += this.renderChildren(this.childNodesMap[key]);
+            content = this.renderChildren(this.childNodesMap[key]) + content;
           }
         }
         return content;
@@ -141,10 +141,11 @@ function processChildren(
   const children = prop.children as EssorNode[] | undefined;
   if (children) {
     children.forEach(child => {
-      const [childNode, path] = isArray(child) ? child : [child, null];
+      componentIndex++;
+      const [childNode] = isArray(child) ? child : [child, null];
       if (isFunction(childNode)) {
         const result = childNode(prop);
-        handleChildResult(result, prop, key, tmp, path, childNodesMap);
+        handleChildResult(result, prop, key, tmp, childNodesMap);
       } else {
         tmp[key - 1] += extractSignal(childNode);
       }
@@ -156,13 +157,12 @@ function handleChildResult(
   prop: Props,
   key: number,
   tmp: string[],
-  path: string | null,
   childNodesMap: Record<string, EssorNode[]>,
 ): void {
   if (isSignal(result)) {
     tmp[key - 1] += result.value;
   } else if (isSSGNode(result)) {
-    const mapKey = path ?? key;
+    const mapKey = key;
     childNodesMap[mapKey] = childNodesMap[mapKey] || [];
     const childResult = result.mount();
     const resolvedResult = isFunction(childResult) ? childResult(prop) : extractSignal(childResult);

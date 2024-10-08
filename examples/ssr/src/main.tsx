@@ -1,5 +1,4 @@
 import { hydrate, renderToString } from 'essor';
-
 function Com1(props) {
   const children = props.children;
   return <div>111{children}</div>;
@@ -52,8 +51,6 @@ function App() {
           222<Com4></Com4>
         </div>
       </div>
-      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
-      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
       <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
     </div>
   );
