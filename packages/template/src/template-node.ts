@@ -16,12 +16,13 @@ import {
   removeChild,
   setAttribute,
 } from './utils';
-import { patchChildren } from './patch';
+import { getKey, patchChildren } from './patch';
 import { renderContext } from './render-context';
 import { createTemplate, isComponent } from './jsx-renderer';
+import { getComponentIndex } from './shared-config';
+import { componentType } from './ssg-node';
 import type { NodeTrack, Props } from '../types';
 
-let componentIndex = 1;
 export class TemplateNode implements JSX.Element {
   private treeMap = new Map<number, Node>();
   private mounted = false;
@@ -29,6 +30,7 @@ export class TemplateNode implements JSX.Element {
   private trackMap = new Map<string, NodeTrack>();
 
   private bindValueKeys: string[] = [];
+  componentIndex;
 
   constructor(
     public template: HTMLTemplateElement,
@@ -36,6 +38,9 @@ export class TemplateNode implements JSX.Element {
     public key?: string,
   ) {
     this.key ||= props?.key as string;
+    if (renderContext.isSSR) {
+      this.componentIndex = getComponentIndex(this.template);
+    }
   }
 
   addEventListener(): void {}
@@ -77,9 +82,8 @@ export class TemplateNode implements JSX.Element {
       this.mapSSGNodeTree(parent as HTMLElement);
     } else {
       this.mapNodeTree(parent, cloneNode);
-      insertChild(parent, cloneNode, before);
     }
-
+    insertChild(parent, cloneNode, before);
     this.patchProps(this.props);
     this.mounted = true;
     return this.nodes;
@@ -101,10 +105,8 @@ export class TemplateNode implements JSX.Element {
 
     Object.entries(props).forEach(([key, value]) => {
       const index = Number(key);
-
       // get node in treeMap
       const node = this.treeMap.get(index);
-
       if (node) {
         this.patchProp(key, node, value, index === 0);
       }
@@ -131,16 +133,18 @@ export class TemplateNode implements JSX.Element {
     const walk = (node: Node) => {
       if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
         if (node.nodeType === Node.COMMENT_NODE) {
-          if (node.textContent?.startsWith('__text__')) {
-            const [index, textKey] = node.textContent.replace('__text__', '').split('-');
-            if (+index === componentIndex) {
+          if (node.textContent?.startsWith(`${componentType.TEXT}`)) {
+            const [index, textKey] = node.textContent
+              .replace(`${componentType.TEXT}-`, '')
+              .split('-');
+            if (+index === this.componentIndex) {
               const textNode = node.nextSibling as Text;
               this.treeMap.set(+textKey, textNode);
             }
           }
         } else if (node.nodeType !== Node.TEXT_NODE) {
           const [index, keyAttr] = (node as HTMLElement)?.getAttribute('__key')?.split('-') || [];
-          if (keyAttr && +index === componentIndex) {
+          if (keyAttr && +index === this.componentIndex) {
             this.treeMap.set(+keyAttr, node);
           }
         }
@@ -153,16 +157,17 @@ export class TemplateNode implements JSX.Element {
     };
 
     walk(parent);
-
-    componentIndex++;
   }
 
   mapNodeTree(parent: Node, tree: Node): void {
     let index = 1;
     this.treeMap.set(0, parent);
+    const arr = [parent];
+
     const walk = (node: Node) => {
       if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
         this.treeMap.set(index++, node);
+        arr.push(node);
       }
       let child = node.firstChild;
       while (child) {
@@ -264,20 +269,63 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
   if (isFunction(child)) {
     track.cleanup = useEffect(() => {
       const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
-      if (!renderContext.isSSR) {
+
+      // Check if we are in hydration mode
+      if (renderContext.isSSR) {
+        // In SSR, reconcile with existing nodes
+        track.lastNodes = reconcileChildren(parent, nextNodes, before);
+      } else {
+        // In client-side rendering, patch normally
         track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
       }
     });
   } else {
-    coerceArray(child).forEach((node, i) => {
+    coerceArray(child).forEach((node, index) => {
       const newNode = coerceNode(node) as Node;
-      if (!renderContext.isSSR) {
-        track.lastNodes!.set(String(i), newNode);
+      const key = getKey(node, index);
+
+      // Check if we are in hydration mode
+      if (renderContext.isSSR) {
+        // In SSR, reconcile with existing nodes
+        track.lastNodes = reconcileChildren(parent, [newNode], before);
+      } else {
+        track.lastNodes!.set(key, newNode);
         insertChild(parent, newNode, before);
       }
     });
   }
 }
+
+function reconcileChildren(
+  parent: Node,
+  nextNodes: Node[],
+  before: Node | null,
+): Map<string, Node> {
+  const result = new Map<string, Node>();
+
+  const textNodes = Array.from(parent.childNodes).filter(
+    node =>
+      node.nodeType === Node.TEXT_NODE &&
+      node.previousSibling?.nodeType === Node.COMMENT_NODE &&
+      node.nextSibling?.nodeType === Node.COMMENT_NODE,
+  );
+
+  nextNodes.forEach((node, index) => {
+    const key = getKey(node, index);
+    if (node.nodeType === Node.TEXT_NODE) {
+      textNodes.forEach(ne => {
+        if (node.textContent === ne.textContent) {
+          parent.replaceChild(node, ne);
+        }
+      });
+    } else {
+      insertChild(parent, node, before);
+    }
+    result.set(key, node);
+  });
+  return result;
+}
+
 /**
  * Patch an attribute of a node.
  * If the data is a function, it will be called when the attribute is updated.

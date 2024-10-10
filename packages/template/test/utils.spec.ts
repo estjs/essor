@@ -11,6 +11,7 @@ import {
   removeChild,
   replaceChild,
   setAttribute,
+  splitHtmlString,
 } from '../src/utils';
 import { closeHtmlTags } from '../src/utils';
 
@@ -423,5 +424,69 @@ describe('closeHtmlTags', () => {
 
           </div></div></header>"
     `);
+  });
+});
+describe('splitHtmlString', () => {
+  it('should split simple HTML tags', () => {
+    const input = '<div><p></p></div>';
+    const expected = ['<div>', '<p>', '</p>', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle self-closing tags', () => {
+    const input = '<input type="text" placeholder="test"/>';
+    const expected = ['<input type="text" placeholder="test"/>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle HTML comments', () => {
+    const input = '<!-- This is a comment --><div></div>';
+    const expected = ['<!-- This is a comment -->', '<div>', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle special characters like <!>', () => {
+    const input = '1<!>2<!><div><!>7</div>';
+    const expected = ['1', '<!>', '2', '<!>', '<div>', '<!>', '7', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle mixed content with comments, tags, and text', () => {
+    const input = '<div><!-- comment -->Text<p>123</p></div>';
+    const expected = ['<div>', '<!-- comment -->', 'Text', '<p>', '123', '</p>', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should return an empty array when input is an empty string', () => {
+    const input = '';
+    const expected: string[] = [];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle text-only content', () => {
+    const input = 'This is a plain text.';
+    const expected = ['This is a plain text.'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle a mix of self-closing and regular tags', () => {
+    const input = '<br/><div><img src="test.jpg"/></div>';
+    const expected = ['<br/>', '<div>', '<img src="test.jpg"/>', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
+  });
+
+  it('should handle deeply nested tags', () => {
+    const input = '<div><p><span>Text</span></p></div>';
+    const expected = ['<div>', '<p>', '<span>', 'Text', '</span>', '</p>', '</div>'];
+    const result = splitHtmlString(input);
+    expect(result).toEqual(expected);
   });
 });

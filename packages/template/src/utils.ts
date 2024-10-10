@@ -282,10 +282,44 @@ export function convertToHtmlTag(tagName: string): string {
   }
 }
 
+/**
+ * Extracts the value from a signal if given, or returns the given value if not a signal.
+ * @param signal - The signal or value to extract.
+ * @returns The extracted value.
+ */
 export function extractSignal<T>(signal: T | Signal<T>): T {
   if (isSignal(signal)) {
     return signal.value;
   } else {
     return signal;
   }
+}
+
+// Checks if the current environment is a server.
+export const isServer = typeof window === 'undefined';
+
+export function parseHTMLToArray(htmlString: string): string[] {
+  const result: string[] = [];
+
+  const regex = /(<[^>]+>[^<]*)|(<!>)|([^<>]+)/g;
+  let match;
+
+  while ((match = regex.exec(htmlString)) !== null) {
+    if (match[1]) {
+      const fullTag = match[1].trim();
+      result.push(fullTag);
+    } else if (match[2]) {
+      result.push(match[2]);
+    } else if (match[3].trim() !== '') {
+      result.push(match[3].trim());
+    }
+  }
+
+  return result.flatMap(tag => {
+    if (/^<[^>]+>\d/.test(tag)) {
+      const tagEndIndex = tag.indexOf('>') + 1;
+      return [tag.slice(0, tagEndIndex), tag.slice(tagEndIndex)].filter(Boolean);
+    }
+    return tag;
+  });
 }
