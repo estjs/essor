@@ -282,7 +282,7 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
   } else {
     coerceArray(child).forEach((node, index) => {
       const newNode = coerceNode(node) as Node;
-      const key = getKey(node, index);
+      const key = getKey(newNode, index);
 
       // Check if we are in hydration mode
       if (renderContext.isSSR) {
