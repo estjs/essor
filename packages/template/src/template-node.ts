@@ -17,9 +17,8 @@ import {
   setAttribute,
 } from './utils';
 import { getKey, patchChildren } from './patch';
-import { renderContext } from './render-context';
+import { getComponentIndex, renderContext } from './shared-config';
 import { createTemplate, isComponent } from './jsx-renderer';
-import { getComponentIndex } from './shared-config';
 import { componentType } from './ssg-node';
 import type { NodeTrack, Props } from '../types';
 
@@ -133,19 +132,15 @@ export class TemplateNode implements JSX.Element {
     const walk = (node: Node) => {
       if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
         if (node.nodeType === Node.COMMENT_NODE) {
-          if (node.textContent?.startsWith(`${componentType.TEXT}`)) {
-            const [index, textKey] = node.textContent
-              .replace(`${componentType.TEXT}-`, '')
-              .split('-');
-            if (+index === this.componentIndex) {
-              const textNode = node.nextSibling as Text;
-              this.treeMap.set(+textKey, textNode);
-            }
+          const [type, index] = node.textContent?.split('-') || '';
+          if (componentType.TEXT === +type && +index === this.componentIndex) {
+            const textNode = node.nextSibling as Text;
+            this.treeMap.set(+index, textNode);
           }
         } else if (node.nodeType !== Node.TEXT_NODE) {
-          const [index, keyAttr] = (node as HTMLElement)?.getAttribute('__key')?.split('-') || [];
-          if (keyAttr && +index === this.componentIndex) {
-            this.treeMap.set(+keyAttr, node);
+          const { ci = '-1', hk } = (node as HTMLElement)?.dataset || {};
+          if (hk && +ci === this.componentIndex) {
+            this.treeMap.set(+hk, node);
           }
         }
       }
@@ -282,7 +277,7 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
   } else {
     coerceArray(child).forEach((node, index) => {
       const newNode = coerceNode(node) as Node;
-      const key = getKey(node, index);
+      const key = getKey(newNode, index);
 
       // Check if we are in hydration mode
       if (renderContext.isSSR) {

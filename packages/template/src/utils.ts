@@ -1,7 +1,7 @@
 import { isArray, isFalsy, kebabCase } from '@estjs/shared';
 import { type Signal, isSignal } from '@estjs/signal';
 import { isJsxElement } from './jsx-renderer';
-import { renderContext } from './render-context';
+import { renderContext } from './shared-config';
 import { isSSGNode } from './ssg-node';
 
 const selfClosingTags =

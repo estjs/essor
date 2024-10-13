@@ -1,5 +1,5 @@
 import { SSGNode } from './ssg-node';
-import { renderContext } from './render-context';
+import { renderContext } from './shared-config';
 import { h } from './jsx-renderer';
 import type { EssorComponent, Props } from '../types';
 

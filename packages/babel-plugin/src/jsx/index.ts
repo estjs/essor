@@ -18,7 +18,6 @@ import type { NodePath } from '@babel/core';
 
 export interface Result {
   index: number;
-  ssgIndex: Record<string, any>;
   isLastChild: boolean;
   parentIndex: number;
   props: Record<string, any>;
@@ -33,7 +32,6 @@ function addToTemplate(result: Result, content: string, join = false): void {
     } else {
       (result.template as string[]).push(content);
     }
-    setSSGIndex(result);
   } else {
     result.template += content;
   }
@@ -47,7 +45,6 @@ export function transformJSX(path: NodePath<JSXElement>): void {
     isLastChild: false,
     parentIndex: 0,
     props: {},
-    ssgIndex: {},
     template: isSsg ? [] : '',
   };
   transformJSXElement(path, result, true);
@@ -58,17 +55,6 @@ export function transformJSX(path: NodePath<JSXElement>): void {
 // Trim and replace multiple spaces/newlines with a single space
 function replaceSpace(node: t.JSXText): string {
   return node.value.replaceAll(/\s+/g, ' ').trim();
-}
-
-function setSSGIndex(result: Result): void {
-  if (isSsg && result.props) {
-    Object.keys(result.props).forEach(key => {
-      const idx = result.ssgIndex[key];
-      if (idx) {
-        result.props[key].__i = `${idx}`;
-      }
-    });
-  }
 }
 
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
@@ -163,10 +149,12 @@ function transformJSXElement(
       }
     } else {
       if (isSvg) {
-        result.template = isSsg ? ['<svg _svg_>'] : '<svg _svg_>';
+        result.template = isSsg
+          ? [`<svg _svg_  data-hk="${result.index}">`]
+          : `<svg _svg_  data-hk="${result.index}">`;
       }
 
-      addToTemplate(result, `<${tagName}`, true);
+      addToTemplate(result, `<${tagName} data-hk="${result.index}"`, true);
       handleAttributes(props, result);
       addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
 
@@ -200,7 +188,6 @@ function transformChildren(path: NodePath<JSXElement>, result: Result): void {
     }, [] as NodePath<JSXChild>[])
     .forEach((child, i, arr) => {
       result.parentIndex = parentIndex;
-      result.ssgIndex[parentIndex] = result.template.length;
       result.isLastChild = i === arr.length - 1;
       transformChild(child, result);
     });
@@ -213,7 +200,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
   } else if (child.isJSXExpressionContainer()) {
     const expression = child.get('expression');
     if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      addToTemplate(result, String(expression.node.value));
+      addToTemplate(result, `${expression.node.value}`, true);
     } else if (expression.isExpression()) {
       replaceChild(expression.node, result);
     } else if (t.isJSXEmptyExpression(expression.node)) {
@@ -274,8 +261,6 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
 
   klass = klass.trim();
   style = style.trim();
-
-  result.ssgIndex[result.index] = result.template.length;
 
   if (klass) {
     addToTemplate(result, ` class="${klass}"`);
