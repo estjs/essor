@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.13-beta.2](https://github.com/estjs/essor/compare/v0.0.13-beta.1...v0.0.13-beta.2) `2024-10-13`
+
+
+### Bug Fixes
+
+* fix get node key ([8df409a](https://github.com/estjs/essor/commit/8df409a09137745535acdc7ed9b3a4e37fd02a83))
+
+
+
+
 
 
 
