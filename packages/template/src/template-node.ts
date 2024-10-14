@@ -4,6 +4,7 @@ import {
   isArray,
   isFunction,
   isNil,
+  isPrimitive,
   startsWith,
 } from '@estjs/shared';
 import { isSignal, useEffect, useSignal } from '@estjs/signal';
@@ -95,6 +96,23 @@ export class TemplateNode implements JSX.Element {
     this.trackMap.clear();
     this.treeMap.clear();
     this.nodes.forEach(node => removeChild(node));
+
+    // Fragment
+    if (!this.template.innerHTML && !this.nodes.length) {
+      this.props &&
+        this.props[0].children.forEach(i => {
+          if (isPrimitive(i)) {
+            this.parent?.childNodes.forEach(node => {
+              if (node.nodeType === Node.TEXT_NODE && node.textContent === `${i as any}`) {
+                this.parent?.removeChild(node);
+              }
+            });
+          } else {
+            removeChild(i);
+          }
+        });
+    }
+
     this.nodes = [];
     this.mounted = false;
   }
@@ -273,6 +291,7 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
         // In client-side rendering, patch normally
         track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
       }
+      console.log(track.lastNodes, nextNodes);
     });
   } else {
     coerceArray(child).forEach((node, index) => {

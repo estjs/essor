@@ -66,15 +66,10 @@ export function createTemplate(html: string): HTMLTemplateElement {
   return template;
 }
 
-/**
- * A built-in component for grouping JSX elements without adding a new node to the DOM.
- *
- * The `Fragment` component takes a single prop, `children`, which should be a JSX element.
- * It returns the `children` prop, which is the JSX element passed to it.
- *
- * It is used to group JSX elements without adding a new node to the DOM.
- *
- */
-export function Fragment<T = JSX.Element | JSX.Element[]>(props: { children: T }): T {
-  return props.children;
+export function Fragment<
+  T extends JSX.JSXElement | (JSX.JSXElement | string | number | boolean)[],
+>(props: { children: T }) {
+  return h('', {
+    children: Array.isArray(props.children) ? props.children.filter(Boolean) : [props.children],
+  });
 }

@@ -15,6 +15,7 @@ const pageData = useReactive({
   pageType: 'doc',
 });
 function App() {
+  const $v = 123;
   const content = useComputed(() => {
     let content;
 
@@ -26,6 +27,8 @@ function App() {
         content = (
           <Fragment>
             <Doc></Doc>
+            {pageData.pageType}1{$v}
+            <DocHomeLayout />
           </Fragment>
         );
         break;
