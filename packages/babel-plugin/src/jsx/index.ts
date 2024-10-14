@@ -23,10 +23,10 @@ export interface Result {
   props: Record<string, any>;
   template: string | string[];
 }
-let isSsg = false;
+let isSSG = false;
 
 function addToTemplate(result: Result, content: string, join = false): void {
-  if (isSsg) {
+  if (isSSG) {
     if (join && result.template.length > 0) {
       (result.template as string[])[result.template.length - 1] += content;
     } else {
@@ -38,14 +38,14 @@ function addToTemplate(result: Result, content: string, join = false): void {
 }
 export function transformJSX(path: NodePath<JSXElement>): void {
   const state: State = path.state;
-  isSsg = state.opts.ssg;
+  isSSG = state.opts.ssg;
 
   const result: Result = {
     index: 1,
     isLastChild: false,
     parentIndex: 0,
     props: {},
-    template: isSsg ? [] : '',
+    template: isSSG ? [] : '',
   };
   transformJSXElement(path, result, true);
 
@@ -66,11 +66,11 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     : path.scope.generateUidIdentifier('_tmpl$');
 
   if (!isComponent) {
-    const template = isSsg
+    const template = isSSG
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
       : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
     state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, template));
-    if (!isSsg) {
+    if (!isSSG) {
       imports.add('template');
     }
   }
@@ -80,7 +80,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     args.push(t.identifier(`${key}`));
   }
 
-  const fnName = isSsg ? 'ssg' : 'h';
+  const fnName = isSSG ? 'ssg' : 'h';
   imports.add(fnName);
   return t.callExpression(state[fnName], args);
 }
@@ -149,18 +149,16 @@ function transformJSXElement(
       }
     } else {
       if (isSvg) {
-        result.template = isSsg
-          ? [`<svg _svg_  data-hk="${result.index}">`]
-          : `<svg _svg_  data-hk="${result.index}">`;
+        result.template = isSSG ? [`<svg _svg_  data-hk="${result.index}">`] : `<svg _svg_ >`;
       }
 
-      addToTemplate(result, `<${tagName} data-hk="${result.index}"`, true);
+      addToTemplate(result, `<${tagName}${isSSG ? ` data-hk="${result.index}"` : ''}`, true);
       handleAttributes(props, result);
       addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
 
       if (!isSelfClose) {
         transformChildren(path, result);
-        if (hasSiblingElement(path) || isSsg) {
+        if (hasSiblingElement(path) || isSSG) {
           addToTemplate(result, `</${tagName}>`);
         }
       }
