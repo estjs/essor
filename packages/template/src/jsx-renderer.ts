@@ -75,22 +75,6 @@ export function createTemplate(html: string): HTMLTemplateElement {
  * It is used to group JSX elements without adding a new node to the DOM.
  *
  */
-export function Fragment(props: { children: JSX.Element }): JSX.Element {
+export function Fragment<T = JSX.Element | JSX.Element[]>(props: { children: T }): T {
   return props.children;
-}
-/**
- * Splits an HTML string into its component parts. The following types of elements are detected:
- *   1. HTML comments (`<!-- -->`)
- *   2. Self-closing tags (`<tag/>`)
- *   3. Opening tags (`<tag>`)
- *   4. Closing tags (`</tag>`)
- *   5. Numbers (`\d+`)
- *   6. Text elements (`[^<>]+`)
- * @param str - The HTML string to split.
- * @returns An array of the split elements.
- */
-export function splitHtmlString(str: string): string[] {
-  const closed = closeHtmlTags(str);
-  const splitReg = /<!--[\S\s]*?-->|<[^>]+\/>|<[^>]+>|<!>|\d+|[^<>]+/g;
-  return (closed.match(splitReg) || []).filter(Boolean);
 }

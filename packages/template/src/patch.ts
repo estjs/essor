@@ -12,7 +12,7 @@ export function patchChildren(
   const result = new Map<string, AnyNode>();
   const children = Array.from(childrenMap.values());
 
-  if (childrenMap.size > 0 && nextChildren.length === 0) {
+  if (children.length && nextChildren.length === 0) {
     clearChildren(parent, children, before);
     return result;
   }
@@ -54,7 +54,9 @@ export function patchChildren(
     result.set(key, child);
   }
 
-  replaces.forEach(([placeholder, child]) => replaceChild(parent, child, placeholder));
+  replaces.forEach(([placeholder, child]) => {
+    replaceChild(parent, child, placeholder);
+  });
 
   childrenMap.forEach((child, key) => {
     if (child.isConnected && !result.has(key)) {
