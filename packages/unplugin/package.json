@@ -98,7 +98,7 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.25.7",
+    "@babel/core": "^7.25.8",
     "babel-plugin-essor": "workspace:*",
     "unplugin": "^1.14.1"
   },
@@ -108,8 +108,8 @@
     "fast-glob": "^3.3.2",
     "rollup": "^4.24.0",
     "tsup": "^8.3.0",
-    "typescript": "^5.6.2",
-    "vite": "^5.4.8",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.9",
     "webpack": "^5.95.0"
   }
 }
