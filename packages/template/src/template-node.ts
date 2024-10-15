@@ -99,7 +99,7 @@ export class TemplateNode implements JSX.Element {
 
     // Fragment
     if (!this.template.innerHTML && !this.nodes.length) {
-      this.props &&
+      this.props?.[0]?.children &&
         this.props[0].children.forEach(i => {
           if (isPrimitive(i)) {
             this.parent?.childNodes.forEach(node => {
@@ -291,7 +291,6 @@ function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node
         // In client-side rendering, patch normally
         track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
       }
-      console.log(track.lastNodes, nextNodes);
     });
   } else {
     coerceArray(child).forEach((node, index) => {
