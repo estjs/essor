@@ -1,4 +1,4 @@
-import { isFunction, isString } from '@estjs/shared';
+import { isArray, isFunction, isString } from '@estjs/shared';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
@@ -70,6 +70,6 @@ export function Fragment<
   T extends JSX.JSXElement | (JSX.JSXElement | string | number | boolean)[],
 >(props: { children: T }) {
   return h('', {
-    children: Array.isArray(props.children) ? props.children.filter(Boolean) : [props.children],
+    children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
   });
 }
