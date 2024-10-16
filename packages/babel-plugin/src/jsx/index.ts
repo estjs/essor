@@ -23,6 +23,7 @@ export interface Result {
   props: Record<string, any>;
   template: string | string[];
 }
+
 let isSSG = false;
 
 function addToTemplate(result: Result, content: string, join = false): void {
@@ -36,6 +37,7 @@ function addToTemplate(result: Result, content: string, join = false): void {
     result.template += content;
   }
 }
+
 export function transformJSX(path: NodePath<JSXElement>): void {
   const state: State = path.state;
   isSSG = state.opts.ssg;
@@ -51,7 +53,6 @@ export function transformJSX(path: NodePath<JSXElement>): void {
 
   path.replaceWith(createEssorNode(path, result));
 }
-
 // Trim and replace multiple spaces/newlines with a single space
 function replaceSpace(node: t.JSXText): string {
   return node.value.replaceAll(/\s+/g, ' ').trim();
@@ -74,10 +75,13 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
       imports.add('template');
     }
   }
+
+  const key = result.props.key;
+  delete result.props.key;
+
   const args = [tmpl, createProps(result.props)];
-  const key = result.props.key || result.props[0]?.key;
   if (key) {
-    args.push(t.identifier(`${key}`));
+    args.push(key);
   }
 
   const fnName = isSSG ? 'ssg' : 'h';
@@ -85,7 +89,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   return t.callExpression(state[fnName], args);
 }
 
-function createProps(props) {
+function createProps(props: Record<string, any>): t.ObjectExpression {
   const toAstNode = value => {
     if (isArray(value)) {
       return t.arrayExpression(value.map(toAstNode));
@@ -102,7 +106,6 @@ function createProps(props) {
       case 'boolean':
         return t.booleanLiteral(value);
       case 'undefined':
-        return t.tsUndefinedKeyword();
       case undefined:
         return t.tsUndefinedKeyword();
       case null:
@@ -112,17 +115,15 @@ function createProps(props) {
     }
   };
 
-  const result = Object.keys(props)
-    .filter(prop => prop !== 'key')
-    .map(prop => {
-      const value = toAstNode(props[prop]);
-      return prop === '_$spread$'
-        ? t.spreadElement(value)
-        : t.objectProperty(t.stringLiteral(prop), value);
-    });
+  const result = Object.entries(props).map(([prop, value]) =>
+    prop === '_$spread$'
+      ? t.spreadElement(toAstNode(value))
+      : t.objectProperty(t.stringLiteral(prop), toAstNode(value)),
+  );
 
   return t.objectExpression(result);
 }
+
 function transformJSXElement(
   path: NodePath<JSXElement>,
   result: Result,
@@ -134,38 +135,66 @@ function transformJSXElement(
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && result.index === 1;
     const { props, hasExpression } = getAttrProps(path);
+
+    //  key
+    if (props.key) {
+      result.props.key = props.key;
+      delete props.key;
+    }
+
     if (tagIsComponent) {
-      if (isRoot) {
-        result.props = props;
-        const children = getChildren(path);
-        if (children.length > 0) {
-          const childrenGenerator =
-            children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
-          result.props.children = childrenGenerator;
-        }
-      } else {
-        transformJSX(path);
-        replaceChild(path.node, result);
-      }
+      handleComponentElement(path, result, isRoot, props);
     } else {
-      if (isSvg) {
-        result.template = isSSG ? [`<svg _svg_  data-hk="${result.index}">`] : `<svg _svg_ >`;
-      }
-
-      addToTemplate(result, `<${tagName}${isSSG ? ` data-hk="${result.index}"` : ''}`, true);
-      handleAttributes(props, result);
-      addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
-
-      if (!isSelfClose) {
-        transformChildren(path, result);
-        if (hasSiblingElement(path) || isSSG) {
-          addToTemplate(result, `</${tagName}>`);
-        }
-      }
+      handleHTMLElement(path, result, tagName, isSelfClose, isSvg, props, hasExpression);
     }
   } else {
     result.index--;
     transformChildren(path, result);
+  }
+}
+
+function handleComponentElement(
+  path: NodePath<JSXElement>,
+  result: Result,
+  isRoot: boolean,
+  props: Record<string, any>,
+): void {
+  if (isRoot) {
+    result.props = props;
+    const children = getChildren(path);
+    if (children.length > 0) {
+      const childrenGenerator =
+        children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
+      result.props.children = childrenGenerator;
+    }
+  } else {
+    transformJSX(path);
+    replaceChild(path.node, result);
+  }
+}
+
+function handleHTMLElement(
+  path: NodePath<JSXElement>,
+  result: Result,
+  tagName: string,
+  isSelfClose: boolean,
+  isSvg: boolean,
+  props: Record<string, any>,
+  hasExpression: boolean,
+): void {
+  if (isSvg) {
+    result.template = isSSG ? [`<svg _svg_  data-hk="${result.index}">`] : `<svg _svg_ >`;
+  }
+
+  addToTemplate(result, `<${tagName}${isSSG ? ` data-hk="${result.index}"` : ''}`, true);
+  handleAttributes(props, result);
+  addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
+
+  if (!isSelfClose) {
+    transformChildren(path, result);
+    if (hasSiblingElement(path) || isSSG) {
+      addToTemplate(result, `</${tagName}>`);
+    }
   }
 }
 
@@ -213,7 +242,6 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
     throw new Error('Unsupported child type');
   }
 }
-
 function getNodeText(path: NodePath<JSXChild>): string {
   if (path.isJSXText()) {
     return replaceSpace(path.node);
@@ -257,14 +285,11 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
     result.props[result.index] = props;
   }
 
-  klass = klass.trim();
-  style = style.trim();
-
-  if (klass) {
-    addToTemplate(result, ` class="${klass}"`);
+  if (klass.trim()) {
+    addToTemplate(result, ` class="${klass.trim()}"`);
   }
-  if (style) {
-    addToTemplate(result, ` style="${style}"`);
+  if (style.trim()) {
+    addToTemplate(result, ` style="${style.trim()}"`);
   }
 }
 

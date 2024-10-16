@@ -19,6 +19,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     public key?: string,
   ) {
     super();
+    this.key ||= props?.key as string;
     this.proxyProps = this.createProxyProps(props);
   }
 

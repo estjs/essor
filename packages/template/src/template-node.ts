@@ -43,6 +43,7 @@ export class TemplateNode implements JSX.Element {
     public key?: string,
   ) {
     this.key ||= props?.key as string;
+
     if (renderContext.isSSR) {
       this.componentIndex = getComponentIndex(this.template);
     }
@@ -108,22 +109,33 @@ export class TemplateNode implements JSX.Element {
 
     // Fragment
     if (!this.template.innerHTML && !this.nodes.length) {
-      this.props?.[FRAGMENT_PROP_KEY]?.children &&
-        this.props[FRAGMENT_PROP_KEY].children.forEach(i => {
-          if (isPrimitive(i)) {
-            this.parent?.childNodes.forEach(node => {
-              if (node.nodeType === Node.TEXT_NODE && node.textContent === `${i as any}`) {
-                this.parent?.removeChild(node);
-              }
-            });
-          } else {
-            removeChild(i);
-          }
-        });
+      const children = this.props?.[FRAGMENT_PROP_KEY]?.children;
+
+      if (children) {
+        if (isArray(children)) {
+          children.forEach(child => {
+            this.deleteFragmentTextNode(child);
+          });
+        } else {
+          this.deleteFragmentTextNode(children);
+        }
+      }
     }
 
     this.nodes = [];
     this.mounted = false;
+  }
+
+  deleteFragmentTextNode(child) {
+    if (isPrimitive(child)) {
+      this.parent?.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
+          this.parent?.removeChild(node);
+        }
+      });
+    } else {
+      removeChild(child);
+    }
   }
 
   // Method to inherit properties from another TemplateNode
@@ -188,7 +200,7 @@ export class TemplateNode implements JSX.Element {
   }
 
   // Method to patch props onto the node
-  patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
+  private patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
 
     Object.entries(props).forEach(([key, value]) => {
@@ -208,6 +220,7 @@ export class TemplateNode implements JSX.Element {
     props: Record<string, unknown>,
     isRoot: boolean,
   ): void {
+    if (!props) return;
     Object.entries(props).forEach(([attr, value]) => {
       if (attr === CHILDREN_PROP && value) {
         this.patchChildren(key, node, value, isRoot);

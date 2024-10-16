@@ -77,5 +77,5 @@ export function enterComponent(temp, index) {
 
 // Function to get the index of a component
 export function getComponentIndex(temp) {
-  return componentMap.get(temp).index;
+  return componentMap.get(temp)?.index;
 }

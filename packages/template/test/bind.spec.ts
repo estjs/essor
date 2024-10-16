@@ -1,5 +1,5 @@
 import { useSignal } from '@estjs/signal';
-import { h as _h$, template as _template$ } from '../src';
+import { h as _h$ } from '../src';
 import { mount } from './test-utils';
 
 describe('bind value', () => {
@@ -8,38 +8,32 @@ describe('bind value', () => {
   let signal;
   function inoutBind() {
     signal = useSignal('hello');
-    return _h$(_template$('<input/>'), {
-      '1': {
-        value: signal.value,
-        updateValue: _value => (signal.value = _value),
-      },
+    return _h$('input', {
+      value: signal.value,
+      updateValue: _value => (signal.value = _value),
     });
   }
   function Component(props) {
-    return _h$(_template$('<p>'), {
-      '1': {
-        onClick: () => {
-          props.updateValue('Component');
-        },
-        children: [[() => props.value, null]],
+    return _h$('p', {
+      onClick: () => {
+        props.updateValue('Component');
       },
+      children: [[() => props.value, null]],
     });
   }
   function componentBind() {
     const signal = useSignal('hello');
-    return _h$(_template$(''), {
-      '0': {
-        children: [
-          [
-            () =>
-              _h$(Component, {
-                value: signal,
-                updateValue: _value2 => (signal.value = _value2),
-              }),
-            null,
-          ],
+    return _h$('', {
+      children: [
+        [
+          () =>
+            _h$(Component, {
+              value: signal,
+              updateValue: _value2 => (signal.value = _value2),
+            }),
+          null,
         ],
-      },
+      ],
     });
   }
 
