@@ -1,12 +1,18 @@
 import { useComputed, useReactive } from './signal';
 
-interface StoreOptions<S, G, A> {
-  state?: S;
+interface StoreOptions<
+  S extends object,
+  G extends Record<string, (...args: any[]) => any>,
+  A extends Record<string, (...args: any[]) => any>,
+> {
+  state: S;
   getters?: G;
   actions?: A;
 }
+
 type PatchPayload = Record<string, any>;
 type Callback = (value: any) => void;
+
 export interface StoreActions {
   patch$: (payload: PatchPayload) => void;
   subscribe$: (callback: Callback) => void;
@@ -15,19 +21,19 @@ export interface StoreActions {
   reset$: () => void;
 }
 
-type Getters<S> = {
-  [K in keyof S]: S[K] extends (...args: any[]) => any ? ReturnType<S[K]> : S[K];
+type Getters<G extends Record<string, (...args: any[]) => any>> = {
+  [K in keyof G]: ReturnType<G[K]>;
 };
 
-function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
-  const { state, getters, actions } = options as StoreOptions<
-    Record<string | symbol, any>,
-    Record<string, Function>,
-    Record<string, Function>
-  >;
+function createOptionsStore<
+  S extends object,
+  G extends Record<string, (...args: any[]) => any>,
+  A extends Record<string, (...args: any[]) => any>,
+>(options: StoreOptions<S, G, A>) {
+  const { state, getters, actions } = options;
 
-  const initState = { ...(state ?? {}) };
-  const reactiveState = useReactive(state ?? {});
+  const initState = { ...state };
+  const reactiveState = useReactive(state);
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];
@@ -55,75 +61,117 @@ function createOptionsStore<S, G, A>(options: StoreOptions<S, G, A>) {
   };
 
   const store = {
+    ...reactiveState,
     state: reactiveState,
     ...default_actions,
-  } as S & Getters<G> & A & StoreActions & { state: S };
+  } as unknown as S & Getters<G> & A & StoreActions & { state: S };
 
-  for (const key in getters) {
-    const getter = getters[key];
-    if (getter) {
-      Object.defineProperty(store, key, {
-        get() {
-          return useComputed(getter.bind(reactiveState, reactiveState)).value;
-        },
-        enumerable: true,
-        configurable: true,
-      });
+  if (getters) {
+    for (const key in getters) {
+      const getter = getters[key];
+      if (getter) {
+        Object.defineProperty(store, key, {
+          get() {
+            return useComputed(() => getter.call(store, reactiveState)).value;
+          },
+          enumerable: true,
+          configurable: true,
+        });
+      }
     }
   }
 
-  for (const key in actions) {
-    const action = actions[key];
-    if (action) {
-      store[key] = action.bind(reactiveState);
+  if (actions) {
+    for (const key in actions) {
+      const action = actions[key];
+      if (action) {
+        (store as any)[key] = function (...args: any[]) {
+          const result = action.apply(reactiveState, args);
+          actionCallbacks.forEach(callback => callback(reactiveState));
+          return result;
+        };
+      }
     }
   }
 
   return store;
 }
 
-/**
- * Creates a reactive store with the given options.
- *
- * The `createStore` function accepts an options object with the following properties:
- *
- * - `state`: The initial state of the store.
- * - `getters`: An object with functions that compute derived properties from the state.
- * - `actions`: An object with functions that can change the state.
- *
- * The function returns a new store function. Each time the returned function is called,
- * it returns the same store instance. The store instance is an object that contains the
- * current state, getters and actions.
- *
- * @example
- * const useCounterStore = createStore({
- *   state: { count: 0 },
- *   getters: {
- *     doubleCount(state) {
- *       return state.count * 2;
- *     },
- *   },
- *   actions: {
- *     increment() {
- *       this.count++;
- *     },
- *   },
- * });
- *
- * const counterStore = useCounterStore();
- * console.log(counterStore.state.count); // 0
- * counterStore.increment();
- * console.log(counterStore.state.count); // 1
- * console.log(counterStore.doubleCount.value); // 2
- */
-export function createStore<S, G, A>(
-  options: {
-    state: S;
-    getters?: G;
-    actions?: A;
-  } & ThisType<S & Getters<G> & A>,
-): () => S & Getters<G> & A & StoreActions & { state: S } {
+type StoreDefinition<
+  T extends object,
+  G extends Record<string, (...args: any[]) => any>,
+  A extends Record<string, (...args: any[]) => any>,
+> =
+  | (new () => T)
+  | ({
+      state: T;
+      getters?: G;
+      actions?: A;
+    } & ThisType<T & Getters<G> & A & StoreActions>);
+
+export function createStore<
+  T extends object,
+  G extends Record<string, (...args: any[]) => any>,
+  A extends Record<string, (...args: any[]) => any>,
+>(
+  storeDefinition: StoreDefinition<T, G, A>,
+): () => T & Getters<G> & A & StoreActions & { state: T } {
   return function () {
-    return createOptionsStore<S, G, A>(options);
+    let options: StoreOptions<T, G, A>;
+
+    if (typeof storeDefinition === 'function') {
+      options = createClassStore(storeDefinition) as StoreOptions<T, G, A>;
+    } else {
+      options = storeDefinition;
+    }
+
+    const store = createOptionsStore(options);
+
+    // For class-based stores, we need to bind methods to the store
+    if (typeof storeDefinition === 'function') {
+      Object.keys(options.actions || {}).forEach(key => {
+        (store as any)[key] = (options.actions as any)[key].bind(store);
+      });
+    }
+
+    return store;
+  };
+}
+
+function createClassStore<T extends object>(
+  StoreClass: new () => T,
+): StoreOptions<
+  T,
+  Record<string, (...args: any[]) => any>,
+  Record<string, (...args: any[]) => any>
+> {
+  const instance = new StoreClass();
+  const state = Object.create(null);
+  const getters: Record<string, (...args: any[]) => any> = {};
+  const actions: Record<string, (...args: any[]) => any> = {};
+
+  Object.getOwnPropertyNames(instance).forEach(key => {
+    state[key] = instance[key];
+  });
+
+  Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
+    const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
+    if (descriptor) {
+      if (typeof descriptor.get === 'function') {
+        getters[key] = function (this: T) {
+          return descriptor.get!.call(this);
+        };
+      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
+        actions[key] = function (this: T, ...args: any[]) {
+          return descriptor.value.apply(this, args);
+        };
+      }
+    }
+  });
+
+  return {
+    state,
+    getters,
+    actions,
   };
 }

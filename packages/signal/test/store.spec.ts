@@ -1,16 +1,12 @@
 import { createStore } from '../src';
 
-describe('createStore', () => {
-  it('create store with state, getters, and actions', () => {
+describe('object-based store', () => {
+  it('should create store with state, getters, and actions', () => {
     const useStore = createStore({
       state: { count: 0 },
       getters: {
-        doubleCount: state => {
-          return state.count * 2;
-        },
-        thirdCount: state => {
-          return state.count * 3;
-        },
+        doubleCount: state => state.count * 2,
+        thirdCount: state => state.count * 3,
       },
       actions: {
         increment() {
@@ -19,7 +15,6 @@ describe('createStore', () => {
         decrement() {
           this.count--;
         },
-
         addDoubleCount() {
           this.count += 2;
         },
@@ -44,7 +39,40 @@ describe('createStore', () => {
     expect(store.doubleCount).toBe(4);
     expect(store.thirdCount).toBe(6);
   });
+
+  it('should create store with only state', () => {
+    const useStore = createStore({
+      state: { value: 'test' },
+    });
+    const store = useStore();
+    expect(store.value).toBe('test');
+  });
 });
+
+describe('class-based store', () => {
+  it('should create store from a class', () => {
+    class TestStore {
+      count = 0;
+
+      get doubleCount() {
+        return this.count * 2;
+      }
+
+      increment() {
+        this.count++;
+      }
+    }
+
+    const useStore = createStore(TestStore);
+    const store = useStore();
+    expect(store.count).toBe(0);
+    expect(store.doubleCount).toBe(0);
+    store.increment();
+    expect(store.count).toBe(1);
+    expect(store.doubleCount).toBe(2);
+  });
+});
+
 describe('store Methods', () => {
   it('should correctly patch the state', () => {
     const useTestStore = createStore({
@@ -61,13 +89,10 @@ describe('store Methods', () => {
       state: { value: 0 },
     });
     const store = useTestStore();
-    let callbackCalled = false;
-    const callback = () => {
-      callbackCalled = true;
-    };
+    const callback = vitest.fn();
     store.subscribe$(callback);
     store.patch$({ value: 42 });
-    expect(callbackCalled).toBe(true);
+    expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
   });
 
   it('should execute onAction callbacks', () => {
@@ -75,16 +100,13 @@ describe('store Methods', () => {
       state: { value: 0 },
     });
     const store = useTestStore();
-    let callbackCalled = false;
-    const callback = () => {
-      callbackCalled = true;
-    };
+    const callback = vitest.fn();
     store.onAction$(callback);
     store.patch$({ value: 42 });
-    expect(callbackCalled).toBe(true);
+    expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
   });
 
-  it('should  correctly', () => {
+  it('should unsubscribe correctly', () => {
     const useTestStore = createStore({
       state: { value: 0 },
     });
@@ -92,7 +114,7 @@ describe('store Methods', () => {
     const callback = vitest.fn();
     store.subscribe$(callback);
     store.patch$({ value: 42 });
-    expect(callback).toHaveBeenCalled();
+    expect(callback).toHaveBeenCalledTimes(1);
 
     store.unsubscribe$(callback);
     store.patch$({ value: 43 });
@@ -107,5 +129,19 @@ describe('store Methods', () => {
     store.patch$({ value: 42 });
     store.reset$();
     expect(store.state.value).toBe(0);
+  });
+
+  it('should handle multiple subscribers', () => {
+    const useTestStore = createStore({
+      state: { value: 0 },
+    });
+    const store = useTestStore();
+    const callback1 = vitest.fn();
+    const callback2 = vitest.fn();
+    store.subscribe$(callback1);
+    store.subscribe$(callback2);
+    store.patch$({ value: 42 });
+    expect(callback1).toHaveBeenCalledTimes(1);
+    expect(callback2).toHaveBeenCalledTimes(1);
   });
 });
