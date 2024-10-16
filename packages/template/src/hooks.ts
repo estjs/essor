@@ -12,7 +12,7 @@ import { LifecycleContext } from './lifecycle-context';
  */
 export function onMount(cb: () => void): void {
   assertInsideComponent('onMounted');
-  LifecycleContext.ref?.addHook('mounted', cb);
+  LifecycleContext.ref && LifecycleContext.ref.addHook('mounted', cb);
 }
 
 /**
@@ -25,7 +25,7 @@ export function onMount(cb: () => void): void {
  */
 export function onDestroy(cb: () => void): void {
   assertInsideComponent('onDestroy');
-  LifecycleContext.ref?.addHook('destroy', cb);
+  LifecycleContext.ref && LifecycleContext.ref.addHook('destroy', cb);
 }
 
 function assertInsideComponent(hookName: string, key?: unknown) {
@@ -36,6 +36,7 @@ function assertInsideComponent(hookName: string, key?: unknown) {
     );
   }
 }
+
 // eslint-disable-next-line @typescript-eslint/no-wrapper-object-types, unused-imports/no-unused-vars
 export interface InjectionKey<T> extends Symbol {}
 
@@ -51,11 +52,11 @@ export interface InjectionKey<T> extends Symbol {}
 export function useProvide<T, K = InjectionKey<T> | string | number>(
   key: K,
   value: K extends InjectionKey<infer V> ? V : T,
-) {
+): void {
   assertInsideComponent('useProvide', key);
-
-  LifecycleContext.ref?.setContext(key as string, value);
+  LifecycleContext.ref && LifecycleContext.ref.setContext(key as string, value);
 }
+
 /**
  * Injects a value from the current component LifecycleContext.
  *
@@ -73,7 +74,7 @@ export function useInject<T, K = InjectionKey<T> | string | number>(
   defaultValue?: K extends InjectionKey<infer V> ? V : T,
 ): (K extends InjectionKey<infer V> ? V : T) | undefined {
   assertInsideComponent('useInject', key);
-  return LifecycleContext.ref?.getContext(key as string) || defaultValue;
+  return (LifecycleContext.ref && LifecycleContext.ref.getContext(key as string)) ?? defaultValue;
 }
 
 /**
@@ -83,13 +84,12 @@ export function useInject<T, K = InjectionKey<T> | string | number>(
  * @returns a reactive ref signal
  *
  * @example
- * const inputRef = useRef(')
+ * const inputRef = useRef<HTMLInputElement>()
  *
  * <input ref={inputRef} />
  *
  * inputRef.value // input element
  */
 export function useRef<T>(): Signal<T | null> {
-  const ref = shallowSignal<T | null>(null);
-  return ref;
+  return shallowSignal<T | null>(null);
 }

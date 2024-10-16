@@ -2,7 +2,10 @@ import { isArray, isFunction, isString } from '@estjs/shared';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
+import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './shared-config';
 import type { EssorComponent, EssorNode, Props } from '../types';
+
+// 新增：常量定义
 
 /**
  * Creates a JSX element from a given template.
@@ -20,17 +23,18 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 ): JSX.Element {
   if (isString(template)) {
     if (isHtmlTagName(template)) {
-      (template as string) = convertToHtmlTag(template);
-      props = { '1': props };
-    } else if (template === '') {
-      props = { '0': props };
+      const htmlTemplate = convertToHtmlTag(template);
+      props = { [SINGLE_PROP_KEY]: props };
+      return new TemplateNode(createTemplate(htmlTemplate), props, key);
+    } else if (template === EMPTY_TEMPLATE) {
+      props = { [FRAGMENT_PROP_KEY]: props };
+      return new TemplateNode(createTemplate(EMPTY_TEMPLATE), props, key);
     }
-    template = createTemplate(template);
   }
 
   return isFunction(template)
     ? new ComponentNode(template, props, key)
-    : new TemplateNode(template, props, key);
+    : new TemplateNode(template as HTMLTemplateElement, props, key);
 }
 
 /**
@@ -66,10 +70,21 @@ export function createTemplate(html: string): HTMLTemplateElement {
   return template;
 }
 
+/**
+ * @param props - An object containing the `children` prop.
+ * @param props.children - The children to be rendered. Can be a single JSX element, string, number, boolean,
+ *                         or an array of these. Falsy values in arrays will be filtered out.
+ * @returns A JSX element representing the fragment, wrapping the filtered children.
+ */
 export function Fragment<
-  T extends JSX.JSXElement | (JSX.JSXElement | string | number | boolean)[],
+  T extends
+    | JSX.JSXElement
+    | string
+    | number
+    | boolean
+    | (JSX.JSXElement | string | number | boolean)[],
 >(props: { children: T }) {
-  return h('', {
+  return h(EMPTY_TEMPLATE, {
     children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
   });
 }

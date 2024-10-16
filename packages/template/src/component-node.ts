@@ -2,10 +2,11 @@ import { isFunction, startsWith } from '@estjs/shared';
 import { type Signal, useEffect, useReactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycle-context';
+import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './shared-config';
 import type { TemplateNode } from './template-node';
 import type { EssorComponent, NodeTrack, Props } from '../types';
 
-// render essor component node
+// Class representing a component node in the virtual DOM
 export class ComponentNode extends LifecycleContext implements JSX.Element {
   private proxyProps: Record<string, Signal<unknown>>;
   private emitter = new Set<() => void>();
@@ -18,74 +19,77 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     public key?: string,
   ) {
     super();
-    // create proxy props
-    this.proxyProps = props
-      ? useReactive(
-          props,
-          key => startsWith(key, 'on') || startsWith(key, 'update') || key === 'children',
-        )
-      : {};
+    this.proxyProps = this.createProxyProps(props);
   }
 
+  // Create reactive props
+  private createProxyProps(props?: Props): Record<string, Signal<unknown>> {
+    if (!props) return {};
+    return useReactive(
+      props,
+      key =>
+        startsWith(key, EVENT_PREFIX) || startsWith(key, UPDATE_PREFIX) || key === CHILDREN_PROP,
+    );
+  }
+
+  // Getter for the first child node
   get firstChild(): Node | null {
     return this.rootNode?.firstChild ?? null;
   }
 
+  // Getter to check if the node is connected to the DOM
   get isConnected(): boolean {
     return this.rootNode?.isConnected ?? false;
   }
 
+  // Method to mount the component to the DOM
   mount(parent: Node, before?: Node | null): Node[] {
     if (!isFunction(this.template)) {
       throw new Error('Template must be a function');
     }
-    // if it mounted in the template, it will be connected
     if (this.isConnected) {
       return this.rootNode?.mount(parent, before) ?? [];
     }
 
-    // init hooks
     this.initRef();
-
-    // render template node
     this.rootNode = this.template(this.proxyProps);
-
-    // mount template node
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
-
-    // call mount hooks
-    this.hooks.mounted.forEach(handler => handler());
-
-    // patch props
+    this.callMountHooks();
     this.patchProps(this.props);
-
-    // destroy hooks
     this.removeRef();
 
     return mountedNode;
   }
 
+  // Method to unmount the component from the DOM
   unmount(): void {
-    this.hooks.destroy.forEach(handler => handler());
+    this.callDestroyHooks();
     this.clearHooks();
     this.rootNode?.unmount();
     this.rootNode = null;
     this.proxyProps = {};
+    this.clearEmitter();
+  }
+
+  // Private method to call mount hooks
+  private callMountHooks(): void {
+    this.hooks.mounted.forEach(handler => handler());
+  }
+
+  // Private method to call destroy hooks
+  private callDestroyHooks(): void {
+    this.hooks.destroy.forEach(handler => handler());
+  }
+
+  // Private method to clear the event emitter
+  private clearEmitter(): void {
     for (const cleanup of this.emitter) {
       cleanup();
     }
     this.emitter.clear();
   }
 
-  /**
-   * Inherit props and state from another ComponentNode.
-   * It will:
-   * 1. Copy props from the node to this proxyProps.
-   * 2. Copy the rootNode, trackMap and hooks from the node.
-   * 3. Copy the props from the node to this.
-   * 4. Patch props from the props passed in the constructor.
-   * @param node The node to inherit from.
-   */
+  // Method to inherit properties from another ComponentNode
   inheritNode(node: ComponentNode): void {
     Object.assign(this.proxyProps, node.proxyProps);
     this.rootNode = node.rootNode;
@@ -98,12 +102,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.patchProps(props);
   }
 
-  /**
-   * Get a NodeTrack from the trackMap. If the track is not in the trackMap, create a new one.
-   * Then, call the cleanup function to remove any previously registered hooks.
-   * @param trackKey the key of the node track to get.
-   * @returns the NodeTrack, cleaned up and ready to use.
-   */
+  // Private method to get or create a NodeTrack
   private getNodeTrack(trackKey: string): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
@@ -114,40 +113,48 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     return track;
   }
 
-  /**
-   * Patch the props of this node.
-   * It will:
-   * 1. Iterate the props and patch it.
-   * 2. If the prop is a event handler, add a event listener to the first child of the node.
-   * 3. If the prop is a ref, set the first child of the node to the ref.
-   * 4. If the prop is a update handler, update the prop in the node's props.
-   * 5. If the prop is a normal prop, create a signal for it and then patch it.
-   * @param props The props to patch.
-   */
+  // Method to patch props onto the component
   patchProps(props: Record<string, any> | undefined) {
     if (!props) {
       return;
     }
     for (const [key, prop] of Object.entries(props)) {
-      if (startsWith(key, 'on') && this.rootNode?.firstChild) {
-        const event = key.slice(2).toLowerCase();
-        // @ts-ignore
-        const cleanup = addEventListener(this.rootNode.nodes[0], event, prop);
-        this.emitter.add(cleanup);
+      if (startsWith(key, EVENT_PREFIX) && this.rootNode?.firstChild) {
+        this.patchEventListener(key, prop);
       } else if (key === 'ref') {
-        // just support useRef
-        prop.value = this.rootNode?.firstChild;
-      } else if (startsWith(key, 'update')) {
-        // hack bind:value to valueUpdate
-        this.props![key] = extractSignal(prop);
-      } else if (key !== 'children') {
-        // bind signal or normal prop
-        const track = this.getNodeTrack(key);
-        track.cleanup = useEffect(() => {
-          this.proxyProps[key] = isFunction(prop) ? prop() : prop;
-        });
+        this.patchRef(prop);
+      } else if (startsWith(key, UPDATE_PREFIX)) {
+        this.patchUpdateHandler(key, prop);
+      } else if (key !== CHILDREN_PROP) {
+        this.patchNormalProp(key, prop);
       }
     }
     this.props = props;
+  }
+
+  // Private method to patch event listeners
+  private patchEventListener(key: string, prop: any): void {
+    const event = key.slice(2).toLowerCase();
+    // @ts-ignore
+    const cleanup = addEventListener(this.rootNode.nodes[0], event, prop);
+    this.emitter.add(cleanup);
+  }
+
+  // Private method to patch ref
+  private patchRef(prop: { value: Node | null }): void {
+    prop.value = this.rootNode?.firstChild ?? null;
+  }
+
+  // Private method to patch update handlers
+  private patchUpdateHandler(key: string, prop: any): void {
+    this.props![key] = extractSignal(prop);
+  }
+
+  // Private method to patch normal props
+  private patchNormalProp(key: string, prop: any): void {
+    const track = this.getNodeTrack(key);
+    track.cleanup = useEffect(() => {
+      this.proxyProps[key] = isFunction(prop) ? prop() : prop;
+    });
   }
 }
