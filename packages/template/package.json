@@ -56,11 +56,9 @@
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"
   },
-  "peerDependencies": {
-    "@estjs/signal": "workspace:*"
-  },
   "dependencies": {
     "@estjs/shared": "workspace:*",
+    "@estjs/signal": "workspace:*",
     "csstype": "^3.1.3"
   }
 }
