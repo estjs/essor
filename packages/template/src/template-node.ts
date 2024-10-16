@@ -4,10 +4,10 @@ import {
   isArray,
   isFunction,
   isNil,
+  isPrimitive,
   startsWith,
 } from '@estjs/shared';
 import { isSignal, useEffect, useSignal } from '@estjs/signal';
-
 import {
   addEventListener,
   bindNode,
@@ -16,19 +16,26 @@ import {
   removeChild,
   setAttribute,
 } from './utils';
-import { patchChildren } from './patch';
-import { renderContext } from './render-context';
+import { getKey, patchChildren } from './patch';
+import {
+  CHILDREN_PROP,
+  ComponentType,
+  FRAGMENT_PROP_KEY,
+  getComponentIndex,
+  renderContext,
+} from './shared-config';
 import { createTemplate, isComponent } from './jsx-renderer';
 import type { NodeTrack, Props } from '../types';
 
-let componentIndex = 1;
 export class TemplateNode implements JSX.Element {
+  // Private properties for managing the node's state
   private treeMap = new Map<number, Node>();
   private mounted = false;
   private nodes: Node[] = [];
   private trackMap = new Map<string, NodeTrack>();
-
   private bindValueKeys: string[] = [];
+  private componentIndex: number;
+  private parent: Node | null = null;
 
   constructor(
     public template: HTMLTemplateElement,
@@ -36,20 +43,27 @@ export class TemplateNode implements JSX.Element {
     public key?: string,
   ) {
     this.key ||= props?.key as string;
+
+    if (renderContext.isSSR) {
+      this.componentIndex = getComponentIndex(this.template);
+    }
   }
 
-  addEventListener(): void {}
-  removeEventListener(): void {}
-
+  // Getter for the first child node
   get firstChild(): Node | null {
     return this.nodes[0] ?? null;
   }
 
-  // is mounted
+  // Getter to check if the node is connected to the DOM
   get isConnected(): boolean {
     return this.mounted;
   }
-  parent: Node | null = null;
+
+  // Placeholder methods for event handling
+  addEventListener(): void {}
+  removeEventListener(): void {}
+
+  // Method to mount the node to the DOM
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
     if (this.isConnected) {
@@ -77,14 +91,14 @@ export class TemplateNode implements JSX.Element {
       this.mapSSGNodeTree(parent as HTMLElement);
     } else {
       this.mapNodeTree(parent, cloneNode);
-      insertChild(parent, cloneNode, before);
     }
-
+    insertChild(parent, cloneNode, before);
     this.patchProps(this.props);
     this.mounted = true;
     return this.nodes;
   }
 
+  // Method to unmount the node from the DOM
   unmount(): void {
     this.trackMap.forEach(track => {
       track.cleanup?.();
@@ -92,19 +106,106 @@ export class TemplateNode implements JSX.Element {
     this.trackMap.clear();
     this.treeMap.clear();
     this.nodes.forEach(node => removeChild(node));
+
+    // Fragment
+    if (!this.template.innerHTML && !this.nodes.length) {
+      const children = this.props?.[FRAGMENT_PROP_KEY]?.children;
+
+      if (children) {
+        if (isArray(children)) {
+          children.forEach(child => {
+            this.deleteFragmentTextNode(child);
+          });
+        } else {
+          this.deleteFragmentTextNode(children);
+        }
+      }
+    }
+
     this.nodes = [];
     this.mounted = false;
   }
 
-  patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
+  deleteFragmentTextNode(child) {
+    if (isPrimitive(child)) {
+      this.parent?.childNodes.forEach(node => {
+        if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
+          this.parent?.removeChild(node);
+        }
+      });
+    } else {
+      removeChild(child);
+    }
+  }
+
+  // Method to inherit properties from another TemplateNode
+  inheritNode(node: TemplateNode): void {
+    this.mounted = node.mounted;
+    this.nodes = node.nodes;
+    this.trackMap = node.trackMap;
+    this.treeMap = node.treeMap;
+    const props = this.props;
+    this.props = node.props;
+    this.patchProps(props);
+  }
+
+  // Private method to map SSG node tree
+  private mapSSGNodeTree(parent: Node): void {
+    this.treeMap.set(0, parent);
+    this.walkNodeTree(parent, this.handleSSGNode.bind(this));
+  }
+
+  // Private method to map node tree
+  private mapNodeTree(parent: Node, tree: Node): void {
+    let index = 1;
+    this.treeMap.set(0, parent);
+    const arr = [parent];
+
+    const handleNode = (node: Node) => {
+      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+        this.treeMap.set(index++, node);
+        arr.push(node);
+      }
+    };
+
+    this.walkNodeTree(tree, handleNode);
+  }
+
+  // Private method to walk through the node tree
+  private walkNodeTree(node: Node, handler: (node: Node) => void): void {
+    if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
+      handler(node);
+    }
+    let child = node.firstChild;
+    while (child) {
+      this.walkNodeTree(child, handler);
+      child = child.nextSibling;
+    }
+  }
+
+  // Private method to handle SSG nodes
+  private handleSSGNode(node: Node): void {
+    if (node.nodeType === Node.COMMENT_NODE) {
+      const [type, index] = node.textContent?.split('-') || [];
+      if (ComponentType.TEXT === +type && +index === this.componentIndex) {
+        const textNode = node.nextSibling as Text;
+        this.treeMap.set(+index, textNode);
+      }
+    } else if (node.nodeType !== Node.TEXT_NODE) {
+      const { ci = '-1', hk } = (node as HTMLElement)?.dataset || {};
+      if (hk && +ci === this.componentIndex) {
+        this.treeMap.set(+hk, node);
+      }
+    }
+  }
+
+  // Method to patch props onto the node
+  private patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
 
     Object.entries(props).forEach(([key, value]) => {
       const index = Number(key);
-
-      // get node in treeMap
       const node = this.treeMap.get(index);
-
       if (node) {
         this.patchProp(key, node, value, index === 0);
       }
@@ -112,75 +213,83 @@ export class TemplateNode implements JSX.Element {
     this.props = props;
   }
 
-  inheritNode(node: TemplateNode): void {
-    // update node info in other patch node
-    this.mounted = node.mounted;
-    this.nodes = node.nodes;
-    this.trackMap = node.trackMap;
-    this.treeMap = node.treeMap;
-    // update props
-    const props = this.props;
-    this.props = node.props;
-    // run patch
-    this.patchProps(props);
+  // Private method to patch a single prop
+  private patchProp(
+    key: string,
+    node: Node,
+    props: Record<string, unknown>,
+    isRoot: boolean,
+  ): void {
+    if (!props) return;
+    Object.entries(props).forEach(([attr, value]) => {
+      if (attr === CHILDREN_PROP && value) {
+        this.patchChildren(key, node, value, isRoot);
+      } else if (attr === 'ref') {
+        (props[attr] as { value: Node }).value = node;
+      } else if (startsWith(attr, 'on')) {
+        this.patchEventListener(key, node, attr, value as EventListener);
+      } else {
+        this.patchAttribute(key, node as HTMLElement, attr, value);
+      }
+    });
   }
 
-  mapSSGNodeTree(parent: Node): void {
-    this.treeMap.set(0, parent);
+  // Private method to patch children
+  private patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
+    if (!isArray(children)) {
+      const trackKey = `${key}:${CHILDREN_PROP}:0`;
+      const track = this.getNodeTrack(trackKey, true, isRoot);
+      this.patchChild(track, node, children, null);
+    } else {
+      children.filter(Boolean).forEach((item, index) => {
+        const [child, path] = isArray(item) ? item : [item, null];
+        const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);
+        const trackKey = `${key}:${CHILDREN_PROP}:${index}`;
+        const track = this.getNodeTrack(trackKey, true, isRoot);
+        this.patchChild(track, node, child, before);
+      });
+    }
+  }
 
-    const walk = (node: Node) => {
-      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-        if (node.nodeType === Node.COMMENT_NODE) {
-          if (node.textContent?.startsWith('__text__')) {
-            const [index, textKey] = node.textContent.replace('__text__', '').split('-');
-            if (+index === componentIndex) {
-              const textNode = node.nextSibling as Text;
-              this.treeMap.set(+textKey, textNode);
-            }
-          }
-        } else if (node.nodeType !== Node.TEXT_NODE) {
-          const [index, keyAttr] = (node as HTMLElement)?.getAttribute('__key')?.split('-') || [];
-          if (keyAttr && +index === componentIndex) {
-            this.treeMap.set(+keyAttr, node);
-          }
-        }
-      }
-      let child = node.firstChild;
-      while (child) {
-        walk(child);
-        child = child.nextSibling;
-      }
+  // Private method to patch event listeners
+  private patchEventListener(key: string, node: Node, attr: string, listener: EventListener): void {
+    const eventName = attr.slice(2).toLowerCase();
+    const track = this.getNodeTrack(`${key}:${attr}`);
+    track.cleanup = addEventListener(node, eventName, listener);
+  }
+
+  // Private method to patch attributes
+  private patchAttribute(key: string, element: HTMLElement, attr: string, value: unknown): void {
+    const updateKey = `update${capitalizeFirstLetter(attr)}`;
+    if (this.bindValueKeys.includes(attr)) {
+      return;
+    }
+    if (this.props?.[updateKey]) {
+      this.bindValueKeys.push(updateKey);
+    }
+    const track = this.getNodeTrack(`${key}:${attr}`);
+    const triggerValue = isSignal(value) ? value : useSignal(value);
+    setAttribute(element, attr, triggerValue.value);
+    const cleanup = useEffect(() => {
+      triggerValue.value = isSignal(value) ? value.value : value;
+      setAttribute(element, attr, triggerValue.value);
+    });
+
+    let cleanupBind;
+    if (this.props?.[updateKey] && !isComponent(attr)) {
+      cleanupBind = bindNode(element, value => {
+        this.props?.[updateKey](value);
+      });
+    }
+
+    track.cleanup = () => {
+      cleanup && cleanup();
+      cleanupBind && cleanupBind();
     };
-
-    walk(parent);
-
-    componentIndex++;
   }
 
-  mapNodeTree(parent: Node, tree: Node): void {
-    let index = 1;
-    this.treeMap.set(0, parent);
-    const walk = (node: Node) => {
-      if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-        this.treeMap.set(index++, node);
-      }
-      let child = node.firstChild;
-      while (child) {
-        walk(child);
-        child = child.nextSibling;
-      }
-    };
-    walk(tree);
-  }
-  /**
-   * Get a NodeTrack from the trackMap. If the track is not in the trackMap, create a new one.
-   * Then, call the cleanup function to remove any previously registered hooks.
-   * @param trackKey the key of the node track to get.
-   * @param trackLastNodes if true, the track will record the last nodes it has rendered.
-   * @param isRoot if true, the track will be treated as a root track.
-   * @returns the NodeTrack, cleaned up and ready to use.
-   */
-  getNodeTrack(trackKey: string, trackLastNodes?: boolean, isRoot?: boolean): NodeTrack {
+  // Private method to get or create a NodeTrack
+  private getNodeTrack(trackKey: string, trackLastNodes?: boolean, isRoot?: boolean): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
       track = { cleanup: () => {} };
@@ -195,107 +304,62 @@ export class TemplateNode implements JSX.Element {
     track.cleanup?.();
     return track;
   }
-  patchProp(key, node, props, isRoot) {
-    for (const attr in props) {
-      if (attr === 'children' && props.children) {
-        if (!isArray(props.children)) {
-          const trackKey = `${key}:${attr}:${0}`;
-          const track = this.getNodeTrack(trackKey, true, isRoot);
-          patchChild(track, node, props.children, null);
+
+  // Private method to patch a child node
+  private patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
+    if (isFunction(child)) {
+      track.cleanup = useEffect(() => {
+        const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
+
+        if (renderContext.isSSR) {
+          track.lastNodes = this.reconcileChildren(parent, nextNodes, before);
         } else {
-          props.children.filter(Boolean).forEach((item, index) => {
-            const [child, path] = isArray(item) ? item : [item, null];
-            const before = isNil(path) ? null : (this.treeMap.get(path) ?? null);
-            const trackKey = `${key}:${attr}:${index}`;
-            const track = this.getNodeTrack(trackKey, true, isRoot);
-            patchChild(track, node, child, before);
-          });
+          track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
         }
-      } else if (attr === 'ref') {
-        props[attr].value = node;
-      } else if (startsWith(attr, 'on')) {
-        const eventName = attr.slice(2).toLocaleLowerCase();
-        const track = this.getNodeTrack(`${key}:${attr}`);
-        const listener = props[attr];
-        track.cleanup = addEventListener(node, eventName, listener);
-      } else {
-        const updateKey = `update${capitalizeFirstLetter(attr)}`;
-        if (this.bindValueKeys.includes(attr)) {
-          break;
-        }
-        if (props[updateKey]) {
-          this.bindValueKeys.push(updateKey);
-        }
-        const track = this.getNodeTrack(`${key}:${attr}`);
-        const val = props[attr];
-        const triggerValue = isSignal(val) ? val : useSignal(val);
-        patchAttribute(track, node, attr, triggerValue.value);
-        const cleanup = useEffect(() => {
-          triggerValue.value = isSignal(val) ? val.value : val;
-          patchAttribute(track, node, attr, triggerValue.value);
-        });
+      });
+    } else {
+      coerceArray(child).forEach((node, index) => {
+        const newNode = coerceNode(node) as Node;
+        const key = getKey(newNode, index);
 
-        let cleanupBind;
-        if (props[updateKey] && !isComponent(attr)) {
-          cleanupBind = bindNode(node, value => {
-            props[updateKey](value);
-          });
+        if (renderContext.isSSR) {
+          track.lastNodes = this.reconcileChildren(parent, [newNode], before);
+        } else {
+          track.lastNodes!.set(key, newNode);
+          insertChild(parent, newNode, before);
         }
-
-        track.cleanup = () => {
-          cleanup && cleanup();
-          cleanupBind && cleanupBind();
-        };
-      }
+      });
     }
   }
-}
 
-/**
- * Patch the children of the parent node.
- * If the child is a function, it will call the function and patch the returned nodes.
- * If the child is not a function, it will patch each node in the child array.
- * @param track The track to store the cleanup function.
- * @param parent The parent node.
- * @param child The child to patch.
- * @param before The node before which the children should be inserted.
- */
-function patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
-  if (isFunction(child)) {
-    track.cleanup = useEffect(() => {
-      const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
-      if (!renderContext.isSSR) {
-        track.lastNodes = patchChildren(parent, track.lastNodes!, nextNodes, before);
+  // Private method to reconcile children nodes
+  private reconcileChildren(
+    parent: Node,
+    nextNodes: Node[],
+    before: Node | null,
+  ): Map<string, Node> {
+    const result = new Map<string, Node>();
+
+    const textNodes = Array.from(parent.childNodes).filter(
+      node =>
+        node.nodeType === Node.TEXT_NODE &&
+        node.previousSibling?.nodeType === Node.COMMENT_NODE &&
+        node.nextSibling?.nodeType === Node.COMMENT_NODE,
+    );
+
+    nextNodes.forEach((node, index) => {
+      const key = getKey(node, index);
+      if (node.nodeType === Node.TEXT_NODE) {
+        textNodes.forEach(ne => {
+          if (node.textContent === ne.textContent) {
+            parent.replaceChild(node, ne);
+          }
+        });
+      } else {
+        insertChild(parent, node, before);
       }
+      result.set(key, node);
     });
-  } else {
-    coerceArray(child).forEach((node, i) => {
-      const newNode = coerceNode(node) as Node;
-      if (!renderContext.isSSR) {
-        track.lastNodes!.set(String(i), newNode);
-        insertChild(parent, newNode, before);
-      }
-    });
-  }
-}
-/**
- * Patch an attribute of a node.
- * If the data is a function, it will be called when the attribute is updated.
- * @param track The track of the node.
- * @param node The node to patch.
- * @param attr The attribute to patch.
- * @param data The data to patch.
- */
-function patchAttribute(track: NodeTrack, node: Node, attr: string, data: unknown): void {
-  const element = node as HTMLElement;
-  if (!element.setAttribute) {
-    return;
-  }
-  if (isFunction(data)) {
-    track.cleanup = useEffect(() => {
-      setAttribute(element, attr, data());
-    });
-  } else {
-    setAttribute(element, attr, data);
+    return result;
   }
 }

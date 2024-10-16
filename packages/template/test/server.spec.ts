@@ -32,13 +32,13 @@ describe('ssg render', () => {
   container.innerHTML = html;
   it('should work renderToString', () => {
     expect(html).toMatchInlineSnapshot(
-      `"<div __key="1-1"><p __key="1-2"></p><!><input __key="1-3" type="text"/></div>"`,
+      `"<div data-ci="1"><p data-ci="1"></p><!><input data-ci="1" type="text"/></div>"`,
     );
   });
   it('should work hydrate', () => {
     hydrate(App, container);
     expect(container.innerHTML).toMatchInlineSnapshot(
-      `"<div __key="1-1"><p __key="1-2"></p><!----><input __key="1-3" type="text"></div>"`,
+      `"<div data-ci="1"><p data-ci="1"></p><!----><input data-ci="1" type="text"></div>"`,
     );
   });
 });

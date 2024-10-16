@@ -18,57 +18,44 @@ import type { NodePath } from '@babel/core';
 
 export interface Result {
   index: number;
-  ssgIndex: Record<string, any>;
   isLastChild: boolean;
   parentIndex: number;
   props: Record<string, any>;
   template: string | string[];
 }
-let isSsg = false;
+
+let isSSG = false;
 
 function addToTemplate(result: Result, content: string, join = false): void {
-  if (isSsg) {
+  if (isSSG) {
     if (join && result.template.length > 0) {
       (result.template as string[])[result.template.length - 1] += content;
     } else {
       (result.template as string[]).push(content);
     }
-    setSSGIndex(result);
   } else {
     result.template += content;
   }
 }
+
 export function transformJSX(path: NodePath<JSXElement>): void {
   const state: State = path.state;
-  isSsg = state.opts.ssg;
+  isSSG = state.opts.ssg;
 
   const result: Result = {
     index: 1,
     isLastChild: false,
     parentIndex: 0,
     props: {},
-    ssgIndex: {},
-    template: isSsg ? [] : '',
+    template: isSSG ? [] : '',
   };
   transformJSXElement(path, result, true);
 
   path.replaceWith(createEssorNode(path, result));
 }
-
 // Trim and replace multiple spaces/newlines with a single space
 function replaceSpace(node: t.JSXText): string {
   return node.value.replaceAll(/\s+/g, ' ').trim();
-}
-
-function setSSGIndex(result: Result): void {
-  if (isSsg && result.props) {
-    Object.keys(result.props).forEach(key => {
-      const idx = result.ssgIndex[key];
-      if (idx) {
-        result.props[key].__i = `${idx}`;
-      }
-    });
-  }
 }
 
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
@@ -80,26 +67,29 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     : path.scope.generateUidIdentifier('_tmpl$');
 
   if (!isComponent) {
-    const template = isSsg
+    const template = isSSG
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
       : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
     state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, template));
-    if (!isSsg) {
+    if (!isSSG) {
       imports.add('template');
     }
   }
+
+  const key = result.props.key;
+  delete result.props.key;
+
   const args = [tmpl, createProps(result.props)];
-  const key = result.props.key || result.props[0]?.key;
   if (key) {
-    args.push(t.identifier(`${key}`));
+    args.push(key);
   }
 
-  const fnName = isSsg ? 'ssg' : 'h';
+  const fnName = isSSG ? 'ssg' : 'h';
   imports.add(fnName);
   return t.callExpression(state[fnName], args);
 }
 
-function createProps(props) {
+function createProps(props: Record<string, any>): t.ObjectExpression {
   const toAstNode = value => {
     if (isArray(value)) {
       return t.arrayExpression(value.map(toAstNode));
@@ -116,7 +106,6 @@ function createProps(props) {
       case 'boolean':
         return t.booleanLiteral(value);
       case 'undefined':
-        return t.tsUndefinedKeyword();
       case undefined:
         return t.tsUndefinedKeyword();
       case null:
@@ -126,17 +115,15 @@ function createProps(props) {
     }
   };
 
-  const result = Object.keys(props)
-    .filter(prop => prop !== 'key')
-    .map(prop => {
-      const value = toAstNode(props[prop]);
-      return prop === '_$spread$'
-        ? t.spreadElement(value)
-        : t.objectProperty(t.stringLiteral(prop), value);
-    });
+  const result = Object.entries(props).map(([prop, value]) =>
+    prop === '_$spread$'
+      ? t.spreadElement(toAstNode(value))
+      : t.objectProperty(t.stringLiteral(prop), toAstNode(value)),
+  );
 
   return t.objectExpression(result);
 }
+
 function transformJSXElement(
   path: NodePath<JSXElement>,
   result: Result,
@@ -148,38 +135,66 @@ function transformJSXElement(
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && result.index === 1;
     const { props, hasExpression } = getAttrProps(path);
+
+    //  key
+    if (props.key) {
+      result.props.key = props.key;
+      delete props.key;
+    }
+
     if (tagIsComponent) {
-      if (isRoot) {
-        result.props = props;
-        const children = getChildren(path);
-        if (children.length > 0) {
-          const childrenGenerator =
-            children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
-          result.props.children = childrenGenerator;
-        }
-      } else {
-        transformJSX(path);
-        replaceChild(path.node, result);
-      }
+      handleComponentElement(path, result, isRoot, props);
     } else {
-      if (isSvg) {
-        result.template = isSsg ? ['<svg _svg_>'] : '<svg _svg_>';
-      }
-
-      addToTemplate(result, `<${tagName}`, true);
-      handleAttributes(props, result);
-      addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
-
-      if (!isSelfClose) {
-        transformChildren(path, result);
-        if (hasSiblingElement(path) || isSsg) {
-          addToTemplate(result, `</${tagName}>`);
-        }
-      }
+      handleHTMLElement(path, result, tagName, isSelfClose, isSvg, props, hasExpression);
     }
   } else {
     result.index--;
     transformChildren(path, result);
+  }
+}
+
+function handleComponentElement(
+  path: NodePath<JSXElement>,
+  result: Result,
+  isRoot: boolean,
+  props: Record<string, any>,
+): void {
+  if (isRoot) {
+    result.props = props;
+    const children = getChildren(path);
+    if (children.length > 0) {
+      const childrenGenerator =
+        children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
+      result.props.children = childrenGenerator;
+    }
+  } else {
+    transformJSX(path);
+    replaceChild(path.node, result);
+  }
+}
+
+function handleHTMLElement(
+  path: NodePath<JSXElement>,
+  result: Result,
+  tagName: string,
+  isSelfClose: boolean,
+  isSvg: boolean,
+  props: Record<string, any>,
+  hasExpression: boolean,
+): void {
+  if (isSvg) {
+    result.template = isSSG ? [`<svg _svg_  data-hk="${result.index}">`] : `<svg _svg_ >`;
+  }
+
+  addToTemplate(result, `<${tagName}${isSSG ? ` data-hk="${result.index}"` : ''}`, true);
+  handleAttributes(props, result);
+  addToTemplate(result, isSelfClose ? '/>' : '>', !hasExpression);
+
+  if (!isSelfClose) {
+    transformChildren(path, result);
+    if (hasSiblingElement(path) || isSSG) {
+      addToTemplate(result, `</${tagName}>`);
+    }
   }
 }
 
@@ -200,7 +215,6 @@ function transformChildren(path: NodePath<JSXElement>, result: Result): void {
     }, [] as NodePath<JSXChild>[])
     .forEach((child, i, arr) => {
       result.parentIndex = parentIndex;
-      result.ssgIndex[parentIndex] = result.template.length;
       result.isLastChild = i === arr.length - 1;
       transformChild(child, result);
     });
@@ -213,7 +227,7 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
   } else if (child.isJSXExpressionContainer()) {
     const expression = child.get('expression');
     if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      addToTemplate(result, String(expression.node.value));
+      addToTemplate(result, `${expression.node.value}`, true);
     } else if (expression.isExpression()) {
       replaceChild(expression.node, result);
     } else if (t.isJSXEmptyExpression(expression.node)) {
@@ -228,7 +242,6 @@ function transformChild(child: NodePath<JSXChild>, result: Result): void {
     throw new Error('Unsupported child type');
   }
 }
-
 function getNodeText(path: NodePath<JSXChild>): string {
   if (path.isJSXText()) {
     return replaceSpace(path.node);
@@ -272,16 +285,11 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
     result.props[result.index] = props;
   }
 
-  klass = klass.trim();
-  style = style.trim();
-
-  result.ssgIndex[result.index] = result.template.length;
-
-  if (klass) {
-    addToTemplate(result, ` class="${klass}"`);
+  if (klass.trim()) {
+    addToTemplate(result, ` class="${klass.trim()}"`);
   }
-  if (style) {
-    addToTemplate(result, ` style="${style}"`);
+  if (style.trim()) {
+    addToTemplate(result, ` style="${style.trim()}"`);
   }
 }
 

@@ -6,6 +6,7 @@ export {
   isComputed,
   useReactive,
   isReactive,
+  useShallowSignal,
   shallowReactive,
   shallowSignal,
   clearReactive,

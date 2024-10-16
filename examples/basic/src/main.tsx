@@ -1,12 +1,14 @@
 function App() {
-  const $value = 'hello world';
+  const $v = 'hello world';
+
   return (
     <div>
-      <p>{$value}</p>
-
-      <input type="text" bind:value={$value} />
+      <p key={$v}>{$v}</p>
+      <input type="text" bind:value={$v} />
+      {[1, 2, 3].map(v => (
+        <p key={v}>{v}</p>
+      ))}
     </div>
   );
 }
-
 (<App />).mount(document.querySelector('#app')!);

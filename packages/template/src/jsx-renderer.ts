@@ -1,8 +1,11 @@
-import { isFunction, isString } from '@estjs/shared';
+import { isArray, isFunction, isString } from '@estjs/shared';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
 import { ComponentNode } from './component-node';
 import { TemplateNode } from './template-node';
+import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './shared-config';
 import type { EssorComponent, EssorNode, Props } from '../types';
+
+// 新增：常量定义
 
 /**
  * Creates a JSX element from a given template.
@@ -20,17 +23,18 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 ): JSX.Element {
   if (isString(template)) {
     if (isHtmlTagName(template)) {
-      (template as string) = convertToHtmlTag(template);
-      props = { '1': props };
-    } else if (template === '') {
-      props = { '0': props };
+      const htmlTemplate = convertToHtmlTag(template);
+      props = { [SINGLE_PROP_KEY]: props };
+      return new TemplateNode(createTemplate(htmlTemplate), props, key);
+    } else if (template === EMPTY_TEMPLATE) {
+      props = { [FRAGMENT_PROP_KEY]: props };
+      return new TemplateNode(createTemplate(EMPTY_TEMPLATE), props, key);
     }
-    template = createTemplate(template);
   }
 
   return isFunction(template)
     ? new ComponentNode(template, props, key)
-    : new TemplateNode(template, props, key);
+    : new TemplateNode(template as HTMLTemplateElement, props, key);
 }
 
 /**
@@ -67,14 +71,20 @@ export function createTemplate(html: string): HTMLTemplateElement {
 }
 
 /**
- * A built-in component for grouping JSX elements without adding a new node to the DOM.
- *
- * The `Fragment` component takes a single prop, `children`, which should be a JSX element.
- * It returns the `children` prop, which is the JSX element passed to it.
- *
- * It is used to group JSX elements without adding a new node to the DOM.
- *
+ * @param props - An object containing the `children` prop.
+ * @param props.children - The children to be rendered. Can be a single JSX element, string, number, boolean,
+ *                         or an array of these. Falsy values in arrays will be filtered out.
+ * @returns A JSX element representing the fragment, wrapping the filtered children.
  */
-export function Fragment(props: { children: JSX.Element }): JSX.Element {
-  return props.children;
+export function Fragment<
+  T extends
+    | JSX.JSXElement
+    | string
+    | number
+    | boolean
+    | (JSX.JSXElement | string | number | boolean)[],
+>(props: { children: T }) {
+  return h(EMPTY_TEMPLATE, {
+    children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
+  });
 }

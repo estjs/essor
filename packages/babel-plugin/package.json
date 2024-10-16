@@ -1,6 +1,6 @@
 {
   "name": "babel-plugin-essor",
-  "version": "0.0.13-beta.1",
+  "version": "0.0.13-beta.7",
   "description": "",
   "type": "module",
   "keywords": [],
@@ -36,12 +36,12 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.25.7",
-    "@babel/types": "^7.25.7",
+    "@babel/core": "^7.25.8",
+    "@babel/types": "^7.25.8",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.3"
   }
 }

@@ -5,6 +5,44 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.13-beta.6](https://github.com/estjs/essor/compare/v0.0.13-beta.5...v0.0.13-beta.6) `2024-10-14`
+
+
+
+
+## [0.0.13-beta.5](https://github.com/estjs/essor/compare/v0.0.13-beta.4...v0.0.13-beta.5) `2024-10-14`
+
+
+
+
+## [0.0.13-beta.4](https://github.com/estjs/essor/compare/v0.0.13-beta.3...v0.0.13-beta.4) `2024-10-14`
+
+
+
+
+## [0.0.13-beta.3](https://github.com/estjs/essor/compare/v0.0.13-beta.2...v0.0.13-beta.3) `2024-10-14`
+
+
+
+
+## [0.0.13-beta.2](https://github.com/estjs/essor/compare/v0.0.13-beta.1...v0.0.13-beta.2) `2024-10-13`
+
+
+### Bug Fixes
+
+* fix get node key ([8df409a](https://github.com/estjs/essor/commit/8df409a09137745535acdc7ed9b3a4e37fd02a83))
+
+
+
+
+
+
+
+## [0.0.13-beta.1](https://github.com/estjs/essor/compare/v0.0.12...v0.0.13-beta.1) `2024-09-22`
+
+
+
+
 
 
 

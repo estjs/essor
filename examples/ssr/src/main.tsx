@@ -1,11 +1,12 @@
 import { hydrate, renderToString } from 'essor';
+
 function Com1(props) {
   const children = props.children;
-  return <div>111{children}</div>;
+  return <div>9{children}</div>;
 }
 
 function Com2() {
-  return <div>222</div>;
+  return <div>10</div>;
 }
 
 function Com3() {
@@ -26,13 +27,13 @@ function Com5() {
 }
 
 function Com6() {
-  return <div>666</div>;
+  return <div>11</div>;
 }
 
 function Com4() {
   return (
     <div>
-      444
+      8
       <Com1>
         <Com3></Com3>
       </Com1>
@@ -40,15 +41,45 @@ function Com4() {
   );
 }
 
-function App() {
-  const $value = 'hello world';
+function App2() {
+  const $value = 'hello world2';
   return (
     <div>
       <p>{$value}</p>
       <div>
-        111
+        3
         <div>
-          222<Com4></Com4>
+          4<Com4></Com4>
+        </div>
+      </div>
+      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
+    </div>
+  );
+}
+function App3() {
+  const $value = 'hello world3';
+  return (
+    <div>
+      <p>{$value}</p>
+      <div>
+        5{$value}
+        <div>
+          6<Com4></Com4>
+        </div>
+      </div>
+      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
+    </div>
+  );
+}
+function App() {
+  const $value = 'hello world1';
+  return (
+    <div>
+      <p>{$value}</p>
+      <div>
+        1{$value}2<App2></App2>
+        <div>
+          <App3></App3>7<Com4></Com4>
         </div>
       </div>
       <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />

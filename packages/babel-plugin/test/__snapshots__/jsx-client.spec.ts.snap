@@ -134,7 +134,7 @@ const element = _h$(_tmpl$, {
       "1": {
         "children": [[() => i + 1, null]]
       }
-    })), null]]
+    }, i)), null]]
   }
 });"
 `;

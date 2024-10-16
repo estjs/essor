@@ -83,7 +83,7 @@ export function track(target: object, key: string | symbol) {
     dep = new Set();
     depsMap.set(key, dep);
   }
-  if (activeEffect) dep.add(activeEffect);
+  dep.add(activeEffect);
 }
 /**
  * Triggers all the effects that depend on the specified key of the reactive object.
@@ -105,11 +105,7 @@ function trigger(target: object, key: string | symbol) {
         dep.delete(effect);
         return;
       }
-      if (inBatch) {
-        batchQueue.add(effect);
-      } else {
-        effect();
-      }
+      inBatch ? batchQueue.add(effect) : effect();
     });
   }
 }

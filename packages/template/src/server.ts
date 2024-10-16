@@ -1,5 +1,5 @@
 import { SSGNode } from './ssg-node';
-import { renderContext } from './render-context';
+import { renderContext } from './shared-config';
 import { h } from './jsx-renderer';
 import type { EssorComponent, Props } from '../types';
 
@@ -12,9 +12,11 @@ import type { EssorComponent, Props } from '../types';
  * @param props Optional props to pass to the component.
  * @returns The rendered HTML string.
  */
-export function renderToString(component: EssorComponent, props?: Record<string, unknown>): string {
+export function renderToString(component: EssorComponent, props?: Props): string {
   renderContext.setSSG();
+  // Create a new SSGNode with the component and props
   const ssrNode = new SSGNode(component, props || {});
+  // Mount the SSGNode to get the rendered HTML
   const html = ssrNode.mount();
   renderContext.setClient();
   return html;
@@ -27,15 +29,17 @@ export function renderToString(component: EssorComponent, props?: Record<string,
  *
  * @param component The component to hydrate.
  * @param container The container element to hydrate in. Can be a string selector or an Element.
+ * @throws Error if the container is not found.
  */
 export function hydrate(component: EssorComponent, container: string | Element): void {
+  // Find the root element based on the container parameter
   const rootElement = typeof container === 'string' ? document.querySelector(container) : container;
 
-  // if the container is not found, throw an error
   if (!rootElement) {
     throw new Error(`Could not find container: ${container}`);
   }
   renderContext.setSSR();
+  // Create a new component using the h function and mount it to the root element
   h(component).mount(rootElement);
   renderContext.setClient();
 }
@@ -49,9 +53,10 @@ export function hydrate(component: EssorComponent, container: string | Element):
  * @param props Optional props to pass to the component.
  * @returns The SSGNode or JSX element.
  */
-export function ssg(component, props?: Props) {
+export function ssg(component: EssorComponent, props?: Props): SSGNode | JSX.Element {
   if (renderContext.isSSG) {
     return new SSGNode(component, props);
   }
+  // If not in SSG mode, create and return a new JSX element
   return h(component, props);
 }

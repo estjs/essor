@@ -1,12 +1,13 @@
 import { isArray, isFalsy, kebabCase } from '@estjs/shared';
 import { type Signal, isSignal } from '@estjs/signal';
 import { isJsxElement } from './jsx-renderer';
-import { renderContext } from './render-context';
+import { renderContext } from './shared-config';
 import { isSSGNode } from './ssg-node';
 
-const selfClosingTags =
+// 新增：常量定义
+const SELF_CLOSING_TAGS =
   'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
-const htmlTags =
+const HTML_TAGS =
   'a,abbr,acronym,address,applet,area,article,aside,audio,b,base,basefont,bdi,bdo,bgsound,big,blink,blockquote,body,br,button,canvas,caption,center,cite,code,col,colgroup,command,content,data,datalist,dd,del,details,dfn,dialog,dir,div,dl,dt,em,embed,fieldset,figcaption,figure,font,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hgroup,hr,html,i,iframe,image,img,input,ins,kbd,keygen,label,legend,li,link,listing,main,map,mark,marquee,menu,menuitem,meta,meter,nav,nobr,noframes,noscript,object,ol,optgroup,option,output,p,param,picture,plaintext,pre,progress,q,rb,rp,rt,rtc,ruby,s,samp,script,section,select,shadow,small,source,spacer,span,strike,strong,style,sub,summary,sup,table,tbody,td,template,textarea,tfoot,th,thead,time,title,tr,track,tt,u,ul,var,video,wbr,xmp'.split(
     ',',
   );
@@ -86,31 +87,38 @@ export function replaceChild(
  */
 export function setAttribute(element: HTMLElement, attr: string, value: unknown): void {
   if (attr === 'class') {
-    if (typeof value === 'string') {
-      element.className = value;
-    } else if (isArray(value)) {
-      element.className = value.join(' ');
-    } else if (value && typeof value === 'object') {
-      element.className = Object.entries(value)
-        .reduce((acc, [key, value]) => acc + (value ? ` ${key}` : ''), '')
-        .trim();
-    }
-    return;
+    setClassAttribute(element, value);
+  } else if (attr === 'style') {
+    setStyleAttribute(element, value);
+  } else {
+    setGenericAttribute(element, attr, value);
   }
+}
 
-  if (attr === 'style') {
-    if (typeof value === 'string') {
-      element.style.cssText = value;
-    } else if (value && typeof value === 'object') {
-      const obj = value as Record<string, unknown>;
-
-      Object.keys(obj).forEach(key => {
-        element.style.setProperty(kebabCase(key), String(obj[key]));
-      });
-    }
-    return;
+function setClassAttribute(element: HTMLElement, value: unknown): void {
+  if (typeof value === 'string') {
+    element.className = value;
+  } else if (isArray(value)) {
+    element.className = value.join(' ');
+  } else if (value && typeof value === 'object') {
+    element.className = Object.entries(value)
+      .reduce((acc, [key, value]) => acc + (value ? ` ${key}` : ''), '')
+      .trim();
   }
+}
 
+function setStyleAttribute(element: HTMLElement, value: unknown): void {
+  if (typeof value === 'string') {
+    element.style.cssText = value;
+  } else if (value && typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    Object.entries(obj).forEach(([key, value]) => {
+      element.style.setProperty(kebabCase(key), String(value));
+    });
+  }
+}
+
+function setGenericAttribute(element: HTMLElement, attr: string, value: unknown): void {
   if (isFalsy(value)) {
     element.removeAttribute(attr);
   } else if (value === true) {
@@ -241,7 +249,7 @@ export function closeHtmlTags(input: string): string {
       if (tagStack.length > 0) {
         tagStack.pop(); // pop the matching start tag
       }
-    } else if (!selfClosingTags.includes(tagName)) {
+    } else if (!SELF_CLOSING_TAGS.includes(tagName)) {
       // Handle start tag
       tagStack.push(tagName);
     }
@@ -266,7 +274,7 @@ export function closeHtmlTags(input: string): string {
  * @returns A boolean indicating if the tag name is valid.
  */
 export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagNameMap {
-  return htmlTags.includes(tagName);
+  return HTML_TAGS.includes(tagName);
 }
 
 /**
@@ -275,13 +283,14 @@ export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagN
  * @returns The valid HTML tag name.
  */
 export function convertToHtmlTag(tagName: string): string {
-  if (selfClosingTags.includes(tagName)) {
-    return `<${tagName}/>`;
-  } else {
-    return `<${tagName}></${tagName}>`;
-  }
+  return SELF_CLOSING_TAGS.includes(tagName) ? `<${tagName}/>` : `<${tagName}></${tagName}>`;
 }
 
+/**
+ * Extracts the value from a signal if given, or returns the given value if not a signal.
+ * @param signal - The signal or value to extract.
+ * @returns The extracted value.
+ */
 export function extractSignal<T>(signal: T | Signal<T>): T {
   if (isSignal(signal)) {
     return signal.value;
