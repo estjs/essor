@@ -1,30 +1,16 @@
-import {
-  capitalizeFirstLetter,
-  coerceArray,
-  isArray,
-  isFunction,
-  isNil,
-  isPrimitive,
-  startsWith,
-} from '@estjs/shared';
+import { coerceArray, isArray, isFunction, isNil, isPrimitive, startsWith } from '@estjs/shared';
 import { isSignal, useEffect, useSignal } from '@estjs/signal';
-import {
-  addEventListener,
-  bindNode,
-  coerceNode,
-  insertChild,
-  removeChild,
-  setAttribute,
-} from './utils';
+import { addEventListener, coerceNode, insertChild, removeChild, setAttribute } from './utils';
 import { getKey, patchChildren } from './patch';
 import {
   CHILDREN_PROP,
   ComponentType,
   FRAGMENT_PROP_KEY,
+  STYLE_KEY,
   getComponentIndex,
   renderContext,
 } from './shared-config';
-import { createTemplate, isComponent } from './jsx-renderer';
+import { createTemplate } from './jsx-renderer';
 import type { NodeTrack, Props } from '../types';
 
 export class TemplateNode implements JSX.Element {
@@ -228,12 +214,28 @@ export class TemplateNode implements JSX.Element {
         (props[attr] as { value: Node }).value = node;
       } else if (startsWith(attr, 'on')) {
         this.patchEventListener(key, node, attr, value as EventListener);
+      } else if (attr === STYLE_KEY) {
+        this.patchStyle(key, node as HTMLElement, value as Record<string, unknown>);
       } else {
         this.patchAttribute(key, node as HTMLElement, attr, value);
       }
     });
   }
 
+  private patchStyle(key: string, node: HTMLElement, style: Record<string, unknown>): void {
+    if (!style) return;
+    const track = this.getNodeTrack(`${key}:${STYLE_KEY}`);
+    const styleValue = isSignal(style) ? style : useSignal(isFunction(style) ? style() : style);
+    setAttribute(node, STYLE_KEY, styleValue.value);
+    const cleanup = useEffect(() => {
+      styleValue.value = isSignal(style) ? style.value : isFunction(style) ? style() : style;
+      setAttribute(node, STYLE_KEY, styleValue.value);
+    });
+
+    track.cleanup = () => {
+      cleanup();
+    };
+  }
   // Private method to patch children
   private patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
     if (!isArray(children)) {
@@ -258,15 +260,9 @@ export class TemplateNode implements JSX.Element {
     track.cleanup = addEventListener(node, eventName, listener);
   }
 
+  // TODO:  need fix update function
   // Private method to patch attributes
   private patchAttribute(key: string, element: HTMLElement, attr: string, value: unknown): void {
-    const updateKey = `update${capitalizeFirstLetter(attr)}`;
-    if (this.bindValueKeys.includes(attr)) {
-      return;
-    }
-    if (this.props?.[updateKey]) {
-      this.bindValueKeys.push(updateKey);
-    }
     const track = this.getNodeTrack(`${key}:${attr}`);
     const triggerValue = isSignal(value) ? value : useSignal(value);
     setAttribute(element, attr, triggerValue.value);
@@ -275,16 +271,8 @@ export class TemplateNode implements JSX.Element {
       setAttribute(element, attr, triggerValue.value);
     });
 
-    let cleanupBind;
-    if (this.props?.[updateKey] && !isComponent(attr)) {
-      cleanupBind = bindNode(element, value => {
-        this.props?.[updateKey](value);
-      });
-    }
-
     track.cleanup = () => {
       cleanup && cleanup();
-      cleanupBind && cleanupBind();
     };
   }
 

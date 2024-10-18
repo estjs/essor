@@ -3,11 +3,8 @@ function App() {
 
   return (
     <div>
-      <p key={$v}>{$v}</p>
+      <p style={{ 'color': $v === 'hello world' ? 'green' : 'red', 'font-size': '20px' }}>{$v}</p>
       <input type="text" bind:value={$v} />
-      {[1, 2, 3].map(v => (
-        <p key={v}>{v}</p>
-      ))}
     </div>
   );
 }
