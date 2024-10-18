@@ -1,12 +1,27 @@
-import { coerceArray, isArray, isFunction, isNil, isPrimitive, startsWith } from '@estjs/shared';
+import {
+  capitalizeFirstLetter,
+  coerceArray,
+  isArray,
+  isFunction,
+  isHTMLElement,
+  isNil,
+  isPrimitive,
+  startsWith,
+} from '@estjs/shared';
 import { isSignal, useEffect, useSignal } from '@estjs/signal';
-import { addEventListener, coerceNode, insertChild, removeChild, setAttribute } from './utils';
+import {
+  addEventListener,
+  bindNode,
+  coerceNode,
+  insertChild,
+  removeChild,
+  setAttribute,
+} from './utils';
 import { getKey, patchChildren } from './patch';
 import {
   CHILDREN_PROP,
   ComponentType,
   FRAGMENT_PROP_KEY,
-  STYLE_KEY,
   getComponentIndex,
   renderContext,
 } from './shared-config';
@@ -214,28 +229,23 @@ export class TemplateNode implements JSX.Element {
         (props[attr] as { value: Node }).value = node;
       } else if (startsWith(attr, 'on')) {
         this.patchEventListener(key, node, attr, value as EventListener);
-      } else if (attr === STYLE_KEY) {
-        this.patchStyle(key, node as HTMLElement, value as Record<string, unknown>);
       } else {
-        this.patchAttribute(key, node as HTMLElement, attr, value);
+        if (this.bindValueKeys.includes(attr)) return;
+        const updateFn = this.getBindUpdateValue(props, key, attr);
+        this.patchAttribute(key, node as HTMLElement, attr, value, updateFn);
       }
     });
   }
 
-  private patchStyle(key: string, node: HTMLElement, style: Record<string, unknown>): void {
-    if (!style) return;
-    const track = this.getNodeTrack(`${key}:${STYLE_KEY}`);
-    const styleValue = isSignal(style) ? style : useSignal(isFunction(style) ? style() : style);
-    setAttribute(node, STYLE_KEY, styleValue.value);
-    const cleanup = useEffect(() => {
-      styleValue.value = isSignal(style) ? style.value : isFunction(style) ? style() : style;
-      setAttribute(node, STYLE_KEY, styleValue.value);
-    });
-
-    track.cleanup = () => {
-      cleanup();
-    };
+  private getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
+    const UPDATE_PREFIX = 'update';
+    const updateKey = `${UPDATE_PREFIX}${capitalizeFirstLetter(attr)}`;
+    if (updateKey && props[updateKey] && isFunction(props[updateKey])) {
+      this.bindValueKeys.push(updateKey);
+      return props[updateKey];
+    }
   }
+
   // Private method to patch children
   private patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
     if (!isArray(children)) {
@@ -260,19 +270,32 @@ export class TemplateNode implements JSX.Element {
     track.cleanup = addEventListener(node, eventName, listener);
   }
 
-  // TODO:  need fix update function
   // Private method to patch attributes
-  private patchAttribute(key: string, element: HTMLElement, attr: string, value: unknown): void {
+  private patchAttribute(
+    key: string,
+    element: HTMLElement,
+    attr: string,
+    value: unknown,
+    updateFn?: Function,
+  ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
-    const triggerValue = isSignal(value) ? value : useSignal(value);
+    const triggerValue = isFunction(value) ? value() : isSignal(value) ? value : useSignal(value);
     setAttribute(element, attr, triggerValue.value);
     const cleanup = useEffect(() => {
-      triggerValue.value = isSignal(value) ? value.value : value;
+      triggerValue.value = isFunction(value) ? value() : isSignal(value) ? value.value : value;
       setAttribute(element, attr, triggerValue.value);
     });
 
+    let cleanupBind;
+    if (updateFn && isHTMLElement(element)) {
+      cleanupBind = bindNode(element, value => {
+        updateFn(value);
+      });
+    }
+
     track.cleanup = () => {
       cleanup && cleanup();
+      cleanupBind && cleanupBind();
     };
   }
 

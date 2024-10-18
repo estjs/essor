@@ -1,5 +1,11 @@
+import { useEffect } from 'essor';
+
 function App() {
   const $v = 'hello world';
+
+  useEffect(() => {
+    console.log($v);
+  });
 
   return (
     <div>
