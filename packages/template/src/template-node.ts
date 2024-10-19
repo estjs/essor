@@ -285,7 +285,7 @@ export class TemplateNode implements JSX.Element {
     const triggerValue = isSignal(val) ? val : useSignal(val);
     setAttribute(element, attr, triggerValue.value);
     const cleanup = useEffect(() => {
-      // triggger Conditional expression
+      // triggger conditional expression
       const val = isFunction(value) ? value() : value;
       triggerValue.value = isSignal(val) ? val.value : val;
       setAttribute(element, attr, triggerValue.value);
