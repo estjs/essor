@@ -1,5 +1,5 @@
 import { isSignal, shallowSignal, toRaw, useEffect, useSignal } from '../src';
-import { signalObject, useShallowSignal } from '../src/signal';
+import { signalObject } from '../src/signal';
 
 describe('useSignal', () => {
   it('should initialize with the correct value', () => {
@@ -398,13 +398,13 @@ describe('toRaw signal', () => {
   });
 });
 
-describe('useShallowSignal', () => {
+describe('shallowSignal', () => {
   it('should work with basic types', () => {
-    const value1 = useShallowSignal(1);
-    const value2 = useShallowSignal(null);
-    const value3 = useShallowSignal(undefined);
-    const value4 = useShallowSignal('hello');
-    const value5 = useShallowSignal(true);
+    const value1 = shallowSignal(1);
+    const value2 = shallowSignal(null);
+    const value3 = shallowSignal(undefined);
+    const value4 = shallowSignal('hello');
+    const value5 = shallowSignal(true);
 
     expect(value1.value).toBe(1);
     expect(value2.value).toBe(null);
@@ -414,11 +414,11 @@ describe('useShallowSignal', () => {
   });
 
   it('should work with objects', () => {
-    const value1 = useShallowSignal<any>({ a: 1, b: 2 });
-    const value2 = useShallowSignal<any>({ a: null, b: 2 });
-    const value3 = useShallowSignal<any>({ a: undefined, b: 2 });
-    const value4 = useShallowSignal<any>({ a: 'hello', b: 2 });
-    const value5 = useShallowSignal<any>({ a: true, b: 2 });
+    const value1 = shallowSignal<any>({ a: 1, b: 2 });
+    const value2 = shallowSignal<any>({ a: null, b: 2 });
+    const value3 = shallowSignal<any>({ a: undefined, b: 2 });
+    const value4 = shallowSignal<any>({ a: 'hello', b: 2 });
+    const value5 = shallowSignal<any>({ a: true, b: 2 });
 
     let triggerCount = 0;
 
@@ -471,15 +471,15 @@ describe('useShallowSignal', () => {
   });
 
   it('should work with collection', () => {
-    const value1 = useShallowSignal<any>(new Set([1, 2, 3]));
-    const value2 = useShallowSignal<any>(
+    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
+    const value2 = shallowSignal<any>(
       new Map([
         ['a', 1],
         ['b', 2],
       ]),
     );
-    const value3 = useShallowSignal<any>(new WeakMap());
-    const value4 = useShallowSignal<any>(new WeakSet([]));
+    const value3 = shallowSignal<any>(new WeakMap());
+    const value4 = shallowSignal<any>(new WeakSet([]));
 
     let triggerCount = 0;
 

@@ -1,5 +1,5 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, useEffect, useReactive } from '@estjs/signal';
+import { type Signal, shallowReactive, useEffect } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycle-context';
 import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './shared-config';
@@ -26,7 +26,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   // Create reactive props
   private createProxyProps(props?: Props): Record<string, Signal<unknown>> {
     if (!props) return {};
-    return useReactive(
+    return shallowReactive(
       props,
       key =>
         startsWith(key, EVENT_PREFIX) || startsWith(key, UPDATE_PREFIX) || key === CHILDREN_PROP,

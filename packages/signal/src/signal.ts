@@ -192,20 +192,6 @@ export function useSignal<T>(value?: T): Signal<T> {
 }
 
 /**
- * Creates a shallow Signal object.
- * @template T The type of the value held by the Signal.
- * @param {T} [value] - The initial value of the Signal.
- * @returns {Signal<T>} A new shallow Signal instance.
- * @example
- * const obj = useShallowSignal({ nested: { count: 0 } });
- * // Changes to obj.value.nested will not trigger reactivity
- * obj.value.nested.count = 1;
- */
-export function useShallowSignal<T>(value?: T): Signal<T> {
-  return new Signal<T>(value as T, true);
-}
-
-/**
  * Alias for useShallowSignal.
  * @template T The type of the value held by the Signal.
  * @param {T} [value] - The initial value of the Signal.
