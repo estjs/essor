@@ -9,7 +9,7 @@ function App() {
 
   return (
     <div>
-      <p style={{ 'color': $v === 'hello world' ? 'green' : 'red', 'font-size': '20px' }}>{$v}</p>
+      <p class={$v === 'hello world' ? 'red' : 'blue'}>{$v}</p>
       <input type="text" bind:value={$v} />
     </div>
   );

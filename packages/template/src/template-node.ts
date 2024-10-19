@@ -279,10 +279,15 @@ export class TemplateNode implements JSX.Element {
     updateFn?: Function,
   ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
-    const triggerValue = isFunction(value) ? value() : isSignal(value) ? value : useSignal(value);
+
+    // Set the initial value
+    const val = isFunction(value) ? value() : value;
+    const triggerValue = isSignal(val) ? val : useSignal(val);
     setAttribute(element, attr, triggerValue.value);
     const cleanup = useEffect(() => {
-      triggerValue.value = isFunction(value) ? value() : isSignal(value) ? value.value : value;
+      // triggger Conditional expression
+      const val = isFunction(value) ? value() : value;
+      triggerValue.value = isSignal(val) ? val.value : val;
       setAttribute(element, attr, triggerValue.value);
     });
 
