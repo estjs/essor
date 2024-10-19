@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14-beta.2](https://github.com/estjs/essor/compare/v0.0.14-beta.1...v0.0.14-beta.2) `2024-10-19`
+
+
+### Bug Fixes
+
+* fix class conditional expression ([cabea53](https://github.com/estjs/essor/commit/cabea53b8bb4a5fe12205389a1a28e541e91cd05))
+
+
+
+
 
 
 
