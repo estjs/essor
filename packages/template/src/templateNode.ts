@@ -9,6 +9,7 @@ import {
   startsWith,
 } from '@estjs/shared';
 import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
+import { isPlainObject } from './../../shared/src/is';
 import {
   addEventListener,
   bindNode,
@@ -273,7 +274,12 @@ export class TemplateNode implements JSX.Element {
       // triggger conditional expression
       const val2 = isFunction(value) ? value() : value;
       // TODO: class and style should be pure object
-      if (JSON.stringify(triggerValue.value) === JSON.stringify(val2)) return;
+      if (
+        isPlainObject(val2) &&
+        isPlainObject(triggerValue.peek()) &&
+        JSON.stringify(triggerValue.value) === JSON.stringify(val2)
+      )
+        return;
 
       triggerValue.value = isSignal(val2) ? val2.value : val2;
       setAttribute(element, attr, triggerValue.value);

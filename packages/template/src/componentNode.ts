@@ -1,5 +1,6 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, shallowReactive, useEffect } from '@estjs/signal';
+import { type Signal, signalObject, useEffect, useSignal } from '@estjs/signal';
+import { useReactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
 import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './sharedConfig';
@@ -18,13 +19,14 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     public key?: string,
   ) {
     super();
+
     this.key ||= props?.key as string;
     this.proxyProps = this.createProxyProps(props);
   }
 
   private createProxyProps(props?: Props): Record<string, Signal<unknown>> {
     if (!props) return {};
-    return shallowReactive(
+    return signalObject(
       props,
       key =>
         startsWith(key, EVENT_PREFIX) || startsWith(key, UPDATE_PREFIX) || key === CHILDREN_PROP,
@@ -48,7 +50,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     }
 
     this.initRef();
-    this.rootNode = this.template(this.proxyProps);
+    this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
     this.callMountHooks();
     this.patchProps(this.props);
@@ -137,9 +139,10 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   }
 
   private patchNormalProp(key: string, prop: any): void {
+    const newValue = (this.proxyProps[key] ??= useSignal(prop));
     const track = this.getNodeTrack(key);
     track.cleanup = useEffect(() => {
-      this.proxyProps[key] = isFunction(prop) ? prop() : prop;
+      newValue.value = isFunction(prop) ? prop() : prop;
     });
   }
 }
