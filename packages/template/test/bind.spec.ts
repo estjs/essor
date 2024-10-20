@@ -1,6 +1,6 @@
 import { useSignal } from '@estjs/signal';
 import { h as _h$ } from '../src';
-import { mount } from './test-utils';
+import { mount } from './testUtils';
 
 describe('bind value', () => {
   let inputRef;

@@ -1,4 +1,4 @@
-import { ComponentNode } from '../src/component-node';
+import { ComponentNode } from '../src/componentNode';
 import { h, template } from '../src';
 
 describe('componentNode', () => {

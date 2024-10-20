@@ -1,5 +1,5 @@
 import { h, template } from '../src';
-import { mount } from './test-utils';
+import { mount } from './testUtils';
 
 describe('h', () => {
   it('should work with template', () => {
@@ -23,17 +23,17 @@ describe('h', () => {
     const element = () =>
       h('div', {
         class: 'text-red',
-        children: [[() => 'hello world', null]],
+        children: [[() => 'Hello, World!', null]],
       });
     const render = mount(element);
-    expect(render.innerHTML()).toBe('<div class="text-red">hello world</div>');
+    expect(render.innerHTML()).toBe('<div class="text-red">Hello, World!</div>');
   });
   it('should work with empty string', () => {
     const element = () =>
       h('', {
-        children: [[() => 'hello world', null]],
+        children: [[() => 'Hello, World!', null]],
       });
     const render = mount(element);
-    expect(render.innerHTML()).toBe('hello world');
+    expect(render.innerHTML()).toBe('Hello, World!');
   });
 });

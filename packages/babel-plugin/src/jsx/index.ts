@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalizeFirstLetter, isArray } from '@estjs/shared';
+import { capitalize, isArray } from '@estjs/shared';
 import { imports } from '../program';
 import {
   type JSXChild,
@@ -395,7 +395,7 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
                 //   t.identifier((expression.node as Identifier).name),
                 //   t.identifier('value'),
                 // );
-                props[`update${capitalizeFirstLetter(bindName)}`] = t.arrowFunctionExpression(
+                props[`update${capitalize(bindName)}`] = t.arrowFunctionExpression(
                   [value],
                   t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),
                 );

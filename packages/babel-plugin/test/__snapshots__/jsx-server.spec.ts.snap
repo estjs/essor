@@ -44,7 +44,7 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", " id=\\"myId\\"", " class=\\"myClass\\">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", " id=\\"myId\\"", " class=\\"myClass\\">Hello, World!", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;
 
@@ -62,7 +62,7 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with class and style attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello, World!", "</div>"];
 const hasClass = true;
 const style = {
   color: 'red',
@@ -78,7 +78,7 @@ const element = _ssg$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with conditional attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello, World!", "</div>"];
 const hasClass = true;
 const element = _ssg$(_tmpl$, {
   "1": {
@@ -135,7 +135,7 @@ const element = _ssg$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with null and undefined attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello, World!", "</div>"];
 const element = _ssg$(_tmpl$, {
   "1": {
     "id": null,
@@ -176,7 +176,7 @@ const element = _ssg$(_tmpl$, {});"
 
 exports[`jsx ssg transform > transforms JSX element with spread attributes 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello, World!", "</div>"];
 const props = {
   id: 'myId',
   class: 'myClass'
@@ -190,7 +190,7 @@ const element = _ssg$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms JSX element with style attribute 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\"", ">Hello, World!", "</div>"];
 const style = {
   color: 'red',
   fontSize: '16px'
@@ -204,6 +204,6 @@ const element = _ssg$(_tmpl$, {
 
 exports[`jsx ssg transform > transforms simple JSX element 1`] = `
 "import { ssg as _ssg$ } from "essor";
-const _tmpl$ = ["<div data-hk=\\"1\\">Hello World", "</div>"];
+const _tmpl$ = ["<div data-hk=\\"1\\">Hello, World!", "</div>"];
 const element = _ssg$(_tmpl$, {});"
 `;

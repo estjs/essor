@@ -26,7 +26,7 @@ _h$(_tmpl$, {
 
 exports[`jsx transform > should work with static style transform to inline style 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const element = _h$(_tmpl$, {});"
 `;
 
@@ -50,7 +50,7 @@ const element = _h$(_tmpl$, {});"
 
 exports[`jsx transform > transforms JSX element with attributes 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div id=\\"myId\\" class=\\"myClass\\">Hello World");
+const _tmpl$ = _template$("<div id=\\"myId\\" class=\\"myClass\\">Hello, World!");
 const element = _h$(_tmpl$, {});"
 `;
 
@@ -68,7 +68,7 @@ const element = _h$(_tmpl$, {});"
 
 exports[`jsx transform > transforms JSX element with class and style attributes 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const hasClass = true;
 const style = {
   color: 'red',
@@ -84,7 +84,7 @@ const element = _h$(_tmpl$, {
 
 exports[`jsx transform > transforms JSX element with conditional attributes 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const hasClass = true;
 const element = _h$(_tmpl$, {
   "1": {
@@ -141,7 +141,7 @@ const element = _h$(_tmpl$, {
 
 exports[`jsx transform > transforms JSX element with null and undefined attributes 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const element = _h$(_tmpl$, {
   "1": {
     "id": null,
@@ -182,7 +182,7 @@ const element = _h$(_tmpl$, {});"
 
 exports[`jsx transform > transforms JSX element with spread attributes 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const props = {
   id: 'myId',
   class: 'myClass'
@@ -196,7 +196,7 @@ const element = _h$(_tmpl$, {
 
 exports[`jsx transform > transforms JSX element with style attribute 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const style = {
   color: 'red',
   fontSize: '16px'
@@ -210,6 +210,6 @@ const element = _h$(_tmpl$, {
 
 exports[`jsx transform > transforms simple JSX element 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
-const _tmpl$ = _template$("<div>Hello World");
+const _tmpl$ = _template$("<div>Hello, World!");
 const element = _h$(_tmpl$, {});"
 `;

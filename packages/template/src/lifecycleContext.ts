@@ -1,14 +1,11 @@
 import type { Signal } from '@estjs/signal';
 import type { Hook } from '../types';
 
-// Class to manage lifecycle and context for components
 export class LifecycleContext {
   addEventListener(): void {}
   removeEventListener(): void {}
 
-  // Static reference to the current context
   static ref: LifecycleContext | null = null;
-  // Static context to store shared values
   static context: Record<symbol, Signal<any>> = {};
 
   // Hooks for different lifecycle stages
@@ -32,12 +29,10 @@ export class LifecycleContext {
     LifecycleContext.context[context] = value;
   }
 
-  // Initialize the static reference
   initRef() {
     LifecycleContext.ref = this;
   }
 
-  // Remove the static reference
   removeRef() {
     LifecycleContext.ref = null;
   }

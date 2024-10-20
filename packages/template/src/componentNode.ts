@@ -1,12 +1,11 @@
 import { isFunction, startsWith } from '@estjs/shared';
 import { type Signal, shallowReactive, useEffect } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
-import { LifecycleContext } from './lifecycle-context';
-import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './shared-config';
-import type { TemplateNode } from './template-node';
+import { LifecycleContext } from './lifecycleContext';
+import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './sharedConfig';
+import type { TemplateNode } from './templateNode';
 import type { EssorComponent, NodeTrack, Props } from '../types';
 
-// Class representing a component node in the virtual DOM
 export class ComponentNode extends LifecycleContext implements JSX.Element {
   private proxyProps: Record<string, Signal<unknown>>;
   private emitter = new Set<() => void>();
@@ -23,7 +22,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.proxyProps = this.createProxyProps(props);
   }
 
-  // Create reactive props
   private createProxyProps(props?: Props): Record<string, Signal<unknown>> {
     if (!props) return {};
     return shallowReactive(
@@ -33,17 +31,14 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     );
   }
 
-  // Getter for the first child node
   get firstChild(): Node | null {
     return this.rootNode?.firstChild ?? null;
   }
 
-  // Getter to check if the node is connected to the DOM
   get isConnected(): boolean {
     return this.rootNode?.isConnected ?? false;
   }
 
-  // Method to mount the component to the DOM
   mount(parent: Node, before?: Node | null): Node[] {
     if (!isFunction(this.template)) {
       throw new Error('Template must be a function');
@@ -62,7 +57,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     return mountedNode;
   }
 
-  // Method to unmount the component from the DOM
   unmount(): void {
     this.callDestroyHooks();
     this.clearHooks();
@@ -72,17 +66,14 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.clearEmitter();
   }
 
-  // Private method to call mount hooks
   private callMountHooks(): void {
     this.hooks.mounted.forEach(handler => handler());
   }
 
-  // Private method to call destroy hooks
   private callDestroyHooks(): void {
     this.hooks.destroy.forEach(handler => handler());
   }
 
-  // Private method to clear the event emitter
   private clearEmitter(): void {
     for (const cleanup of this.emitter) {
       cleanup();
@@ -90,7 +81,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.emitter.clear();
   }
 
-  // Method to inherit properties from another ComponentNode
   inheritNode(node: ComponentNode): void {
     Object.assign(this.proxyProps, node.proxyProps);
     this.rootNode = node.rootNode;
@@ -103,7 +93,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.patchProps(props);
   }
 
-  // Private method to get or create a NodeTrack
   private getNodeTrack(trackKey: string): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
@@ -114,7 +103,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     return track;
   }
 
-  // Method to patch props onto the component
   patchProps(props: Record<string, any> | undefined) {
     if (!props) {
       return;
@@ -133,7 +121,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.props = props;
   }
 
-  // Private method to patch event listeners
   private patchEventListener(key: string, prop: any): void {
     const event = key.slice(2).toLowerCase();
     // @ts-ignore
@@ -141,17 +128,14 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.emitter.add(cleanup);
   }
 
-  // Private method to patch ref
   private patchRef(prop: { value: Node | null }): void {
     prop.value = this.rootNode?.firstChild ?? null;
   }
 
-  // Private method to patch update handlers
   private patchUpdateHandler(key: string, prop: any): void {
     this.props![key] = extractSignal(prop);
   }
 
-  // Private method to patch normal props
   private patchNormalProp(key: string, prop: any): void {
     const track = this.getNodeTrack(key);
     track.cleanup = useEffect(() => {

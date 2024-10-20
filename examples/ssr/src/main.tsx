@@ -42,7 +42,7 @@ function Com4() {
 }
 
 function App2() {
-  const $value = 'hello world2';
+  const $value = 'Hello, World!2';
   return (
     <div>
       <p>{$value}</p>
@@ -57,7 +57,7 @@ function App2() {
   );
 }
 function App3() {
-  const $value = 'hello world3';
+  const $value = 'Hello, World!3';
   return (
     <div>
       <p>{$value}</p>
@@ -72,7 +72,7 @@ function App3() {
   );
 }
 function App() {
-  const $value = 'hello world1';
+  const $value = 'Hello, World!1';
   return (
     <div>
       <p>{$value}</p>

@@ -1,12 +1,36 @@
-import { TemplateNode } from '../src/template-node';
-import { h } from '../src/jsx-renderer';
+import { useSignal } from '@estjs/signal';
+import { TemplateNode } from '../src/templateNode';
+import { h } from '../src/jsxRenderer';
+import { template } from '../src';
+import { mount } from './testUtils';
 
 describe('templateNode', () => {
   let parent: HTMLElement;
+  let app;
 
   beforeEach(() => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
+    const _tmpl$ = template('<div><p></p><input type="text"/>');
+    function App() {
+      const $v = useSignal('Hello, World!');
+
+      return h(_tmpl$, {
+        '2': {
+          style: () => ({
+            'color': $v.value === 'Hello, World!' ? 'green' : 'red',
+            'font-size': $v.value === 'Hello, World!' ? '30px' : '12px',
+          }),
+          children: [[() => $v.value, null]],
+        },
+        '3': {
+          value: $v,
+          updateValue: _value => ($v.value = _value),
+        },
+      });
+    }
+
+    app = mount(App, parent);
   });
 
   afterEach(() => {
@@ -79,5 +103,48 @@ describe('templateNode', () => {
 
     node2.inheritNode(node1);
     expect(parent.innerHTML).toBe('<div>Original</div>');
+  });
+
+  it('should work with conditional expression', () => {
+    expect(app.get('p')?.innerHTML).toBe('Hello, World!');
+    expect(app.get('p').style).toMatchInlineSnapshot(`
+      CSSStyleDeclaration {
+        "0": "color",
+        "1": "font-size",
+        "_importants": {
+          "color": undefined,
+          "font-size": undefined,
+        },
+        "_length": 2,
+        "_onChange": [Function],
+        "_setInProgress": false,
+        "_values": {
+          "color": "green",
+          "font-size": "30px",
+        },
+      }
+    `);
+
+    app.get('input').value = 'world';
+    app.get('input').dispatchEvent(new Event('input'));
+    expect(app.get('p')?.innerHTML).toBe('world');
+
+    expect(app.get('p').style).toMatchInlineSnapshot(`
+      CSSStyleDeclaration {
+        "0": "color",
+        "1": "font-size",
+        "_importants": {
+          "color": undefined,
+          "font-size": undefined,
+        },
+        "_length": 2,
+        "_onChange": [Function],
+        "_setInProgress": false,
+        "_values": {
+          "color": "red",
+          "font-size": "12px",
+        },
+      }
+    `);
   });
 });

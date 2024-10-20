@@ -3,7 +3,7 @@ const transformCode = getTransform('jsxClient');
 describe('jsx transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `
-      const element = <div>Hello World</div>;
+      const element = <div>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -11,7 +11,7 @@ describe('jsx transform', () => {
 
   it('transforms JSX element with attributes', () => {
     const inputCode = `
-      const element = <div id="myId" class="myClass">Hello World</div>;
+      const element = <div id="myId" class="myClass">Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -37,7 +37,7 @@ describe('jsx transform', () => {
   it('transforms JSX element with spread attributes', () => {
     const inputCode = `
       const props = { id: 'myId', class: 'myClass' };
-      const element = <div {...props}>Hello World</div>;
+      const element = <div {...props}>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -46,7 +46,7 @@ describe('jsx transform', () => {
   it('transforms JSX element with conditional attributes', () => {
     const inputCode = `
       const hasClass = true;
-      const element = <div class={hasClass ? 'myClass' : 'otherClass'}>Hello World</div>;
+      const element = <div class={hasClass ? 'myClass' : 'otherClass'}>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -55,7 +55,7 @@ describe('jsx transform', () => {
   it('transforms JSX element with style attribute', () => {
     const inputCode = `
       const style = { color: 'red', fontSize: '16px' };
-      const element = <div style={style}>Hello World</div>;
+      const element = <div style={style}>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -65,7 +65,7 @@ describe('jsx transform', () => {
     const inputCode = `
       const hasClass = true;
       const style = { color: 'red', fontSize: '16px' };
-      const element = <div class={hasClass ? 'myClass' : ''} style={style}>Hello World</div>;
+      const element = <div class={hasClass ? 'myClass' : ''} style={style}>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -104,7 +104,7 @@ describe('jsx transform', () => {
 
   it('transforms JSX element with null and undefined attributes', () => {
     const inputCode = `
-      const element = <div id={null} class={undefined}>Hello World</div>;
+      const element = <div id={null} class={undefined}>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
@@ -230,7 +230,7 @@ describe('jsx transform', () => {
 
   it('should work with static style transform to inline style', () => {
     const inputCode = `
-      const element = <div style={{ color: 'red', fontSize: '16px' }}>Hello World</div>;
+      const element = <div style={{ color: 'red', fontSize: '16px' }}>Hello, World!</div>;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });

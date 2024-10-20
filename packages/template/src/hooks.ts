@@ -1,6 +1,6 @@
 import { isSymbol } from '@estjs/shared';
 import { type Signal, shallowSignal } from '@estjs/signal';
-import { LifecycleContext } from './lifecycle-context';
+import { LifecycleContext } from './lifecycleContext';
 
 /**
  * Registers a hook to be called when the component is mounted.

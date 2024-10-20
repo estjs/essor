@@ -1,11 +1,9 @@
 import { isArray, isFunction, isString } from '@estjs/shared';
 import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
-import { ComponentNode } from './component-node';
-import { TemplateNode } from './template-node';
-import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './shared-config';
+import { ComponentNode } from './componentNode';
+import { TemplateNode } from './templateNode';
+import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
 import type { EssorComponent, EssorNode, Props } from '../types';
-
-// 新增：常量定义
 
 /**
  * Creates a JSX element from a given template.

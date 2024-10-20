@@ -163,7 +163,9 @@ export class Signal<T> {
       trigger(this, SignalValueKey);
     }
   }
-
+  trigger() {
+    trigger(this, SignalValueKey);
+  }
   /**
    * Returns the current value without triggering reactivity.
    * @returns {T} The current value.

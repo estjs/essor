@@ -31,5 +31,5 @@ export {
   isStringNumber,
   StringNumber,
 } from './is';
-export { camelCase, kebabCase, capitalizeFirstLetter } from './name';
+export { camelCase, kebabCase, capitalize } from './name';
 export { warn, info, error } from './console';

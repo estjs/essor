@@ -1,5 +1,5 @@
 import { insertChild, removeChild, replaceChild } from './utils';
-import { isJsxElement } from './jsx-renderer';
+import { isJsxElement } from './jsxRenderer';
 
 // Type alias for nodes that can be either DOM Node or JSX Element
 type AnyNode = Node | JSX.Element;

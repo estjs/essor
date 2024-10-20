@@ -14,7 +14,7 @@ import {
 } from '../src/utils';
 import { closeHtmlTags } from '../src/utils';
 
-const tmpl = template('<div>Hello World</div>');
+const tmpl = template('<div>Hello, World!</div>');
 const element = h(tmpl, {});
 
 describe('coerceNode', () => {
@@ -78,7 +78,7 @@ describe('insertChild', () => {
     expect(isJsxElement(parent.firstChild)).toBe(false);
     expect(parent.firstChild).toMatchInlineSnapshot(`
       <div>
-        Hello World
+        Hello, World!
       </div>
     `);
   });
@@ -127,7 +127,7 @@ describe('replaceChild', () => {
     replaceChild(parent, element, child);
     expect(parent.firstChild).toMatchInlineSnapshot(`
       <div>
-        Hello World
+        Hello, World!
       </div>
     `);
   });
@@ -360,8 +360,8 @@ describe('closeHtmlTags', () => {
   });
 
   it('should handle input with only text', () => {
-    const input = 'Hello world';
-    const expectedOutput = 'Hello world';
+    const input = 'Hello, World!';
+    const expectedOutput = 'Hello, World!';
     expect(closeHtmlTags(input)).toBe(expectedOutput);
   });
 

@@ -11,7 +11,7 @@ export function Com(props) {
 const _tmpl$ = ['<div>', '</div>'];
 const _tmpl$2 = ['<div><p>', '</p>', '<!><input', ' type="text"', '/>', '</div>'];
 function App() {
-  const $value = _signal$('hello world');
+  const $value = _signal$('Hello, World!');
   return _ssg$(_tmpl$2, {
     '1': {
       children: [

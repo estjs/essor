@@ -1,17 +1,15 @@
 import { escape, isArray, isFunction } from '@estjs/shared';
 import { isSignal } from '@estjs/signal';
-import { LifecycleContext } from './lifecycle-context';
+import { LifecycleContext } from './lifecycleContext';
 import { extractSignal } from './utils';
-import { ComponentType, PLACEHOLDER, enterComponent } from './shared-config';
+import { ComponentType, PLACEHOLDER, enterComponent } from './sharedConfig';
 import type { Signal } from '@estjs/signal/*';
 import type { EssorNode, Props } from '../types';
 
-// Type guard to check if a node is an SSGNode
 export function isSSGNode(node: unknown): node is SSGNode {
   return node instanceof SSGNode;
 }
 
-// Global counter for component indexing
 let componentIndex = 1;
 
 export class SSGNode extends LifecycleContext {
@@ -27,7 +25,6 @@ export class SSGNode extends LifecycleContext {
     this.templates = this.processTemplate();
   }
 
-  // Process the template and return an array of processed strings
   private processTemplate(): string[] {
     if (isArray(this.template)) {
       const htmlString = this.template.join(PLACEHOLDER);
@@ -37,7 +34,6 @@ export class SSGNode extends LifecycleContext {
     return [];
   }
 
-  // Process HTML string by adding component index and handling text nodes
   private processHtmlString(htmlString: string): string {
     return htmlString.replaceAll(/(<[^>]+>)|([^<]+)/g, (match, p1, p2) => {
       if (p1) {
@@ -52,7 +48,6 @@ export class SSGNode extends LifecycleContext {
     });
   }
 
-  // Mount the SSGNode and return the rendered string
   mount(): string {
     this.initRef();
     const output = this.render();
@@ -60,7 +55,6 @@ export class SSGNode extends LifecycleContext {
     return output;
   }
 
-  // Render the SSGNode
   render(): string {
     if (isFunction(this.template)) {
       const root = this.template(this.props);
@@ -73,7 +67,6 @@ export class SSGNode extends LifecycleContext {
     return this.renderTemplate();
   }
 
-  // Render the template by processing props and children
   private renderTemplate(): string {
     Object.entries(this.props).forEach(([key, cur]) => {
       const children = cur.children;
@@ -92,7 +85,6 @@ export class SSGNode extends LifecycleContext {
     return this.templates.join('');
   }
 
-  // Normalize props by removing children and handling signals
   private normalizeProps(props: Props): void {
     Object.entries(props).forEach(([key, value]) => {
       if (key === 'children') {
@@ -105,7 +97,6 @@ export class SSGNode extends LifecycleContext {
     });
   }
 
-  // Generate HTML attributes string from props
   private generateAttributes(props: Props): string {
     return Object.entries(props)
       .filter(([key, value]) => key !== 'children' && !isFunction(value))
@@ -113,7 +104,6 @@ export class SSGNode extends LifecycleContext {
       .join(' ');
   }
 
-  // Render children and append them to the template
   private renderChildren(children: any[], findIndex: number): void {
     children.forEach(([child]) => {
       componentIndex++;
@@ -122,7 +112,6 @@ export class SSGNode extends LifecycleContext {
     });
   }
 
-  // Render a single child node
   private renderChild(child: EssorNode | Function | Signal<unknown>): string {
     if (isFunction(child)) {
       return this.renderChild(child(this.props));

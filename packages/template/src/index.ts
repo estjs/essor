@@ -1,5 +1,5 @@
 // Export core rendering functions and components
-export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './jsx-renderer';
+export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './jsxRenderer';
 
 // Export hooks
 export { onMount, onDestroy, useInject, useProvide, useRef } from './hooks';

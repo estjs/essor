@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getKey, mapKeys, patch, patchChildren } from '../src/patch';
-import { TemplateNode } from '../src/template-node';
-import { ComponentNode } from '../src/component-node';
-import { h } from '../src/jsx-renderer';
-import { EMPTY_TEMPLATE } from '../src/shared-config';
+import { TemplateNode } from '../src/templateNode';
+import { ComponentNode } from '../src/componentNode';
+import { h } from '../src/jsxRenderer';
+import { EMPTY_TEMPLATE } from '../src/sharedConfig';
 
 describe('patch', () => {
   beforeEach(() => {

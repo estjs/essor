@@ -1,5 +1,5 @@
 import {
-  capitalizeFirstLetter,
+  capitalize,
   coerceArray,
   isArray,
   isFunction,
@@ -8,7 +8,7 @@ import {
   isPrimitive,
   startsWith,
 } from '@estjs/shared';
-import { isSignal, useEffect, useSignal } from '@estjs/signal';
+import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,
@@ -24,8 +24,8 @@ import {
   FRAGMENT_PROP_KEY,
   getComponentIndex,
   renderContext,
-} from './shared-config';
-import { createTemplate } from './jsx-renderer';
+} from './sharedConfig';
+import { createTemplate } from './jsxRenderer';
 import type { NodeTrack, Props } from '../types';
 
 export class TemplateNode implements JSX.Element {
@@ -44,27 +44,22 @@ export class TemplateNode implements JSX.Element {
     public key?: string,
   ) {
     this.key ||= props?.key as string;
-
     if (renderContext.isSSR) {
       this.componentIndex = getComponentIndex(this.template);
     }
   }
 
-  // Getter for the first child node
   get firstChild(): Node | null {
     return this.nodes[0] ?? null;
   }
 
-  // Getter to check if the node is connected to the DOM
   get isConnected(): boolean {
     return this.mounted;
   }
 
-  // Placeholder methods for event handling
   addEventListener(): void {}
   removeEventListener(): void {}
 
-  // Method to mount the node to the DOM
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
     if (this.isConnected) {
@@ -99,7 +94,6 @@ export class TemplateNode implements JSX.Element {
     return this.nodes;
   }
 
-  // Method to unmount the node from the DOM
   unmount(): void {
     this.trackMap.forEach(track => {
       track.cleanup?.();
@@ -139,7 +133,6 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  // Method to inherit properties from another TemplateNode
   inheritNode(node: TemplateNode): void {
     this.mounted = node.mounted;
     this.nodes = node.nodes;
@@ -150,7 +143,6 @@ export class TemplateNode implements JSX.Element {
     this.patchProps(props);
   }
 
-  // Private method to map SSG node tree
   private mapSSGNodeTree(parent: Node): void {
     this.treeMap.set(0, parent);
     this.walkNodeTree(parent, this.handleSSGNode.bind(this));
@@ -172,7 +164,6 @@ export class TemplateNode implements JSX.Element {
     this.walkNodeTree(tree, handleNode);
   }
 
-  // Private method to walk through the node tree
   private walkNodeTree(node: Node, handler: (node: Node) => void): void {
     if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
       handler(node);
@@ -184,7 +175,6 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  // Private method to handle SSG nodes
   private handleSSGNode(node: Node): void {
     if (node.nodeType === Node.COMMENT_NODE) {
       const [type, index] = node.textContent?.split('-') || [];
@@ -200,7 +190,6 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  // Method to patch props onto the node
   private patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
 
@@ -214,7 +203,6 @@ export class TemplateNode implements JSX.Element {
     this.props = props;
   }
 
-  // Private method to patch a single prop
   private patchProp(
     key: string,
     node: Node,
@@ -239,14 +227,13 @@ export class TemplateNode implements JSX.Element {
 
   private getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
     const UPDATE_PREFIX = 'update';
-    const updateKey = `${UPDATE_PREFIX}${capitalizeFirstLetter(attr)}`;
+    const updateKey = `${UPDATE_PREFIX}${capitalize(attr)}`;
     if (updateKey && props[updateKey] && isFunction(props[updateKey])) {
       this.bindValueKeys.push(updateKey);
       return props[updateKey];
     }
   }
 
-  // Private method to patch children
   private patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
     if (!isArray(children)) {
       const trackKey = `${key}:${CHILDREN_PROP}:0`;
@@ -263,14 +250,12 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  // Private method to patch event listeners
   private patchEventListener(key: string, node: Node, attr: string, listener: EventListener): void {
     const eventName = attr.slice(2).toLowerCase();
     const track = this.getNodeTrack(`${key}:${attr}`);
     track.cleanup = addEventListener(node, eventName, listener);
   }
 
-  // Private method to patch attributes
   private patchAttribute(
     key: string,
     element: HTMLElement,
@@ -282,12 +267,15 @@ export class TemplateNode implements JSX.Element {
 
     // Set the initial value
     const val = isFunction(value) ? value() : value;
-    const triggerValue = isSignal(val) ? val : useSignal(val);
+    const triggerValue = isSignal(val) ? val : shallowSignal(val);
     setAttribute(element, attr, triggerValue.value);
     const cleanup = useEffect(() => {
       // triggger conditional expression
-      const val = isFunction(value) ? value() : value;
-      triggerValue.value = isSignal(val) ? val.value : val;
+      const val2 = isFunction(value) ? value() : value;
+      // TODO: class and style should be pure object
+      if (JSON.stringify(triggerValue.value) === JSON.stringify(val2)) return;
+
+      triggerValue.value = isSignal(val2) ? val2.value : val2;
       setAttribute(element, attr, triggerValue.value);
     });
 
@@ -304,7 +292,6 @@ export class TemplateNode implements JSX.Element {
     };
   }
 
-  // Private method to get or create a NodeTrack
   private getNodeTrack(trackKey: string, trackLastNodes?: boolean, isRoot?: boolean): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
@@ -321,7 +308,6 @@ export class TemplateNode implements JSX.Element {
     return track;
   }
 
-  // Private method to patch a child node
   private patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
     if (isFunction(child)) {
       track.cleanup = useEffect(() => {
@@ -348,7 +334,6 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  // Private method to reconcile children nodes
   private reconcileChildren(
     parent: Node,
     nextNodes: Node[],

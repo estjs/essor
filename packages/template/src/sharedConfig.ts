@@ -29,42 +29,34 @@ export enum ComponentType {
   COMPONENT,
 }
 
-// Class to manage render context
 class RenderContext {
   renderMode = RENDER_MODE.CLIENT;
 
-  // Getter to check if the current mode is SSG
   get isSSG() {
     return this.renderMode === RENDER_MODE.SSG;
   }
 
-  // Getter to check if the current mode is SSR
   get isSSR() {
     return this.renderMode === RENDER_MODE.SSR;
   }
 
-  // Getter to check if the current mode is Client
   get isClient() {
     return this.renderMode === RENDER_MODE.CLIENT;
   }
 
-  // Set render mode to SSR
   setSSR() {
     this.renderMode = RENDER_MODE.SSR;
   }
 
-  // Set render mode to SSG
   setSSG() {
     this.renderMode = RENDER_MODE.SSG;
   }
 
-  // Set render mode to Client
   setClient() {
     this.renderMode = RENDER_MODE.CLIENT;
   }
 }
 
-// Export a singleton instance of RenderContext
 export const renderContext = new RenderContext();
 
 const componentMap = new Map();

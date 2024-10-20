@@ -1,6 +1,6 @@
-import { SSGNode } from './ssg-node';
-import { renderContext } from './shared-config';
-import { h } from './jsx-renderer';
+import { SSGNode } from './ssgNode';
+import { renderContext } from './sharedConfig';
+import { h } from './jsxRenderer';
 import type { EssorComponent, Props } from '../types';
 
 /**

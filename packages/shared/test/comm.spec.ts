@@ -34,11 +34,11 @@ describe('hasChanged function', () => {
 
 describe('startsWith', () => {
   it('should return true if the string starts with the specified substring', () => {
-    expect(startsWith('hello world', 'hello')).toBe(true);
+    expect(startsWith('Hello, World!', 'Hello')).toBe(true);
   });
 
   it('should return false if the string does not start with the specified substring', () => {
-    expect(startsWith('hello world', 'world')).toBe(false);
+    expect(startsWith('Hello, World!', 'world')).toBe(false);
   });
 
   it('should return false if the first argument is not a string', () => {

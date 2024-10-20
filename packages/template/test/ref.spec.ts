@@ -1,6 +1,6 @@
 import { useSignal } from '@estjs/signal';
 import { h as _h$, template as _template$, useRef } from '../src';
-import { mount } from './test-utils';
+import { mount } from './testUtils';
 
 describe('html element ref', () => {
   const _tmpl$ = _template$('<div>ref');
