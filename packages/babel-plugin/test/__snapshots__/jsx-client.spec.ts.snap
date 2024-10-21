@@ -1,5 +1,20 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`jsx transform > should work with  dynamic style transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div>Hello, World!");
+const color = "red";
+const style = {
+  color,
+  fontSize: '16px'
+};
+const element = _h$(_tmpl$, {
+  "1": {
+    "style": style
+  }
+});"
+`;
+
 exports[`jsx transform > should work with bind api 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
@@ -24,9 +39,36 @@ _h$(_tmpl$, {
 });"
 `;
 
-exports[`jsx transform > should work with static style transform to inline style 1`] = `
+exports[`jsx transform > should work with css transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div style=\\"--color: red;\\">Hello, World!");
+const element = _h$(_tmpl$, {});"
+`;
+
+exports[`jsx transform > should work with css variable transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div style=\\"--color: red;\\">Hello, World!");
+const element = _h$(_tmpl$, {});"
+`;
+
+exports[`jsx transform > should work with dynamic style transform to inline style 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!");
+const color = "red";
+const style = {
+  color,
+  fontSize: '16px'
+};
+const element = _h$(_tmpl$, {
+  "1": {
+    "style": style
+  }
+});"
+`;
+
+exports[`jsx transform > should work with static style transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div style=\\"color:red;fontSize:16px;\\">Hello, World!");
 const element = _h$(_tmpl$, {});"
 `;
 

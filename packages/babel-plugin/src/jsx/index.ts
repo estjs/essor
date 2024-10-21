@@ -255,6 +255,10 @@ function getNodeText(path: NodePath<JSXChild>): string {
   return '';
 }
 
+function isStyleClassName(name: string): name is 'style' | 'class' {
+  return name === 'class' || name === 'style';
+}
+
 function handleAttributes(props: Record<string, any>, result: Result): void {
   let klass = '';
   let style = '';
@@ -277,7 +281,15 @@ function handleAttributes(props: Record<string, any>, result: Result): void {
     } else if (t.isConditionalExpression(value)) {
       props[prop] = t.arrowFunctionExpression([], value);
     } else if (t.isObjectExpression(value)) {
-      handleObjectExpression(prop, value, props, style);
+      const val = handleObjectExpression(prop, value, props, isStyleClassName(prop));
+      if (val) {
+        if (prop === 'class') {
+          klass += ` ${val}`;
+        }
+        if (prop === 'style') {
+          style += `${val}${val.at(-1) === ';' ? '' : ';'}`;
+        }
+      }
     }
   }
 
@@ -297,23 +309,25 @@ function handleObjectExpression(
   prop: string,
   value: t.ObjectExpression,
   props: Record<string, any>,
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  style: string,
-): void {
+  isCt = false,
+): string {
+  let ct = '';
   const hasConditional = value.properties.some(
     property => t.isObjectProperty(property) && t.isConditionalExpression(property.value),
   );
 
   if (hasConditional) {
     props[prop] = t.arrowFunctionExpression([], value);
-  } else if (prop === 'style') {
+  } else if (isCt) {
     value.properties.forEach(property => {
       if (t.isObjectProperty(property)) {
-        style += `${(property.key as Identifier).name}:${(property.value as StringLiteral).value};`;
+        ct += `${(property.key as Identifier).name || (property.key as StringLiteral).value}:${(property.value as StringLiteral).value};`;
       }
     });
+
     delete props[prop];
   }
+  return ct;
 }
 
 function replaceChild(node: t.Expression, result: Result): void {

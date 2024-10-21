@@ -234,4 +234,18 @@ describe('jsx transform', () => {
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+  it('should work with css variable transform to inline style', () => {
+    const inputCode = `
+      const element = <div style={"--color: red"}>Hello, World!</div>;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+  it('should work with dynamic style transform to inline style', () => {
+    const inputCode = `
+      const color =  "red"
+      const style = { color, fontSize: '16px' };
+      const element = <div style={style}>Hello, World!</div>;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
 });
