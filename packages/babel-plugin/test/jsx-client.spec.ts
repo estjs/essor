@@ -234,7 +234,7 @@ describe('jsx transform', () => {
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
-  it('should work with css variable transform to inline style', () => {
+  it('should work with CSS Variables transform to inline style', () => {
     const inputCode = `
       const element = <div style={"--color: red"}>Hello, World!</div>;
     `;

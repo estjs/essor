@@ -15,6 +15,12 @@ const element = _h$(_tmpl$, {
 });"
 `;
 
+exports[`jsx transform > should work with CSS Variables transform to inline style 1`] = `
+"import { template as _template$, h as _h$ } from "essor";
+const _tmpl$ = _template$("<div style=\\"--color: red;\\">Hello, World!");
+const element = _h$(_tmpl$, {});"
+`;
+
 exports[`jsx transform > should work with bind api 1`] = `
 "import { template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
