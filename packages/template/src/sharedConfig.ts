@@ -23,7 +23,6 @@ export const REF_KEY = 'ref';
 
 export const PLACEHOLDER = ' __PLACEHOLDER__ ';
 
-// Enum to represent different types of components
 export enum ComponentType {
   TEXT,
   TEXT_COMPONENT,
@@ -62,14 +61,12 @@ export const renderContext = new RenderContext();
 
 const componentMap = new Map();
 
-// Function to enter a component and set its index
 export function enterComponent(temp, index) {
   componentMap.set(temp, {
     index,
   });
 }
 
-// Function to get the index of a component
 export function getComponentIndex(temp) {
   return componentMap.get(temp)?.index;
 }
