@@ -5,11 +5,11 @@ import {
   isFunction,
   isHTMLElement,
   isNil,
+  isPlainObject,
   isPrimitive,
   startsWith,
 } from '@estjs/shared';
 import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
-import { isPlainObject } from './../../shared/src/is';
 import {
   addEventListener,
   bindNode,
@@ -47,7 +47,7 @@ export class TemplateNode implements JSX.Element {
     public props?: Props,
     public key?: string,
   ) {
-    this.key ||= props?.key as string;
+    this.key ||= props && (props.key as string);
     if (renderContext.isSSR) {
       this.componentIndex = getComponentIndex(this.template);
     }
@@ -80,7 +80,7 @@ export class TemplateNode implements JSX.Element {
 
     if (firstChild?.hasAttribute?.('_svg_')) {
       firstChild.remove();
-      firstChild?.childNodes.forEach(node => {
+      firstChild.childNodes.forEach(node => {
         (cloneNode as Element).append(node);
       });
     }
@@ -100,7 +100,7 @@ export class TemplateNode implements JSX.Element {
 
   unmount(): void {
     this.trackMap.forEach(track => {
-      track.cleanup?.();
+      track.cleanup && track.cleanup();
     });
     this.trackMap.clear();
     this.treeMap.clear();
@@ -127,11 +127,13 @@ export class TemplateNode implements JSX.Element {
 
   deleteFragmentTextNode(child) {
     if (isPrimitive(child)) {
-      this.parent?.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
-          this.parent?.removeChild(node);
-        }
-      });
+      if (this.parent && this.parent.childNodes.length) {
+        this.parent.childNodes.forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
+            this.parent!.removeChild(node);
+          }
+        });
+      }
     } else {
       removeChild(child);
     }
@@ -313,7 +315,7 @@ export class TemplateNode implements JSX.Element {
       }
       this.trackMap.set(trackKey, track);
     }
-    track.cleanup?.();
+    track.cleanup && track.cleanup();
     return track;
   }
 

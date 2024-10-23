@@ -73,7 +73,7 @@ function queueWatcher(fn: Function) {
 }
 
 function flushWatchers() {
-  watcher?.();
+  watcher && watcher();
   watcher = null;
   flushing = false;
 }
