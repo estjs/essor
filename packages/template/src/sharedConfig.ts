@@ -19,6 +19,7 @@ export const EMPTY_TEMPLATE = '';
 export const FRAGMENT_PROP_KEY = '0';
 export const SINGLE_PROP_KEY = '1';
 export const STYLE_KEY = 'style';
+export const REF_KEY = 'ref';
 
 export const PLACEHOLDER = ' __PLACEHOLDER__ ';
 

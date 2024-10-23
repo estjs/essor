@@ -22,7 +22,10 @@ import { getKey, patchChildren } from './patch';
 import {
   CHILDREN_PROP,
   ComponentType,
+  EVENT_PREFIX,
   FRAGMENT_PROP_KEY,
+  REF_KEY,
+  UPDATE_PREFIX,
   getComponentIndex,
   renderContext,
 } from './sharedConfig';
@@ -214,9 +217,9 @@ export class TemplateNode implements JSX.Element {
     Object.entries(props).forEach(([attr, value]) => {
       if (attr === CHILDREN_PROP && value) {
         this.patchChildren(key, node, value, isRoot);
-      } else if (attr === 'ref') {
+      } else if (attr === REF_KEY) {
         (props[attr] as { value: Node }).value = node;
-      } else if (startsWith(attr, 'on')) {
+      } else if (startsWith(attr, EVENT_PREFIX)) {
         this.patchEventListener(key, node, attr, value as EventListener);
       } else {
         if (this.bindValueKeys.includes(attr)) return;
@@ -227,7 +230,6 @@ export class TemplateNode implements JSX.Element {
   }
 
   private getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
-    const UPDATE_PREFIX = 'update';
     const updateKey = `${UPDATE_PREFIX}${capitalize(attr)}`;
     if (updateKey && props[updateKey] && isFunction(props[updateKey])) {
       this.bindValueKeys.push(updateKey);

@@ -3,7 +3,7 @@ import { type Signal, signalObject, useEffect, useSignal } from '@estjs/signal';
 import { useReactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
-import { CHILDREN_PROP, EVENT_PREFIX, UPDATE_PREFIX } from './sharedConfig';
+import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
 import type { TemplateNode } from './templateNode';
 import type { EssorComponent, NodeTrack, Props } from '../types';
 
@@ -50,7 +50,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     }
 
     this.initRef();
-    this.rootNode = this.template(useReactive(this.proxyProps, ['children']));
+    this.rootNode = this.template(useReactive(this.proxyProps, [CHILDREN_PROP]));
     const mountedNode = this.rootNode?.mount(parent, before) ?? [];
     this.callMountHooks();
     this.patchProps(this.props);
@@ -112,7 +112,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     for (const [key, prop] of Object.entries(props)) {
       if (startsWith(key, EVENT_PREFIX) && this.rootNode?.firstChild) {
         this.patchEventListener(key, prop);
-      } else if (key === 'ref') {
+      } else if (key === REF_KEY) {
         this.patchRef(prop);
       } else if (startsWith(key, UPDATE_PREFIX)) {
         this.patchUpdateHandler(key, prop);
