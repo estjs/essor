@@ -2,8 +2,8 @@ import { escape, isArray, isFunction } from '@estjs/shared';
 import { isSignal } from '@estjs/signal';
 import { LifecycleContext } from './lifecycleContext';
 import { extractSignal } from './utils';
-import { ComponentType, PLACEHOLDER, enterComponent } from './sharedConfig';
-import type { Signal } from '@estjs/signal/*';
+import { CHILDREN_PROP, ComponentType, PLACEHOLDER, enterComponent } from './sharedConfig';
+import type { Signal } from '@estjs/signal';
 import type { EssorNode, Props } from '../types';
 
 export function isSSGNode(node: unknown): node is SSGNode {
@@ -87,7 +87,7 @@ export class SSGNode extends LifecycleContext {
 
   private normalizeProps(props: Props): void {
     Object.entries(props).forEach(([key, value]) => {
-      if (key === 'children') {
+      if (key === CHILDREN_PROP) {
         delete props[key];
       } else if (isFunction(value)) {
         delete props[key];
@@ -99,7 +99,7 @@ export class SSGNode extends LifecycleContext {
 
   private generateAttributes(props: Props): string {
     return Object.entries(props)
-      .filter(([key, value]) => key !== 'children' && !isFunction(value))
+      .filter(([key, value]) => key !== CHILDREN_PROP && !isFunction(value))
       .map(([key, value]) => `${key}="${escape(String(value))}"`)
       .join(' ');
   }

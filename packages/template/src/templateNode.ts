@@ -5,11 +5,11 @@ import {
   isFunction,
   isHTMLElement,
   isNil,
+  isPlainObject,
   isPrimitive,
   startsWith,
 } from '@estjs/shared';
 import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
-import { isPlainObject } from './../../shared/src/is';
 import {
   addEventListener,
   bindNode,
@@ -22,7 +22,10 @@ import { getKey, patchChildren } from './patch';
 import {
   CHILDREN_PROP,
   ComponentType,
+  EVENT_PREFIX,
   FRAGMENT_PROP_KEY,
+  REF_KEY,
+  UPDATE_PREFIX,
   getComponentIndex,
   renderContext,
 } from './sharedConfig';
@@ -44,7 +47,7 @@ export class TemplateNode implements JSX.Element {
     public props?: Props,
     public key?: string,
   ) {
-    this.key ||= props?.key as string;
+    this.key ||= props && (props.key as string);
     if (renderContext.isSSR) {
       this.componentIndex = getComponentIndex(this.template);
     }
@@ -77,7 +80,7 @@ export class TemplateNode implements JSX.Element {
 
     if (firstChild?.hasAttribute?.('_svg_')) {
       firstChild.remove();
-      firstChild?.childNodes.forEach(node => {
+      firstChild.childNodes.forEach(node => {
         (cloneNode as Element).append(node);
       });
     }
@@ -97,7 +100,7 @@ export class TemplateNode implements JSX.Element {
 
   unmount(): void {
     this.trackMap.forEach(track => {
-      track.cleanup?.();
+      track.cleanup && track.cleanup();
     });
     this.trackMap.clear();
     this.treeMap.clear();
@@ -124,11 +127,13 @@ export class TemplateNode implements JSX.Element {
 
   deleteFragmentTextNode(child) {
     if (isPrimitive(child)) {
-      this.parent?.childNodes.forEach(node => {
-        if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
-          this.parent?.removeChild(node);
-        }
-      });
+      if (this.parent && this.parent.childNodes.length) {
+        this.parent.childNodes.forEach(node => {
+          if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
+            this.parent!.removeChild(node);
+          }
+        });
+      }
     } else {
       removeChild(child);
     }
@@ -214,9 +219,9 @@ export class TemplateNode implements JSX.Element {
     Object.entries(props).forEach(([attr, value]) => {
       if (attr === CHILDREN_PROP && value) {
         this.patchChildren(key, node, value, isRoot);
-      } else if (attr === 'ref') {
+      } else if (attr === REF_KEY) {
         (props[attr] as { value: Node }).value = node;
-      } else if (startsWith(attr, 'on')) {
+      } else if (startsWith(attr, EVENT_PREFIX)) {
         this.patchEventListener(key, node, attr, value as EventListener);
       } else {
         if (this.bindValueKeys.includes(attr)) return;
@@ -227,7 +232,6 @@ export class TemplateNode implements JSX.Element {
   }
 
   private getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
-    const UPDATE_PREFIX = 'update';
     const updateKey = `${UPDATE_PREFIX}${capitalize(attr)}`;
     if (updateKey && props[updateKey] && isFunction(props[updateKey])) {
       this.bindValueKeys.push(updateKey);
@@ -311,7 +315,7 @@ export class TemplateNode implements JSX.Element {
       }
       this.trackMap.set(trackKey, track);
     }
-    track.cleanup?.();
+    track.cleanup && track.cleanup();
     return track;
   }
 

@@ -64,6 +64,7 @@ const INITIAL_WATCHER_VALUE = undefined;
 let watcher: Function | null;
 let flushing = false;
 
+// it synchronous code，work nextTick code
 function queueWatcher(fn: Function) {
   watcher = fn;
   if (!flushing) {
@@ -73,7 +74,7 @@ function queueWatcher(fn: Function) {
 }
 
 function flushWatchers() {
-  watcher?.();
+  watcher && watcher();
   watcher = null;
   flushing = false;
 }
@@ -81,10 +82,6 @@ function flushWatchers() {
 /**
  * Creates a watcher for the given source, which can be a signal, computed, reactive object, or an array of them.
  * The watcher will be triggered whenever the source value changes, and will call the given callback function with the new value and old value.
- * If the source is an array, the watcher will be triggered when any one of the elements changes.
- * If the source is a reactive object, the watcher will be triggered when any one of the properties changes.
- * If the source is an array of reactive objects, the watcher will be triggered when any one of the properties of any one of the objects changes.
- * If the source is a computed value, the watcher will be triggered when the value of the computed changes.
  * @param {WatchSource | WatchSource[] | object} source The source to watch.
  * @param {WatchCallback | null} cb The callback function to call when the source value changes.
  * @param {WatchOptions} [options] Options for the watcher.

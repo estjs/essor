@@ -183,16 +183,6 @@ export function bindNode(node: Node, setter: (value: any) => void) {
   }
 }
 
-/**
- * Defers the execution of a function until the next tick of the event loop.
- * @param fn - The function to be executed on the next tick.
- * @returns A Promise that resolves after the next tick.
- */
-const p = Promise.resolve();
-export function nextTick(fn?: () => void): Promise<void> {
-  return fn ? p.then(fn) : p;
-}
-
 export type Listener<T> = (value: T) => void;
 
 export interface EventTarget {

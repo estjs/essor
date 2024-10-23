@@ -19,10 +19,10 @@ export const EMPTY_TEMPLATE = '';
 export const FRAGMENT_PROP_KEY = '0';
 export const SINGLE_PROP_KEY = '1';
 export const STYLE_KEY = 'style';
+export const REF_KEY = 'ref';
 
 export const PLACEHOLDER = ' __PLACEHOLDER__ ';
 
-// Enum to represent different types of components
 export enum ComponentType {
   TEXT,
   TEXT_COMPONENT,
@@ -61,14 +61,12 @@ export const renderContext = new RenderContext();
 
 const componentMap = new Map();
 
-// Function to enter a component and set its index
 export function enterComponent(temp, index) {
   componentMap.set(temp, {
     index,
   });
 }
 
-// Function to get the index of a component
 export function getComponentIndex(temp) {
   return componentMap.get(temp)?.index;
 }
