@@ -8,15 +8,5 @@ function App() {
     </div>
   );
 }
-export default function MDXContent(props = {}) {
-  const { wrapper: MDXLayout } = props.components || {};
-  let $v = true;
 
-  setTimeout(() => {
-    $v = false;
-    console.log($v);
-  }, 2000);
-  return <div>{$v ? <_createMdxContent {...props}></_createMdxContent> : <Page2 />}</div>;
-}
-
-(<MDXContent />).mount(document.querySelector('#app')!);
+(<App />).mount(document.querySelector('#app')!);

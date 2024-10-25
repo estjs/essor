@@ -1,5 +1,5 @@
 import { isArray, isFunction, isString } from '@estjs/shared';
-import { closeHtmlTags, convertToHtmlTag, isHtmlTagName } from './utils';
+import { closeHtmlTags, convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
@@ -19,20 +19,22 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   props?: Props,
   key?: string,
 ): JSX.Element {
+  // Handle string templates (HTML elements or empty templates)
   if (isString(template)) {
-    if (isHtmlTagName(template)) {
-      const htmlTemplate = convertToHtmlTag(template);
-      props = { [SINGLE_PROP_KEY]: props };
-      return new TemplateNode(createTemplate(htmlTemplate), props, key);
-    } else if (template === EMPTY_TEMPLATE) {
-      props = { [FRAGMENT_PROP_KEY]: props };
-      return new TemplateNode(createTemplate(EMPTY_TEMPLATE), props, key);
-    }
+    const isEmptyTemplate = template === EMPTY_TEMPLATE;
+    const htmlTemplate = isEmptyTemplate ? EMPTY_TEMPLATE : convertToHtmlTag(template);
+
+    props = { [isEmptyTemplate ? FRAGMENT_PROP_KEY : SINGLE_PROP_KEY]: props };
+    return new TemplateNode(createTemplate(htmlTemplate), props, key);
   }
 
-  return isFunction(template)
-    ? new ComponentNode(template, props, key)
-    : new TemplateNode(template as HTMLTemplateElement, props, key);
+  // Handle functional templates (Components)
+  if (isFunction(template)) {
+    return new ComponentNode(template, props, key);
+  }
+
+  // Handle HTMLTemplateElement
+  return new TemplateNode(template as HTMLTemplateElement, props, key);
 }
 
 /**
@@ -82,7 +84,9 @@ export function Fragment<
     | boolean
     | (JSX.JSXElement | string | number | boolean)[],
 >(props: { children: T }) {
-  return h(EMPTY_TEMPLATE, {
-    children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
+  return h(createTemplate(EMPTY_TEMPLATE), {
+    [FRAGMENT_PROP_KEY]: {
+      children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
+    },
   });
 }

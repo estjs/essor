@@ -165,7 +165,13 @@ function handleComponentElement(
     if (children.length > 0) {
       const childrenGenerator =
         children.length === 1 ? children[0] : t.arrayExpression(children as JSXElement[]);
-      result.props.children = childrenGenerator;
+
+      // Check if children is a conditional expression
+      if (t.isConditionalExpression(childrenGenerator)) {
+        result.props.children = t.arrowFunctionExpression([], childrenGenerator);
+      } else {
+        result.props.children = childrenGenerator;
+      }
     }
   } else {
     transformJSX(path);
@@ -438,3 +444,4 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
     hasExpression,
   };
 }
+
