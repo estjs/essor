@@ -66,6 +66,7 @@ export class TemplateNode implements JSX.Element {
 
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
+
     if (this.isConnected) {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
@@ -105,7 +106,7 @@ export class TemplateNode implements JSX.Element {
     this.trackMap.clear();
     this.treeMap.clear();
     this.nodes.forEach(node => removeChild(node));
-
+    console.log(this.nodes);
     // Fragment
     if (!this.template.innerHTML && !this.nodes.length) {
       const children = this.props?.[FRAGMENT_PROP_KEY]?.children;
