@@ -1,7 +1,16 @@
 {
-  "cSpell.words": ["bumpp", "essor", "pnpm", "unplugin", "vitest","estjs","jiangxd","tsup"],
+  "cSpell.words": [
+    "bumpp",
+    "essor",
+    "pnpm",
+    "unplugin",
+    "vitest",
+    "estjs",
+    "jiangxd",
+    "tsup",
+    "typecheck"
+  ],
   "prettier.enable": false,
-  "eslint.experimental.useFlatConfig": true,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   }
