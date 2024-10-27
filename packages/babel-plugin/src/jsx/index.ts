@@ -60,13 +60,21 @@ function replaceSpace(node: t.JSXText): string {
 
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
   const state: State = path.state;
+  const isJSXFragment = path.isJSXFragment();
   const isComponent = path.isJSXElement() && isComponentName(getTagName(path.node));
 
-  const tmpl = isComponent
-    ? t.identifier(getTagName(path.node))
-    : path.scope.generateUidIdentifier('_tmpl$');
+  let tmpl: t.Identifier;
 
-  if (!isComponent) {
+  if (isJSXFragment) {
+    imports.add('Fragment');
+    tmpl = state.Fragment;
+  } else {
+    tmpl = isComponent
+      ? t.identifier(getTagName(path.node))
+      : path.scope.generateUidIdentifier('_tmpl$');
+  }
+
+  if (!isComponent && !isJSXFragment) {
     const template = isSSG
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
       : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
@@ -444,4 +452,3 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
     hasExpression,
   };
 }
-
