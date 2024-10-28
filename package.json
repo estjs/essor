@@ -2,7 +2,7 @@
   "name": "essor-monorepo",
   "version": "0.0.14-beta.9",
   "private": "true",
-  "packageManager": "pnpm@9.12.2",
+  "packageManager": "pnpm@9.12.3",
   "description": "",
   "type": "module",
   "keywords": [
