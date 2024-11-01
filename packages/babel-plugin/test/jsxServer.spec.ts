@@ -1,6 +1,6 @@
-import { getTransform } from './transform-util';
-const transformCode = getTransform('jsxClient');
-describe('jsx transform', () => {
+import { getTransform } from './transformUtil';
+const transformCode = getTransform('jsxServe', { ssg: true });
+describe('jsx ssg transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `
       const element = <div>Hello, World!</div>;
@@ -225,27 +225,6 @@ describe('jsx transform', () => {
       <p bind:value={value}>Paragraph 1</p>
       <p>Paragraph 2</p>
     </div>`;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static style transform to inline style', () => {
-    const inputCode = `
-      const element = <div style={{ color: 'red', fontSize: '16px' }}>Hello, World!</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-  it('should work with CSS Variables transform to inline style', () => {
-    const inputCode = `
-      const element = <div style={"--color: red"}>Hello, World!</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-  it('should work with dynamic style transform to inline style', () => {
-    const inputCode = `
-      const color =  "red"
-      const style = { color, fontSize: '16px' };
-      const element = <div style={style}>Hello, World!</div>;
-    `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 });

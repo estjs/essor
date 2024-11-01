@@ -1,4 +1,4 @@
-import { getTransform } from './transform-util';
+import { getTransform } from './transformUtil';
 const transformCode = getTransform('props');
 describe('props', () => {
   it('should replace function parameter with "props"', () => {

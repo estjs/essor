@@ -58,27 +58,30 @@ function replaceSpace(node: t.JSXText): string {
   return node.value.replaceAll(/\s+/g, ' ').trim();
 }
 
+/**
+ * Creates an expression node for a JSX element or fragment.
+ * @param path - The path to the JSX element.
+ * @param result - The result containing template and props.
+ * @returns A CallExpression representing the JSX element or fragment.
+ */
 function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpression {
   const state: State = path.state;
   const isJSXFragment = path.isJSXFragment();
   const isComponent = path.isJSXElement() && isComponentName(getTagName(path.node));
 
-  let tmpl: t.Identifier;
+  const tmpl = isComponent
+    ? t.identifier(getTagName(path.node))
+    : path.scope.generateUidIdentifier('_tmpl$');
 
-  if (isJSXFragment) {
-    imports.add('Fragment');
-    tmpl = state.Fragment;
-  } else {
-    tmpl = isComponent
-      ? t.identifier(getTagName(path.node))
-      : path.scope.generateUidIdentifier('_tmpl$');
-  }
-
-  if (!isComponent && !isJSXFragment) {
-    const template = isSSG
+  let templateNode;
+  if (!isComponent) {
+    templateNode = isSSG
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
-      : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
-    state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, template));
+      : isJSXFragment
+        ? t.stringLiteral(result.template as string)
+        : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
+
+    state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, templateNode));
     if (!isSSG) {
       imports.add('template');
     }
@@ -87,13 +90,23 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   const key = result.props.key;
   delete result.props.key;
 
-  const args = [tmpl, createProps(result.props)];
+  const propsArg = createProps(result.props);
+  const args =
+    isComponent && getTagName(path.node) === 'Fragment'
+      ? [t.stringLiteral(''), propsArg]
+      : [tmpl, propsArg];
+
   if (key) {
     args.push(key);
   }
 
-  const fnName = isSSG ? 'ssg' : 'h';
+  const fnName = isSSG
+    ? 'ssg'
+    : isJSXFragment || (isComponent && getTagName(path.node) === 'Fragment')
+      ? 'Fragment'
+      : 'h';
   imports.add(fnName);
+
   return t.callExpression(state[fnName], args);
 }
 

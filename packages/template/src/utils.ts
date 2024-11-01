@@ -212,6 +212,9 @@ export function addEventListener(
  * @returns The HTML string with unclosed tags properly closed.
  */
 export function closeHtmlTags(input: string): string {
+  if (!input) {
+    return input;
+  }
   const tagStack: string[] = [];
   const output: string[] = [];
   const tagPattern = /<\/?([\da-z-]+)([^>]*)>/gi;

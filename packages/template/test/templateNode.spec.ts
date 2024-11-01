@@ -1,6 +1,6 @@
 import { useSignal } from '@estjs/signal';
 import { TemplateNode } from '../src/templateNode';
-import { createTemplate, h } from '../src/jsxRenderer';
+import { h } from '../src/jsxRenderer';
 import { template } from '../src';
 import { mount } from './testUtils';
 
@@ -146,13 +146,5 @@ describe('templateNode', () => {
         },
       }
     `);
-  });
-
-  it('should mount Fragment with children correctly', () => {
-    const parent = document.createElement('div');
-    const fragment = new TemplateNode(createTemplate('<><div></div></>'));
-    fragment.mount(parent);
-
-    expect(parent.childNodes.length).toBe(2);
   });
 });

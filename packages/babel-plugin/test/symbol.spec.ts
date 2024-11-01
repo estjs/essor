@@ -1,4 +1,4 @@
-import { getTransform } from './transform-util';
+import { getTransform } from './transformUtil';
 
 const transformCode = getTransform('symbol');
 describe('transform symbol', () => {

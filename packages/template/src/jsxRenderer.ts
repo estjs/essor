@@ -3,6 +3,7 @@ import { closeHtmlTags, convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
+import { FragmentNode } from './fragmentNode';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
 /**
@@ -70,12 +71,6 @@ export function createTemplate(html: string): HTMLTemplateElement {
   return template;
 }
 
-/**
- * @param props - An object containing the `children` prop.
- * @param props.children - The children to be rendered. Can be a single JSX element, string, number, boolean,
- *                         or an array of these. Falsy values in arrays will be filtered out.
- * @returns A JSX element representing the fragment, wrapping the filtered children.
- */
 export function Fragment<
   T extends
     | JSX.JSXElement
@@ -83,10 +78,26 @@ export function Fragment<
     | number
     | boolean
     | (JSX.JSXElement | string | number | boolean)[],
->(props: { children: T }) {
-  return h(createTemplate(EMPTY_TEMPLATE), {
-    [FRAGMENT_PROP_KEY]: {
-      children: isArray(props.children) ? props.children.filter(Boolean) : [props.children],
-    },
-  });
+>(
+  template: any,
+  props:
+    | { children: T }
+    | {
+        [key in string]: {
+          children: T;
+        };
+      },
+) {
+  if (props.children) {
+    props = {
+      [FRAGMENT_PROP_KEY]: {
+        children: (isArray(props.children)
+          ? props.children.filter(Boolean)
+          : [props.children]) as T,
+      },
+    };
+  }
+  template = closeHtmlTags(template);
+
+  return new FragmentNode(template, props);
 }
