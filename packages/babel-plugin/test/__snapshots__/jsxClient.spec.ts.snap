@@ -53,7 +53,7 @@ const element = _h$(_tmpl$, {});"
 
 exports[`jsx transform > transforms JSX element with JSX fragment 1`] = `
 "import { template as _template$, Fragment as _fragment$ } from "essor";
-const _tmpl$ = "<p>Paragraph 1</p><p>Paragraph 2</p>";
+const _tmpl$ = _template$("<p>Paragraph 1</p><p>Paragraph 2</p>");
 const element = _fragment$(_tmpl$, {});"
 `;
 

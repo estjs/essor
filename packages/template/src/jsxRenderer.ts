@@ -97,7 +97,5 @@ export function Fragment<
       },
     };
   }
-  template = closeHtmlTags(template);
-
   return new FragmentNode(template, props);
 }

@@ -1,12 +1,12 @@
-import { template as _template$, Fragment as _fragment$, h as _h$,  } from "../../src";
-import {useSignal as _signal$} from '@estjs/signal';
-const _tmpl$ = "<h1>App1",
-  _tmpl$2 = "<h1>App2",
-  _tmpl$3 = "<h1>App3",
-  _tmpl$4 = "<h1>App4",
-  _tmpl$5 = "<p>component-1</p><!><p>component-2</p><p>component-3</p><!><p>component-4</p><p>component-5<p>component-6</p><!><p>component-6</p><p>component-7</p><p>component-8</p><p>component-9</p>",
-  _tmpl$6 = "<p></p><input type=\"text\"/>",
-  _tmpl$7 = "";
+import { template as _template$, Fragment as _fragment$, h as _h$ } from "../../src";
+import {useSignal as _signal$ } from "@estjs/signal"
+const _tmpl$ = _template$("<h1>App1"),
+  _tmpl$2 = _template$("<h1>App2"),
+  _tmpl$3 = _template$("<h1>App3"),
+  _tmpl$4 = _template$("<h1>App4"),
+  _tmpl$5 = _template$("<p>component-1</p><!><p>component-2</p><p>component-3</p><!><p>component-4</p><p>component-5<p>component-6</p><!><p>component-6</p><p>component-7</p><p>component-8</p><p>component-9</p>"),
+  _tmpl$6 = _template$("<p></p><input type=\"text\"/>"),
+  _tmpl$7 = _template$("");
 const App1 = () => {
   return _fragment$(_tmpl$, {});
 };

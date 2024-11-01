@@ -77,9 +77,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
   if (!isComponent) {
     templateNode = isSSG
       ? t.arrayExpression((result.template as string[]).map(t.stringLiteral))
-      : isJSXFragment
-        ? t.stringLiteral(result.template as string)
-        : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
+      : t.callExpression(state.template, [t.stringLiteral(result.template as string)]);
 
     state.tmplDeclaration.declarations.push(t.variableDeclarator(tmpl, templateNode));
     if (!isSSG) {

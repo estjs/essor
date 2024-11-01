@@ -1,26 +1,16 @@
 import { mount } from './testUtils';
-import FragmentAbbr from './snippet/fragmentAbbr';
+import FragmentAbbr from './snippet/FragmentAbbr';
 import FragmentRoot from './snippet/Fragment';
 describe('fragmentNode', () => {
-  let parent: HTMLElement;
-  let parent2: HTMLElement;
   let app;
   let app2;
 
   beforeEach(() => {
-    parent = document.createElement('div');
-    parent2 = document.createElement('div');
-    document.body.appendChild(parent);
-    document.body.appendChild(parent2);
-
-    app = mount(FragmentRoot, parent);
-    app2 = mount(FragmentAbbr, parent2);
+    app = mount(FragmentRoot);
+    app2 = mount(FragmentAbbr);
   });
 
-  afterEach(() => {
-    document.body.removeChild(parent);
-    document.body.removeChild(parent2);
-  });
+  afterEach(() => {});
 
   it('should work with fragment node', () => {
     expect(app.innerHTML()).toMatchInlineSnapshot(

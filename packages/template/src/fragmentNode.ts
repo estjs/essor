@@ -1,7 +1,6 @@
-import { insertChild } from './utils';
+import { insertChild, removeChild } from './utils';
 import { TemplateNode } from './templateNode';
 import { renderContext } from './sharedConfig';
-import { createTemplate } from './jsxRenderer';
 import type { Props } from '../types';
 
 export class FragmentNode extends TemplateNode {
@@ -12,6 +11,7 @@ export class FragmentNode extends TemplateNode {
   ) {
     super(template, props, key);
   }
+
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
 
@@ -20,28 +20,47 @@ export class FragmentNode extends TemplateNode {
       return this.nodes;
     }
 
-    this.props = Object.keys(this.props as any).reduce((rcc, key) => {
-      rcc[+key + 1] = this.props![key];
-      return rcc;
-    }, {});
-
-    const cloneNode = createTemplate(
-      `<div class="fragment-node">${this.template}</div>`,
-    ).content.cloneNode(true);
-
-    this.nodes = Array.from(cloneNode.childNodes);
-    const childrenNodes = Array.from(this.nodes[0].childNodes) as Node[];
+    const fragment = this.template.content.cloneNode(true);
+    this.nodes = Array.from(fragment.childNodes);
 
     if (renderContext.isSSR) {
       this.mapSSGNodeTree(parent as HTMLElement);
     } else {
-      this.mapNodeTree(parent, cloneNode);
+      this.mapNodeTree(parent, fragment);
     }
 
-    insertChild(parent, this.nodes[0], before);
+    const tempFragment = document.createDocumentFragment();
+    this.nodes.forEach(node => tempFragment.appendChild(node));
+    insertChild(parent, tempFragment, before);
+
     this.patchProps(this.props);
     this.mounted = true;
 
-    return childrenNodes;
+    return this.nodes;
+  }
+
+  unmount(): void {
+    // 清理所有追踪器和子节点
+    this.trackMap.forEach(track => {
+      // 清理子节点
+      if (track.lastNodes) {
+        track.lastNodes.forEach(node => {
+          removeChild(node);
+        });
+      }
+      // 清理追踪器
+      track.cleanup && track.cleanup();
+    });
+
+    this.trackMap.clear();
+    this.treeMap.clear();
+
+    // 移除所有节点
+    this.nodes.forEach(node => {
+      removeChild(node);
+    });
+
+    this.nodes = [];
+    this.mounted = false;
   }
 }

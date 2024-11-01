@@ -11,7 +11,7 @@ const _tmpl$ = _template$('<div><h1>App1'),
   _tmpl$9 = _template$('<p>component-5'),
   _tmpl$10 = _template$('<p>component-6</p>'),
   _tmpl$11 = _template$('<p>component-6</p>'),
-  _tmpl$12 = '<p>component-7</p><p>component-8</p>',
+  _tmpl$12 = _template$('<p>component-7</p><p>component-8</p>'),
   _tmpl$13 = _template$('<p>component-9</p>'),
   _tmpl$14 = _template$('<p></p>'),
   _tmpl$15 = _template$('<input type="text"/>');
