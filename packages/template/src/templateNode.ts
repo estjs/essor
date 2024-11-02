@@ -6,7 +6,6 @@ import {
   isHTMLElement,
   isNil,
   isPlainObject,
-  isPrimitive,
   startsWith,
 } from '@estjs/shared';
 import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
@@ -23,7 +22,6 @@ import {
   CHILDREN_PROP,
   ComponentType,
   EVENT_PREFIX,
-  FRAGMENT_PROP_KEY,
   REF_KEY,
   UPDATE_PREFIX,
   getComponentIndex,
@@ -33,21 +31,19 @@ import { createTemplate } from './jsxRenderer';
 import type { NodeTrack, Props } from '../types';
 
 export class TemplateNode implements JSX.Element {
-  // Private properties for managing the node's state
-  private treeMap = new Map<number, Node>();
-  private mounted = false;
-  private nodes: Node[] = [];
-  private trackMap = new Map<string, NodeTrack>();
-  private bindValueKeys: string[] = [];
-  private componentIndex: number;
-  private parent: Node | null = null;
+  protected treeMap = new Map<number, Node>();
+  protected mounted = false;
+  protected nodes: Node[] = [];
+  protected trackMap = new Map<string, NodeTrack>();
+  protected bindValueKeys: string[] = [];
+  protected componentIndex: number;
+  protected parent: Node | null = null;
 
   constructor(
     public template: HTMLTemplateElement,
     public props?: Props,
     public key?: string,
   ) {
-    this.key ||= props && (props.key as string);
     if (renderContext.isSSR) {
       this.componentIndex = getComponentIndex(this.template);
     }
@@ -66,6 +62,7 @@ export class TemplateNode implements JSX.Element {
 
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
+
     if (this.isConnected) {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
@@ -106,37 +103,8 @@ export class TemplateNode implements JSX.Element {
     this.treeMap.clear();
     this.nodes.forEach(node => removeChild(node));
 
-    // Fragment
-    if (!this.template.innerHTML && !this.nodes.length) {
-      const children = this.props?.[FRAGMENT_PROP_KEY]?.children;
-
-      if (children) {
-        if (isArray(children)) {
-          children.forEach(child => {
-            this.deleteFragmentTextNode(child);
-          });
-        } else {
-          this.deleteFragmentTextNode(children);
-        }
-      }
-    }
-
     this.nodes = [];
     this.mounted = false;
-  }
-
-  deleteFragmentTextNode(child) {
-    if (isPrimitive(child)) {
-      if (this.parent && this.parent.childNodes.length) {
-        this.parent.childNodes.forEach(node => {
-          if (node.nodeType === Node.TEXT_NODE && node.textContent === `${child as any}`) {
-            this.parent!.removeChild(node);
-          }
-        });
-      }
-    } else {
-      removeChild(child);
-    }
   }
 
   inheritNode(node: TemplateNode): void {
@@ -149,13 +117,13 @@ export class TemplateNode implements JSX.Element {
     this.patchProps(props);
   }
 
-  private mapSSGNodeTree(parent: Node): void {
+  protected mapSSGNodeTree(parent: Node): void {
     this.treeMap.set(0, parent);
     this.walkNodeTree(parent, this.handleSSGNode.bind(this));
   }
 
-  // Private method to map node tree
-  private mapNodeTree(parent: Node, tree: Node): void {
+  // protected method to map node tree
+  protected mapNodeTree(parent: Node, tree: Node): void {
     let index = 1;
     this.treeMap.set(0, parent);
     const arr = [parent];
@@ -170,7 +138,7 @@ export class TemplateNode implements JSX.Element {
     this.walkNodeTree(tree, handleNode);
   }
 
-  private walkNodeTree(node: Node, handler: (node: Node) => void): void {
+  protected walkNodeTree(node: Node, handler: (node: Node) => void): void {
     if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
       handler(node);
     }
@@ -181,7 +149,7 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  private handleSSGNode(node: Node): void {
+  protected handleSSGNode(node: Node): void {
     if (node.nodeType === Node.COMMENT_NODE) {
       const [type, index] = node.textContent?.split('-') || [];
       if (ComponentType.TEXT === +type && +index === this.componentIndex) {
@@ -196,7 +164,7 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  private patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
+  protected patchProps(props: Record<string, Record<string, unknown>> | undefined): void {
     if (!props) return;
 
     Object.entries(props).forEach(([key, value]) => {
@@ -209,7 +177,7 @@ export class TemplateNode implements JSX.Element {
     this.props = props;
   }
 
-  private patchProp(
+  protected patchProp(
     key: string,
     node: Node,
     props: Record<string, unknown>,
@@ -231,7 +199,7 @@ export class TemplateNode implements JSX.Element {
     });
   }
 
-  private getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
+  protected getBindUpdateValue(props: Record<string, any>, key: string, attr: string) {
     const updateKey = `${UPDATE_PREFIX}${capitalize(attr)}`;
     if (updateKey && props[updateKey] && isFunction(props[updateKey])) {
       this.bindValueKeys.push(updateKey);
@@ -239,7 +207,7 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  private patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
+  protected patchChildren(key: string, node: Node, children: unknown, isRoot: boolean): void {
     if (!isArray(children)) {
       const trackKey = `${key}:${CHILDREN_PROP}:0`;
       const track = this.getNodeTrack(trackKey, true, isRoot);
@@ -255,13 +223,18 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  private patchEventListener(key: string, node: Node, attr: string, listener: EventListener): void {
+  protected patchEventListener(
+    key: string,
+    node: Node,
+    attr: string,
+    listener: EventListener,
+  ): void {
     const eventName = attr.slice(2).toLowerCase();
     const track = this.getNodeTrack(`${key}:${attr}`);
     track.cleanup = addEventListener(node, eventName, listener);
   }
 
-  private patchAttribute(
+  protected patchAttribute(
     key: string,
     element: HTMLElement,
     attr: string,
@@ -303,7 +276,7 @@ export class TemplateNode implements JSX.Element {
     };
   }
 
-  private getNodeTrack(trackKey: string, trackLastNodes?: boolean, isRoot?: boolean): NodeTrack {
+  protected getNodeTrack(trackKey: string, trackLastNodes?: boolean, isRoot?: boolean): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
       track = { cleanup: () => {} };
@@ -319,7 +292,7 @@ export class TemplateNode implements JSX.Element {
     return track;
   }
 
-  private patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
+  protected patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
     if (isFunction(child)) {
       track.cleanup = useEffect(() => {
         const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
@@ -345,7 +318,7 @@ export class TemplateNode implements JSX.Element {
     }
   }
 
-  private reconcileChildren(
+  protected reconcileChildren(
     parent: Node,
     nextNodes: Node[],
     before: Node | null,

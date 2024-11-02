@@ -3,7 +3,6 @@ import { getKey, mapKeys, patch, patchChildren } from '../src/patch';
 import { TemplateNode } from '../src/templateNode';
 import { ComponentNode } from '../src/componentNode';
 import { h } from '../src/jsxRenderer';
-import { EMPTY_TEMPLATE } from '../src/sharedConfig';
 
 describe('patch', () => {
   beforeEach(() => {
@@ -92,8 +91,8 @@ describe('patch', () => {
 
     it('should update text content if both are Text nodes', () => {
       const parent = document.createElement('div');
-      const node = h(EMPTY_TEMPLATE, { children: 'old' });
-      const next = h(EMPTY_TEMPLATE, { children: 'new' });
+      const node = h('div', { children: 'old' });
+      const next = h('div', { children: 'new' });
       node.mount(parent);
 
       const result = patch(parent, node, next);

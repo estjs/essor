@@ -4,6 +4,7 @@ export interface State {
   h: t.Identifier;
   template: t.Identifier;
   ssg: t.Identifier;
+  Fragment: t.Identifier;
 
   useSignal: t.Identifier;
   useComputed: t.Identifier;

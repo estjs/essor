@@ -1,53 +1,27 @@
-import { useSignal } from '@estjs/signal';
-import { TemplateNode } from '../src/templateNode';
-import { createTemplate, h } from '../src/jsxRenderer';
-import { template } from '../src';
+import { h } from '../src';
 import { mount } from './testUtils';
 
 describe('templateNode', () => {
   let parent: HTMLElement;
   let app;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
-    const _tmpl$ = template('<div><p></p><input type="text"/>');
-    function App() {
-      const $v = useSignal('Hello, World!');
 
-      return h(_tmpl$, {
-        '2': {
-          style: () => ({
-            'color': $v.value === 'Hello, World!' ? 'green' : 'red',
-            'font-size': $v.value === 'Hello, World!' ? '30px' : '12px',
-          }),
-          children: [[() => $v.value, null]],
-        },
-        '3': {
-          value: $v,
-          updateValue: _value => ($v.value = _value),
-        },
-      });
-    }
+    const App = await import('./snippet/Basic');
 
-    app = mount(App, parent);
+    app = mount(App.default, parent);
   });
 
   afterEach(() => {
     document.body.removeChild(parent);
   });
 
-  it('should create a TemplateNode instance', () => {
-    const template = document.createElement('template');
-    template.innerHTML = '<div>Test</div>';
-    const node = new TemplateNode(template);
-    expect(node).toBeInstanceOf(TemplateNode);
-  });
-
   it('should mount and unmount correctly', () => {
     const template = document.createElement('template');
     template.innerHTML = '<div>Test</div>';
-    const node = new TemplateNode(template);
+    const node = h(template);
 
     node.mount(parent);
     expect(parent.innerHTML).toBe('<div>Test</div>');
@@ -59,7 +33,7 @@ describe('templateNode', () => {
   it('should patch props correctly', () => {
     const template = document.createElement('template');
     template.innerHTML = '<div></div>';
-    const node = new TemplateNode(template);
+    const node = h(template);
     node.mount(parent);
     //@ts-ignore
     node.patchProps({
@@ -78,28 +52,28 @@ describe('templateNode', () => {
   it('should handle children prop', () => {
     const template = document.createElement('template');
     template.innerHTML = '<div></div>';
-    const node = new TemplateNode(template);
+    const node = h(template);
     node.mount(parent);
 
     //@ts-ignore
     node.patchProps({
       '1': {
-        children: [[h('span', { children: 'Child' }), null]],
+        children: [['Child', null]],
       },
     });
 
-    expect(parent.innerHTML).toBe('<div><span>Child</span></div>');
+    expect(parent.innerHTML).toBe('<div>Child</div>');
   });
 
   it('should handle inheritNode', () => {
     const template1 = document.createElement('template');
     template1.innerHTML = '<div>Original</div>';
-    const node1 = new TemplateNode(template1);
+    const node1 = h(template1);
     node1.mount(parent);
 
     const template2 = document.createElement('template');
     template2.innerHTML = '<div>New</div>';
-    const node2 = new TemplateNode(template2);
+    const node2 = h(template2);
 
     node2.inheritNode(node1);
     expect(parent.innerHTML).toBe('<div>Original</div>');
@@ -146,13 +120,5 @@ describe('templateNode', () => {
         },
       }
     `);
-  });
-
-  it('should mount Fragment with children correctly', () => {
-    const parent = document.createElement('div');
-    const fragment = new TemplateNode(createTemplate('<><div></div></>'));
-    fragment.mount(parent);
-
-    expect(parent.childNodes.length).toBe(2);
   });
 });

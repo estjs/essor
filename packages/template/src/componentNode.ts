@@ -8,10 +8,10 @@ import type { TemplateNode } from './templateNode';
 import type { EssorComponent, NodeTrack, Props } from '../types';
 
 export class ComponentNode extends LifecycleContext implements JSX.Element {
-  private proxyProps: Record<string, Signal<unknown>>;
-  private emitter = new Set<() => void>();
-  private rootNode: TemplateNode | null = null;
-  private trackMap = new Map<string, NodeTrack>();
+  protected proxyProps: Record<string, Signal<unknown>>;
+  protected emitter = new Set<() => void>();
+  protected rootNode: TemplateNode | null = null;
+  protected trackMap = new Map<string, NodeTrack>();
 
   constructor(
     public template: EssorComponent,
@@ -24,7 +24,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.proxyProps = this.createProxyProps(props);
   }
 
-  private createProxyProps(props?: Props): Record<string, Signal<unknown>> {
+  protected createProxyProps(props?: Props): Record<string, Signal<unknown>> {
     if (!props) return {};
     return signalObject(
       props,
@@ -68,15 +68,15 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.clearEmitter();
   }
 
-  private callMountHooks(): void {
+  protected callMountHooks(): void {
     this.hooks.mounted.forEach(handler => handler());
   }
 
-  private callDestroyHooks(): void {
+  protected callDestroyHooks(): void {
     this.hooks.destroy.forEach(handler => handler());
   }
 
-  private clearEmitter(): void {
+  protected clearEmitter(): void {
     for (const cleanup of this.emitter) {
       cleanup();
     }
@@ -95,7 +95,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.patchProps(props);
   }
 
-  private getNodeTrack(trackKey: string): NodeTrack {
+  protected getNodeTrack(trackKey: string): NodeTrack {
     let track = this.trackMap.get(trackKey);
     if (!track) {
       track = { cleanup: () => {} };
@@ -123,22 +123,22 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.props = props;
   }
 
-  private patchEventListener(key: string, prop: any): void {
+  protected patchEventListener(key: string, prop: any): void {
     const event = key.slice(2).toLowerCase();
     // @ts-ignore
     const cleanup = addEventListener(this.rootNode.nodes[0], event, prop);
     this.emitter.add(cleanup);
   }
 
-  private patchRef(prop: { value: Node | null }): void {
+  protected patchRef(prop: { value: Node | null }): void {
     prop.value = this.rootNode?.firstChild ?? null;
   }
 
-  private patchUpdateHandler(key: string, prop: any): void {
+  protected patchUpdateHandler(key: string, prop: any): void {
     this.props![key] = extractSignal(prop);
   }
 
-  private patchNormalProp(key: string, prop: any): void {
+  protected patchNormalProp(key: string, prop: any): void {
     const newValue = (this.proxyProps[key] ??= useSignal(prop));
     const track = this.getNodeTrack(key);
     track.cleanup = useEffect(() => {
