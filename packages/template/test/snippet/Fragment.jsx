@@ -14,7 +14,8 @@ const _tmpl$ = _template$('<div><h1>App1'),
   _tmpl$12 = _template$('<p>component-7</p><p>component-8</p>'),
   _tmpl$13 = _template$('<p>component-9</p>'),
   _tmpl$14 = _template$('<p></p>'),
-  _tmpl$15 = _template$('<input type="text"/>');
+  _tmpl$15 = _template$('<input type="text"/>'),
+  _tmpl$16 = _template$('');
 const App1 = () => {
   return _h$(_tmpl$, {});
 };
@@ -81,7 +82,7 @@ export default function FragmentRoot() {
   setTimeout(() => {
     $v.value = false;
   }, 2e3);
-  return _fragment$('', {
+  return _fragment$(_tmpl$16, {
     children: () => ($v.value ? _h$(FragmentComponent, {}) : _h$(App, {})),
   });
 }

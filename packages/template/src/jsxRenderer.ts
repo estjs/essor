@@ -20,12 +20,14 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   props?: Props,
   key?: string,
 ): JSX.Element {
-  // Handle string templates (HTML elements or empty templates)
+  // handle fragment
+  if (template === EMPTY_TEMPLATE) {
+    return Fragment(template, props!);
+  }
+  // Handle string templates
   if (isString(template)) {
-    const isEmptyTemplate = template === EMPTY_TEMPLATE;
-    const htmlTemplate = isEmptyTemplate ? EMPTY_TEMPLATE : convertToHtmlTag(template);
-
-    props = { [isEmptyTemplate ? FRAGMENT_PROP_KEY : SINGLE_PROP_KEY]: props };
+    const htmlTemplate = convertToHtmlTag(template);
+    props = { [SINGLE_PROP_KEY]: props };
     return new TemplateNode(createTemplate(htmlTemplate), props, key);
   }
 
@@ -96,6 +98,9 @@ export function Fragment<
           : [props.children]) as T,
       },
     };
+  }
+  if (template === EMPTY_TEMPLATE) {
+    template = createTemplate(EMPTY_TEMPLATE);
   }
   return new FragmentNode(template, props);
 }
