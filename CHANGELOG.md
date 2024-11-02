@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14-beta.10](https://github.com/estjs/essor/compare/v0.0.14-beta.9...v0.0.14-beta.10) `2024-11-02`
+
+
+### Bug Fixes
+
+* delete npmmirror ([08cfdca](https://github.com/estjs/essor/commit/08cfdcaec87ca543e489ac554f825e0b877cf273))
+
+
+
+
 ## [0.0.14-beta.9](https://github.com/estjs/essor/compare/v0.0.14-beta.8...v0.0.14-beta.9) `2024-10-25`
 
 
