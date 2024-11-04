@@ -9,7 +9,14 @@ import {
   noop,
   warn,
 } from '@estjs/shared';
-import { type ComputedImpl, type SignalImpl, isComputed, isReactive, isSignal, effect } from './signal';
+import {
+  type ComputedImpl,
+  type SignalImpl,
+  effect,
+  isComputed,
+  isReactive,
+  isSignal,
+} from './signal';
 import { nextTick } from './scheduler';
 
 export type WatchSource<T = any> = SignalImpl<T> | ComputedImpl<T> | (() => T);

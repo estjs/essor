@@ -8,7 +8,7 @@ import {
   isPlainObject,
   startsWith,
 } from '@estjs/shared';
-import { isSignal, shallowSignal, effect } from '@estjs/signal';
+import { effect, isSignal, shallowSignal } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,

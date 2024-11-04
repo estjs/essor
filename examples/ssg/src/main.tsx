@@ -1,4 +1,4 @@
-import { type InjectionKey, useInject, useProvide, reactive } from 'essor';
+import { type InjectionKey, reactive, useInject, useProvide } from 'essor';
 
 const ProvideKey = Symbol('ProvideKey') as InjectionKey<{ count: number }>;
 

@@ -1,5 +1,5 @@
 import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, signalObject, effect, signal } from '@estjs/signal';
+import { type Signal, effect, signal, signalObject } from '@estjs/signal';
 import { reactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';

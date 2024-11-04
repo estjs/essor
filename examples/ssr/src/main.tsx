@@ -88,9 +88,5 @@ function App() {
 }
 
 const html = renderToString(App);
-console.log(html);
 document.querySelector('#app')!.innerHTML = html;
-
 hydrate(App, '#app');
-
-// (<App></App>).mount(document.querySelector('#app')!);
