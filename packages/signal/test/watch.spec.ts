@@ -1,14 +1,14 @@
-import { useComputed, useReactive, useSignal, useWatch } from '../src';
+import { computed, reactive, signal, useWatch } from '../src';
 import { nextTick } from '../src/scheduler';
 
 describe('useWatch', () => {
   it('should watch a signal and trigger callback on change', async () => {
-    const signal = useSignal(1);
+    const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signal, callback);
+    const stop = useWatch(signalValue, callback);
 
-    signal.value = 2;
+    signalValue.value = 2;
 
     await nextTick();
     expect(callback).toHaveBeenCalledWith(2, 1);
@@ -17,13 +17,13 @@ describe('useWatch', () => {
   });
 
   it('should watch a computed value and trigger callback on change', async () => {
-    const signal = useSignal(1);
-    const computed = useComputed(() => signal.value * 2);
+    const signalValue = signal(1);
+    const computedValue = computed(() => signalValue.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch(computed, callback);
+    const stop = useWatch(computedValue, callback);
 
-    signal.value = 2;
+    signalValue.value = 2;
     await nextTick();
     expect(callback).toHaveBeenCalledWith(4, 2);
 
@@ -31,7 +31,7 @@ describe('useWatch', () => {
   });
 
   it('should watch a reactive object and trigger callback on change', async () => {
-    const obj = useReactive({ count: 1 });
+    const obj = reactive({ count: 1 });
     const callback = vi.fn();
 
     const stop = useWatch(obj, callback);
@@ -45,12 +45,12 @@ describe('useWatch', () => {
   });
 
   it('should watch multiple sources and trigger callback on change', async () => {
-    const signal1 = useSignal(1);
-    const signal2 = useSignal(2);
-    const computed = useComputed(() => signal1.value * 2 + signal2.value * 2);
+    const signal1 = signal(1);
+    const signal2 = signal(2);
+    const computedValue = computed(() => signal1.value * 2 + signal2.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch([signal1, signal2, computed], callback);
+    const stop = useWatch([signal1, signal2, computedValue], callback);
 
     signal1.value = 2;
 
@@ -68,12 +68,12 @@ describe('useWatch', () => {
   });
 
   it('should watch a function source and trigger callback on change', async () => {
-    const signal = useSignal(1);
+    const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(() => signal.value * 2, callback);
+    const stop = useWatch(() => signalValue.value * 2, callback);
 
-    signal.value = 2;
+    signalValue.value = 2;
 
     await nextTick();
     expect(callback).toHaveBeenCalledWith(4, 2);
@@ -82,13 +82,13 @@ describe('useWatch', () => {
   });
 
   it('should watch an array of sources and trigger callback on change', async () => {
-    const signal = useSignal(1);
-    const computed = useComputed(() => signal.value * 2);
+    const signalValue = signal(1);
+    const computedValue = computed(() => signalValue.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch([signal, computed], callback);
+    const stop = useWatch([signal, computedValue], callback);
 
-    signal.value = 2;
+    signalValue.value = 2;
     await nextTick();
     expect(callback).toHaveBeenCalledWith([2, 4], [1, 2]);
 
@@ -96,7 +96,7 @@ describe('useWatch', () => {
   });
 
   it('should handle deep watching of nested objects correctly', async () => {
-    const obj = useReactive({ nested: { count: 1 } });
+    const obj = reactive({ nested: { count: 1 } });
     const callback = vi.fn();
 
     const stop = useWatch(obj, callback, { deep: true });
@@ -111,14 +111,14 @@ describe('useWatch', () => {
   });
 
   it('should trigger the callback immediately when immediate option is true', async () => {
-    const signal = useSignal(1);
+    const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signal, callback, { immediate: true });
+    const stop = useWatch(signalValue, callback, { immediate: true });
     await nextTick();
     expect(callback).toHaveBeenCalledWith(1, undefined);
 
-    signal.value = 2;
+    signalValue.value = 2;
     await nextTick();
     expect(callback).toHaveBeenCalledWith(2, 1);
 
@@ -126,16 +126,16 @@ describe('useWatch', () => {
   });
 
   it('should not trigger callback if value does not change', async () => {
-    const signal = useSignal(1);
+    const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signal, callback);
+    const stop = useWatch(signalValue, callback);
 
-    signal.value = 1; // not change
+    signalValue.value = 1; // not change
     await nextTick();
     expect(callback).not.toHaveBeenCalled();
 
-    signal.value = 2; // change
+    signalValue.value = 2; // change
     await nextTick();
     expect(callback).toHaveBeenCalledTimes(1);
 
@@ -145,7 +145,7 @@ describe('useWatch', () => {
   it('should work with collection objects like Map, Set', async () => {
     const map = new Map();
     const set = new Set();
-    const reactiveObj = useReactive({ map, set });
+    const reactiveObj = reactive({ map, set });
     const callback = vi.fn();
 
     const stop = useWatch(reactiveObj, callback);
@@ -162,13 +162,13 @@ describe('useWatch', () => {
   });
 
   it('should watch an array of signals and reactive objects', async () => {
-    const signal = useSignal(1);
-    const obj = useReactive({ count: 1 });
+    const signalValue = signal(1);
+    const obj = reactive({ count: 1 });
     const callback = vi.fn();
 
-    const stop = useWatch([signal, obj], callback);
+    const stop = useWatch([signalValue, obj], callback);
 
-    signal.value = 2;
+    signalValue.value = 2;
 
     await nextTick();
     expect(callback).toHaveBeenCalledWith([2, { count: 1 }], [1, { count: 1 }]);
@@ -196,8 +196,8 @@ describe('useWatch', () => {
   });
 
   it('should batch changes and trigger callback once', async () => {
-    const signal1 = useSignal(1);
-    const signal2 = useSignal(2);
+    const signal1 = signal(1);
+    const signal2 = signal(2);
     const callback = vi.fn();
 
     const stop = useWatch([signal1, signal2], callback);

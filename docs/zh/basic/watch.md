@@ -7,10 +7,10 @@
 
 ##### 监听单个源
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 import { useWatch } from './watch';
 
-const count = useSignal(0);
+const count = signal(0);
 
 useWatch(count, (newVal, oldVal) => {
   console.log(`计数从 ${oldVal} 变为 ${newVal}`);
@@ -19,11 +19,11 @@ useWatch(count, (newVal, oldVal) => {
 
 ##### 监听多个源
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 import { useWatch } from './watch';
 
-const count = useSignal(0);
-const name = useSignal('Alice');
+const count = signal(0);
+const name = signal('Alice');
 
 useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
   console.log(`计数从 ${oldCount} 变为 ${newCount}`);
@@ -33,10 +33,10 @@ useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
 
 ##### 监听响应式对象
 ```typescript
-import { useReactive } from './signal';
+import { reactive } from './signal';
 import { useWatch } from './watch';
 
-const state = useReactive({
+const state = reactive({
   count: 0,
   name: 'Alice',
 });

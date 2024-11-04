@@ -1,5 +1,5 @@
 //  eslint-disable
-import { useSignal as _signal$ } from '@estjs/signal';
+import { signal as _signal$ } from '@estjs/signal';
 import { ssg as _ssg$, hydrate, renderToString } from '../src';
 export function Com(props) {
   return _ssg$(_tmpl$, {

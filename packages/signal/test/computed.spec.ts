@@ -1,19 +1,19 @@
-import { useComputed, useEffect, useSignal } from '../src';
+import { computed, effect, signal } from '../src';
 
 describe('computed', () => {
   it('should compute the correct value', () => {
-    const testSignal = useSignal(10);
-    const computedSignal = useComputed(() => testSignal.value * 2);
+    const testSignal = signal(10);
+    const computedSignal = computed(() => testSignal.value * 2);
     expect(computedSignal.value).toBe(20);
     testSignal.value = 20;
     expect(computedSignal.value).toBe(40);
   });
 
   it('should compute the correct value with condition', () => {
-    const conditionSignal = useSignal(false);
-    const testSignal = useSignal(10);
+    const conditionSignal = signal(false);
+    const testSignal = signal(10);
     let effectTime = 0;
-    const computedSignal = useComputed(() => {
+    const computedSignal = computed(() => {
       effectTime++;
       return conditionSignal.value ? 50 : testSignal.value * 2;
     });
@@ -33,23 +33,23 @@ describe('computed', () => {
   });
 
   it('should get correct value', () => {
-    const count = useSignal(0);
-    const double = useComputed(() => count.value * 2);
-    const triple = useComputed(() => count.value * 3);
+    const count = signal(0);
+    const double = computed(() => count.value * 2);
+    const triple = computed(() => count.value * 3);
     count.value = 1;
     expect(double.value).toBe(2);
     expect(triple.value).toBe(3);
   });
 
   it('should work computed in effect', () => {
-    const val = useSignal(0);
-    const computed = useComputed(() => {
+    const val = signal(0);
+    const computedValue = computed(() => {
       return 10 * val.value;
     });
 
     let effectTimes = 0;
-    useEffect(() => {
-      computed.value;
+    effect(() => {
+      computedValue.value;
       effectTimes++;
     });
     expect(effectTimes).toBe(1);

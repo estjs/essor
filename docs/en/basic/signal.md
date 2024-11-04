@@ -1,15 +1,15 @@
 
-### `useSignal`
+### `signal`
 
 #### Overview
-`useSignal` is a function used to create a reactive signal. A signal is a state unit that can be monitored, and when its value changes, any dependent computed properties and side effects will automatically update.
+`signal` is a function used to create a reactive signal. A signal is a state unit that can be monitored, and when its value changes, any dependent computed properties and side effects will automatically update.
 
 #### Usage
 
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 console.log(count.value); // 0
 
 count.value = 5;
@@ -24,19 +24,19 @@ console.log(count.value); // 5
 
 ---
 
-### `useEffect`
+### `effect`
 
 #### Overview
-The `useEffect` function allows you to execute side effects when a signal or computed property changes. It is a key tool for performing side-effect operations within a reactive system.
+The `effect` function allows you to execute side effects when a signal or computed property changes. It is a key tool for performing side-effect operations within a reactive system.
 
 #### Usage
 
 ```typescript
-import { useEffect, useSignal } from './signal';
+import { effect, signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 
-useEffect(() => {
+effect(() => {
   console.log(`Count changed to: ${count.value}`);
 });
 
@@ -51,18 +51,18 @@ count.value = 1; // Console output: Count changed to: 1
 
 ---
 
-### `useComputed`
+### `computed`
 
 #### Overview
-The `useComputed` function is used to create a computed property based on other signals or reactive states. The computed property automatically depends on the signals or reactive states it uses and updates automatically when these dependencies change.
+The `computed` function is used to create a computed property based on other signals or reactive states. The computed property automatically depends on the signals or reactive states it uses and updates automatically when these dependencies change.
 
 #### Usage
 
 ```typescript
-import { useComputed, useSignal } from './signal';
+import { computed, signal } from './signal';
 
-const count = useSignal(2);
-const doubleCount = useComputed(() => count.value * 2);
+const count = signal(2);
+const doubleCount = computed(() => count.value * 2);
 
 console.log(doubleCount.value); // 4
 
@@ -111,9 +111,9 @@ The `isSignal` function is used to check if a value is a signal. This is useful 
 #### Usage
 
 ```typescript
-import { isSignal, useSignal } from './signal';
+import { isSignal, signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 
 console.log(isSignal(count)); // true
 console.log(isSignal(42)); // false
@@ -126,16 +126,16 @@ console.log(isSignal(42)); // false
 - **`boolean`**: Returns `true` if the value is a signal, otherwise returns `false`.
 
 
-### `useReactive`
+### `reactive`
 
 #### Basic Usage
-The `useReactive` function creates a reactive object. The properties of the object will automatically trigger updates when they change.
+The `reactive` function creates a reactive object. The properties of the object will automatically trigger updates when they change.
 
 #### Example
 ```javascript
-import { useReactive } from '@estjs/shared';
+import { reactive } from '@estjs/shared';
 
-const state = useReactive({ count: 0 });
+const state = reactive({ count: 0 });
 
 console.log(state.count); // 0
 
@@ -157,9 +157,9 @@ The `isReactive` function checks if a given object is reactive.
 
 #### Example
 ```javascript
-import { isReactive, useReactive } from '@estjs/shared';
+import { isReactive, reactive } from '@estjs/shared';
 
-const state = useReactive({ count: 0 });
+const state = reactive({ count: 0 });
 
 console.log(isReactive(state)); // true
 console.log(isReactive({})); // false
@@ -179,9 +179,9 @@ The `unReactive` function creates a shallow copy of a reactive object.
 
 #### Example
 ```javascript
-import { unReactive, useReactive } from '@estjs/shared';
+import { unReactive, reactive } from '@estjs/shared';
 
-const state = useReactive({ count: 0 });
+const state = reactive({ count: 0 });
 
 const copy = unReactive(state);
 console.log(copy.count); // 0

@@ -79,7 +79,7 @@ function handleRestElement(path, state: State, properties, notRestNames) {
       path.node.params[0] = t.identifier(restName);
     } else {
       const restVariableDeclaration = createRestVariableDeclaration(state, restName, notRestNames);
-      imports.add('useReactive');
+      imports.add('reactive');
       (path.node.body as t.BlockStatement).body.unshift(restVariableDeclaration);
     }
   }
@@ -89,7 +89,7 @@ function createRestVariableDeclaration(state: State, restName: string, notRestNa
   return t.variableDeclaration('const', [
     t.variableDeclarator(
       t.identifier(restName),
-      t.callExpression(state.useReactive, [
+      t.callExpression(state.reactive, [
         t.identifier('__props'),
         t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
       ])

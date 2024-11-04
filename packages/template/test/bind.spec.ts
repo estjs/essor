@@ -1,16 +1,16 @@
-import { useSignal } from '@estjs/signal';
+import { signal } from '@estjs/signal';
 import { h as _h$ } from '../src';
 import { mount } from './testUtils';
 
 describe('bind value', () => {
   let inputRef;
   let componentRef;
-  let signal;
+  let signalValue;
   function inoutBind() {
-    signal = useSignal('hello');
+    signalValue = signal('hello');
     return _h$('input', {
-      value: signal.value,
-      updateValue: _value => (signal.value = _value),
+      value: signalValue.value,
+      updateValue: _value => (signalValue.value = _value),
     });
   }
   function Component(props) {
@@ -22,14 +22,14 @@ describe('bind value', () => {
     });
   }
   function componentBind() {
-    const signal = useSignal('hello');
+    const signalValue = signal('hello');
     return _h$('', {
       children: [
         [
           () =>
             _h$(Component, {
               value: signal,
-              updateValue: _value2 => (signal.value = _value2),
+              updateValue: _value2 => (signalValue.value = _value2),
             }),
           null,
         ],

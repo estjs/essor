@@ -47,7 +47,7 @@ let inBatch = false;
 const batchQueue: Set<EffectFn> = new Set();
 
 export type SignalObject<T> = {
-  [K in keyof T]: Signal<T[K]>;
+  [K in keyof T]: SignalImpl<T[K]>;
 };
 
 // Define the Reactive type
@@ -119,7 +119,7 @@ function trigger(target: object, key: string | symbol) {
  * count.value = 1;
  * console.log(count.value); // 1
  */
-export class Signal<T> {
+export class SignalImpl<T> {
   private __value: T;
   private __shallow: boolean;
 
@@ -144,7 +144,7 @@ export class Signal<T> {
   get value(): T {
     track(this, SignalValueKey);
     if (isObject(this.__value) && !this.__shallow) {
-      return reactive(this.__value) as T;
+      return ReactiveImpl(this.__value) as T;
     }
     return this.__value;
   }
@@ -173,38 +173,42 @@ export class Signal<T> {
   peek(): T {
     return this.__value;
   }
+
+  set(value: T) {
+    this.value = value;
+  }
 }
 
 /**
  * Creates a new Signal object.
  * @template T The type of the value held by the Signal.
  * @param {T} [value] - The initial value of the Signal.
- * @returns {Signal<T>} A new Signal instance.
+ * @returns {SignalImpl<T>} A new Signal instance.
  * @example
- * const count = useSignal(0);
+ * const count = signal(0);
  * console.log(count.value); // 0
  * count.value++;
  * console.log(count.value); // 1
  */
-export function useSignal<T>(value?: T): Signal<T> {
+export function signal<T>(value?: T): SignalImpl<T> {
   if (isSignal(value)) {
-    return value as Signal<T>;
+    return value as SignalImpl<T>;
   }
-  return new Signal<T>(value as T);
+  return new SignalImpl<T>(value as T);
 }
 
 /**
  * Alias for useShallowSignal.
  * @template T The type of the value held by the Signal.
  * @param {T} [value] - The initial value of the Signal.
- * @returns {Signal<T>} A new shallow Signal instance.
+ * @returns {SignalImpl<T>} A new shallow Signal instance.
  * @example
  * const obj = shallowSignal({ nested: { count: 0 } });
  * // Changes to obj.value.nested will not trigger reactivity
  * obj.value.nested.count = 1;
  */
-export function shallowSignal<T>(value?: T): Signal<T> {
-  return new Signal<T>(value as T, true);
+export function shallowSignal<T>(value?: T): SignalImpl<T> {
+  return new SignalImpl<T>(value as T, true);
 }
 
 /**
@@ -213,11 +217,11 @@ export function shallowSignal<T>(value?: T): Signal<T> {
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a Signal, false otherwise.
  * @example
- * const count = useSignal(0);
+ * const count = signal(0);
  * console.log(isSignal(count)); // true
  * console.log(isSignal(0)); // false
  */
-export function isSignal<T>(value: any): value is Signal<T> {
+export function isSignal<T>(value: any): value is SignalImpl<T> {
   return !!(value && value?.__signal);
 }
 
@@ -225,12 +229,12 @@ export function isSignal<T>(value: any): value is Signal<T> {
  * Computed class represents a computed reactive value.
  * @template T The type of the value computed by the Computed instance.
  * @example
- * const doubleCount = useComputed(() => count.value * 2);
+ * const doubleCount = computed(() => count.value * 2);
  * console.log(doubleCount.value); // 0
  * count.value = 1;
  * console.log(doubleCount.value); // 2
  */
-export class Computed<T = unknown> {
+export class ComputedImpl<T = unknown> {
   private __value: T;
   //@ts-ignore
   private readonly __computed = true;
@@ -270,15 +274,15 @@ export class Computed<T = unknown> {
  * Creates a new Computed instance.
  * @template T The type of the value computed by the Computed instance.
  * @param {() => T} fn - The computation function.
- * @returns {Computed<T>} A new Computed instance.
+ * @returns {ComputedImpl<T>} A new Computed instance.
  * @example
- * const doubleCount = useComputed(() => count.value * 2);
+ * const doubleCount = computed(() => count.value * 2);
  * console.log(doubleCount.value); // 0
  * count.value = 1;
  * console.log(doubleCount.value); // 2
  */
-export function useComputed<T>(fn: () => T): Computed<T> {
-  return new Computed<T>(fn);
+export function computed<T>(fn: () => T): ComputedImpl<T> {
+  return new ComputedImpl<T>(fn);
 }
 
 /**
@@ -287,11 +291,11 @@ export function useComputed<T>(fn: () => T): Computed<T> {
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a Computed instance, false otherwise.
  * @example
- * const doubleCount = useComputed(() => count.value * 2);
+ * const doubleCount = computed(() => count.value * 2);
  * console.log(isComputed(doubleCount)); // true
  * console.log(isComputed(0)); // false
  */
-export function isComputed<T>(value: any): value is Computed<T> {
+export function isComputed<T>(value: any): value is ComputedImpl<T> {
   return !!(value && value.__computed);
 }
 
@@ -307,7 +311,7 @@ export interface EffectOptions {
  * @param {EffectOptions} [options] - The options for the effect.
  * @returns {() => void} A function to stop the effect.
  */
-export function useEffect(fn: () => void, options: EffectOptions = {}): () => void {
+export function effect(fn: () => void, options: EffectOptions = {}): () => void {
   const { flush = 'pre', onTrack, onTrigger } = options;
 
   function effectFn() {
@@ -354,7 +358,7 @@ export function signalObject<T extends object>(
     return initialValues;
   }
   const signals = Object.entries(initialValues).reduce((acc, [key, value]) => {
-    acc[key] = isExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
+    acc[key] = isExclude(key, exclude) || isSignal(value) ? value : signal(value);
     return acc;
   }, {} as SignalObject<T>);
 
@@ -364,21 +368,21 @@ export function signalObject<T extends object>(
 /**
  * Returns the current value of signals, reactive, or plain objects, excluding specified keys.
  * @template T The type of the value.
- * @param {Reactive<T> | T | Signal<T>} value - The signal, reactive, or plain object.
+ * @param {Reactive<T> | T | SignalImpl<T>} value - The signal, reactive, or plain object.
  * @returns {T} The current value.
  * @example
  * const user = unSignal(userSignals);
  * console.log(user.name); // 'John'
  * console.log(user.age); // 30
  */
-export function toRaw<T>(value: Reactive<T> | T | Signal<T>): T {
+export function toRaw<T>(value: Reactive<T> | T | SignalImpl<T>): T {
   if (!value) return value as T;
 
   if (isReactive(value)) {
     return value[ReactivePeekSymbol];
   }
   if (isSignal(value)) {
-    return (value as Signal<T>).peek();
+    return (value as SignalImpl<T>).peek();
   }
   if (isArray(value)) {
     return (value as T[]).map(value => toRaw(value)) as T;
@@ -396,7 +400,7 @@ export function toRaw<T>(value: Reactive<T> | T | Signal<T>): T {
  * @param {unknown} obj - The object to check.
  * @returns {boolean} True if the object is reactive, false otherwise.
  * @example
- * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * const reactiveUser = reactive({ name: 'John', age: 30 });
  * console.log(isReactive(reactiveUser)); // true
  * console.log(isReactive({ name: 'John', age: 30 })); // false
  */
@@ -410,12 +414,12 @@ export function isReactive(obj: unknown): obj is Reactive<any> {
  * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
  * @returns {Reactive<T>} A new reactive object.
  * @example
- * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * const reactiveUser = reactive({ name: 'John', age: 30 });
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
-export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
-  return reactive(initialValue, false, exclude) as Reactive<T>;
+export function reactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
+  return ReactiveImpl(initialValue, false, exclude) as Reactive<T>;
 }
 
 /**
@@ -433,7 +437,7 @@ export function shallowReactive<T extends ReactiveTypes>(
   initialValue: T,
   exclude?: ExcludeType,
 ): Reactive<T> {
-  return reactive(initialValue, true, exclude) as Reactive<T>;
+  return ReactiveImpl(initialValue, true, exclude) as Reactive<T>;
 }
 
 const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
@@ -452,7 +456,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       track(target, key);
       // deep track
       if (isObject(value) && !shallow) {
-        return reactive(value);
+        return ReactiveImpl(value);
       }
       return value;
     },
@@ -461,7 +465,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
         Reflect.set(target, key, value, receiver);
         return true;
       }
-      let oldValue: Signal<any> | any = Reflect.get(target, key, receiver);
+      let oldValue: SignalImpl<any> | any = Reflect.get(target, key, receiver);
 
       if (isSignal(oldValue)) {
         oldValue = oldValue.value;
@@ -568,7 +572,7 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
 
       // deep track
       if (isObject(value) && !shallow) {
-        return reactive(value);
+        return ReactiveImpl(value);
       }
       return value;
     },
@@ -746,7 +750,7 @@ const weakInstrumentations = {
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
-function reactive<T extends object>(
+function ReactiveImpl<T extends object>(
   initialValue: T,
   shallow: boolean = false,
   exclude?: ExcludeType,
@@ -787,7 +791,7 @@ function reactive<T extends object>(
  *
  * @param reactiveObj The reactive object to clear.
  * @example
- * const reactiveUser = useReactive({ name: 'John', age: 30 });
+ * const reactiveUser = reactive({ name: 'John', age: 30 });
  * clearReactive(reactiveUser);
  * console.log(reactiveUser); // {}
  */

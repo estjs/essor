@@ -9,10 +9,10 @@ import {
   noop,
   warn,
 } from '@estjs/shared';
-import { type Computed, type Signal, isComputed, isReactive, isSignal, useEffect } from './signal';
+import { type ComputedImpl, type SignalImpl, isComputed, isReactive, isSignal, effect } from './signal';
 import { nextTick } from './scheduler';
 
-export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
+export type WatchSource<T = any> = SignalImpl<T> | ComputedImpl<T> | (() => T);
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
 export type WatchStopHandle = () => void;
 
@@ -91,8 +91,8 @@ function flushWatchers() {
  *
  * @examples
  *
- * const count = useSignal(0);
- * const name = useSignal('Alice');
+ * const count = signal(0);
+ * const name = signal('Alice');
  *
  * useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
  *   console.log(`Count changed from ${oldCount} to ${newCount}`);
@@ -150,7 +150,7 @@ function doWatch(
     }
   };
 
-  const stop = useEffect(effectFn, { flush: 'sync' });
+  const stop = effect(effectFn, { flush: 'sync' });
   runCb = true;
 
   if (immediate) {
@@ -180,7 +180,7 @@ export function traverse(value: unknown, depth: number = Infinity, seen?: Set<un
   seen.add(value);
   depth--;
   if (isSignal(value)) {
-    traverse((value as Signal<any>).value, depth, seen);
+    traverse((value as SignalImpl<any>).value, depth, seen);
   } else if (isArray(value)) {
     for (const element of value) {
       traverse(element, depth, seen);

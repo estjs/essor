@@ -1,17 +1,17 @@
-import { isReactive, shallowReactive, useEffect, useReactive } from '../src';
+import { effect, isReactive, reactive, shallowReactive } from '../src';
 import { clearReactive, toRaw } from '../src/signal';
 
-describe('useReactive - basic reactivity tests', () => {
+describe('reactive - basic reactivity tests', () => {
   it('should initialize with provided properties', () => {
-    const state = useReactive({ count: 0, name: 'John' });
+    const state = reactive({ count: 0, name: 'John' });
     expect(state.count).toBe(0);
     expect(state.name).toBe('John');
   });
 
   it('should update the value reactively', () => {
-    const state = useReactive({ count: 0 });
+    const state = reactive({ count: 0 });
     const mockFn = vi.fn(() => state.count);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(state.count).toBe(0);
     expect(mockFn).toHaveBeenCalledTimes(1);
@@ -22,9 +22,9 @@ describe('useReactive - basic reactivity tests', () => {
   });
 
   it('should add new properties reactively', () => {
-    const state = useReactive<any>({});
+    const state = reactive<any>({});
     const mockFn = vi.fn(() => state.newProp);
-    useEffect(mockFn);
+    effect(mockFn);
 
     state.newProp = 'new value';
     expect(state.newProp).toBe('new value');
@@ -32,9 +32,9 @@ describe('useReactive - basic reactivity tests', () => {
   });
 
   it('should delete properties reactively', () => {
-    const state = useReactive({ count: 5 });
+    const state = reactive({ count: 5 });
     const mockFn = vi.fn(() => state.count);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(state.count).toBe(5);
     expect(mockFn).toHaveBeenCalledTimes(1);
@@ -46,7 +46,7 @@ describe('useReactive - basic reactivity tests', () => {
   });
 
   it('should support state manipulation through functions', () => {
-    const state = useReactive({
+    const state = reactive({
       count: 0,
       increment() {
         this.count++;
@@ -59,9 +59,9 @@ describe('useReactive - basic reactivity tests', () => {
   });
 
   it('should handle multiple properties reactively', () => {
-    const state = useReactive({ count: 0, text: 'hello' });
+    const state = reactive({ count: 0, text: 'hello' });
     const mockFn = vi.fn(() => state.text);
-    useEffect(mockFn);
+    effect(mockFn);
 
     state.text = 'world';
     expect(state.text).toBe('world');
@@ -70,24 +70,24 @@ describe('useReactive - basic reactivity tests', () => {
 
   it('should not make primitive types reactive', () => {
     // @ts-ignore
-    const reactiveNumber = useReactive(1);
+    const reactiveNumber = reactive(1);
     expect(isReactive(reactiveNumber)).toBe(false);
     expect(reactiveNumber).toBe(1);
 
     // @ts-ignore
-    const reactiveString = useReactive('test');
+    const reactiveString = reactive('test');
     expect(isReactive(reactiveString)).toBe(false);
     expect(reactiveString).toBe('test');
   });
 
   it('should not create a new proxy when passed a reactive object', () => {
-    const state = useReactive({ count: 0 });
-    const state2 = useReactive(state);
+    const state = reactive({ count: 0 });
+    const state2 = reactive(state);
     expect(state).toBe(state2);
   });
 
   it('should return the raw object with toRaw', () => {
-    const reactiveObj = useReactive({ name: 'John', age: 30 });
+    const reactiveObj = reactive({ name: 'John', age: 30 });
     const rawObj = toRaw(reactiveObj);
     expect(isReactive(rawObj)).toBe(false);
 
@@ -95,10 +95,10 @@ describe('useReactive - basic reactivity tests', () => {
     expect(rawObj.name).toBe('Doe'); // change proxy object to synchronize to original object
   });
 });
-describe('useReactive - nested objects and arrays', () => {
+describe('reactive - nested objects and arrays', () => {
   // Nested object reactivity
   it('should work with nested objects', () => {
-    const state = useReactive({
+    const state = reactive({
       user: {
         name: 'John',
         age: 30,
@@ -106,7 +106,7 @@ describe('useReactive - nested objects and arrays', () => {
     });
 
     const mockFn = vi.fn(() => state.user.age);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(state.user.name).toBe('John');
     expect(state.user.age).toBe(30);
@@ -119,12 +119,12 @@ describe('useReactive - nested objects and arrays', () => {
 
   // Nested arrays reactivity
   it('should work with nested arrays', () => {
-    const state = useReactive({
+    const state = reactive({
       items: [1, 2, 3],
     });
 
     const mockFn = vi.fn(() => state.items);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(state.items.length).toBe(3);
     expect(state.items[1]).toBe(2);
@@ -137,10 +137,10 @@ describe('useReactive - nested objects and arrays', () => {
 
   // Deeply nested object reactivity
   it('should work with deeply nested objects', () => {
-    const state = useReactive<any>({ a: { b: { c: { d: 1 } } } });
+    const state = reactive<any>({ a: { b: { c: { d: 1 } } } });
 
     const mockFn = vi.fn(() => state.a.b?.c?.d);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(state.a.b.c.d).toBe(1);
     expect(mockFn).toHaveBeenCalledTimes(1);
@@ -156,7 +156,7 @@ describe('useReactive - nested objects and arrays', () => {
 
   // Arrays of objects reactivity
   it('should work with arrays of objects', () => {
-    const state = useReactive({
+    const state = reactive({
       users: [
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 30 },
@@ -172,7 +172,7 @@ describe('useReactive - nested objects and arrays', () => {
 
   // Reactivity with array methods
   it('should handle array methods reactively', () => {
-    const state = useReactive([1, 2, 3]);
+    const state = reactive([1, 2, 3]);
 
     state.push(4);
     expect(state.length).toBe(4);
@@ -188,7 +188,7 @@ describe('useReactive - nested objects and arrays', () => {
 
   // Reactivity with nested arrays of objects
   it('should work with nested arrays of objects', () => {
-    const state = useReactive<any>({
+    const state = reactive<any>({
       users: [
         { name: 'Alice', age: 25 },
         { name: 'Bob', age: 30, addresses: [{ city: 'New York' }] },
@@ -207,7 +207,7 @@ describe('shallowReactive - shallow reactivity behavior', () => {
     const state = shallowReactive<any>({ a: { b: { c: { d: 1 } } } });
 
     const mockFn = vi.fn(() => state.a?.b?.c?.d);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(mockFn).toHaveBeenCalledTimes(1);
 
@@ -228,7 +228,7 @@ describe('shallowReactive - shallow reactivity behavior', () => {
     const state = shallowReactive<any>([{ a: 1 }, { b: 2 }]);
 
     const mockFn = vi.fn(() => state[1]);
-    useEffect(mockFn);
+    effect(mockFn);
 
     expect(mockFn).toHaveBeenCalledTimes(1);
 
@@ -251,7 +251,7 @@ describe('shallowReactive - shallow reactivity behavior', () => {
     expect(state.newProp).toBe(42);
 
     const mockFn = vi.fn(() => state.count);
-    useEffect(mockFn);
+    effect(mockFn);
 
     state.count++;
     expect(state.count).toBe(2);
@@ -271,11 +271,11 @@ describe('shallowReactive - shallow reactivity behavior', () => {
     expect(state.users[1].addresses[0].city).toBe('Los Angeles'); // should not track inner changes
   });
 });
-describe('useReactive & shallowReactive - Non-object and primitive values', () => {
+describe('reactive & shallowReactive - Non-object and primitive values', () => {
   // Handling numbers
   it('should not work with primitive numbers', () => {
     // @ts-ignore
-    const state = useReactive(1);
+    const state = reactive(1);
     expect(state).toBe(1);
 
     // @ts-ignore
@@ -286,7 +286,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   // Handling strings
   it('should not work with primitive strings', () => {
     // @ts-ignore
-    const state = useReactive('hello');
+    const state = reactive('hello');
     expect(state).toBe('hello');
 
     // @ts-ignore
@@ -297,7 +297,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   // Handling booleans
   it('should not work with primitive booleans', () => {
     // @ts-ignore
-    const state = useReactive(true);
+    const state = reactive(true);
     expect(state).toBe(true);
 
     // @ts-ignore
@@ -308,7 +308,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   // Handling null
   it('should not work with null', () => {
     // @ts-ignore
-    const state = useReactive(null);
+    const state = reactive(null);
     expect(state).toBe(null);
 
     // @ts-ignore
@@ -319,7 +319,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   // Handling undefined
   it('should not work with undefined', () => {
     // @ts-ignore
-    const state = useReactive(undefined);
+    const state = reactive(undefined);
     expect(state).toBe(undefined);
 
     // @ts-ignore
@@ -331,7 +331,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   it('should not work with symbols', () => {
     const symbol = Symbol('test');
     // @ts-ignore
-    const state = useReactive(symbol);
+    const state = reactive(symbol);
     expect(state).toBe(symbol);
 
     // @ts-ignore
@@ -343,7 +343,7 @@ describe('useReactive & shallowReactive - Non-object and primitive values', () =
   it('should not work with functions', () => {
     const func = () => {};
     // @ts-ignore
-    const state = useReactive(func);
+    const state = reactive(func);
     expect(state).toBe(func);
 
     // @ts-ignore
@@ -356,11 +356,11 @@ describe('reactive Arrays with Effects', () => {
   let effectFn;
 
   beforeEach(() => {
-    state = useReactive([1, 2, 3]);
+    state = reactive([1, 2, 3]);
     effectFn = vi.fn(() => {
       state[0];
     });
-    useEffect(effectFn);
+    effect(effectFn);
   });
 
   it('should handle add array item trigger effect', () => {
@@ -445,7 +445,7 @@ describe('reactive Arrays with Effects', () => {
       filtered = state.filter((n: number) => n > 1);
     });
 
-    useEffect(effectFn);
+    effect(effectFn);
 
     expect(effectFn).toHaveBeenCalledTimes(1);
     expect(filtered).toEqual([2, 3]);
@@ -487,7 +487,7 @@ describe('reactive Arrays with Effects', () => {
     const effectFn = vi.fn(() => {
       index = state.indexOf(2);
     });
-    useEffect(effectFn);
+    effect(effectFn);
     expect(index).toBe(1);
     expect(effectFn).toHaveBeenCalledTimes(1);
 
@@ -503,7 +503,7 @@ describe('reactive Arrays with Effects', () => {
       includes = state.includes(2);
     });
 
-    useEffect(effectFn);
+    effect(effectFn);
 
     expect(includes).toBe(true);
     expect(effectFn).toHaveBeenCalledTimes(1);
@@ -525,11 +525,11 @@ describe('reactive Set with Effects', () => {
   let effectFn;
 
   beforeEach(() => {
-    state = useReactive(new Set([1, 2, 3]));
+    state = reactive(new Set([1, 2, 3]));
     effectFn = vi.fn(() => {
       state.has(1);
     });
-    useEffect(effectFn);
+    effect(effectFn);
   });
 
   it('should handle add and trigger effect', () => {
@@ -642,7 +642,7 @@ describe('reactive Map with Effects', () => {
   let effectFn;
 
   beforeEach(() => {
-    state = useReactive(
+    state = reactive(
       new Map([
         ['key1', 1],
         ['key2', 2],
@@ -652,7 +652,7 @@ describe('reactive Map with Effects', () => {
     effectFn = vi.fn(() => {
       state.get('key1');
     });
-    useEffect(effectFn);
+    effect(effectFn);
   });
 
   it('should handle set and trigger effect', () => {
@@ -711,11 +711,11 @@ describe('reactive WeakSet with Effects', () => {
   const obj2 = {};
 
   beforeEach(() => {
-    state = useReactive(new WeakSet([obj1, obj2]));
+    state = reactive(new WeakSet([obj1, obj2]));
     effectFn = vi.fn(() => {
       state.has(obj1);
     });
-    useEffect(effectFn);
+    effect(effectFn);
   });
 
   it('should handle add and trigger effect', () => {
@@ -750,7 +750,7 @@ describe('reactive WeakMap with Effects', () => {
   const obj2 = {};
 
   beforeEach(() => {
-    state = useReactive(
+    state = reactive(
       new WeakMap([
         [obj1, 1],
         [obj2, 2],
@@ -759,7 +759,7 @@ describe('reactive WeakMap with Effects', () => {
     effectFn = vi.fn(() => {
       state.get(obj1);
     });
-    useEffect(effectFn);
+    effect(effectFn);
   });
 
   it('should handle set and trigger effect', () => {
@@ -797,12 +797,12 @@ describe('reactive WeakMap with Effects', () => {
 });
 
 describe('isReactive', () => {
-  it('should work with check if object is useReactive', () => {
-    const state = useReactive({ count: 0 });
+  it('should work with check if object is reactive', () => {
+    const state = reactive({ count: 0 });
     expect(isReactive(state)).toBe(true);
   });
 
-  it('should work with check if object is not useReactive', () => {
+  it('should work with check if object is not reactive', () => {
     const obj = { count: 0 };
 
     expect(isReactive(obj)).toBe(false);
@@ -818,15 +818,15 @@ describe('toRaw', () => {
     expect(isReactive(result)).toBe(false);
   });
 
-  it('should return non-useReactive objects as-is', () => {
+  it('should return non-reactive objects as-is', () => {
     const obj = { a: 1, b: { c: 2 } };
     const result = toRaw(obj);
     expect(result).toStrictEqual(obj);
     expect(isReactive(result)).toBe(false);
   });
 
-  it('should remove reactivity from a useReactive object', () => {
-    const reactiveObj = useReactive({ a: 1, b: { c: 2 } });
+  it('should remove reactivity from a reactive object', () => {
+    const reactiveObj = reactive({ a: 1, b: { c: 2 } });
     const result = toRaw(reactiveObj);
 
     expect(result).toStrictEqual({ a: 1, b: { c: 2 } });
@@ -834,14 +834,14 @@ describe('toRaw', () => {
   });
 
   it('should work with arrays', () => {
-    const reactiveArray = useReactive([1, { a: 2 }, 3]);
+    const reactiveArray = reactive([1, { a: 2 }, 3]);
     const result = toRaw(reactiveArray);
 
     expect(result).toStrictEqual([1, { a: 2 }, 3]);
     expect(isReactive(result[1])).toBe(false);
   });
 
-  it('should handle shallow useReactive objects', () => {
+  it('should handle shallow reactive objects', () => {
     const shallowObj = shallowReactive({ a: 1, b: { c: 2 } });
     const result = toRaw(shallowObj);
 
@@ -853,25 +853,25 @@ describe('toRaw', () => {
 
 describe('clearReactive', () => {
   it('should clear the reactive object values', () => {
-    const obj = useReactive({ a: 1, b: 2 });
+    const obj = reactive({ a: 1, b: 2 });
     clearReactive(obj);
     expect(obj).toEqual({});
   });
 
   it('should clear the reactive array', () => {
-    const arr = useReactive([1, 2, 3]);
+    const arr = reactive([1, 2, 3]);
     clearReactive(arr);
     expect(arr).toEqual([]);
   });
 
   it('should clear the reactive Set', () => {
-    const set = useReactive(new Set([1, 2, 3]));
+    const set = reactive(new Set([1, 2, 3]));
     clearReactive(set);
     expect(set.size).toBe(0);
   });
 
   it('should clear the reactive Map', () => {
-    const map = useReactive(
+    const map = reactive(
       new Map([
         ['a', 1],
         ['b', 2],
@@ -882,41 +882,41 @@ describe('clearReactive', () => {
   });
 
   it('should trigger effect', () => {
-    const obj = useReactive({ a: 1 });
+    const obj = reactive({ a: 1 });
     const effectFn = vi.fn();
-    useEffect(() => {
+    effect(() => {
       effectFn(obj.a);
     });
 
     clearReactive(obj);
     expect(effectFn).toHaveBeenCalledTimes(2);
 
-    const arr = useReactive([1, 2, 3]);
+    const arr = reactive([1, 2, 3]);
     const effectFn2 = vi.fn();
-    useEffect(() => {
+    effect(() => {
       effectFn2(arr.length);
     });
 
     clearReactive(arr);
     expect(effectFn2).toHaveBeenCalledTimes(2);
 
-    const set = useReactive(new Set([1, 2, 3]));
+    const set = reactive(new Set([1, 2, 3]));
     const effectFn3 = vi.fn();
-    useEffect(() => {
+    effect(() => {
       effectFn3(set.size);
     });
 
     clearReactive(set);
     expect(effectFn3).toHaveBeenCalledTimes(2);
 
-    const map = useReactive(
+    const map = reactive(
       new Map([
         ['a', 1],
         ['b', 2],
       ]),
     );
     const effectFn4 = vi.fn();
-    useEffect(() => {
+    effect(() => {
       effectFn4(map.size);
     });
   });

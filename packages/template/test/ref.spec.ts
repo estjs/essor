@@ -1,4 +1,4 @@
-import { useSignal } from '@estjs/signal';
+import { signal } from '@estjs/signal';
 import { h as _h$, template as _template$, useRef } from '../src';
 import { mount } from './testUtils';
 
@@ -6,7 +6,7 @@ describe('html element ref', () => {
   const _tmpl$ = _template$('<div>ref');
 
   let normal;
-  let signal;
+  let app;
 
   let normalRef;
   let signalRef;
@@ -20,8 +20,8 @@ describe('html element ref', () => {
     });
   }
 
-  function signalValue() {
-    const ref = (signalRef = useSignal());
+  function App() {
+    const ref = (signalRef = signal());
     return _h$(_tmpl$, {
       '1': {
         ref,
@@ -31,14 +31,14 @@ describe('html element ref', () => {
 
   beforeEach(() => {
     normal = mount(normalValue);
-    signal = mount(signalValue);
+    app = mount(App);
   });
 
   afterEach(() => {
     normalRef = null;
     signalRef = null;
     normal = null;
-    signal = null;
+    app = null;
   });
   it('should work with normal value', () => {
     expect(normal.text()).toBe('ref');
@@ -46,7 +46,7 @@ describe('html element ref', () => {
   });
 
   it('should work with signal value', () => {
-    expect(signal.text()).toBe('ref');
+    expect(app.text()).toBe('ref');
     expect(signalRef.value.innerHTML).toBe('ref');
   });
 });

@@ -7,10 +7,10 @@ The `useWatch` function allows you to observe changes in reactive sources such a
 
 ##### Watching a Single Source
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 import { useWatch } from './watch';
 
-const count = useSignal(0);
+const count = signal(0);
 
 useWatch(count, (newVal, oldVal) => {
   console.log(`Count changed from ${oldVal} to ${newVal}`);
@@ -19,11 +19,11 @@ useWatch(count, (newVal, oldVal) => {
 
 ##### Watching Multiple Sources
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 import { useWatch } from './watch';
 
-const count = useSignal(0);
-const name = useSignal('Alice');
+const count = signal(0);
+const name = signal('Alice');
 
 useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
   console.log(`Count changed from ${oldCount} to ${newCount}`);
@@ -33,10 +33,10 @@ useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
 
 ##### Watching a Reactive Object
 ```typescript
-import { useReactive } from './signal';
+import { reactive } from './signal';
 import { useWatch } from './watch';
 
-const state = useReactive({
+const state = reactive({
   count: 0,
   name: 'Alice',
 });

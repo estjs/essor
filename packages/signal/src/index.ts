@@ -1,10 +1,10 @@
 export {
-  useSignal,
-  useEffect,
-  useComputed,
+  signal,
+  effect,
+  computed,
   isSignal,
   isComputed,
-  useReactive,
+  reactive,
   isReactive,
   shallowReactive,
   shallowSignal,
@@ -14,7 +14,7 @@ export {
   toRaw,
 } from './signal';
 export { useWatch } from './watch';
-export { type Signal, type Computed } from './signal';
+export { type SignalImpl as Signal, type ComputedImpl as Computed } from './signal';
 export { createStore, StoreActions } from './store';
 
 export { nextTick } from './scheduler';

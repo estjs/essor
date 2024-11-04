@@ -1,4 +1,4 @@
-import { h } from '../src';
+import { h } from '../src/jsxRenderer';
 import { mount } from './testUtils';
 
 describe('templateNode', () => {
@@ -8,9 +8,7 @@ describe('templateNode', () => {
   beforeEach(async () => {
     parent = document.createElement('div');
     document.body.appendChild(parent);
-
     const App = await import('./snippet/Basic');
-
     app = mount(App.default, parent);
   });
 

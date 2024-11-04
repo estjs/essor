@@ -7,8 +7,8 @@ import type { NodePath } from '@babel/core';
 /**
  * Replaces the symbol in a variable declarator with a computed or signal expression.
  *
- * case 1: let $a = 1 => let $a = useSignal(1);
- * case 2: const $a = ()=>{return $a} => const $a = useComputed(()=>{return $a})
+ * case 1: let $a = 1 => let $a = signal(1);
+ * case 2: const $a = ()=>{return $a} => const $a = computed(()=>{return $a})
  *
  * @param {NodePath<VariableDeclarator>} path - The path to the variable declarator node.
  * @return {void}
@@ -24,7 +24,7 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
     (t.isFunctionExpression(init) || t.isArrowFunctionExpression(init)) &&
     (path.parent as t.VariableDeclaration).kind === 'const';
 
-  const hookName = isComputed ? 'useComputed' : 'useSignal';
+  const hookName = isComputed ? 'computed' : 'signal';
   const newInit = t.callExpression(t.identifier(path.state[hookName].name), init ? [init] : []);
 
   imports.add(hookName);

@@ -1,17 +1,17 @@
 
 
-### `useSignal`
+### `signal`
 
 #### 概述
 
-`useSignal` 是一个用于创建响应式信号的函数。信号是一个可以被监控的状态单元，当信号的值发生变化时，依赖该信号的计算属性和副作用会自动更新。
+`signal` 是一个用于创建响应式信号的函数。信号是一个可以被监控的状态单元，当信号的值发生变化时，依赖该信号的计算属性和副作用会自动更新。
 
 #### 用法
 
 ```typescript
-import { useSignal } from './signal';
+import { signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 console.log(count.value); // 0
 
 count.value = 5;
@@ -32,7 +32,7 @@ console.log(count.value); // 5
 
 #### 概述
 
-`shallowSignal` 是一个用于创建浅层响应式信号的函数。它与 `useSignal` 类似，但不会监听信号的嵌套属性。
+`shallowSignal` 是一个用于创建浅层响应式信号的函数。它与 `signal` 类似，但不会监听信号的嵌套属性。
 
 #### 用法
 
@@ -61,20 +61,20 @@ console.log(value.value.count.value); // 5  不会触发effect
 
 - **`Signal`**：一个包含响应式 `value` 属性的对象。
 
-### `useEffect`
+### `effect`
 
 #### 概述
 
-`useEffect` 函数允许你在某个信号或计算属性发生变化时执行副作用。它是用于在响应式系统中执行具有副作用操作的关键工具。
+`effect` 函数允许你在某个信号或计算属性发生变化时执行副作用。它是用于在响应式系统中执行具有副作用操作的关键工具。
 
 #### 用法
 
 ```typescript
-import { useEffect, useSignal } from './signal';
+import { effect, signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 
-useEffect(() => {
+effect(() => {
   console.log(`计数变化为: ${count.value}`);
 });
 
@@ -91,19 +91,19 @@ count.value = 1; // 控制台输出: 计数变化为: 1
 
 ---
 
-### `useComputed`
+### `computed`
 
 #### 概述
 
-`useComputed` 函数用于创建一个基于其他信号或响应式状态的计算属性。计算属性会自动依赖其使用的信号或响应式状态，并在这些依赖变化时自动更新。
+`computed` 函数用于创建一个基于其他信号或响应式状态的计算属性。计算属性会自动依赖其使用的信号或响应式状态，并在这些依赖变化时自动更新。
 
 #### 用法
 
 ```typescript
-import { useComputed, useSignal } from './signal';
+import { computed, signal } from './signal';
 
-const count = useSignal(2);
-const doubleCount = useComputed(() => count.value * 2);
+const count = signal(2);
+const doubleCount = computed(() => count.value * 2);
 
 console.log(doubleCount.value); // 4
 
@@ -158,9 +158,9 @@ console.log(state.count.value); // 5
 #### 用法
 
 ```typescript
-import { isSignal, useSignal } from './signal';
+import { isSignal, signal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 
 console.log(isSignal(count)); // true
 console.log(isSignal(42)); // false
@@ -187,7 +187,7 @@ console.log(isSignal(42)); // false
 ```typescript
 import { unSignal } from './signal';
 
-const count = useSignal(0);
+const count = signal(0);
 
 console.log(unSignal(count)); // 0
 ```
@@ -202,18 +202,18 @@ console.log(unSignal(count)); // 0
 
 ---
 
-## `useReactive`
+## `reactive`
 
 #### 概述
 
-`useReactive` 函数用于创建一个响应式对象。只期望接收对象，不是基本数据类型。
+`reactive` 函数用于创建一个响应式对象。只期望接收对象，不是基本数据类型。
 
 #### 用法
 
 ```typescript
-import { useReactive } from './signal';
+import { reactive } from './signal';
 
-const state = useReactive({ count: 0 });
+const state = reactive({ count: 0 });
 
 console.log(state.count); // 0
 
@@ -241,9 +241,9 @@ console.log(state.count); // 1
 #### 用法
 
 ```typescript
-import { isReactive, useReactive } from './signal';
+import { isReactive, reactive } from './signal';
 
-const state = useReactive({ count: 0 });
+const state = reactive({ count: 0 });
 
 console.log(isReactive(state)); // true
 console.log(isReactive({})); // false

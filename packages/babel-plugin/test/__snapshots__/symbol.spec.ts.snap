@@ -1,73 +1,73 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`transform custom symbol > should work with basic types 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(false);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 2`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(true);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 3`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(0);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 4`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(1);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 5`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(1);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 6`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(123);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 7`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(null);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 8`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(undefined);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 9`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const __a = _signal$(NaN);
 __a.value = 1;"
 `;
 
 exports[`transform symbol > should not work with add value symbol 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$([1]);
 $a.value.push(2);"
 `;
 
 exports[`transform symbol > should work with array 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$([1, 2, 3]);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array 2`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$([1, {
   a: 1
 }, 3, 4]);
@@ -75,79 +75,79 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array 3`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$([1, 2, 3, 4, 5]);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array index  1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$([1]);
 console.log($a.value[0]);"
 `;
 
 exports[`transform symbol > should work with basic types 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(false);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 2`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(true);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 3`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(0);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 4`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(1);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 5`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(1);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 6`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(123);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 7`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(null);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 8`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(undefined);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 9`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$(NaN);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with const function transform computed 1`] = `
-"import { useComputed as _computed$ } from "essor";
+"import { computed as _computed$ } from "essor";
 const $a = _computed$(() => 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with const function transform computed 2`] = `
-"import { useComputed as _computed$ } from "essor";
+"import { computed as _computed$ } from "essor";
 const $a = _computed$(a => a + 1);
 $a.value = 2;"
 `;
@@ -159,19 +159,19 @@ console.log($a.value, b);"
 `;
 
 exports[`transform symbol > should work with let function transform computed 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 let $a = _signal$(() => 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with let function transform computed 2`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 let $a = _signal$(a => a + 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 1`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$({
   a: 1
 });
@@ -179,7 +179,7 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 2`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$({
   a: 1,
   b: 2
@@ -188,7 +188,7 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 3`] = `
-"import { useSignal as _signal$ } from "essor";
+"import { signal as _signal$ } from "essor";
 const $a = _signal$({
   a: 1,
   b: {
