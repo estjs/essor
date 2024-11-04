@@ -5,6 +5,11 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14-beta.11](https://github.com/estjs/essor/compare/v0.0.14-beta.9...v0.0.14-beta.11) `2024-11-02`
+
+
+
+
 ## [0.0.14-beta.10](https://github.com/estjs/essor/compare/v0.0.14-beta.9...v0.0.14-beta.10) `2024-11-02`
 
 
