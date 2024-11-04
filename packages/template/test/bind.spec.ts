@@ -28,7 +28,7 @@ describe('bind value', () => {
         [
           () =>
             _h$(Component, {
-              value: signal,
+              value: signalValue,
               updateValue: _value2 => (signalValue.value = _value2),
             }),
           null,

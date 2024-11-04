@@ -86,7 +86,7 @@ describe('useWatch', () => {
     const computedValue = computed(() => signalValue.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch([signal, computedValue], callback);
+    const stop = useWatch([signalValue, computedValue], callback);
 
     signalValue.value = 2;
     await nextTick();

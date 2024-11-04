@@ -1,9 +1,9 @@
 import { Fragment as _fragment$, h as _h$, template as _template$ } from '../../src';
-import { useSignal } from '@estjs/signal';
+import { signal } from '@estjs/signal';
 
 const _tmpl$ = _template$ ('<div><p></p><input type="text"/>');
 export default function App() {
-  const $v = useSignal('Hello, World!');
+  const $v = signal('Hello, World!');
 
   return  _h$(_tmpl$, {
     '2': {
