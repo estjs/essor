@@ -1,0 +1,29 @@
+{
+  "name": "js-framework-benchmark-essor",
+  "version": "0.0.14-beta.12",
+  "type": "module",
+  "js-framework-benchmark": {
+    "frameworkVersionFromPackage": "essor",
+    "frameworkHomeURL": "https://essor.netlify.app/",
+    "customURL": "/dist"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --open --port 3001",
+    "preview": "vite preview",
+    "test": "vitest -r test"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@estjs/eslint-config": "^1.2.9",
+    "@types/node": "^22.8.6",
+    "eslint": "^9.13.0",
+    "jsdom": "^25.0.1",
+    "unplugin-essor": "workspace:*",
+    "vite": "^5.4.10",
+    "vite-plugin-inspect": "^0.8.7",
+    "vitest": "^2.1.4"
+  }
+}

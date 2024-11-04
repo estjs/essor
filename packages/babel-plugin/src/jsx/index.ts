@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalize, isArray } from '@estjs/shared';
+import { capitalize } from '@estjs/shared';
 import { imports } from '../program';
 import {
   type JSXChild,
@@ -85,8 +85,7 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
     }
   }
 
-  const key = result.props.key;
-  delete result.props.key;
+  const key = result.props.key ?? result.props[0]?.key;
 
   const propsArg = createProps(result.props);
   const args =
@@ -109,37 +108,39 @@ function createEssorNode(path: NodePath<JSXElement>, result: Result): t.CallExpr
 }
 
 function createProps(props: Record<string, any>): t.ObjectExpression {
-  const toAstNode = value => {
-    if (isArray(value)) {
-      return t.arrayExpression(value.map(toAstNode));
+  const result: (t.ObjectProperty | t.SpreadElement)[] = [];
+  for (const prop in props) {
+    let value = props[prop];
+    if (prop === 'key') {
+      continue;
     }
-    if (value && typeof value === 'object' && !t.isNode(value)) {
-      return createProps(value);
+    if (Array.isArray(value)) {
+      value = t.arrayExpression(value);
     }
-
-    switch (typeof value) {
-      case 'string':
-        return t.stringLiteral(value);
-      case 'number':
-        return t.numericLiteral(value);
-      case 'boolean':
-        return t.booleanLiteral(value);
-      case 'undefined':
-      case undefined:
-        return t.tsUndefinedKeyword();
-      case null:
-        return t.nullLiteral();
-      default:
-        return value;
+    if (typeof value === 'object' && value !== null && !t.isNode(value)) {
+      value = createProps(value);
     }
-  };
-
-  const result = Object.entries(props).map(([prop, value]) =>
-    prop === '_$spread$'
-      ? t.spreadElement(toAstNode(value))
-      : t.objectProperty(t.stringLiteral(prop), toAstNode(value)),
-  );
-
+    if (typeof value === 'string') {
+      value = t.stringLiteral(value);
+    }
+    if (typeof value === 'number') {
+      value = t.numericLiteral(value);
+    }
+    if (typeof value === 'boolean') {
+      value = t.booleanLiteral(value);
+    }
+    if (value === undefined) {
+      value = t.tsUndefinedKeyword();
+    }
+    if (value === null) {
+      value = t.nullLiteral();
+    }
+    if (prop === '_$spread$') {
+      result.push(t.spreadElement(value));
+    } else {
+      result.push(t.objectProperty(t.stringLiteral(prop), value));
+    }
+  }
   return t.objectExpression(result);
 }
 
@@ -154,12 +155,6 @@ function transformJSXElement(
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && result.index === 1;
     const { props, hasExpression } = getAttrProps(path);
-
-    //  key
-    if (props.key) {
-      result.props.key = props.key;
-      delete props.key;
-    }
 
     if (tagIsComponent) {
       handleComponentElement(path, result, isRoot, props);

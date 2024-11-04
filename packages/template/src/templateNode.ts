@@ -296,7 +296,6 @@ export class TemplateNode implements JSX.Element {
     if (isFunction(child)) {
       track.cleanup = effect(() => {
         const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
-
         if (renderContext.isSSR) {
           track.lastNodes = this.reconcileChildren(parent, nextNodes, before);
         } else {

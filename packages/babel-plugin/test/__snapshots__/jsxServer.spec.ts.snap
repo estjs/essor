@@ -128,7 +128,7 @@ const element = _ssg$(_tmpl$, {
       "1": {
         "children": [[() => i + 1, null]]
       }
-    }, i)), null]]
+    })), null]]
   }
 });"
 `;
