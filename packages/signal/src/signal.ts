@@ -143,8 +143,8 @@ export class SignalImpl<T> {
    */
   get value(): T {
     track(this, SignalValueKey);
-    if (isObject(this.__value) && !this.__shallow) {
-      return ReactiveImpl(this.__value) as T;
+    if (isObject(this.__value)) {
+      return ReactiveImpl(this.__value, this.__shallow) as T;
     }
     return this.__value;
   }
