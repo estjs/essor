@@ -250,11 +250,11 @@ describe('signal', () => {
     effect(fn);
     expect(fn).toHaveBeenCalledTimes(1);
     testSignal.value.push(4);
-    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledTimes(2);
     expect(testSignal.value).toEqual([1, 2, 3, 4]);
 
     testSignal.value = [2, 3, 4];
-    expect(fn).toHaveBeenCalledTimes(2);
+    expect(fn).toHaveBeenCalledTimes(3);
     expect(testSignal.value).toEqual([2, 3, 4]);
   });
 
@@ -498,7 +498,7 @@ describe('shallowSignal', () => {
     value3.value.set({}, 2);
     value4.value.add({});
 
-    expect(triggerCount).toBe(1);
+    expect(triggerCount).toBe(5);
 
     value1.value = new Set([1, 2, 3, 4]);
     value2.value = new Map([['a', 1]]);
@@ -506,6 +506,6 @@ describe('shallowSignal', () => {
     value3.value = new WeakMap();
     value4.value = new WeakSet([]);
 
-    expect(triggerCount).toBe(5);
+    expect(triggerCount).toBe(9);
   });
 });

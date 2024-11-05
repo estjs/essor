@@ -144,6 +144,7 @@ export class SignalImpl<T> {
   get value(): T {
     track(this, SignalValueKey);
     if (isObject(this.__value)) {
+      // shallow it should wrap the first level
       return ReactiveImpl(this.__value, this.__shallow) as T;
     }
     return this.__value;
