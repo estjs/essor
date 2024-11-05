@@ -923,7 +923,7 @@ describe('clearReactive', () => {
 
   it('should warn for non-reactive objects', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    clearReactive({} as any);
+    clearReactive({});
     expect(warnSpy).toHaveBeenCalledWith(
       '[Essor warn]: clearReactive: argument must be a reactive object',
     );

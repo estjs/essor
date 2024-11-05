@@ -795,7 +795,7 @@ function ReactiveImpl<T extends object>(
  * clearReactive(reactiveUser);
  * console.log(reactiveUser); // {}
  */
-export function clearReactive<T extends object>(reactiveObj: Reactive<T>): void {
+export function clearReactive<T extends object>(reactiveObj: T): void {
   if (!isReactive(reactiveObj)) {
     if (__DEV__) {
       warn('clearReactive: argument must be a reactive object');

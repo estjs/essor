@@ -57,7 +57,9 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
   };
 
   const properties = firstParam.properties;
-  const notRestProperties = properties.filter(property => !t.isRestElement(property)) as ObjectProperty[];
+  const notRestProperties = properties.filter(
+    property => !t.isRestElement(property),
+  ) as ObjectProperty[];
   replaceProperties(notRestProperties, '__props.');
 
   const notRestNames = notRestProperties.map(property => (property.key as Identifier).name);
@@ -70,7 +72,9 @@ export function replaceProps(path: NodePath<FunctionDeclaration | ArrowFunctionE
 }
 
 function handleRestElement(path, state: State, properties, notRestNames) {
-  const restElement = properties.find(property => t.isRestElement(property)) as RestElement | undefined;
+  const restElement = properties.find(property => t.isRestElement(property)) as
+    | RestElement
+    | undefined;
   path.node.params[0] = t.identifier('__props');
 
   if (restElement) {
@@ -92,7 +96,7 @@ function createRestVariableDeclaration(state: State, restName: string, notRestNa
       t.callExpression(state.reactive, [
         t.identifier('__props'),
         t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
-      ])
+      ]),
     ),
   ]);
 }
