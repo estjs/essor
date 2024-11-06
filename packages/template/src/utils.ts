@@ -207,61 +207,6 @@ export function addEventListener(
 }
 
 /**
- * Closes unclosed HTML tags in a given input string.
- * @param input - The input HTML string to process.
- * @returns The HTML string with unclosed tags properly closed.
- */
-export function closeHtmlTags(input: string): string {
-  if (!input) {
-    return input;
-  }
-  const tagStack: string[] = [];
-  const output: string[] = [];
-  const tagPattern = /<\/?([\da-z-]+)([^>]*)>/gi;
-  let lastIndex = 0;
-
-  while (true) {
-    const match = tagPattern.exec(input);
-    if (!match) break;
-
-    const [fullMatch, tagName] = match;
-    const isEndTag = fullMatch[1] === '/';
-
-    // Push text content between tags
-    output.push(input.slice(lastIndex, match.index));
-    lastIndex = match.index + fullMatch.length;
-
-    if (isEndTag) {
-      // Handle end tag
-      while (tagStack.length > 0 && tagStack[tagStack.length - 1] !== tagName) {
-        const unclosedTag = tagStack.pop();
-        if (unclosedTag) {
-          output.push(`</${unclosedTag}>`);
-        }
-      }
-      if (tagStack.length > 0) {
-        tagStack.pop(); // pop the matching start tag
-      }
-    } else if (!SELF_CLOSING_TAGS.includes(tagName)) {
-      // Handle start tag
-      tagStack.push(tagName);
-    }
-    output.push(fullMatch); // Push the current tag
-  }
-
-  // Add any remaining unclosed tags
-  output.push(input.slice(lastIndex));
-  while (tagStack.length > 0) {
-    const unclosedTag = tagStack.pop();
-    if (unclosedTag) {
-      output.push(`</${unclosedTag}>`);
-    }
-  }
-
-  return output.join('');
-}
-
-/**
  * Checks if a given tag name is a valid HTML tag.
  * @param tagName - The tag name to check.
  * @returns A boolean indicating if the tag name is valid.

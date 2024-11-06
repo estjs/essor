@@ -1,5 +1,5 @@
 import { isArray, isFunction, isString } from '@estjs/shared';
-import { closeHtmlTags, convertToHtmlTag } from './utils';
+import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
@@ -69,7 +69,13 @@ export function isJsxElement(node: unknown): node is EssorNode {
  */
 export function createTemplate(html: string): HTMLTemplateElement {
   const template = document.createElement('template');
-  template.innerHTML = closeHtmlTags(html);
+  /**
+   * the code that sets the unclosed tag, the browser's innerHTML method is, will automatically close the tag.
+   * like `<div><button type=button>`
+   * it will be translated:
+   * `<div><button type=button></button></div>`
+   */
+  template.innerHTML = html;
   return template;
 }
 
@@ -81,7 +87,7 @@ export function Fragment<
     | boolean
     | (JSX.JSXElement | string | number | boolean)[],
 >(
-  template: any,
+  template: HTMLTemplateElement | '',
   props:
     | { children: T }
     | {
