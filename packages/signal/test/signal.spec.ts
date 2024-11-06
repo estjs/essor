@@ -508,4 +508,76 @@ describe('shallowSignal', () => {
 
     expect(triggerCount).toBe(9);
   });
+
+  it('should work with set method ant function calls', () => {
+    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
+    const value2 = signal<any>(1);
+    const value3 = signal<any>({});
+
+    let triggerCount = 0;
+
+    effect(() => {
+      // trigger value
+      value1();
+      value2();
+      value3();
+
+      triggerCount++;
+    });
+
+    expect(triggerCount).toBe(1);
+    value1.set(1);
+    value2.set(new Map([['a', 1]]));
+    value3.set({ a: 2 });
+
+    expect(triggerCount).toBe(4);
+
+    value1.set(new Set([1, 2, 3, 4]));
+    value2.set(new Map([['a', 1]]));
+    value3.set({ a: 2 });
+
+    expect(triggerCount).toBe(7);
+  });
+
+  it('should work with update', () => {
+    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
+    const value2 = signal<any>(1);
+    const value3 = signal<any>({});
+    const value4 = signal<any>(new Map([['a', 1]]));
+    const value5 = signal<any>(new WeakMap());
+    const value6 = signal<any>(new WeakSet([]));
+
+    let triggerCount = 0;
+
+    effect(() => {
+      // trigger value
+      value1();
+      value2();
+      value3();
+      value4();
+      value5();
+      value6();
+
+      triggerCount++;
+    });
+
+    expect(triggerCount).toBe(1);
+    value1.update(value => new Set([...value, 4]));
+    value2.update(() => new Map([['a', 1]]));
+    value3.update(value => ({ ...value, a: 2 }));
+    value4.update(() => new Map([['a', 1]]));
+    value5.update(() => new WeakMap());
+    value6.update(() => new WeakSet([]));
+
+    expect(triggerCount).toBe(7);
+
+    value1.update(value => new Set([...value, 5]));
+    value2.update(() => new Map([['a', 2]]));
+    value3.update(value => ({ ...value, a: 2 }));
+    value4.update(() => new Map([['a', 2]]));
+    value5.update(() => new WeakMap());
+    value6.update(() => new WeakSet());
+
+    expect(triggerCount).toBe(13);
+  });
 });

@@ -110,6 +110,12 @@ function trigger(target: object, key: string | symbol) {
   }
 }
 
+class FunctionExt extends Function {
+  constructor(f: Function) {
+    super();
+    return Object.setPrototypeOf(f, new.target.prototype);
+  }
+}
 /**
  * Signal class represents a reactive value.
  * @template T The type of the value held by the Signal.
@@ -119,7 +125,7 @@ function trigger(target: object, key: string | symbol) {
  * count.value = 1;
  * console.log(count.value); // 1
  */
-export class SignalImpl<T> {
+export class SignalImpl<T> extends FunctionExt {
   private __value: T;
   private __shallow: boolean;
 
@@ -133,6 +139,9 @@ export class SignalImpl<T> {
    * @param {boolean} [shallow] - Whether to create a shallow Signal.
    */
   constructor(value: T, shallow: boolean = false) {
+    super(() => {
+      return this.value;
+    });
     this.__shallow = shallow;
     this.__value = value;
   }
@@ -164,9 +173,6 @@ export class SignalImpl<T> {
       trigger(this, SignalValueKey);
     }
   }
-  trigger() {
-    trigger(this, SignalValueKey);
-  }
   /**
    * Returns the current value without triggering reactivity.
    * @returns {T} The current value.
@@ -175,8 +181,16 @@ export class SignalImpl<T> {
     return this.__value;
   }
 
+  // call set value
+  // it equals to this.value = value
   set(value: T) {
     this.value = value;
+  }
+
+  // call update
+  // it equals to this.value = fn(this.value)
+  update(fn: (value: T) => T): void {
+    this.set(fn(this.peek()));
   }
 }
 
