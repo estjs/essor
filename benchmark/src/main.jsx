@@ -67,7 +67,7 @@ const buildData = (count) => {
     }
     return data;
 };
-const data = shallowSignal([]);
+const data = signal([]);
 const selected = signal(0);
 const actions = {
     run: () => {
@@ -144,7 +144,7 @@ function Row(props) {
       <div class="jumbotron">
         <div class="row">
           <div class="col-md-6">
-            <h1>Essor v{pkg.version} keyed</h1>
+            <h1>Essor keyed</h1>
           </div>
           <div class="col-md-6">
             <div class="row">
