@@ -249,7 +249,7 @@ export class TemplateNode implements JSX.Element {
     setAttribute(element, attr, triggerValue.value);
 
     const cleanup = effect(() => {
-      // triggger conditional expression
+      // trigger conditional expression
       const val2 = isFunction(value) ? value() : value;
       // TODO: class and style should be pure object
       if (

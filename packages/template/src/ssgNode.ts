@@ -113,10 +113,10 @@ export class SSGNode extends LifecycleContext {
   }
 
   private renderChild(child: EssorNode | Function | Signal<unknown>): string {
-    if (isFunction(child)) {
-      return this.renderChild(child(this.props));
-    } else if (isSignal(child)) {
+    if (isSignal(child)) {
       return `<!--${ComponentType.TEXT_COMPONENT}-${componentIndex}-->${(child as Signal<any>).value}<!$>`;
+    } else if (isFunction(child)) {
+      return this.renderChild(child(this.props));
     } else if (isSSGNode(child)) {
       const childResult = (child as SSGNode).mount();
       return isFunction(childResult) ? childResult(this.props) : extractSignal(childResult);
