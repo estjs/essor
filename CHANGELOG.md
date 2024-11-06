@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14-beta.14](https://github.com/estjs/essor/compare/v0.0.14-beta.13...v0.0.14-beta.14) `2024-11-05`
+
+
+### Bug Fixes
+
+* update shallow signal test case ([7a261cf](https://github.com/estjs/essor/commit/7a261cf08e63ca412cd4e3914a335f84628e0c84))
+
+
+
+
 
 
 
