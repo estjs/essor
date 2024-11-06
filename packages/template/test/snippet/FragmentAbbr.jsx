@@ -26,7 +26,7 @@ function FragmentComponent() {
     }
   });
 }
-function App() {
+export function App() {
   const $v = _signal$("Hello, World!");
   return _fragment$(_tmpl$6, {
     "1": {
