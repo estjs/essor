@@ -1,5 +1,7 @@
+import { noop } from '@estjs/shared';
 import { computed, reactive, signal, useWatch } from '../src';
 import { nextTick } from '../src/scheduler';
+import { resolveSource, traverse } from '../src/watch';
 
 describe('useWatch', () => {
   it('should watch a signal and trigger callback on change', async () => {
@@ -210,5 +212,85 @@ describe('useWatch', () => {
     expect(callback).toHaveBeenCalledWith([3, 4], [1, 2]);
 
     stop();
+  });
+});
+
+const mockWarn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+const mockFunction = (value: any) => vi.fn(() => value);
+describe('resolveSource', () => {
+  it('should return the value if it is a Signal', () => {
+    const signal1 = signal(42);
+    expect(resolveSource(signal1)).toBe(42);
+  });
+
+  it('should return the value if it is a Computed', () => {
+    const computed1 = computed(() => 'computedValue');
+    expect(resolveSource(computed1)).toBe('computedValue');
+  });
+
+  it('should return a shallow copy if it is a Reactive object', () => {
+    const reactiveObj = reactive({ a: 1 });
+    const result = resolveSource(reactiveObj);
+    expect(result).toEqual({ a: 1 });
+    expect(result).not.toBe(reactiveObj); // 确保是新对象
+  });
+
+  it('should call the function and return its result if it is a Function', () => {
+    const func = mockFunction('functionResult');
+    expect(resolveSource(func)).toBe('functionResult');
+    expect(func).toHaveBeenCalled();
+  });
+
+  it('should warn and return noop for an invalid source', () => {
+    const invalidSource = 123;
+    //@ts-ignore
+    const result = resolveSource(invalidSource);
+    expect(mockWarn).toHaveBeenCalledWith('[Essor warn]: Invalid source', invalidSource);
+    expect(result).toBe(noop);
+  });
+
+  afterEach(() => {
+    mockWarn.mockClear();
+  });
+});
+
+const signalFn = signal;
+
+describe('traverse', () => {
+  it('should return the value if depth is 0', () => {
+    const value = { a: 1 };
+    expect(traverse(value, 0)).toBe(value);
+  });
+
+  it('should return the value if it is not an object', () => {
+    expect(traverse(42)).toBe(42);
+    expect(traverse('string')).toBe('string');
+  });
+
+  it('should traverse through Signals and fetch their values', () => {
+    const signal = signalFn(42);
+    expect(traverse(signal)).toBe(signal);
+  });
+
+  it('should traverse arrays and apply depth limits', () => {
+    const arr = [1, [2, [3]]];
+    expect(traverse(arr, 1)).toEqual([1, [2, [3]]]);
+    expect(traverse(arr, 2)).toEqual([1, [2, [3]]]);
+  });
+
+  it('should handle circular references', () => {
+    const obj: any = {};
+    obj.self = obj;
+    expect(traverse(obj)).toBe(obj);
+  });
+
+  it('should traverse Set and Map structures', () => {
+    const set = new Set([1, new Set([2, 3])]);
+    expect(traverse(set, 2)).toBe(set);
+  });
+
+  it('should traverse plain objects with depth limits', () => {
+    const obj = { a: { b: { c: 'end' } } };
+    expect(traverse(obj, 2)).toEqual({ a: { b: { c: 'end' } } });
   });
 });

@@ -167,7 +167,7 @@ function doWatch(
   return stop;
 }
 
-function resolveSource(s: WatchSource | object) {
+export function resolveSource(s: WatchSource | object) {
   if (isSignal(s) || isComputed(s)) return s.value;
   if (isReactive(s)) return { ...s };
   if (isFunction(s)) return (s as Function)();

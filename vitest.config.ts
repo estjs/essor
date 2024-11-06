@@ -13,7 +13,7 @@ export default defineConfig({
       exclude: [
         '**/scripts/**',
         '**/unplugin/**',
-        '**/bench/**',
+        '**/benchmark/**',
         '**/playground/**',
         '**/examples/**',
         '**/*.d.ts',
