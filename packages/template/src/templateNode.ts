@@ -243,24 +243,19 @@ export class TemplateNode implements JSX.Element {
     updateFn?: Function,
   ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
-    // Set the initial value
-    const val = isFunction(value) ? value() : value;
-    const triggerValue = isSignal(val) ? val : shallowSignal(val);
-    // run in map children,peek it will not track
-    setAttribute(element, attr, triggerValue.peek());
-
+    const triggerValue = shallowSignal();
     const cleanup = effect(() => {
       // trigger conditional expression
-      const val2 = isFunction(value) ? value() : value;
+      const unFnValue = isFunction(value) ? value() : value;
       // TODO: class and style should be pure object
       if (
-        isPlainObject(val2) &&
+        isPlainObject(unFnValue) &&
         isPlainObject(triggerValue.peek()) &&
-        JSON.stringify(triggerValue.value) === JSON.stringify(val2)
+        JSON.stringify(triggerValue.value) === JSON.stringify(unFnValue)
       )
         return;
 
-      triggerValue.value = isSignal(val2) ? val2.value : val2;
+      triggerValue.value = isSignal(unFnValue) ? unFnValue.value : unFnValue;
       setAttribute(element, attr, triggerValue.value);
     });
 
