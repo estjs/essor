@@ -76,7 +76,6 @@ const actions = {
   },
   runLots: () => {
     const data2 = buildData(10000);
-    console.log(data2);
     data.value = data2;
     selected.set(0);
   },
