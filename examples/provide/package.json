@@ -1,5 +1,5 @@
 {
-  "name": "essor-example-provide",
+  "name": "essor-benchmark",
   "private": true,
   "type": "module",
   "scripts": {

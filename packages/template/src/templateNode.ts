@@ -8,7 +8,7 @@ import {
   isPlainObject,
   startsWith,
 } from '@estjs/shared';
-import { effect, isSignal, shallowSignal } from '@estjs/signal';
+import { effect, isSignal, nextTick, shallowSignal } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,
@@ -184,17 +184,24 @@ export class TemplateNode implements JSX.Element {
     isRoot: boolean,
   ): void {
     if (!props) return;
+
     Object.entries(props).forEach(([attr, value]) => {
       if (attr === CHILDREN_PROP && value) {
         this.patchChildren(key, node, value, isRoot);
       } else if (attr === REF_KEY) {
         (props[attr] as { value: Node }).value = node;
       } else if (startsWith(attr, EVENT_PREFIX)) {
-        this.patchEventListener(key, node, attr, value as EventListener);
+        //run in map children,next tick it will not track
+        nextTick(() => {
+          this.patchEventListener(key, node, attr, value as EventListener);
+        });
       } else {
         if (this.bindValueKeys.includes(attr)) return;
         const updateFn = this.getBindUpdateValue(props, key, attr);
-        this.patchAttribute(key, node as HTMLElement, attr, value, updateFn);
+        //run in map children,next tick it will not track
+        nextTick(() => {
+          this.patchAttribute(key, node as HTMLElement, attr, value, updateFn);
+        });
       }
     });
   }
@@ -296,6 +303,8 @@ export class TemplateNode implements JSX.Element {
     if (isFunction(child)) {
       track.cleanup = effect(() => {
         const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
+        console.log(nextNodes);
+
         if (renderContext.isSSR) {
           track.lastNodes = this.reconcileChildren(parent, nextNodes, before);
         } else {

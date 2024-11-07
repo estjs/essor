@@ -1,4 +1,5 @@
 import { signal } from 'essor';
+import './style.css';
 const A = [
   'pretty',
   'large',
@@ -94,14 +95,15 @@ const actions = {
     selected.set(0);
   },
   swapRows: () => {
-    const _rows = data.value;
-    if (_rows.length > 998) {
-      const d1 = _rows[1];
-      const d998 = _rows[998];
-      _rows[1] = d998;
-      _rows[998] = d1;
-      data.set(_rows);
-    }
+    data.update(_rows => {
+      if (_rows.length > 998) {
+        const d1 = _rows[1];
+        const d998 = _rows[998];
+        _rows[1] = d998;
+        _rows[998] = d1;
+      }
+      return _rows.slice()
+    });
   },
   remove: (id) => {
     data.update(data => {
