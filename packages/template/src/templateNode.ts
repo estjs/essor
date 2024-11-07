@@ -8,7 +8,7 @@ import {
   isPlainObject,
   startsWith,
 } from '@estjs/shared';
-import { effect, isSignal, nextTick, shallowSignal } from '@estjs/signal';
+import { effect, isSignal, shallowSignal } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,
@@ -191,17 +191,11 @@ export class TemplateNode implements JSX.Element {
       } else if (attr === REF_KEY) {
         (props[attr] as { value: Node }).value = node;
       } else if (startsWith(attr, EVENT_PREFIX)) {
-        //run in map children,next tick it will not track
-        nextTick(() => {
-          this.patchEventListener(key, node, attr, value as EventListener);
-        });
+        this.patchEventListener(key, node, attr, value as EventListener);
       } else {
         if (this.bindValueKeys.includes(attr)) return;
         const updateFn = this.getBindUpdateValue(props, key, attr);
-        //run in map children,next tick it will not track
-        nextTick(() => {
-          this.patchAttribute(key, node as HTMLElement, attr, value, updateFn);
-        });
+        this.patchAttribute(key, node as HTMLElement, attr, value, updateFn);
       }
     });
   }
@@ -249,11 +243,11 @@ export class TemplateNode implements JSX.Element {
     updateFn?: Function,
   ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
-
     // Set the initial value
     const val = isFunction(value) ? value() : value;
     const triggerValue = isSignal(val) ? val : shallowSignal(val);
-    setAttribute(element, attr, triggerValue.value);
+    // run in map children,peek it will not track
+    setAttribute(element, attr, triggerValue.peek());
 
     const cleanup = effect(() => {
       // trigger conditional expression
