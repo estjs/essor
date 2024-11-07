@@ -12,6 +12,7 @@ export {
   signalObject,
   useBatch,
   toRaw,
+  ref,
 } from './signal';
 export { useWatch } from './watch';
 export { type SignalImpl as Signal, type ComputedImpl as Computed } from './signal';

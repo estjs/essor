@@ -1,4 +1,4 @@
-import { h, onDestroy, onMount, template, useInject, useProvide } from '../src';
+import { h, inject, onDestroy, onMount, provide, template } from '../src';
 
 describe('lifecycle Hooks', () => {
   let ComptNode;
@@ -49,7 +49,7 @@ describe('provide and inject', () => {
     const templ2 = template('<div class="temp2"></div>');
 
     ComptNode = () => {
-      const value = useInject('key') || '12';
+      const value = inject('key') || '12';
       return h(templ2, {
         '1': {
           children: [[() => value, 2]],
@@ -57,7 +57,7 @@ describe('provide and inject', () => {
       });
     };
     ComptNodeRoot = () => {
-      useProvide('key', 'value');
+      provide('key', 'value');
       return h(templ1, {
         '0': {
           children: [[() => h(ComptNode, {}), 1]],
@@ -75,7 +75,7 @@ describe('provide and inject', () => {
     ComptNodeRoot = null;
   });
 
-  it('useProvide should add value to ComptNode context', () => {
+  it('provide should add value to ComptNode context', () => {
     expect(root.querySelector('.temp2')?.innerHTML).toBe('value');
   });
 });

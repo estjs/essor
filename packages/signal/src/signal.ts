@@ -867,3 +867,19 @@ function runBatch(): void {
     batchQueue.clear();
   }
 }
+/**
+ * Creates a reactive ref that can be used to reference a DOM node
+ * or a component instance within the component function body.
+ *
+ * @returns a reactive ref signal
+ *
+ * @example
+ * const inputRef = useRef<HTMLInputElement>()
+ *
+ * <input ref={inputRef} />
+ *
+ * inputRef.value // input element
+ */
+export function ref<T>(): SignalImpl<T | null> {
+  return shallowSignal<T | null>(null);
+}

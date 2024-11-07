@@ -1,5 +1,4 @@
 import { isSymbol } from '@estjs/shared';
-import { type Signal, shallowSignal } from '@estjs/signal';
 import { LifecycleContext } from './lifecycleContext';
 
 /**
@@ -49,11 +48,11 @@ export interface InjectionKey<T> extends Symbol {}
  * @param key - The key to store the value in the LifecycleContext with.
  * @param value - The value to store in the LifecycleContext with the given key.
  */
-export function useProvide<T, K = InjectionKey<T> | string | number>(
+export function provide<T, K = InjectionKey<T> | string | number>(
   key: K,
   value: K extends InjectionKey<infer V> ? V : T,
 ): void {
-  assertInsideComponent('useProvide', key);
+  assertInsideComponent('provide', key);
   LifecycleContext.ref && LifecycleContext.ref.setContext(key as string, value);
 }
 
@@ -69,27 +68,10 @@ export function useProvide<T, K = InjectionKey<T> | string | number>(
  * @returns The value stored in the LifecycleContext with the given key, or the default
  * value if the key is not present in the LifecycleContext.
  */
-export function useInject<T, K = InjectionKey<T> | string | number>(
+export function inject<T, K = InjectionKey<T> | string | number>(
   key: K,
   defaultValue?: K extends InjectionKey<infer V> ? V : T,
 ): (K extends InjectionKey<infer V> ? V : T) | undefined {
-  assertInsideComponent('useInject', key);
+  assertInsideComponent('inject', key);
   return (LifecycleContext.ref && LifecycleContext.ref.getContext(key as string)) ?? defaultValue;
-}
-
-/**
- * Creates a reactive ref that can be used to reference a DOM node
- * or a component instance within the component function body.
- *
- * @returns a reactive ref signal
- *
- * @example
- * const inputRef = useRef<HTMLInputElement>()
- *
- * <input ref={inputRef} />
- *
- * inputRef.value // input element
- */
-export function useRef<T>(): Signal<T | null> {
-  return shallowSignal<T | null>(null);
 }

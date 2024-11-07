@@ -1,8 +1,7 @@
-import { useInject } from 'essor';
+import { inject } from 'essor';
 import { ProvideKey } from './main';
 
 export default function InjectComponent() {
-  const injectVlaue = useInject(ProvideKey, { count: -1 })!;
-
-  return <div>{injectVlaue.count}</div>;
+  const injectValue = inject(ProvideKey, { count: -1 })!;
+  return <div>{injectValue.count}</div>;
 }

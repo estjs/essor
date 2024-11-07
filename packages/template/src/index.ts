@@ -1,6 +1,6 @@
 export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './jsxRenderer';
 
-export { onMount, onDestroy, useInject, useProvide, useRef } from './hooks';
+export { onMount, onDestroy, inject, provide } from './hooks';
 
 export type { InjectionKey } from './hooks';
 
