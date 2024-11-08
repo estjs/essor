@@ -6,6 +6,26 @@ import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConf
 import { FragmentNode } from './fragmentNode';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
+export const componentCache = new Map();
+
+function createNodeCache(node, template, props, key) {
+  // check cache
+  if (key && componentCache.has(key)) {
+    const cachedNode = componentCache.get(key);
+    return cachedNode.nodes;
+    // TODO: need fix this
+    // check props
+    // if (hasChanged(props, cachedNode.props)) {
+    //   return cachedNode.nodes;
+    // }
+    // cachedNode.inheritNode(cachedNode);
+    // return cachedNode.rootNode?.mount(cachedNode.parent, cachedNode.before) ?? [];
+  }
+
+  const newNode = new node(template, props, key);
+  componentCache.set(key, newNode);
+  return newNode;
+}
 /**
  * Creates a JSX element from a given template.
  *
@@ -33,7 +53,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 
   // Handle functional templates (Components)
   if (isFunction(template)) {
-    return new ComponentNode(template, props, key);
+    return createNodeCache(ComponentNode, template, props, key);
   }
 
   // Handle HTMLTemplateElement
