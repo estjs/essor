@@ -1,4 +1,4 @@
-import { isArray, isFunction, isString } from '@estjs/shared';
+import { hasChanged, isArray, isFunction, isPlainObject, isString } from '@estjs/shared';
 import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
@@ -8,18 +8,27 @@ import type { EssorComponent, EssorNode, Props } from '../types';
 
 export const componentCache = new Map();
 
+
+export const shllowHasChenged = (a,b) =>{
+  if(isPlainObject(a) && isPlainObject(b)){
+    return Object.keys(a).every(key => shllowHasChenged(a[key],b[key]))
+  }
+  return hasChanged(a,b)
+}
+
 function createNodeCache(node, template, props, key) {
   // check cache
   if (key && componentCache.has(key)) {
     const cachedNode = componentCache.get(key);
-    return cachedNode.nodes;
-    // TODO: need fix this
-    // check props
-    // if (hasChanged(props, cachedNode.props)) {
-    //   return cachedNode.nodes;
+    // // check props
+    // if (!shllowHasChenged(props, cachedNode.props)) {
+    //   console.log('not change');
+    //   return cachedNode
     // }
+    // console.log('change');
+
     // cachedNode.inheritNode(cachedNode);
-    // return cachedNode.rootNode?.mount(cachedNode.parent, cachedNode.before) ?? [];
+    return cachedNode
   }
 
   const newNode = new node(template, props, key);
