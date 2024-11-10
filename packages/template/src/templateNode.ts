@@ -62,13 +62,10 @@ export class TemplateNode implements JSX.Element {
 
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
-    console.log(this.props);
-
     if (this.isConnected) {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
     }
-
     if (isArray(this.template)) {
       this.template = createTemplate(this.template.join(''));
     }

@@ -19,7 +19,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
 
   constructor(
     public template: EssorComponent,
-    public props?: Props,
+    public props: Props,
     public key?: string,
   ) {
     super();
@@ -52,8 +52,6 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     if (this.isConnected) {
       return this.rootNode?.mount(parent, before) ?? [];
     }
-    console.log(this.props);
-
     this.initRef();
     this.rootNode = this.template(reactive(this.proxyProps, [CHILDREN_PROP]));
     this.nodes = this.rootNode?.mount(parent, before) ?? [];
