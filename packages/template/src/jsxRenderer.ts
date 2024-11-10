@@ -1,38 +1,23 @@
-import { hasChanged, isArray, isFunction, isPlainObject, isString } from '@estjs/shared';
+import { isArray, isFunction, isString } from '@estjs/shared';
 import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
-import { FragmentNode } from './fragmentNode';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
 export const componentCache = new Map();
-
-
-export const shllowHasChenged = (a,b) =>{
-  if(isPlainObject(a) && isPlainObject(b)){
-    return Object.keys(a).every(key => shllowHasChenged(a[key],b[key]))
-  }
-  return hasChanged(a,b)
-}
 
 function createNodeCache(node, template, props, key) {
   // check cache
   if (key && componentCache.has(key)) {
     const cachedNode = componentCache.get(key);
-    // // check props
-    // if (!shllowHasChenged(props, cachedNode.props)) {
-    //   console.log('not change');
-    //   return cachedNode
-    // }
-    // console.log('change');
-
-    // cachedNode.inheritNode(cachedNode);
-    return cachedNode
+    return cachedNode;
   }
 
   const newNode = new node(template, props, key);
-  componentCache.set(key, newNode);
+  if (key) {
+    componentCache.set(key, newNode);
+  }
   return newNode;
 }
 /**
@@ -51,13 +36,13 @@ export function h<K extends keyof HTMLElementTagNameMap>(
 ): JSX.Element {
   // handle fragment
   if (template === EMPTY_TEMPLATE) {
-    return Fragment(template, props!);
+    return Fragment(template, props!) as any;
   }
   // Handle string templates
   if (isString(template)) {
     const htmlTemplate = convertToHtmlTag(template);
     props = { [SINGLE_PROP_KEY]: props };
-    return new TemplateNode(createTemplate(htmlTemplate), props, key);
+    return createNodeCache(TemplateNode, htmlTemplate, props, key);
   }
 
   // Handle functional templates (Components)
@@ -66,7 +51,7 @@ export function h<K extends keyof HTMLElementTagNameMap>(
   }
 
   // Handle HTMLTemplateElement
-  return new TemplateNode(template as HTMLTemplateElement, props, key);
+  return createNodeCache(TemplateNode, template, props, key);
 }
 
 /**
@@ -137,5 +122,4 @@ export function Fragment<
   if (template === EMPTY_TEMPLATE) {
     template = createTemplate(EMPTY_TEMPLATE);
   }
-  return new FragmentNode(template, props);
 }

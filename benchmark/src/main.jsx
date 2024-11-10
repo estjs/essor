@@ -87,22 +87,19 @@ const actions = {
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
-    data.set(_rows);
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-    data.update(_rows => {
-      if (_rows.length > 998) {
-        const d1 = _rows[1];
-        const d998 = _rows[998];
-        _rows[1] = d998;
-        _rows[998] = d1;
-      }
-      return _rows.slice()
-    });
+    const _rows = data.value;
+    if (_rows.length > 998) {
+      const d1 = _rows[1];
+      const d998 = _rows[998];
+      _rows[1] = d998;
+      _rows[998] = d1;
+    }
   },
   remove: (id) => {
     data.update(data => {

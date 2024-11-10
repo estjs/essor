@@ -24,7 +24,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   ) {
     super();
     this.key ||= props && (props.key as string);
-    this.proxyProps = this.createProxyProps(props);
+    this.proxyProps ||= this.createProxyProps(props);
   }
 
   protected createProxyProps(props?: Props): Record<string, Signal<unknown>> {
@@ -45,14 +45,14 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   }
 
   mount(parent: Node, before: Node | null): Node[] {
-    this.parent ||= parent;
-    this.before ||= before;
+    this.parent = parent;
     if (!isFunction(this.template)) {
       throw new Error('Template must be a function');
     }
     if (this.isConnected) {
       return this.rootNode?.mount(parent, before) ?? [];
     }
+    console.log(this.props);
 
     this.initRef();
     this.rootNode = this.template(reactive(this.proxyProps, [CHILDREN_PROP]));
