@@ -5,8 +5,8 @@ import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
 import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
 import { componentCache } from './jsxRenderer';
-import type { TemplateNode } from './templateNode';
 import type { EssorComponent, NodeTrack, Props } from '../types';
+import type { TemplateNode } from './templateNode';
 
 export class ComponentNode extends LifecycleContext implements JSX.Element {
   protected proxyProps: Record<string, Signal<unknown>>;
@@ -63,17 +63,25 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   }
 
   unmount(): void {
-    this.callDestroyHooks();
-    this.clearHooks();
+    this.callLifecycleHooks('destroy');
+    this.cleanup();
     this.rootNode?.unmount();
-    this.rootNode = null;
-    this.proxyProps = {};
-    this.clearEmitter();
+    this.resetState();
 
-    // remove to cache
     if (this.key) {
       componentCache.delete(this.key);
     }
+  }
+
+  private resetState(): void {
+    this.rootNode = null;
+    this.proxyProps = {};
+    this.nodes = [];
+    this.parent = null;
+  }
+
+  protected callLifecycleHooks(type: 'mounted' | 'destroy'): void {
+    this.hooks[type].forEach(handler => handler());
   }
 
   protected callMountHooks(): void {
@@ -151,5 +159,12 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     track.cleanup = effect(() => {
       this.proxyProps[key] = isFunction(prop) ? prop() : prop;
     });
+  }
+
+  protected cleanup(): void {
+    this.trackMap.forEach(track => track.cleanup?.());
+    this.trackMap.clear();
+    this.emitter.forEach(cleanup => cleanup());
+    this.emitter.clear();
   }
 }

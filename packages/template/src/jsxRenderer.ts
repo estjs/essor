@@ -1,21 +1,37 @@
-import { isArray, isFunction, isString } from '@estjs/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
+import { Cache } from './cache';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
-export const componentCache = new Map();
+// 配置组件缓存
+export const componentCache = new Cache<ComponentNode>({
+  maxSize: 1000, // 可以根据实际需求调整
+  ttl: 5 * 60 * 1000, // 5分钟缓存时间
+});
 
-function createNodeCache(node, template, props, key) {
-  // check cache
-  if (key && componentCache.has(key)) {
-    const cachedNode = componentCache.get(key);
-    return cachedNode;
+function createNodeCache(
+  NodeConstructor: typeof ComponentNode | typeof TemplateNode,
+  template: EssorComponent | HTMLTemplateElement | string,
+  props: Props = {},
+  key?: string,
+): JSX.Element {
+  if (key) {
+    const cached = componentCache.get(key);
+    if (cached) {
+      return cached;
+    }
   }
 
-  const newNode = new node(template, props, key);
-  if (key) {
+  // 处理字符串模板
+  if (typeof template === 'string') {
+    template = createTemplate(template);
+  }
+
+  const newNode = new NodeConstructor(template as any, props, key);
+  if (key && newNode instanceof ComponentNode) {
     componentCache.set(key, newNode);
   }
   return newNode;
@@ -31,18 +47,19 @@ function createNodeCache(node, template, props, key) {
  */
 export function h<K extends keyof HTMLElementTagNameMap>(
   template: EssorComponent | HTMLTemplateElement | K | '',
-  props?: Props,
+  props: Props = {},
   key?: string,
 ): JSX.Element {
   // handle fragment
   if (template === EMPTY_TEMPLATE) {
-    return Fragment(template, props!) as any;
+    return Fragment(template, props) as JSX.Element;
   }
+
   // Handle string templates
   if (isString(template)) {
     const htmlTemplate = convertToHtmlTag(template);
-    props = { [SINGLE_PROP_KEY]: props };
-    return createNodeCache(TemplateNode, htmlTemplate, props, key);
+    const wrappedProps = { [SINGLE_PROP_KEY]: props };
+    return createNodeCache(TemplateNode, htmlTemplate, wrappedProps, key);
   }
 
   // Handle functional templates (Components)
@@ -99,27 +116,22 @@ export function Fragment<
     | string
     | number
     | boolean
-    | (JSX.JSXElement | string | number | boolean)[],
+    | Array<JSX.JSXElement | string | number | boolean>,
 >(
   template: HTMLTemplateElement | '',
-  props:
-    | { children: T }
-    | {
-        [key in string]: {
-          children: T;
-        };
-      },
-) {
-  if (props.children) {
-    props = {
-      [FRAGMENT_PROP_KEY]: {
-        children: (isArray(props.children)
-          ? props.children.filter(Boolean)
-          : [props.children]) as T,
-      },
-    };
-  }
-  if (template === EMPTY_TEMPLATE) {
-    template = createTemplate(EMPTY_TEMPLATE);
-  }
+  props: { children: T } | { [key: string]: { children: T } },
+): JSX.Element {
+  const processedProps = props.children
+    ? {
+        [FRAGMENT_PROP_KEY]: {
+          children: (Array.isArray(props.children)
+            ? props.children.filter(Boolean)
+            : [props.children]) as T,
+        },
+      }
+    : props;
+
+  const templateElement = template === EMPTY_TEMPLATE ? createTemplate(EMPTY_TEMPLATE) : template;
+
+  return createNodeCache(TemplateNode, templateElement, processedProps);
 }
