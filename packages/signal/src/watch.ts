@@ -37,7 +37,7 @@ export interface WatchOptions<Immediate = boolean> {
 }
 
 // Overload signatures
-export function useWatch<
+export function watch<
   T extends Readonly<WatchSource<unknown>[] | object>,
   Immediate extends boolean = false,
 >(
@@ -46,20 +46,20 @@ export function useWatch<
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function useWatch<T, Immediate extends boolean = false>(
+export function watch<T, Immediate extends boolean = false>(
   source: WatchSource<T>,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function useWatch<T extends object, Immediate extends boolean = false>(
+export function watch<T extends object, Immediate extends boolean = false>(
   source: T,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Main implementation of useWatch
-export function useWatch<T = any>(
+// Main implementation of watch
+export function watch<T = any>(
   source: WatchSource<T> | WatchSource<T>[] | object,
   cb: WatchCallback<T>,
   options?: WatchOptions,
@@ -101,7 +101,7 @@ function flushWatchers() {
  * const count = signal(0);
  * const name = signal('Alice');
  *
- * useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
+ * watch([count, name], ([newCount, newName], [oldCount, oldName]) => {
  *   console.log(`Count changed from ${oldCount} to ${newCount}`);
  *  })
  *

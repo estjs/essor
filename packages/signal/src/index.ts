@@ -14,7 +14,7 @@ export {
   toRaw,
   ref,
 } from './signal';
-export { useWatch } from './watch';
+export { watch } from './watch';
 export { type SignalImpl as Signal, type ComputedImpl as Computed } from './signal';
 export { createStore, StoreActions } from './store';
 

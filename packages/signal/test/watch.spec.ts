@@ -1,14 +1,14 @@
 import { noop } from '@estjs/shared';
-import { computed, reactive, signal, useWatch } from '../src';
+import { computed, reactive, signal, watch } from '../src';
 import { nextTick } from '../src/scheduler';
 import { resolveSource, traverse } from '../src/watch';
 
-describe('useWatch', () => {
+describe('watch', () => {
   it('should watch a signal and trigger callback on change', async () => {
     const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signalValue, callback);
+    const stop = watch(signalValue, callback);
 
     signalValue.value = 2;
 
@@ -23,7 +23,7 @@ describe('useWatch', () => {
     const computedValue = computed(() => signalValue.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch(computedValue, callback);
+    const stop = watch(computedValue, callback);
 
     signalValue.value = 2;
     await nextTick();
@@ -36,7 +36,7 @@ describe('useWatch', () => {
     const obj = reactive({ count: 1 });
     const callback = vi.fn();
 
-    const stop = useWatch(obj, callback);
+    const stop = watch(obj, callback);
 
     obj.count = 2;
 
@@ -52,7 +52,7 @@ describe('useWatch', () => {
     const computedValue = computed(() => signal1.value * 2 + signal2.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch([signal1, signal2, computedValue], callback);
+    const stop = watch([signal1, signal2, computedValue], callback);
 
     signal1.value = 2;
 
@@ -73,7 +73,7 @@ describe('useWatch', () => {
     const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(() => signalValue.value * 2, callback);
+    const stop = watch(() => signalValue.value * 2, callback);
 
     signalValue.value = 2;
 
@@ -88,7 +88,7 @@ describe('useWatch', () => {
     const computedValue = computed(() => signalValue.value * 2);
     const callback = vi.fn();
 
-    const stop = useWatch([signalValue, computedValue], callback);
+    const stop = watch([signalValue, computedValue], callback);
 
     signalValue.value = 2;
     await nextTick();
@@ -101,7 +101,7 @@ describe('useWatch', () => {
     const obj = reactive({ nested: { count: 1 } });
     const callback = vi.fn();
 
-    const stop = useWatch(obj, callback, { deep: true });
+    const stop = watch(obj, callback, { deep: true });
 
     obj.nested.count = 2;
 
@@ -116,7 +116,7 @@ describe('useWatch', () => {
     const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signalValue, callback, { immediate: true });
+    const stop = watch(signalValue, callback, { immediate: true });
     await nextTick();
     expect(callback).toHaveBeenCalledWith(1, undefined);
 
@@ -131,7 +131,7 @@ describe('useWatch', () => {
     const signalValue = signal(1);
     const callback = vi.fn();
 
-    const stop = useWatch(signalValue, callback);
+    const stop = watch(signalValue, callback);
 
     signalValue.value = 1; // not change
     await nextTick();
@@ -150,7 +150,7 @@ describe('useWatch', () => {
     const reactiveObj = reactive({ map, set });
     const callback = vi.fn();
 
-    const stop = useWatch(reactiveObj, callback);
+    const stop = watch(reactiveObj, callback);
 
     reactiveObj.map.set('key', 'value');
     await nextTick();
@@ -168,7 +168,7 @@ describe('useWatch', () => {
     const obj = reactive({ count: 1 });
     const callback = vi.fn();
 
-    const stop = useWatch([signalValue, obj], callback);
+    const stop = watch([signalValue, obj], callback);
 
     signalValue.value = 2;
 
@@ -187,7 +187,7 @@ describe('useWatch', () => {
     const obj = { invalid: [1, 2, 3] };
     const callback = vi.fn();
 
-    const stop = useWatch(obj, callback);
+    const stop = watch(obj, callback);
 
     obj.invalid = [4, 5, 6];
 
@@ -202,7 +202,7 @@ describe('useWatch', () => {
     const signal2 = signal(2);
     const callback = vi.fn();
 
-    const stop = useWatch([signal1, signal2], callback);
+    const stop = watch([signal1, signal2], callback);
 
     signal1.value = 3;
     signal2.value = 4;
