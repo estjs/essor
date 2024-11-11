@@ -4,7 +4,6 @@ import { isJsxElement } from './jsxRenderer';
 import { renderContext } from './sharedConfig';
 import { isSSGNode } from './ssgNode';
 
-// 新增：常量定义
 const SELF_CLOSING_TAGS =
   'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
 const HTML_TAGS =

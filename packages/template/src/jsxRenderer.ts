@@ -20,7 +20,6 @@ function createNodeCache(
     }
   }
 
-  // 处理字符串模板
   if (typeof template === 'string') {
     template = createTemplate(template);
   }
@@ -129,4 +128,13 @@ export function Fragment<
   const templateElement = template === EMPTY_TEMPLATE ? createTemplate(EMPTY_TEMPLATE) : template;
 
   return createNodeCache(TemplateNode, templateElement, processedProps);
+}
+
+export function createApp(component: EssorComponent, root: HTMLElement | string) {
+  const rootElement = typeof root === 'string' ? document.querySelector(root) : root;
+  if (!rootElement) {
+    throw new Error('Root element not found');
+  }
+  const rootNode = h(component).mount(rootElement);
+  return rootNode;
 }

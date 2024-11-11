@@ -1,4 +1,4 @@
-import { signal ,useBatch} from 'essor';
+import { shallowSignal, signal} from 'essor';
 import './style.css';
 const A = [
   'pretty',
@@ -67,7 +67,7 @@ const buildData = (count) => {
   }
   return data;
 };
-const data = signal([]);
+const data = shallowSignal([]);
 const selected = signal(0);
 const actions = {
   run: () => {
@@ -83,20 +83,17 @@ const actions = {
     data.value = data.value.concat(buildData(1000));
   },
   update: () => {
-
-    useBatch(() => {
     const _rows = data.value;
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
-    })
+    data.set(_rows.slice());
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-    useBatch(() => {
       const _rows = data.value;
       if (_rows.length > 998) {
         const d1 = _rows[1];
@@ -104,8 +101,7 @@ const actions = {
         _rows[1] = d998;
         _rows[998] = d1;
       }
-    })
-
+data.set(_rows.slice());
   },
   remove: (id) => {
     data.update(data => {
