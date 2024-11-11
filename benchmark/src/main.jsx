@@ -1,4 +1,4 @@
-import { signal } from 'essor';
+import { signal ,useBatch} from 'essor';
 import './style.css';
 const A = [
   'pretty',
@@ -83,23 +83,29 @@ const actions = {
     data.value = data.value.concat(buildData(1000));
   },
   update: () => {
+
+    useBatch(() => {
     const _rows = data.value;
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
+    })
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-    const _rows = data.value;
-    if (_rows.length > 998) {
-      const d1 = _rows[1];
-      const d998 = _rows[998];
-      _rows[1] = d998;
-      _rows[998] = d1;
-    }
+    useBatch(() => {
+      const _rows = data.value;
+      if (_rows.length > 998) {
+        const d1 = _rows[1];
+        const d998 = _rows[998];
+        _rows[1] = d998;
+        _rows[998] = d1;
+      }
+    })
+
   },
   remove: (id) => {
     data.update(data => {

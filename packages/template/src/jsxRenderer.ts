@@ -3,14 +3,9 @@ import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
-import { Cache } from './cache';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
-// 配置组件缓存
-export const componentCache = new Cache<ComponentNode>({
-  maxSize: 1000, // 可以根据实际需求调整
-  ttl: 5 * 60 * 1000, // 5分钟缓存时间
-});
+export const componentCache = new Map();
 
 function createNodeCache(
   NodeConstructor: typeof ComponentNode | typeof TemplateNode,
