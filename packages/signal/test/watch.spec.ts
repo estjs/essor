@@ -232,7 +232,7 @@ describe('resolveSource', () => {
     const reactiveObj = reactive({ a: 1 });
     const result = resolveSource(reactiveObj);
     expect(result).toEqual({ a: 1 });
-    expect(result).not.toBe(reactiveObj); // 确保是新对象
+    expect(result).not.toBe(reactiveObj);
   });
 
   it('should call the function and return its result if it is a Function', () => {

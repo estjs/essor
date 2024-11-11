@@ -1,11 +1,35 @@
-import { isArray, isFunction, isString } from '@estjs/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
-import { FragmentNode } from './fragmentNode';
 import type { EssorComponent, EssorNode, Props } from '../types';
 
+export const componentCache = new Map();
+
+function createNodeCache(
+  NodeConstructor: typeof ComponentNode | typeof TemplateNode,
+  template: EssorComponent | HTMLTemplateElement | string,
+  props: Props = {},
+  key?: string,
+): JSX.Element {
+  if (key) {
+    const cached = componentCache.get(key);
+    if (cached) {
+      return cached;
+    }
+  }
+
+  if (typeof template === 'string') {
+    template = createTemplate(template);
+  }
+
+  const newNode = new NodeConstructor(template as any, props, key);
+  if (key && newNode instanceof ComponentNode) {
+    componentCache.set(key, newNode);
+  }
+  return newNode;
+}
 /**
  * Creates a JSX element from a given template.
  *
@@ -17,27 +41,28 @@ import type { EssorComponent, EssorNode, Props } from '../types';
  */
 export function h<K extends keyof HTMLElementTagNameMap>(
   template: EssorComponent | HTMLTemplateElement | K | '',
-  props?: Props,
+  props: Props = {},
   key?: string,
 ): JSX.Element {
   // handle fragment
   if (template === EMPTY_TEMPLATE) {
-    return Fragment(template, props!);
+    return Fragment(template, props) as JSX.Element;
   }
+
   // Handle string templates
   if (isString(template)) {
     const htmlTemplate = convertToHtmlTag(template);
-    props = { [SINGLE_PROP_KEY]: props };
-    return new TemplateNode(createTemplate(htmlTemplate), props, key);
+    const wrappedProps = { [SINGLE_PROP_KEY]: props };
+    return createNodeCache(TemplateNode, htmlTemplate, wrappedProps, key);
   }
 
   // Handle functional templates (Components)
   if (isFunction(template)) {
-    return new ComponentNode(template, props, key);
+    return createNodeCache(ComponentNode, template, props, key);
   }
 
   // Handle HTMLTemplateElement
-  return new TemplateNode(template as HTMLTemplateElement, props, key);
+  return createNodeCache(TemplateNode, template, props, key);
 }
 
 /**
@@ -85,28 +110,31 @@ export function Fragment<
     | string
     | number
     | boolean
-    | (JSX.JSXElement | string | number | boolean)[],
+    | Array<JSX.JSXElement | string | number | boolean>,
 >(
   template: HTMLTemplateElement | '',
-  props:
-    | { children: T }
-    | {
-        [key in string]: {
-          children: T;
-        };
-      },
-) {
-  if (props.children) {
-    props = {
-      [FRAGMENT_PROP_KEY]: {
-        children: (isArray(props.children)
-          ? props.children.filter(Boolean)
-          : [props.children]) as T,
-      },
-    };
+  props: { children: T } | { [key: string]: { children: T } },
+): JSX.Element {
+  const processedProps = props.children
+    ? {
+        [FRAGMENT_PROP_KEY]: {
+          children: (Array.isArray(props.children)
+            ? props.children.filter(Boolean)
+            : [props.children]) as T,
+        },
+      }
+    : props;
+
+  const templateElement = template === EMPTY_TEMPLATE ? createTemplate(EMPTY_TEMPLATE) : template;
+
+  return createNodeCache(TemplateNode, templateElement, processedProps);
+}
+
+export function createApp(component: EssorComponent, root: HTMLElement | string) {
+  const rootElement = typeof root === 'string' ? document.querySelector(root) : root;
+  if (!rootElement) {
+    throw new Error('Root element not found');
   }
-  if (template === EMPTY_TEMPLATE) {
-    template = createTemplate(EMPTY_TEMPLATE);
-  }
-  return new FragmentNode(template, props);
+  const rootNode = h(component).mount(rootElement);
+  return rootNode;
 }

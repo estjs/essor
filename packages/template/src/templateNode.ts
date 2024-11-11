@@ -27,7 +27,7 @@ import {
   getComponentIndex,
   renderContext,
 } from './sharedConfig';
-import { createTemplate } from './jsxRenderer';
+import { componentCache, createTemplate } from './jsxRenderer';
 import type { NodeTrack, Props } from '../types';
 
 export class TemplateNode implements JSX.Element {
@@ -41,7 +41,7 @@ export class TemplateNode implements JSX.Element {
 
   constructor(
     public template: HTMLTemplateElement,
-    public props?: Props,
+    public props: Props,
     public key?: string,
   ) {
     if (renderContext.isSSR) {
@@ -62,12 +62,10 @@ export class TemplateNode implements JSX.Element {
 
   mount(parent: Node, before?: Node | null): Node[] {
     this.parent = parent;
-
     if (this.isConnected) {
       this.nodes.forEach(node => insertChild(parent, node, before));
       return this.nodes;
     }
-
     if (isArray(this.template)) {
       this.template = createTemplate(this.template.join(''));
     }
@@ -105,6 +103,10 @@ export class TemplateNode implements JSX.Element {
 
     this.nodes = [];
     this.mounted = false;
+
+    if (this.key) {
+      componentCache.delete(this.key);
+    }
   }
 
   inheritNode(node: TemplateNode): void {

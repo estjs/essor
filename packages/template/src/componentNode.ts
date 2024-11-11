@@ -1,32 +1,35 @@
-import { isFunction, startsWith } from '@estjs/shared';
-import { type Signal, effect, signal, signalObject } from '@estjs/signal';
+import { hasChanged, isFunction, startsWith } from '@estjs/shared';
+import { type Signal, effect, shallowReactive } from '@estjs/signal';
 import { reactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
 import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
-import type { TemplateNode } from './templateNode';
+import { componentCache } from './jsxRenderer';
 import type { EssorComponent, NodeTrack, Props } from '../types';
+import type { TemplateNode } from './templateNode';
 
 export class ComponentNode extends LifecycleContext implements JSX.Element {
   protected proxyProps: Record<string, Signal<unknown>>;
   protected emitter = new Set<() => void>();
   protected rootNode: TemplateNode | null = null;
   protected trackMap = new Map<string, NodeTrack>();
+  protected nodes: Node[] = [];
+  protected parent: Node | null = null;
+  protected before: Node | null = null;
 
   constructor(
     public template: EssorComponent,
-    public props?: Props,
+    public props: Props,
     public key?: string,
   ) {
     super();
-
     this.key ||= props && (props.key as string);
-    this.proxyProps = this.createProxyProps(props);
+    this.proxyProps ||= this.createProxyProps(props);
   }
 
   protected createProxyProps(props?: Props): Record<string, Signal<unknown>> {
     if (!props) return {};
-    return signalObject(
+    return shallowReactive(
       props,
       key =>
         startsWith(key, EVENT_PREFIX) || startsWith(key, UPDATE_PREFIX) || key === CHILDREN_PROP,
@@ -41,31 +44,44 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     return this.rootNode?.isConnected ?? false;
   }
 
-  mount(parent: Node, before?: Node | null): Node[] {
+  mount(parent: Node, before: Node | null): Node[] {
+    this.parent = parent;
     if (!isFunction(this.template)) {
       throw new Error('Template must be a function');
     }
     if (this.isConnected) {
       return this.rootNode?.mount(parent, before) ?? [];
     }
-
     this.initRef();
     this.rootNode = this.template(reactive(this.proxyProps, [CHILDREN_PROP]));
-    const mountedNode = this.rootNode?.mount(parent, before) ?? [];
+    this.nodes = this.rootNode?.mount(parent, before) ?? [];
     this.callMountHooks();
     this.patchProps(this.props);
     this.removeRef();
 
-    return mountedNode;
+    return this.nodes;
   }
 
   unmount(): void {
-    this.callDestroyHooks();
-    this.clearHooks();
+    this.callLifecycleHooks('destroy');
+    this.cleanup();
     this.rootNode?.unmount();
+    this.resetState();
+
+    if (this.key) {
+      componentCache.delete(this.key);
+    }
+  }
+
+  private resetState(): void {
     this.rootNode = null;
     this.proxyProps = {};
-    this.clearEmitter();
+    this.nodes = [];
+    this.parent = null;
+  }
+
+  protected callLifecycleHooks(type: 'mounted' | 'destroy'): void {
+    this.hooks[type].forEach(handler => handler());
   }
 
   protected callMountHooks(): void {
@@ -88,11 +104,11 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     this.rootNode = node.rootNode;
     this.trackMap = node.trackMap;
     this.hooks = node.hooks;
-
-    const props = this.props;
-    this.props = node.props;
-
-    this.patchProps(props);
+    if (hasChanged(node.props, this.props)) {
+      const props = this.props;
+      this.props = node.props;
+      this.patchProps(props);
+    }
   }
 
   protected getNodeTrack(trackKey: string): NodeTrack {
@@ -109,6 +125,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
     if (!props) {
       return;
     }
+
     for (const [key, prop] of Object.entries(props)) {
       if (startsWith(key, EVENT_PREFIX) && this.rootNode?.firstChild) {
         this.patchEventListener(key, prop);
@@ -125,8 +142,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
 
   protected patchEventListener(key: string, prop: any): void {
     const event = key.slice(2).toLowerCase();
-    // @ts-ignore
-    const cleanup = addEventListener(this.rootNode.nodes[0], event, prop);
+    const cleanup = addEventListener((this.rootNode as any)!.nodes[0], event, prop);
     this.emitter.add(cleanup);
   }
 
@@ -135,14 +151,20 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   }
 
   protected patchUpdateHandler(key: string, prop: any): void {
-    this.props![key] = extractSignal(prop);
+    this.proxyProps![key] = extractSignal(prop);
   }
 
   protected patchNormalProp(key: string, prop: any): void {
-    const newValue = (this.proxyProps[key] ??= signal(prop));
     const track = this.getNodeTrack(key);
     track.cleanup = effect(() => {
-      newValue.value = isFunction(prop) ? prop() : prop;
+      this.proxyProps[key] = isFunction(prop) ? prop() : prop;
     });
+  }
+
+  protected cleanup(): void {
+    this.trackMap.forEach(track => track.cleanup?.());
+    this.trackMap.clear();
+    this.emitter.forEach(cleanup => cleanup());
+    this.emitter.clear();
   }
 }

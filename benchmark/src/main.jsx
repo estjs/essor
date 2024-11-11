@@ -1,4 +1,4 @@
-import { signal } from 'essor';
+import { shallowSignal, signal} from 'essor';
 import './style.css';
 const A = [
   'pretty',
@@ -67,7 +67,7 @@ const buildData = (count) => {
   }
   return data;
 };
-const data = signal([]);
+const data = shallowSignal([]);
 const selected = signal(0);
 const actions = {
   run: () => {
@@ -87,22 +87,21 @@ const actions = {
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
-    data.set(_rows);
+    data.set(_rows.slice());
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-    data.update(_rows => {
+      const _rows = data.value;
       if (_rows.length > 998) {
         const d1 = _rows[1];
         const d998 = _rows[998];
         _rows[1] = d998;
         _rows[998] = d1;
       }
-      return _rows.slice()
-    });
+data.set(_rows.slice());
   },
   remove: (id) => {
     data.update(data => {
