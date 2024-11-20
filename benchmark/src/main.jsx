@@ -1,4 +1,4 @@
-import { shallowSignal, signal} from 'essor';
+import { shallowSignal, useSignal} from 'essor';
 import './style.css';
 const A = [
   'pretty',
@@ -68,7 +68,7 @@ const buildData = (count) => {
   return data;
 };
 const data = shallowSignal([]);
-const selected = signal(0);
+const selected = useSignal(0);
 const actions = {
   run: () => {
     data.set(buildData(1000));
