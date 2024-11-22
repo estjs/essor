@@ -10,7 +10,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@playwright/test':
         specifier: ^1.49.0
         version: 1.49.0
@@ -52,7 +52,7 @@ importers:
         version: 6.0.0
       tsup:
         specifier: ^8.3.5
-        version: 8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
+        version: 8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.5.1)
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
@@ -61,7 +61,7 @@ importers:
         version: 2.3.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -74,7 +74,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -86,7 +86,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../packages/unplugin
@@ -114,7 +114,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -126,7 +126,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../../packages/unplugin
@@ -148,7 +148,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -160,7 +160,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../../packages/unplugin
@@ -182,7 +182,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -194,7 +194,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../../packages/unplugin
@@ -216,7 +216,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -228,7 +228,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../../packages/unplugin
@@ -250,7 +250,7 @@ importers:
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.9
-        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+        version: 1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       '@types/node':
         specifier: ^22.9.1
         version: 22.9.1
@@ -262,7 +262,7 @@ importers:
         version: 25.0.1
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       unplugin-essor:
         specifier: workspace:*
         version: link:../../packages/unplugin
@@ -293,7 +293,7 @@ importers:
         version: 7.20.5
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
 
   packages/core:
     dependencies:
@@ -337,7 +337,7 @@ importers:
         version: link:../babel-plugin
       esbuild:
         specifier: '*'
-        version: 0.23.1
+        version: 0.24.0
       unplugin:
         specifier: ^1.16.0
         version: 1.16.0
@@ -356,16 +356,16 @@ importers:
         version: 4.27.3
       tsup:
         specifier: ^8.3.5
-        version: 8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
+        version: 8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.5.1)
       typescript:
         specifier: ^5.6.3
-        version: 5.6.3
+        version: 5.7.2
       vite:
         specifier: ^5.4.11
         version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
       webpack:
         specifier: ^5.96.1
-        version: 5.96.1(esbuild@0.23.1)
+        version: 5.96.1(esbuild@0.24.0)
 
 packages:
 
@@ -2004,7 +2004,7 @@ packages:
     resolution: {integrity: sha512-zHig5N+tPWARooBnb0Zx1MFcdfpyJrfTJ3Y5L+IFvUm8rM74hHz66z0gw0x4tijh5CorKkKUCnW82R2vmpeCRA==}
 
   concat-map@0.0.1:
-    resolution: {integrity: sha1-2Klr13/Wjfd5OnMDajug1UBdR3s=}
+    resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
   confbox@0.1.7:
     resolution: {integrity: sha512-uJcB/FKZtBMCJpK8MQji6bJHgu1tixKPxRLeGkNzBoOZzpnZUJm0jm2/sBDWcuBx1dYgxV4JU+g5hmNxCyAmdA==}
@@ -4507,8 +4507,8 @@ packages:
     resolution: {integrity: sha512-/OxDN6OtAk5KBpGb28T+HZc2M+ADtvRxXrKKbUwtsLgdoxgX13hyy7ek6bFRl5+aBs2yZzB0c4CnQfAtVypW/g==}
     engines: {node: '>= 0.4'}
 
-  typescript@5.6.3:
-    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
+  typescript@5.7.2:
+    resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -5380,18 +5380,18 @@ snapshots:
     dependencies:
       levn: 0.4.1
 
-  '@estjs/eslint-config@1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))':
+  '@estjs/eslint-config@1.2.9(@types/eslint@8.44.7)(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(prettier@3.3.3)(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))':
     dependencies:
       '@eslint-types/jsdoc': 48.2.2
       '@eslint-types/typescript-eslint': 7.5.0
-      '@typescript-eslint/eslint-plugin': 8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
-      '@typescript-eslint/parser': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
-      '@unocss/eslint-plugin': 0.63.6(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
-      '@vitest/eslint-plugin': 1.1.7(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
+      '@typescript-eslint/eslint-plugin': 8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
+      '@typescript-eslint/parser': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
+      '@unocss/eslint-plugin': 0.63.6(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
+      '@vitest/eslint-plugin': 1.1.7(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))
       eslint: 9.15.0(jiti@1.21.6)
       eslint-config-prettier: 9.1.0(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-eslint-comments: 3.2.0(eslint@9.15.0(jiti@1.21.6))
-      eslint-plugin-import-x: 4.4.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      eslint-plugin-import-x: 4.4.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       eslint-plugin-jsdoc: 50.4.3(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-jsonc: 2.16.0(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-markdown: 5.1.0(eslint@9.15.0(jiti@1.21.6))
@@ -5405,7 +5405,7 @@ snapshots:
       eslint-plugin-svelte: 2.46.0(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-toml: 0.11.1(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-unicorn: 56.0.0(eslint@9.15.0(jiti@1.21.6))
-      eslint-plugin-unused-imports: 4.1.4(@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))
+      eslint-plugin-unused-imports: 4.1.4(@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-vue: 9.30.0(eslint@9.15.0(jiti@1.21.6))
       eslint-plugin-yml: 1.15.0(eslint@9.15.0(jiti@1.21.6))
       globals: 15.11.0
@@ -5803,34 +5803,34 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
-  '@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
       '@eslint-community/regexpp': 4.11.0
-      '@typescript-eslint/parser': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/parser': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       '@typescript-eslint/scope-manager': 8.12.2
-      '@typescript-eslint/type-utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
-      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/type-utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
+      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       '@typescript-eslint/visitor-keys': 8.12.2
       eslint: 9.15.0(jiti@1.21.6)
       graphemer: 1.4.0
       ignore: 5.3.1
       natural-compare: 1.4.0
-      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-api-utils: 1.3.0(typescript@5.7.2)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.12.2
       '@typescript-eslint/types': 8.12.2
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.7.2)
       '@typescript-eslint/visitor-keys': 8.12.2
       debug: 4.3.7
       eslint: 9.15.0(jiti@1.21.6)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
 
@@ -5844,14 +5844,14 @@ snapshots:
       '@typescript-eslint/types': 8.8.0
       '@typescript-eslint/visitor-keys': 8.8.0
 
-  '@typescript-eslint/type-utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@typescript-eslint/type-utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
-      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.7.2)
+      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       debug: 4.3.7
-      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-api-utils: 1.3.0(typescript@5.7.2)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - eslint
       - supports-color
@@ -5860,7 +5860,7 @@ snapshots:
 
   '@typescript-eslint/types@8.8.0': {}
 
-  '@typescript-eslint/typescript-estree@8.12.2(typescript@5.6.3)':
+  '@typescript-eslint/typescript-estree@8.12.2(typescript@5.7.2)':
     dependencies:
       '@typescript-eslint/types': 8.12.2
       '@typescript-eslint/visitor-keys': 8.12.2
@@ -5869,13 +5869,13 @@ snapshots:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-api-utils: 1.3.0(typescript@5.7.2)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/typescript-estree@8.8.0(typescript@5.6.3)':
+  '@typescript-eslint/typescript-estree@8.8.0(typescript@5.7.2)':
     dependencies:
       '@typescript-eslint/types': 8.8.0
       '@typescript-eslint/visitor-keys': 8.8.0
@@ -5884,29 +5884,29 @@ snapshots:
       is-glob: 4.0.3
       minimatch: 9.0.5
       semver: 7.6.3
-      ts-api-utils: 1.3.0(typescript@5.6.3)
+      ts-api-utils: 1.3.0(typescript@5.7.2)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - supports-color
 
-  '@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0(eslint@9.15.0(jiti@1.21.6))
       '@typescript-eslint/scope-manager': 8.12.2
       '@typescript-eslint/types': 8.12.2
-      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.12.2(typescript@5.7.2)
       eslint: 9.15.0(jiti@1.21.6)
     transitivePeerDependencies:
       - supports-color
       - typescript
 
-  '@typescript-eslint/utils@8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@typescript-eslint/utils@8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0(eslint@9.15.0(jiti@1.21.6))
       '@typescript-eslint/scope-manager': 8.8.0
       '@typescript-eslint/types': 8.8.0
-      '@typescript-eslint/typescript-estree': 8.8.0(typescript@5.6.3)
+      '@typescript-eslint/typescript-estree': 8.8.0(typescript@5.7.2)
       eslint: 9.15.0(jiti@1.21.6)
     transitivePeerDependencies:
       - supports-color
@@ -5972,9 +5972,9 @@ snapshots:
 
   '@unocss/core@0.63.6': {}
 
-  '@unocss/eslint-plugin@0.63.6(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)':
+  '@unocss/eslint-plugin@0.63.6(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)':
     dependencies:
-      '@typescript-eslint/utils': 8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       '@unocss/config': 0.63.6
       '@unocss/core': 0.63.6
       magic-string: 0.30.11
@@ -6121,12 +6121,12 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitest/eslint-plugin@1.1.7(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))':
+  '@vitest/eslint-plugin@1.1.7(@typescript-eslint/utils@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)(vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0))':
     dependencies:
-      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       eslint: 9.15.0(jiti@1.21.6)
     optionalDependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
       vitest: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
 
   '@vitest/expect@2.1.5':
@@ -7048,9 +7048,9 @@ snapshots:
       eslint: 9.15.0(jiti@1.21.6)
       ignore: 5.3.1
 
-  eslint-plugin-import-x@4.4.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3):
+  eslint-plugin-import-x@4.4.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2):
     dependencies:
-      '@typescript-eslint/utils': 8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/utils': 8.8.0(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
       debug: 4.3.7
       doctrine: 3.0.0
       eslint: 9.15.0(jiti@1.21.6)
@@ -7214,11 +7214,11 @@ snapshots:
       semver: 7.6.3
       strip-indent: 3.0.0
 
-  eslint-plugin-unused-imports@4.1.4(@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6)):
+  eslint-plugin-unused-imports@4.1.4(@typescript-eslint/eslint-plugin@8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6)):
     dependencies:
       eslint: 9.15.0(jiti@1.21.6)
     optionalDependencies:
-      '@typescript-eslint/eslint-plugin': 8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3))(eslint@9.15.0(jiti@1.21.6))(typescript@5.6.3)
+      '@typescript-eslint/eslint-plugin': 8.12.2(@typescript-eslint/parser@8.12.2(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2))(eslint@9.15.0(jiti@1.21.6))(typescript@5.7.2)
 
   eslint-plugin-vue@9.30.0(eslint@9.15.0(jiti@1.21.6)):
     dependencies:
@@ -9713,16 +9713,16 @@ snapshots:
       mkdirp: 1.0.4
       yallist: 4.0.0
 
-  terser-webpack-plugin@5.3.10(esbuild@0.23.1)(webpack@5.96.1(esbuild@0.23.1)):
+  terser-webpack-plugin@5.3.10(esbuild@0.24.0)(webpack@5.96.1(esbuild@0.24.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.1
       terser: 5.27.0
-      webpack: 5.96.1(esbuild@0.23.1)
+      webpack: 5.96.1(esbuild@0.24.0)
     optionalDependencies:
-      esbuild: 0.23.1
+      esbuild: 0.24.0
 
   terser@5.27.0:
     dependencies:
@@ -9809,15 +9809,15 @@ snapshots:
     dependencies:
       regexparam: 3.0.0
 
-  ts-api-utils@1.3.0(typescript@5.6.3):
+  ts-api-utils@1.3.0(typescript@5.7.2):
     dependencies:
-      typescript: 5.6.3
+      typescript: 5.7.2
 
   ts-interface-checker@0.1.13: {}
 
   tslib@2.6.3: {}
 
-  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1):
+  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.5.1):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.24.0)
       cac: 6.7.14
@@ -9837,14 +9837,14 @@ snapshots:
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.4.40
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - jiti
       - supports-color
       - tsx
       - yaml
 
-  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1):
+  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.7.2)(yaml@2.5.1):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.24.0)
       cac: 6.7.14
@@ -9864,7 +9864,7 @@ snapshots:
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.4.45
-      typescript: 5.6.3
+      typescript: 5.7.2
     transitivePeerDependencies:
       - jiti
       - supports-color
@@ -9951,7 +9951,7 @@ snapshots:
       is-typed-array: 1.1.13
       possible-typed-array-names: 1.0.0
 
-  typescript@5.6.3: {}
+  typescript@5.7.2: {}
 
   ufo@1.5.4: {}
 
@@ -10234,7 +10234,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.96.1(esbuild@0.23.1):
+  webpack@5.96.1(esbuild@0.24.0):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.6
@@ -10256,7 +10256,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(esbuild@0.23.1)(webpack@5.96.1(esbuild@0.23.1))
+      terser-webpack-plugin: 5.3.10(esbuild@0.24.0)(webpack@5.96.1(esbuild@0.24.0))
       watchpack: 2.4.1
       webpack-sources: 3.2.3
     transitivePeerDependencies:
