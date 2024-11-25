@@ -3,7 +3,7 @@ import type { Options, State } from './types';
 export const imports = new Set<string>();
 
 const defaultOption: Options = {
-  ssg: false,
+  server: false,
   symbol: '$',
   props: true,
 };
