@@ -277,7 +277,12 @@ function replaceChild(node: t.Expression): void {
   }
   currentResult.props[currentResult.parentIndex] ??= {};
   currentResult.props[currentResult.parentIndex].children ??= [];
-  currentResult.props[currentResult.parentIndex].children.push(t.arrowFunctionExpression([], node));
+  currentResult.props[currentResult.parentIndex].children.push(
+    t.arrayExpression([
+      t.arrowFunctionExpression([], node),
+      currentResult.isLastChild ? t.nullLiteral() : t.identifier(String(currentResult.index)),
+    ]),
+  );
 }
 
 function handleAttributes(props: Record<string, any>): void {
