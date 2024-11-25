@@ -21,9 +21,9 @@ export const transformProgram = {
       ssg: path.scope.generateUidIdentifier('ssg$'),
       Fragment: path.scope.generateUidIdentifier('fragment$'),
 
-      signal: path.scope.generateUidIdentifier('signal$'),
-      computed: path.scope.generateUidIdentifier('computed$'),
-      reactive: path.scope.generateUidIdentifier('reactive$'),
+      useSignal: path.scope.generateUidIdentifier('useSignal$'),
+      useComputed: path.scope.generateUidIdentifier('useComputed$'),
+      useReactive: path.scope.generateUidIdentifier('useReactive$'),
 
       tmplDeclaration: t.variableDeclaration('const', []),
       opts: state.opts,

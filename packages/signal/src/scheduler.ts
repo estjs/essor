@@ -92,27 +92,27 @@ function flushPreFlushCbs(): void {
 }
 
 /**
- * Creates a scheduler function that runs the given effect function
+ * Creates a scheduler function that runs the given useEffect function
  * with the specified flush strategy.
  *
  * The flush strategy can be one of the following:
  *
- * - `'pre'`: Run the effect function as a pre-flush callback.
- * - `'post'`: Run the effect function in the next event loop.
- * - `'sync'`: Run the effect function immediately.
+ * - `'pre'`: Run the useEffect function as a pre-flush callback.
+ * - `'post'`: Run the useEffect function in the next event loop.
+ * - `'sync'`: Run the useEffect function immediately.
  *
  * The scheduler function is a function that takes no arguments.
- * When called, it schedules the effect function to be executed
+ * When called, it schedules the useEffect function to be executed
  * according to the specified flush strategy.
  */
-export function createScheduler(effect: EffectFn, flush: 'pre' | 'post' | 'sync') {
+export function createScheduler(useEffect: EffectFn, flush: 'pre' | 'post' | 'sync') {
   if (flush === 'sync') {
-    return () => effect();
+    return () => useEffect();
   } else if (flush === 'pre') {
-    return () => queuePreFlushCb(effect);
+    return () => queuePreFlushCb(useEffect);
   } else {
     return () => {
-      nextTick(() => queueJob(effect));
+      nextTick(() => queueJob(useEffect));
     };
   }
 }

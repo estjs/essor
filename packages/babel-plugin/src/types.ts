@@ -6,9 +6,9 @@ export interface State {
   ssg: t.Identifier;
   Fragment: t.Identifier;
 
-  signal: t.Identifier;
-  computed: t.Identifier;
-  reactive: t.Identifier;
+  useSignal: t.Identifier;
+  useComputed: t.Identifier;
+  useReactive: t.Identifier;
 
   tmplDeclaration: t.VariableDeclaration;
   opts: Options;

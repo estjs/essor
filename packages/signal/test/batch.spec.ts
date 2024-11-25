@@ -1,11 +1,11 @@
-import { effect, reactive, signal, useBatch } from '../src';
+import { useEffect, useReactive, useSignal, useBatch } from '../src';
 
 describe('useBatch', () => {
   it('should useBatch multiple updates', () => {
-    const count = signal(0);
+    const count = useSignal(0);
     const effectFn = vi.fn();
 
-    effect(() => {
+    useEffect(() => {
       effectFn(count.value);
     });
 
@@ -20,12 +20,12 @@ describe('useBatch', () => {
   });
 
   it('should run all accumulated effects after the useBatch ends', () => {
-    const obj = reactive({ a: 1, b: 2 });
+    const obj = useReactive({ a: 1, b: 2 });
     const effectFn1 = vi.fn();
     const effectFn2 = vi.fn();
 
-    effect(() => effectFn1(obj.a));
-    effect(() => effectFn2(obj.b));
+    useEffect(() => effectFn1(obj.a));
+    useEffect(() => effectFn2(obj.b));
 
     useBatch(() => {
       obj.a++;
@@ -37,10 +37,10 @@ describe('useBatch', () => {
   });
 
   it('should still run the useBatch even when an error occurs', () => {
-    const count = signal(0);
+    const count = useSignal(0);
     const effectFn = vi.fn();
 
-    effect(() => effectFn(count.value));
+    useEffect(() => effectFn(count.value));
 
     expect(() => {
       useBatch(() => {

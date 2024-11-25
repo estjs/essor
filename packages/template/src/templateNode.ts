@@ -8,7 +8,7 @@ import {
   isPlainObject,
   startsWith,
 } from '@estjs/shared';
-import { effect, isSignal, shallowSignal } from '@estjs/signal';
+import { isSignal, shallowSignal, useEffect } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,
@@ -246,7 +246,7 @@ export class TemplateNode implements JSX.Element {
   ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
     const triggerValue = shallowSignal();
-    const cleanup = effect(() => {
+    const cleanup = useEffect(() => {
       // trigger conditional expression
       const unFnValue = isFunction(value) ? value() : value;
       // TODO: class and style should be pure object
@@ -292,7 +292,7 @@ export class TemplateNode implements JSX.Element {
 
   protected patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
     if (isFunction(child)) {
-      track.cleanup = effect(() => {
+      track.cleanup = useEffect(() => {
         const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
         if (renderContext.isSSR) {
           track.lastNodes = this.reconcileChildren(parent, nextNodes, before);

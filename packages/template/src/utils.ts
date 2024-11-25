@@ -224,14 +224,14 @@ export function convertToHtmlTag(tagName: string): string {
 }
 
 /**
- * Extracts the value from a signal if given, or returns the given value if not a signal.
- * @param signal - The signal or value to extract.
+ * Extracts the value from a useSignal if given, or returns the given value if not a useSignal.
+ * @param useSignal - The useSignal or value to extract.
  * @returns The extracted value.
  */
-export function extractSignal<T>(signal: T | Signal<T>): T {
-  if (isSignal(signal)) {
-    return signal.value;
+export function extractSignal<T>(useSignal: T | Signal<T>): T {
+  if (isSignal(useSignal)) {
+    return useSignal.value;
   } else {
-    return signal;
+    return useSignal;
   }
 }

@@ -1,6 +1,6 @@
 import { hasChanged, isFunction, startsWith } from '@estjs/shared';
-import { type Signal, effect, shallowReactive } from '@estjs/signal';
-import { reactive } from '@estjs/signal';
+import { type Signal, shallowReactive, useEffect } from '@estjs/signal';
+import { useReactive } from '@estjs/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
 import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
@@ -53,7 +53,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
       return this.rootNode?.mount(parent, before) ?? [];
     }
     this.initRef();
-    this.rootNode = this.template(reactive(this.proxyProps, [CHILDREN_PROP]));
+    this.rootNode = this.template(useReactive(this.proxyProps, [CHILDREN_PROP]));
     this.nodes = this.rootNode?.mount(parent, before) ?? [];
     this.callMountHooks();
     this.patchProps(this.props);
@@ -156,7 +156,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
 
   protected patchNormalProp(key: string, prop: any): void {
     const track = this.getNodeTrack(key);
-    track.cleanup = effect(() => {
+    track.cleanup = useEffect(() => {
       this.proxyProps[key] = isFunction(prop) ? prop() : prop;
     });
   }

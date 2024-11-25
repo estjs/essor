@@ -21,7 +21,7 @@ import type {
  *
  * transform case
  *    case1  ({a, b}) => <div>{a.value}</div>  to=> (_props)=><div>{_props.a.value}</div>
- *    case2  ({a, b, ...rest}) => <div>{a.value}{rest}</div>  to=> (_props)=> {const restProps = reactive(props,[a,b]);return <div>{_props.a.value}{reset}</div>}
+ *    case2  ({a, b, ...rest}) => <div>{a.value}{rest}</div>  to=> (_props)=> {const restProps = useReactive(props,[a,b]);return <div>{_props.a.value}{reset}</div>}
  *
  * not transform case
  *    case1 ([a,b])=> <div>{a.value}</div>
@@ -83,7 +83,7 @@ function handleRestElement(path, state: State, properties, notRestNames) {
       path.node.params[0] = t.identifier(restName);
     } else {
       const restVariableDeclaration = createRestVariableDeclaration(state, restName, notRestNames);
-      imports.add('reactive');
+      imports.add('useReactive');
       (path.node.body as t.BlockStatement).body.unshift(restVariableDeclaration);
     }
   }
@@ -93,7 +93,7 @@ function createRestVariableDeclaration(state: State, restName: string, notRestNa
   return t.variableDeclaration('const', [
     t.variableDeclarator(
       t.identifier(restName),
-      t.callExpression(state.reactive, [
+      t.callExpression(state.useReactive, [
         t.identifier('__props'),
         t.arrayExpression(notRestNames.map(name => t.stringLiteral(name))),
       ]),

@@ -23,14 +23,14 @@ describe('transform symbol', () => {
     }
   });
 
-  it('should work with const function transform computed', () => {
+  it('should work with const function transform useComputed', () => {
     const list = ['() => 1', '(a) => a + 1'];
     for (const item of list) {
       expect(transformCode(`const $a = ${item}; $a = 2`)).toMatchSnapshot();
     }
   });
 
-  it('should work with let function transform computed', () => {
+  it('should work with let function transform useComputed', () => {
     const list = ['() => 1', '(a) => a + 1'];
     for (const item of list) {
       expect(transformCode(`let $a = ${item}; $a = 2`)).toMatchSnapshot();

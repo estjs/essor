@@ -81,28 +81,28 @@ describe('queueJob', () => {
 });
 
 describe('createScheduler', () => {
-  it('should schedule effect immediately for "sync" flush type', () => {
-    const effect = vi.fn();
-    const scheduler = createScheduler(effect, 'sync');
+  it('should schedule useEffect immediately for "sync" flush type', () => {
+    const useEffect = vi.fn();
+    const scheduler = createScheduler(useEffect, 'sync');
     scheduler();
-    expect(effect).toHaveBeenCalled();
+    expect(useEffect).toHaveBeenCalled();
   });
 
-  it('should schedule effect as a pre-flush callback for "pre" flush type', async () => {
-    const effect = vi.fn();
-    const scheduler = createScheduler(effect, 'pre');
+  it('should schedule useEffect as a pre-flush callback for "pre" flush type', async () => {
+    const useEffect = vi.fn();
+    const scheduler = createScheduler(useEffect, 'pre');
     scheduler();
     await nextTick();
-    expect(effect).toHaveBeenCalled();
+    expect(useEffect).toHaveBeenCalled();
   });
 
-  it('should schedule effect in the next tick for "post" flush type', async () => {
-    const effect = vi.fn();
-    const scheduler = createScheduler(effect, 'post');
+  it('should schedule useEffect in the next tick for "post" flush type', async () => {
+    const useEffect = vi.fn();
+    const scheduler = createScheduler(useEffect, 'post');
     scheduler();
-    expect(effect).not.toHaveBeenCalled(); // should not be called immediately
+    expect(useEffect).not.toHaveBeenCalled(); // should not be called immediately
     await nextTick();
     await nextTick();
-    expect(effect).toHaveBeenCalled();
+    expect(useEffect).toHaveBeenCalled();
   });
 });
