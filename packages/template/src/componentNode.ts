@@ -24,16 +24,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   ) {
     super();
     this.key ||= props && (props.key as string);
-    this.proxyProps ||= this.createProxyProps(props);
-  }
-
-  protected createProxyProps(props?: Props): Record<string, Signal<unknown>> {
-    if (!props) return {};
-    return shallowReactive(
-      props,
-      key =>
-        startsWith(key, EVENT_PREFIX) || startsWith(key, UPDATE_PREFIX) || key === CHILDREN_PROP,
-    );
+    this.proxyProps ||= shallowReactive(props || {});
   }
 
   get firstChild(): Node | null {
