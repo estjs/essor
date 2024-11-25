@@ -126,12 +126,13 @@ function transformJSXElement(
   isServer: boolean = false,
   isRoot: boolean = false,
 ): void {
+  const state = path.state;
   if (path.isJSXElement()) {
     const tagName = getTagName(path.node);
     const tagIsComponent = isComponentName(tagName);
     const isSelfClose = !tagIsComponent && selfClosingTags.includes(tagName);
     const isSvg = svgTags.includes(tagName) && currentResult.index === 1;
-    const { props, hasExpression } = getAttrProps(path);
+    const { props, hasExpression } = getAttrProps(path, state);
 
     if (tagIsComponent) {
       if (isRoot) {
@@ -160,7 +161,7 @@ function transformJSXElement(
       }
 
       addTemplate(`<${tagName}${isServer ? ` data-hk="${currentResult.index}"` : ''}`, true);
-      handleAttributes(props);
+      handleAttributes(props, state);
       addTemplate(isSelfClose ? '/>' : '>', !hasExpression);
 
       if (!isSelfClose) {
@@ -185,7 +186,7 @@ function transformJSXElement(
  * @returns An object with the properties of the element and a boolean
  * indicating whether the element has any expression properties.
  */
-export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> {
+export function getAttrProps(path: NodePath<t.JSXElement>, state: State): Record<string, any> {
   const props: Record<string, any> = {};
   let hasExpression = false;
   path
@@ -228,7 +229,10 @@ export function getAttrProps(path: NodePath<t.JSXElement>): Record<string, any> 
                 );
               } else {
                 if (expression.isConditionalExpression()) {
-                  props[name] = t.arrowFunctionExpression([], expression.node);
+                  imports.add('useComputed');
+                  props[name] = t.callExpression(state.useComputed, [
+                    t.arrowFunctionExpression([], expression.node),
+                  ]);
                 } else {
                   props[name] = expression.node;
                 }
@@ -285,7 +289,7 @@ function replaceChild(node: t.Expression): void {
   );
 }
 
-function handleAttributes(props: Record<string, any>): void {
+function handleAttributes(props: Record<string, any>, state: State): void {
   let klass = '';
   let style = '';
 
@@ -305,9 +309,16 @@ function handleAttributes(props: Record<string, any>): void {
       addTemplate(` ${prop}="${value}"`);
       delete props[prop];
     } else if (t.isConditionalExpression(value)) {
-      props[prop] = t.arrowFunctionExpression([], value);
+      imports.add('useComputed');
+      props[prop] = t.callExpression(state.useComputed, [t.arrowFunctionExpression([], value)]);
     } else if (t.isObjectExpression(value)) {
-      const val = hasObjectExpression(prop, value, props, prop === 'class' || prop === 'style');
+      const val = hasObjectExpression(
+        prop,
+        value,
+        props,
+        state,
+        prop === 'class' || prop === 'style',
+      );
       if (val) {
         if (prop === 'class') {
           klass += ` ${val}`;

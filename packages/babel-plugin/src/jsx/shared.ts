@@ -1,4 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
+import { imports } from '../program';
+import type { State } from '../types';
 import type { Identifier, StringLiteral } from '@babel/types';
 
 interface Result {
@@ -184,6 +186,7 @@ export function hasObjectExpression(
   prop: string,
   value: t.ObjectExpression,
   props: Record<string, any>,
+  state: State,
   isCt = false,
 ): string {
   let ct = '';
@@ -192,7 +195,8 @@ export function hasObjectExpression(
   );
 
   if (hasConditional) {
-    props[prop] = t.arrowFunctionExpression([], value);
+    imports.add('useComputed');
+    props[prop] = t.callExpression(state.useComputed, [t.arrowFunctionExpression([], value)]);
   } else if (isCt) {
     value.properties.forEach(property => {
       if (t.isObjectProperty(property)) {

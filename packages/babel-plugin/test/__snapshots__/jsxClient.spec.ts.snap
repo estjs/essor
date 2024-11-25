@@ -88,7 +88,7 @@ const element = _h$(_tmpl$, {});"
 `;
 
 exports[`jsx transform > transforms JSX element with class and style attributes 1`] = `
-"import { template as _template$, h as _h$ } from "essor";
+"import { useComputed as _useComputed$, template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!");
 const hasClass = true;
 const style = {
@@ -97,19 +97,19 @@ const style = {
 };
 const element = _h$(_tmpl$, {
   "1": {
-    "class": () => hasClass ? 'myClass' : '',
+    "class": _useComputed$(() => hasClass ? 'myClass' : ''),
     "style": style
   }
 });"
 `;
 
 exports[`jsx transform > transforms JSX element with conditional attributes 1`] = `
-"import { template as _template$, h as _h$ } from "essor";
+"import { useComputed as _useComputed$, template as _template$, h as _h$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!");
 const hasClass = true;
 const element = _h$(_tmpl$, {
   "1": {
-    "class": () => hasClass ? 'myClass' : 'otherClass'
+    "class": _useComputed$(() => hasClass ? 'myClass' : 'otherClass')
   }
 });"
 `;
