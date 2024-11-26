@@ -52,7 +52,7 @@ importers:
         version: 6.0.0
       tsup:
         specifier: ^8.3.5
-        version: 8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
+        version: 8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
@@ -91,11 +91,11 @@ importers:
         specifier: workspace:*
         version: link:../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -104,7 +104,7 @@ importers:
     dependencies:
       athen:
         specifier: ^0.0.7-beta.3
-        version: 0.0.7-beta.3(@types/node@22.9.1)(essor-shared@0.0.8)(postcss@8.4.45)(rollup@4.27.3)(terser@5.27.0)
+        version: 0.0.7-beta.3(@types/node@22.9.1)(essor-shared@0.0.8)(postcss@8.4.49)(rollup@4.27.3)(terser@5.27.0)
 
   examples/basic:
     dependencies:
@@ -131,11 +131,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -165,11 +165,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -199,11 +199,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -233,11 +233,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -267,11 +267,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/unplugin
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       vite-plugin-inspect:
         specifier: ^0.8.8
-        version: 0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0))
+        version: 0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1))
       vitest:
         specifier: ^2.1.5
         version: 2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0)
@@ -356,13 +356,13 @@ importers:
         version: 4.27.3
       tsup:
         specifier: ^8.3.5
-        version: 8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
+        version: 8.3.5(jiti@1.21.6)(postcss@8.4.49)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1)
       typescript:
         specifier: ^5.6.3
         version: 5.6.3
       vite:
-        specifier: ^5.4.11
-        version: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+        specifier: ^6.0.0
+        version: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
       webpack:
         specifier: ^5.96.1
         version: 5.96.1(esbuild@0.23.1)
@@ -2004,7 +2004,7 @@ packages:
     resolution: {integrity: sha512-zHig5N+tPWARooBnb0Zx1MFcdfpyJrfTJ3Y5L+IFvUm8rM74hHz66z0gw0x4tijh5CorKkKUCnW82R2vmpeCRA==}
 
   concat-map@0.0.1:
-    resolution: {integrity: sha1-2Klr13/Wjfd5OnMDajug1UBdR3s=}
+    resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
 
   confbox@0.1.7:
     resolution: {integrity: sha512-uJcB/FKZtBMCJpK8MQji6bJHgu1tixKPxRLeGkNzBoOZzpnZUJm0jm2/sBDWcuBx1dYgxV4JU+g5hmNxCyAmdA==}
@@ -3826,12 +3826,12 @@ packages:
     resolution: {integrity: sha512-b4dlw/9V8A71rLIDsSwVmak9z2DuBUB7CA1/wSdelNEzqsjoSPeADTWNO09lpH49Diy3/JIZ2bSPB1dI3LJCHg==}
     engines: {node: '>=4'}
 
-  postcss@8.4.40:
-    resolution: {integrity: sha512-YF2kKIUzAofPMpfH6hOi2cGnv/HrUlfucspc7pDyvv7kGdqXrfj8SCl/t8owkEgKEuu8ZcRjSOxFxVLqwChZ2Q==}
-    engines: {node: ^10 || ^12 || >=14}
-
   postcss@8.4.45:
     resolution: {integrity: sha512-7KTLTdzdZZYscUc65XmjFiB73vBhBfbPztCYdUNvlaso9PrzjzcmjqBPR0lNGkcVlcO4BjiO5rK/qNz+XAen1Q==}
+    engines: {node: ^10 || ^12 || >=14}
+
+  postcss@8.4.49:
+    resolution: {integrity: sha512-OCVPnIObs4N29kxTjzLfUryOkvZEq+pf8jTF0lg8E7uETuWHA+v7j3c/xJmiqpX450191LlmZfUKkXxkTry7nA==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -4112,10 +4112,6 @@ packages:
   slice-ansi@7.1.0:
     resolution: {integrity: sha512-bSiSngZ/jWeX93BqeIAbImyTbEihizcwNjFoRUIY/T1wWQsfsm2Vw1agPKylXvQTU7iASGdHhyqRlqQzfz+Htg==}
     engines: {node: '>=18'}
-
-  source-map-js@1.2.0:
-    resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
-    engines: {node: '>=0.10.0'}
 
   source-map-js@1.2.1:
     resolution: {integrity: sha512-UXWMKhLOwVKb728IUtQPXxfYU+usdybtUrK/8uGE8CQMvrhOpwvzDBwj0QhSL7MQc7vIsISBG8VQ8+IDQxpfQA==}
@@ -4692,6 +4688,46 @@ packages:
       sugarss:
         optional: true
       terser:
+        optional: true
+
+  vite@6.0.0:
+    resolution: {integrity: sha512-Q2+5yQV79EdnpbNxjD3/QHVMCBaQ3Kpd4/uL51UGuh38bIIM+s4o3FqyCzRvTRwFb+cWIUeZvaWwS9y2LD2qeQ==}
+    engines: {node: ^18.0.0 || ^20.0.0 || >=22.0.0}
+    hasBin: true
+    peerDependencies:
+      '@types/node': ^18.0.0 || ^20.0.0 || >=22.0.0
+      jiti: '>=1.21.0'
+      less: '*'
+      lightningcss: ^1.21.0
+      sass: '*'
+      sass-embedded: '*'
+      stylus: '*'
+      sugarss: '*'
+      terser: ^5.16.0
+      tsx: ^4.8.1
+      yaml: ^2.4.2
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+      jiti:
+        optional: true
+      less:
+        optional: true
+      lightningcss:
+        optional: true
+      sass:
+        optional: true
+      sass-embedded:
+        optional: true
+      stylus:
+        optional: true
+      sugarss:
+        optional: true
+      terser:
+        optional: true
+      tsx:
+        optional: true
+      yaml:
         optional: true
 
   vitest@2.1.5:
@@ -5995,7 +6031,7 @@ snapshots:
       gzip-size: 6.0.0
       sirv: 2.0.4
 
-  '@unocss/postcss@0.61.9(postcss@8.4.45)':
+  '@unocss/postcss@0.61.9(postcss@8.4.49)':
     dependencies:
       '@unocss/config': 0.61.9
       '@unocss/core': 0.61.9
@@ -6003,7 +6039,7 @@ snapshots:
       css-tree: 2.3.1
       fast-glob: 3.3.2
       magic-string: 0.30.11
-      postcss: 8.4.45
+      postcss: 8.4.49
     transitivePeerDependencies:
       - supports-color
 
@@ -6373,7 +6409,7 @@ snapshots:
 
   asynckit@0.4.0: {}
 
-  athen@0.0.7-beta.3(@types/node@22.9.1)(essor-shared@0.0.8)(postcss@8.4.45)(rollup@4.27.3)(terser@5.27.0):
+  athen@0.0.7-beta.3(@types/node@22.9.1)(essor-shared@0.0.8)(postcss@8.4.49)(rollup@4.27.3)(terser@5.27.0):
     dependencies:
       '@iconify-json/carbon': 1.2.1
       '@polka/compression': 1.0.0-next.25
@@ -6392,7 +6428,7 @@ snapshots:
       plugins-mdx: 0.0.7-beta.3(rollup@4.27.3)
       polka: 1.0.0-next.25
       sirv: 2.0.4
-      unocss: 0.61.9(postcss@8.4.45)(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0))
+      unocss: 0.61.9(postcss@8.4.49)(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0))
       vite: 5.4.8(@types/node@22.9.1)(terser@5.27.0)
       vite-plugin-inspect: 0.8.7(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0))
     transitivePeerDependencies:
@@ -7175,9 +7211,9 @@ snapshots:
       eslint-compat-utils: 0.5.1(eslint@9.15.0(jiti@1.21.6))
       esutils: 2.0.3
       known-css-properties: 0.35.0
-      postcss: 8.4.40
-      postcss-load-config: 3.1.4(postcss@8.4.40)
-      postcss-safe-parser: 6.0.0(postcss@8.4.40)
+      postcss: 8.4.45
+      postcss-load-config: 3.1.4(postcss@8.4.45)
+      postcss-safe-parser: 6.0.0(postcss@8.4.45)
       postcss-selector-parser: 6.1.1
       semver: 7.6.3
       svelte-eslint-parser: 0.43.0
@@ -9072,21 +9108,12 @@ snapshots:
 
   possible-typed-array-names@1.0.0: {}
 
-  postcss-load-config@3.1.4(postcss@8.4.40):
+  postcss-load-config@3.1.4(postcss@8.4.45):
     dependencies:
       lilconfig: 2.1.0
       yaml: 1.10.2
     optionalDependencies:
-      postcss: 8.4.40
-
-  postcss-load-config@6.0.1(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(yaml@2.5.1):
-    dependencies:
-      lilconfig: 3.1.2
-    optionalDependencies:
-      jiti: 1.21.6
-      postcss: 8.4.40
-      tsx: 4.19.2
-      yaml: 2.5.1
+      postcss: 8.4.45
 
   postcss-load-config@6.0.1(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(yaml@2.5.1):
     dependencies:
@@ -9097,26 +9124,35 @@ snapshots:
       tsx: 4.19.2
       yaml: 2.5.1
 
-  postcss-safe-parser@6.0.0(postcss@8.4.40):
+  postcss-load-config@6.0.1(jiti@1.21.6)(postcss@8.4.49)(tsx@4.19.2)(yaml@2.5.1):
     dependencies:
-      postcss: 8.4.40
+      lilconfig: 3.1.2
+    optionalDependencies:
+      jiti: 1.21.6
+      postcss: 8.4.49
+      tsx: 4.19.2
+      yaml: 2.5.1
 
-  postcss-scss@4.0.9(postcss@8.4.40):
+  postcss-safe-parser@6.0.0(postcss@8.4.45):
     dependencies:
-      postcss: 8.4.40
+      postcss: 8.4.45
+
+  postcss-scss@4.0.9(postcss@8.4.45):
+    dependencies:
+      postcss: 8.4.45
 
   postcss-selector-parser@6.1.1:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
 
-  postcss@8.4.40:
+  postcss@8.4.45:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.1.1
-      source-map-js: 1.2.0
+      source-map-js: 1.2.1
 
-  postcss@8.4.45:
+  postcss@8.4.49:
     dependencies:
       nanoid: 3.3.7
       picocolors: 1.1.1
@@ -9514,8 +9550,6 @@ snapshots:
       ansi-styles: 6.2.1
       is-fullwidth-code-point: 5.0.0
 
-  source-map-js@1.2.0: {}
-
   source-map-js@1.2.1: {}
 
   source-map-support@0.5.21:
@@ -9686,8 +9720,8 @@ snapshots:
       eslint-scope: 7.2.2
       eslint-visitor-keys: 3.4.3
       espree: 9.6.1
-      postcss: 8.4.40
-      postcss-scss: 4.0.9(postcss@8.4.40)
+      postcss: 8.4.45
+      postcss-scss: 4.0.9(postcss@8.4.45)
 
   svg-parser@2.0.4: {}
 
@@ -9817,33 +9851,6 @@ snapshots:
 
   tslib@2.6.3: {}
 
-  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1):
-    dependencies:
-      bundle-require: 5.0.0(esbuild@0.24.0)
-      cac: 6.7.14
-      chokidar: 4.0.1
-      consola: 3.2.3
-      debug: 4.3.7
-      esbuild: 0.24.0
-      joycon: 3.1.1
-      picocolors: 1.1.1
-      postcss-load-config: 6.0.1(jiti@1.21.6)(postcss@8.4.40)(tsx@4.19.2)(yaml@2.5.1)
-      resolve-from: 5.0.0
-      rollup: 4.27.3
-      source-map: 0.8.0-beta.0
-      sucrase: 3.35.0
-      tinyexec: 0.3.1
-      tinyglobby: 0.2.9
-      tree-kill: 1.2.2
-    optionalDependencies:
-      postcss: 8.4.40
-      typescript: 5.6.3
-    transitivePeerDependencies:
-      - jiti
-      - supports-color
-      - tsx
-      - yaml
-
   tsup@8.3.5(jiti@1.21.6)(postcss@8.4.45)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1):
     dependencies:
       bundle-require: 5.0.0(esbuild@0.24.0)
@@ -9864,6 +9871,33 @@ snapshots:
       tree-kill: 1.2.2
     optionalDependencies:
       postcss: 8.4.45
+      typescript: 5.6.3
+    transitivePeerDependencies:
+      - jiti
+      - supports-color
+      - tsx
+      - yaml
+
+  tsup@8.3.5(jiti@1.21.6)(postcss@8.4.49)(tsx@4.19.2)(typescript@5.6.3)(yaml@2.5.1):
+    dependencies:
+      bundle-require: 5.0.0(esbuild@0.24.0)
+      cac: 6.7.14
+      chokidar: 4.0.1
+      consola: 3.2.3
+      debug: 4.3.7
+      esbuild: 0.24.0
+      joycon: 3.1.1
+      picocolors: 1.1.1
+      postcss-load-config: 6.0.1(jiti@1.21.6)(postcss@8.4.49)(tsx@4.19.2)(yaml@2.5.1)
+      resolve-from: 5.0.0
+      rollup: 4.27.3
+      source-map: 0.8.0-beta.0
+      sucrase: 3.35.0
+      tinyexec: 0.3.1
+      tinyglobby: 0.2.9
+      tree-kill: 1.2.2
+    optionalDependencies:
+      postcss: 8.4.49
       typescript: 5.6.3
     transitivePeerDependencies:
       - jiti
@@ -10029,13 +10063,13 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  unocss@0.61.9(postcss@8.4.45)(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0)):
+  unocss@0.61.9(postcss@8.4.49)(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0)):
     dependencies:
       '@unocss/astro': 0.61.9(rollup@4.27.3)(vite@5.4.8(@types/node@22.9.1)(terser@5.27.0))
       '@unocss/cli': 0.61.9(rollup@4.27.3)
       '@unocss/core': 0.61.9
       '@unocss/extractor-arbitrary-variants': 0.61.9
-      '@unocss/postcss': 0.61.9(postcss@8.4.45)
+      '@unocss/postcss': 0.61.9(postcss@8.4.49)
       '@unocss/preset-attributify': 0.61.9
       '@unocss/preset-icons': 0.61.9
       '@unocss/preset-mini': 0.61.9
@@ -10130,7 +10164,7 @@ snapshots:
       - rollup
       - supports-color
 
-  vite-plugin-inspect@0.8.8(rollup@4.27.3)(vite@5.4.11(@types/node@22.9.1)(terser@5.27.0)):
+  vite-plugin-inspect@0.8.8(rollup@4.27.3)(vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)):
     dependencies:
       '@antfu/utils': 0.7.10
       '@rollup/pluginutils': 5.1.3(rollup@4.27.3)
@@ -10141,7 +10175,7 @@ snapshots:
       perfect-debounce: 1.0.0
       picocolors: 1.1.1
       sirv: 3.0.0
-      vite: 5.4.11(@types/node@22.9.1)(terser@5.27.0)
+      vite: 6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1)
     transitivePeerDependencies:
       - rollup
       - supports-color
@@ -10165,6 +10199,19 @@ snapshots:
       '@types/node': 22.9.1
       fsevents: 2.3.3
       terser: 5.27.0
+
+  vite@6.0.0(@types/node@22.9.1)(jiti@1.21.6)(terser@5.27.0)(tsx@4.19.2)(yaml@2.5.1):
+    dependencies:
+      esbuild: 0.24.0
+      postcss: 8.4.49
+      rollup: 4.27.3
+    optionalDependencies:
+      '@types/node': 22.9.1
+      fsevents: 2.3.3
+      jiti: 1.21.6
+      terser: 5.27.0
+      tsx: 4.19.2
+      yaml: 2.5.1
 
   vitest@2.1.5(@types/node@22.9.1)(jsdom@25.0.1)(terser@5.27.0):
     dependencies:
