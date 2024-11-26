@@ -1,5 +1,4 @@
 import { shallowSignal,  useSignal} from 'essor';
-import './style.css';
 const A = [
   'pretty',
   'large',

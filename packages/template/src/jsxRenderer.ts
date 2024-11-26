@@ -95,6 +95,7 @@ export function isJsxElement(node: unknown): node is EssorNode {
 export function createTemplate(html: string): HTMLTemplateElement {
   const template = document.createElement('template');
   /**
+   * @see https://html.spec.whatwg.org/multipage/parsing.html#html-fragment-serialisation-algorithm
    * the code that sets the unclosed tag, the browser's innerHTML method is, will automatically close the tag.
    * like `<div><button type=button>`
    * it will be translated:
