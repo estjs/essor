@@ -9,15 +9,15 @@ import {
   noop,
   warn,
 } from '@estjs/shared';
+import { nextTick } from './scheduler';
 import {
   type ComputedImpl,
   type SignalImpl,
-  effect,
   isComputed,
   isReactive,
   isSignal,
+  useEffect,
 } from './signal';
-import { nextTick } from './scheduler';
 
 export type WatchSource<T = any> = SignalImpl<T> | ComputedImpl<T> | (() => T);
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
@@ -37,7 +37,7 @@ export interface WatchOptions<Immediate = boolean> {
 }
 
 // Overload signatures
-export function watch<
+export function useWatch<
   T extends Readonly<WatchSource<unknown>[] | object>,
   Immediate extends boolean = false,
 >(
@@ -46,20 +46,20 @@ export function watch<
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function watch<T, Immediate extends boolean = false>(
+export function useWatch<T, Immediate extends boolean = false>(
   source: WatchSource<T>,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function watch<T extends object, Immediate extends boolean = false>(
+export function useWatch<T extends object, Immediate extends boolean = false>(
   source: T,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Main implementation of watch
-export function watch<T = any>(
+// Main implementation of useWatch
+export function useWatch<T = any>(
   source: WatchSource<T> | WatchSource<T>[] | object,
   cb: WatchCallback<T>,
   options?: WatchOptions,
@@ -87,7 +87,7 @@ function flushWatchers() {
 }
 
 /**
- * Creates a watcher for the given source, which can be a signal, computed, reactive object, or an array of them.
+ * Creates a watcher for the given source, which can be a useSignal, useComputed, useReactive object, or an array of them.
  * The watcher will be triggered whenever the source value changes, and will call the given callback function with the new value and old value.
  * @param {WatchSource | WatchSource[] | object} source The source to watch.
  * @param {WatchCallback | null} cb The callback function to call when the source value changes.
@@ -98,10 +98,10 @@ function flushWatchers() {
  *
  * @examples
  *
- * const count = signal(0);
- * const name = signal('Alice');
+ * const count = useSignal(0);
+ * const name = useSignal('Alice');
  *
- * watch([count, name], ([newCount, newName], [oldCount, oldName]) => {
+ * useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
  *   console.log(`Count changed from ${oldCount} to ${newCount}`);
  *  })
  *
@@ -157,7 +157,7 @@ function doWatch(
     }
   };
 
-  const stop = effect(effectFn, { flush: 'sync' });
+  const stop = useEffect(effectFn, { flush: 'sync' });
   runCb = true;
 
   if (immediate) {

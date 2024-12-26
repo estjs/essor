@@ -1,4 +1,4 @@
-import { signal as _signal$ } from '@estjs/signal';
+import { useSignal as _signal$ } from '@estjs/signal';
 import { Fragment as _fragment$, h as _h$, template as _template$ } from '../../src';
 const _tmpl$ = _template$('<div><h1>App1'),
   _tmpl$2 = _template$('<h1>App2'),

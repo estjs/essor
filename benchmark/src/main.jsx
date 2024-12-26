@@ -1,5 +1,4 @@
-import { shallowSignal, useSignal} from 'essor';
-import './style.css';
+import { shallowSignal,  useSignal} from 'essor';
 const A = [
   'pretty',
   'large',
@@ -75,8 +74,7 @@ const actions = {
     selected.set(0);
   },
   runLots: () => {
-    const data2 = buildData(10000);
-    data.value = data2;
+    data.set(buildData(10000))
     selected.set(0);
   },
   add: () => {

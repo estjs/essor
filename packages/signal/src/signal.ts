@@ -4,6 +4,7 @@ import {
   hasOwn,
   isArray,
   isExclude,
+  isHTMLElement,
   isMap,
   isObject,
   isPlainObject,
@@ -15,20 +16,20 @@ import {
 } from '@estjs/shared';
 import { createScheduler } from './scheduler';
 
-// Define the type for effect functions
+// Define the type for useEffect functions
 export type EffectFn = (() => void) &
   Partial<{
     init: boolean;
     active: boolean;
   }>;
 
-// Global variables to track active effects and computed values
+// Global variables to track active effects and useComputed values
 let activeEffect: EffectFn | null = null;
 
 // Type definition for the trigger map
 type TriggerMap = Map<string | symbol, Set<EffectFn>>;
 
-// WeakMaps to store dependencies and reactive objects
+// WeakMaps to store dependencies and useReactive objects
 const triggerMap = new WeakMap<object, TriggerMap>();
 const reactiveMap = new WeakMap<object, object>();
 
@@ -42,8 +43,10 @@ const reactiveArrayKey = Symbol(__DEV__ ? 'ReactiveArrayKey' : '');
 const ReactiveCollectionKey = Symbol(__DEV__ ? 'ReactiveCollectionKey' : '');
 const ReactiveWeakCollectionKey = Symbol(__DEV__ ? 'ReactiveWeakCollectionKey' : '');
 
-// batch queue
+// batch queue flag
 let inBatch = false;
+// untrack flag
+let inUnTack = false;
 const batchQueue: Set<EffectFn> = new Set();
 
 export type SignalObject<T> = {
@@ -55,7 +58,7 @@ export type Reactive<T> = T & {
   [ReactivePeekSymbol]: T;
   [ReactiveSymbol]?: true;
 };
-// Define types that can be made reactive
+// Define types that can be made useReactive
 type ReactiveTypes =
   | Record<string | symbol | number, unknown>
   | Array<unknown>
@@ -65,10 +68,10 @@ type ReactiveTypes =
   | WeakSet<object>;
 
 /**
- * Tracks the dependency of the current active effect or computed value.
+ * Tracks the dependency of the current active useEffect or useComputed value.
  *
- * @param target The reactive object.
- * @param key The key of the reactive object.
+ * @param target The useReactive object.
+ * @param key The key of the useReactive object.
  *
  */
 export function track(target: object, key: string | symbol) {
@@ -86,13 +89,13 @@ export function track(target: object, key: string | symbol) {
   dep.add(activeEffect);
 }
 /**
- * Triggers all the effects that depend on the specified key of the reactive object.
- * If the effect is inactive, it will be removed from the dependency set.
- * If the effect is active and in the batch queue, it will be added to the batch queue.
- * If the effect is active and not in the batch queue, it will be called immediately.
+ * Triggers all the effects that depend on the specified key of the useReactive object.
+ * If the useEffect is inactive, it will be removed from the dependency set.
+ * If the useEffect is active and in the batch queue, it will be added to the batch queue.
+ * If the useEffect is active and not in the batch queue, it will be called immediately.
  *
- * @param target The reactive object.
- * @param key The key of the reactive object.
+ * @param target The useReactive object.
+ * @param key The key of the useReactive object.
  */
 
 function trigger(target: object, key: string | symbol) {
@@ -100,24 +103,19 @@ function trigger(target: object, key: string | symbol) {
   if (!depsMap) return;
   const dep = depsMap.get(key);
   if (dep) {
-    dep.forEach(effect => {
-      if (hasOwn(effect, 'active') && !effect.active) {
-        dep.delete(effect);
+    dep.forEach(useEffect => {
+      if (hasOwn(useEffect, 'active') && !useEffect.active) {
+        dep.delete(useEffect);
         return;
       }
-      inBatch ? batchQueue.add(effect) : effect();
+      if (inUnTack) return;
+      inBatch ? batchQueue.add(useEffect) : useEffect();
     });
   }
 }
 
-class FunctionExt extends Function {
-  constructor(f: Function) {
-    super();
-    return Object.setPrototypeOf(f, new.target.prototype);
-  }
-}
 /**
- * Signal class represents a reactive value.
+ * Signal class represents a useReactive value.
  * @template T The type of the value held by the Signal.
  * @example
  * const count = new Signal(0);
@@ -125,12 +123,12 @@ class FunctionExt extends Function {
  * count.value = 1;
  * console.log(count.value); // 1
  */
-export class SignalImpl<T> extends FunctionExt {
+export class SignalImpl<T> {
   private __value: T;
   private __shallow: boolean;
 
   // is should be read
-  //@ts-ignore
+  //@ts-expect-error
   private readonly __signal = true;
 
   /**
@@ -139,9 +137,6 @@ export class SignalImpl<T> extends FunctionExt {
    * @param {boolean} [shallow] - Whether to create a shallow Signal.
    */
   constructor(value: T, shallow: boolean = false) {
-    super(() => {
-      return this.value;
-    });
     this.__shallow = shallow;
     this.__value = value;
   }
@@ -152,10 +147,11 @@ export class SignalImpl<T> extends FunctionExt {
    */
   get value(): T {
     track(this, SignalValueKey);
-    if (isObject(this.__value)) {
+    if (isObject(this.__value) && !isHTMLElement(this.__value)) {
       // shallow it should wrap the first level
       return ReactiveImpl(this.__value, this.__shallow) as T;
     }
+
     return this.__value;
   }
 
@@ -188,7 +184,7 @@ export class SignalImpl<T> extends FunctionExt {
   }
 
   // call update
-  // it equals to this.value = fn(this.value)
+  // it equals to this.value = new value
   update(fn: (value: T) => T): void {
     this.set(fn(this.peek()));
   }
@@ -200,12 +196,12 @@ export class SignalImpl<T> extends FunctionExt {
  * @param {T} [value] - The initial value of the Signal.
  * @returns {SignalImpl<T>} A new Signal instance.
  * @example
- * const count = signal(0);
+ * const count = useSignal(0);
  * console.log(count.value); // 0
  * count.value++;
  * console.log(count.value); // 1
  */
-export function signal<T>(value?: T): SignalImpl<T> {
+export function useSignal<T>(value?: T): SignalImpl<T> {
   if (isSignal(value)) {
     return value as SignalImpl<T>;
   }
@@ -232,7 +228,7 @@ export function shallowSignal<T>(value?: T): SignalImpl<T> {
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a Signal, false otherwise.
  * @example
- * const count = signal(0);
+ * const count = useSignal(0);
  * console.log(isSignal(count)); // true
  * console.log(isSignal(0)); // false
  */
@@ -241,17 +237,17 @@ export function isSignal<T>(value: any): value is SignalImpl<T> {
 }
 
 /**
- * Computed class represents a computed reactive value.
- * @template T The type of the value computed by the Computed instance.
+ * Computed class represents a useComputed useReactive value.
+ * @template T The type of the value useComputed by the Computed instance.
  * @example
- * const doubleCount = computed(() => count.value * 2);
+ * const doubleCount = useComputed(() => count.value * 2);
  * console.log(doubleCount.value); // 0
  * count.value = 1;
  * console.log(doubleCount.value); // 2
  */
 export class ComputedImpl<T = unknown> {
   private __value: T;
-  //@ts-ignore
+  //@ts-expect-error
   private readonly __computed = true;
   constructor(private readonly fn: () => T) {
     const prev = activeEffect;
@@ -260,13 +256,13 @@ export class ComputedImpl<T = unknown> {
     activeEffect = prev;
   }
   /**
-   * Get the current computed value without tracking it.
+   * Get the current useComputed value without tracking it.
    */
   peek(): T {
     return this.__value;
   }
   /**
-   * Run the computed function and update the value if it has changed.
+   * Run the useComputed function and update the value if it has changed.
    */
   run() {
     const newValue = this.fn();
@@ -277,7 +273,7 @@ export class ComputedImpl<T = unknown> {
   }
 
   /**
-   * Get the current computed value and track its usage.
+   * Get the current useComputed value and track its usage.
    */
   get value(): T {
     track(this, ComputedValueKey);
@@ -287,26 +283,26 @@ export class ComputedImpl<T = unknown> {
 
 /**
  * Creates a new Computed instance.
- * @template T The type of the value computed by the Computed instance.
+ * @template T The type of the value useComputed by the Computed instance.
  * @param {() => T} fn - The computation function.
  * @returns {ComputedImpl<T>} A new Computed instance.
  * @example
- * const doubleCount = computed(() => count.value * 2);
+ * const doubleCount = useComputed(() => count.value * 2);
  * console.log(doubleCount.value); // 0
  * count.value = 1;
  * console.log(doubleCount.value); // 2
  */
-export function computed<T>(fn: () => T): ComputedImpl<T> {
+export function useComputed<T>(fn: () => T): ComputedImpl<T> {
   return new ComputedImpl<T>(fn);
 }
 
 /**
  * Checks if a value is a Computed instance.
- * @template T The type of the value computed by the Computed instance.
+ * @template T The type of the value useComputed by the Computed instance.
  * @param {any} value - The value to check.
  * @returns {boolean} True if the value is a Computed instance, false otherwise.
  * @example
- * const doubleCount = computed(() => count.value * 2);
+ * const doubleCount = useComputed(() => count.value * 2);
  * console.log(isComputed(doubleCount)); // true
  * console.log(isComputed(0)); // false
  */
@@ -321,16 +317,17 @@ export interface EffectOptions {
 }
 
 /**
- * Registers an effect function to run when signals or computed properties change.
- * @param {() => void} fn - The effect function.
- * @param {EffectOptions} [options] - The options for the effect.
- * @returns {() => void} A function to stop the effect.
+ * Registers an useEffect function to run when signals or useComputed properties change.
+ * @param {() => void} fn - The useEffect function.
+ * @param {EffectOptions} [options] - The options for the useEffect.
+ * @returns {() => void} A function to stop the useEffect.
  */
-export function effect(fn: () => void, options: EffectOptions = {}): () => void {
+export function useEffect(fn: () => void, options: EffectOptions = {}): () => void {
   const { flush = 'pre', onTrack, onTrigger } = options;
 
   function effectFn() {
     const prev = activeEffect;
+    // first run effect in async, then run in sync
     activeEffect = effectFn.init ? effectFn : effectFn.scheduler;
     fn();
     onTrigger && onTrigger();
@@ -373,7 +370,7 @@ export function signalObject<T extends object>(
     return initialValues;
   }
   const signals = Object.entries(initialValues).reduce((acc, [key, value]) => {
-    acc[key] = isExclude(key, exclude) || isSignal(value) ? value : signal(value);
+    acc[key] = isExclude(key, exclude) || isSignal(value) ? value : useSignal(value);
     return acc;
   }, {} as SignalObject<T>);
 
@@ -381,9 +378,9 @@ export function signalObject<T extends object>(
 }
 
 /**
- * Returns the current value of signals, reactive, or plain objects, excluding specified keys.
+ * Returns the current value of signals, useReactive, or plain objects, excluding specified keys.
  * @template T The type of the value.
- * @param {Reactive<T> | T | SignalImpl<T>} value - The signal, reactive, or plain object.
+ * @param {Reactive<T> | T | SignalImpl<T>} value - The useSignal, useReactive, or plain object.
  * @returns {T} The current value.
  * @example
  * const user = unSignal(userSignals);
@@ -411,11 +408,11 @@ export function toRaw<T>(value: Reactive<T> | T | SignalImpl<T>): T {
 }
 
 /**
- * Checks if an object is reactive.
+ * Checks if an object is useReactive.
  * @param {unknown} obj - The object to check.
- * @returns {boolean} True if the object is reactive, false otherwise.
+ * @returns {boolean} True if the object is useReactive, false otherwise.
  * @example
- * const reactiveUser = reactive({ name: 'John', age: 30 });
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
  * console.log(isReactive(reactiveUser)); // true
  * console.log(isReactive({ name: 'John', age: 30 })); // false
  */
@@ -424,25 +421,25 @@ export function isReactive(obj: unknown): obj is Reactive<any> {
 }
 
 /**
- * Creates a reactive object.
+ * Creates a useReactive object.
  * @param {ReactiveTypes} initialValue - The initial value.
- * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
- * @returns {Reactive<T>} A new reactive object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the useReactive object.
+ * @returns {Reactive<T>} A new useReactive object.
  * @example
- * const reactiveUser = reactive({ name: 'John', age: 30 });
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
-export function reactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
+export function useReactive<T extends object>(initialValue: T, exclude?: ExcludeType): Reactive<T> {
   return ReactiveImpl(initialValue, false, exclude) as Reactive<T>;
 }
 
 /**
- * Creates a shallow reactive object.
+ * Creates a shallow useReactive object.
  * @template T The type of the initial value.
  * @param {T} initialValue - The initial value.
- * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
- * @returns {Reactive<T>} A new shallow reactive object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the useReactive object.
+ * @returns {Reactive<T>} A new shallow useReactive object.
  * @example
  * const shallowReactiveUser = shallowReactive({ name: 'John', age: 30 });
  * console.log(shallowReactiveUser.name); // 'John'
@@ -464,7 +461,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       const getValue = Reflect.get(target, key, receiver);
       const value = isSignal(getValue) ? getValue.value : getValue;
 
-      if (isExclude(key, exclude)) {
+      if (exclude && isExclude(key, exclude)) {
         return value;
       }
 
@@ -476,7 +473,7 @@ const basicHandler = (shallow, exclude): ProxyHandler<Record<string, any>> => {
       return value;
     },
     set(target, key, value, receiver) {
-      if (isExclude(key, exclude)) {
+      if (exclude && isExclude(key, exclude)) {
         Reflect.set(target, key, value, receiver);
         return true;
       }
@@ -575,7 +572,7 @@ const ArrayHandler = (shallow, exclude): ProxyHandler<unknown[]> => {
 
       const value = Reflect.get(target, key, receiver);
 
-      if (isExclude(key, exclude)) {
+      if (exclude && isExclude(key, exclude)) {
         return value;
       }
       // track arr[0]
@@ -754,14 +751,14 @@ const weakInstrumentations = {
 };
 
 /**
- * Creates a reactive object.
+ * Creates a useReactive object.
  * @param {object} initialValue - The initial value.
- * @param {boolean} [shallow] - Whether to create a shallow reactive object.
- * @param {ExcludeType} [exclude] - The keys to exclude from the reactive object.
+ * @param {boolean} [shallow] - Whether to create a shallow useReactive object.
+ * @param {ExcludeType} [exclude] - The keys to exclude from the useReactive object.
  *
- * @returns {Reactive<T>} A new reactive object.
+ * @returns {Reactive<T>} A new useReactive object.
  * @example
- * const reactiveUser = reactive({ name: 'John', age: 30 });
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
  * console.log(reactiveUser.name); // 'John'
  * console.log(reactiveUser.age); // 30
  */
@@ -802,18 +799,18 @@ function ReactiveImpl<T extends object>(
 }
 
 /**
- * Clears the reactive object, removing all its properties and values.
+ * Clears the useReactive object, removing all its properties and values.
  *
- * @param reactiveObj The reactive object to clear.
+ * @param reactiveObj The useReactive object to clear.
  * @example
- * const reactiveUser = reactive({ name: 'John', age: 30 });
+ * const reactiveUser = useReactive({ name: 'John', age: 30 });
  * clearReactive(reactiveUser);
  * console.log(reactiveUser); // {}
  */
 export function clearReactive<T extends object>(reactiveObj: T): void {
   if (!isReactive(reactiveObj)) {
     if (__DEV__) {
-      warn('clearReactive: argument must be a reactive object');
+      warn('clearReactive: argument must be a useReactive object');
     }
     return;
   }
@@ -840,16 +837,16 @@ export function clearReactive<T extends object>(reactiveObj: T): void {
 }
 
 /**
- * Call the function and batch all the reactive update operations.
+ * Call the function and batch all the useReactive update operations.
  * @remarks
- * If there are multiple reactive updates in the same tick, they will be batched together.
- * This is useful for improving performance when multiple reactive updates are triggered in the same tick.
+ * If there are multiple useReactive updates in the same tick, they will be batched together.
+ * This is useful for improving performance when multiple useReactive updates are triggered in the same tick.
  * @example
  * batch(() => {
  *   reactiveState.a++;
  *   reactiveState.b++;
  * });
- * // Only one reactive update is triggered.
+ * // Only one useReactive update is triggered.
  */
 export function useBatch(fn: () => void): void {
   try {
@@ -863,15 +860,15 @@ export function useBatch(fn: () => void): void {
 
 function runBatch(): void {
   if (batchQueue.size > 0) {
-    batchQueue.forEach(effect => effect());
+    batchQueue.forEach(useEffect => useEffect());
     batchQueue.clear();
   }
 }
 /**
- * Creates a reactive ref that can be used to reference a DOM node
+ * Creates a useReactive ref that can be used to reference a DOM node
  * or a component instance within the component function body.
  *
- * @returns a reactive ref signal
+ * @returns a useReactive ref useSignal
  *
  * @example
  * const inputRef = useRef<HTMLInputElement>()
@@ -880,6 +877,12 @@ function runBatch(): void {
  *
  * inputRef.value // input element
  */
-export function ref<T>(): SignalImpl<T | null> {
+export function useRef<T>(): SignalImpl<T | null> {
   return shallowSignal<T | null>(null);
+}
+
+export function unTrack(fn: () => void): void {
+  inUnTack = true;
+  fn();
+  inUnTack = false;
 }

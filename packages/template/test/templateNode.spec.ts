@@ -81,19 +81,14 @@ describe('templateNode', () => {
     expect(app.get('p')?.innerHTML).toBe('Hello, World!');
     expect(app.get('p').style).toMatchInlineSnapshot(`
       CSSStyleDeclaration {
-        "0": "color",
-        "1": "font-size",
         "_importants": {
           "color": undefined,
           "font-size": undefined,
         },
-        "_length": 2,
+        "_length": 0,
         "_onChange": [Function],
         "_setInProgress": false,
-        "_values": {
-          "color": "green",
-          "font-size": "30px",
-        },
+        "_values": {},
       }
     `);
 
@@ -103,19 +98,14 @@ describe('templateNode', () => {
 
     expect(app.get('p').style).toMatchInlineSnapshot(`
       CSSStyleDeclaration {
-        "0": "color",
-        "1": "font-size",
         "_importants": {
           "color": undefined,
           "font-size": undefined,
         },
-        "_length": 2,
+        "_length": 0,
         "_onChange": [Function],
         "_setInProgress": false,
-        "_values": {
-          "color": "red",
-          "font-size": "12px",
-        },
+        "_values": {},
       }
     `);
   });

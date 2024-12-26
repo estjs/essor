@@ -1,4 +1,4 @@
-import { type InjectionKey, inject, provide, reactive } from 'essor';
+import { type InjectionKey, inject, provide, useReactive } from 'essor';
 
 const ProvideKey = Symbol('ProvideKey') as InjectionKey<{ count: number }>;
 
@@ -8,7 +8,7 @@ function Com() {
 }
 
 function App() {
-  const value = reactive({ count: 0 });
+  const value = useReactive({ count: 0 });
   provide<any>(ProvideKey, { count: 1 });
   return (
     <div>

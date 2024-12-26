@@ -1,4 +1,4 @@
-import { computed, reactive } from './signal';
+import { useComputed, useReactive } from './signal';
 
 interface StoreOptions<
   S extends object,
@@ -33,7 +33,7 @@ function createOptionsStore<
   const { state, getters, actions } = options;
 
   const initState = { ...state };
-  const reactiveState = reactive(state);
+  const reactiveState = useReactive(state);
 
   const subscriptions: Callback[] = [];
   const actionCallbacks: Callback[] = [];
@@ -72,7 +72,7 @@ function createOptionsStore<
       if (getter) {
         Object.defineProperty(store, key, {
           get() {
-            return computed(() => getter.call(store, reactiveState)).value;
+            return useComputed(() => getter.call(store, reactiveState)).value;
           },
           enumerable: true,
           configurable: true,

@@ -1,10 +1,10 @@
 export {
-  signal,
-  effect,
-  computed,
+  useSignal,
+  useEffect,
+  useComputed,
   isSignal,
   isComputed,
-  reactive,
+  useReactive,
   isReactive,
   shallowReactive,
   shallowSignal,
@@ -12,9 +12,9 @@ export {
   signalObject,
   useBatch,
   toRaw,
-  ref,
+  useRef,
 } from './signal';
-export { watch } from './watch';
+export { useWatch } from './watch';
 export { type SignalImpl as Signal, type ComputedImpl as Computed } from './signal';
 export { createStore, StoreActions } from './store';
 

@@ -39,17 +39,17 @@ exports[`props > should work with deep props 1`] = `
 `;
 
 exports[`props > should work with rest pattern props 1`] = `
-"import { reactive as _reactive$ } from "essor";
+"import { useReactive as _useReactive$ } from "essor";
 function testFunction(__props) {
-  const restProps = _reactive$(__props, ["prop1", "prop2"]);
+  const restProps = _useReactive$(__props, ["prop1", "prop2"]);
   return <div prop1={__props.prop1} prop2={__props.prop2} {...restProps} />;
 }"
 `;
 
 exports[`props > should work with rest value props 1`] = `
-"import { reactive as _reactive$ } from "essor";
+"import { useReactive as _useReactive$ } from "essor";
 function testFunction(__props) {
-  const restProps = _reactive$(__props, ["prop1", "prop2"]);
+  const restProps = _useReactive$(__props, ["prop1", "prop2"]);
   return <div prop1={__props.prop1} prop2={__props.prop2} rest={{
     ...restProps
   }} />;
