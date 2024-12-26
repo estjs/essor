@@ -44,8 +44,6 @@ body:
       label: Additional information
       description: Logs, errors, etc.
       render: shell
-    validations:
-      required: true
 
   - type: checkboxes
     id: terms

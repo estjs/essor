@@ -44,8 +44,6 @@ body:
       label: 额外信息
       description: 日志、报错等
       render: shell
-    validations:
-      required: true
 
   - type: checkboxes
     id: terms
