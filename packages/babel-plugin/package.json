@@ -37,11 +37,11 @@
   },
   "dependencies": {
     "@babel/core": "^7.26.0",
-    "@babel/types": "^7.26.0",
+    "@babel/types": "^7.26.3",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
-    "typescript": "^5.6.3"
+    "typescript": "^5.7.2"
   }
 }
