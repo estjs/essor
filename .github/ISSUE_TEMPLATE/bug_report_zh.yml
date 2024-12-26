@@ -1,0 +1,56 @@
+name: 🐛 Bug 报告
+description: 提交错误
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请确保已阅读[文档](https://essor.netlify.app/)内相关部分，并按照模版提供信息，否则 issue 将被立即关闭。
+
+  - type: textarea
+    id: playground
+    attributes:
+      label: playground地址
+      description: playground(https://essor-playground.netlify.app/)的复现地址
+      placeholder: https://essor-playground.netlify.app/
+      render: playground
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: 预期是什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-happened
+    attributes:
+      label: 实际发生了什么？
+    validations:
+      required: true
+
+  - type: input
+    id: deploy-info
+    attributes:
+      label: 相关信息
+      description: |
+        请提供您的浏览器版本、Essor的版本等信息。
+      placeholder: 'Chrome:131.0.6778.205, Essor:1.0.0'
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 额外信息
+      description: 日志、报错等
+      render: shell
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: 这不是重复的 issue
+      options:
+        - label: 我已经搜索了 [现有 issue](https://github.com/estjs/essor/issues)，以确保该错误尚未被报告。
+          required: true

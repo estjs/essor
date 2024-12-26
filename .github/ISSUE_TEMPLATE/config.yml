@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Help and Question
+    url: https://github.com/estjs/essor/discussions
+    about: Suggest new features for consideration
+  - name: Discord Chat
+  - name: Questions & Discussions
+    url: https://github.com/estjs/essor/discussions
+    about: Use GitHub discussions for message-board style questions and discussions.
+
+  # ...existing code...

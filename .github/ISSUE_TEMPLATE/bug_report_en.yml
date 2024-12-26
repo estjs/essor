@@ -1,0 +1,56 @@
+name: 🐛 Bug Report
+description: Submit a bug report
+labels: [bug]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please ensure that you have read the relevant parts of the [documentation](https://essor.netlify.app/) and provide information according to the template, otherwise the issue will be closed immediately.
+
+  - type: textarea
+    id: playground
+    attributes:
+      label: Playground URL
+      description: The reproduction URL on the playground (https://essor-playground.netlify.app/)
+      placeholder: https://essor-playground.netlify.app/
+      render: playground
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What is the expected behavior?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-happened
+    attributes:
+      label: What actually happened?
+    validations:
+      required: true
+
+  - type: input
+    id: deploy-info
+    attributes:
+      label: Relevant information
+      description: |
+        Please provide your browser version, Essor version, etc.
+      placeholder: 'Chrome:131.0.6778.205, Essor:1.0.0'
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Additional information
+      description: Logs, errors, etc.
+      render: shell
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: This is not a duplicate issue
+      options:
+        - label: I have searched the [existing issues](https://github.com/estjs/essor/issues) to ensure this bug has not been reported yet.
+          required: true

@@ -1,0 +1,40 @@
+name: 🍭 Feature Request
+description: Submit a new feature request
+labels: [enhancement]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please ensure that there is no related content in the [documentation](https://essor.netlify.app/) and [issues](https://github.com/estjs/essor/issues), and provide information according to the template,
+        otherwise the issue will be closed immediately.
+
+  - type: textarea
+    id: feature
+    attributes:
+      label: What kind of feature is this?
+      placeholder: Please describe the feature you want to see.
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem can this feature solve?
+      placeholder: Please describe the problem this feature solves.
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Additional description
+      placeholder: Any additional comments.
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: This is not a duplicate feature request or proposal
+      options:
+        - label: I have searched the [existing issues](https://github.com/estjs/essor/issues) to ensure this feature has not been requested yet.
+          required: true
