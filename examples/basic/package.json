@@ -1,5 +1,5 @@
 {
-  "name": "essor-example-basic",
+  "name": "aube-example-basic",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,17 +10,17 @@
     "test": "vitest -r test"
   },
   "dependencies": {
-    "essor": "workspace:*"
+    "aube": "workspace:*"
   },
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.9",
     "@types/node": "^22.9.1",
     "eslint": "^9.15.0",
     "jsdom": "^25.0.1",
-    "typescript": "^5.6.3",
-    "unplugin-essor": "workspace:*",
-    "vite": "^5.4.11",
-    "vite-plugin-inspect": "^0.8.8",
-    "vitest": "^2.1.5"
+    "typescript": "^5.7.2",
+    "unplugin-aube": "workspace:*",
+    "vite": "^6.0.6",
+    "vite-plugin-inspect": "^0.10.6",
+    "vitest": "^2.1.8"
   }
 }

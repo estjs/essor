@@ -1,4 +1,4 @@
-import { type InjectionKey, provide, useReactive } from 'essor';
+import { type InjectionKey, provide, useReactive } from 'aube';
 import InjectComponent from './inject';
 
 export const ProvideKey: InjectionKey<{ count: number }> = Symbol('ProvideKey');

@@ -39,7 +39,7 @@ exports[`props > should work with deep props 1`] = `
 `;
 
 exports[`props > should work with rest pattern props 1`] = `
-"import { useReactive as _useReactive$ } from "essor";
+"import { useReactive as _useReactive$ } from "aube";
 function testFunction(__props) {
   const restProps = _useReactive$(__props, ["prop1", "prop2"]);
   return <div prop1={__props.prop1} prop2={__props.prop2} {...restProps} />;
@@ -47,7 +47,7 @@ function testFunction(__props) {
 `;
 
 exports[`props > should work with rest value props 1`] = `
-"import { useReactive as _useReactive$ } from "essor";
+"import { useReactive as _useReactive$ } from "aube";
 function testFunction(__props) {
   const restProps = _useReactive$(__props, ["prop1", "prop2"]);
   return <div prop1={__props.prop1} prop2={__props.prop2} rest={{

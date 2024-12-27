@@ -1,4 +1,4 @@
-import { isSymbol } from '@estjs/shared';
+import { isSymbol } from '@aube/shared';
 import { LifecycleContext } from './lifecycleContext';
 
 /**

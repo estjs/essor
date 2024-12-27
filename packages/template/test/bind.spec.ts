@@ -1,4 +1,4 @@
-import { useSignal } from '@estjs/signal';
+import { useSignal } from '@aube/signal';
 import { h as _h$ } from '../src';
 import { mount } from './testUtils';
 

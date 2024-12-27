@@ -1,13 +1,13 @@
 {
-  "name": "babel-plugin-essor",
-  "version": "0.0.14-beta.21",
+  "name": "babel-plugin-aube",
+  "version": "0.0.1",
   "description": "",
   "type": "module",
   "keywords": [],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/aube/aube.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "files": [
@@ -37,8 +37,8 @@
   },
   "dependencies": {
     "@babel/core": "^7.26.0",
-    "@babel/types": "^7.26.0",
-    "@estjs/shared": "workspace:*"
+    "@babel/types": "^7.26.3",
+    "@aube/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",

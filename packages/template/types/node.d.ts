@@ -1,8 +1,8 @@
-import type { EssorComponent } from './component';
+import type { aubeComponent } from './component';
 
-export interface EssorNode<T = Record<string, any>> {
+export interface aubeNode<T = Record<string, any>> {
   props?: T;
-  template: EssorComponent | HTMLTemplateElement;
+  template: aubeComponent | HTMLTemplateElement;
 
   get firstChild(): Node | null;
   get isConnected(): boolean;

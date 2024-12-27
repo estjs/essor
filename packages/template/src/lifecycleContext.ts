@@ -1,4 +1,4 @@
-import type { Signal } from '@estjs/signal';
+import type { Signal } from '@aube/signal';
 import type { Hook } from '../types';
 
 export class LifecycleContext {

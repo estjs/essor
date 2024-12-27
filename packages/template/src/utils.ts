@@ -1,5 +1,5 @@
-import { isArray, isFalsy, kebabCase } from '@estjs/shared';
-import { type Signal, isSignal } from '@estjs/signal';
+import { isArray, isFalsy, kebabCase } from '@aube/shared';
+import { type Signal, isSignal } from '@aube/signal';
 import { isJsxElement } from './jsxRenderer';
 import { renderContext } from './sharedConfig';
 import { isSSGNode } from './ssgNode';

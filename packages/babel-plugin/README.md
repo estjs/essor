@@ -1,17 +1,17 @@
-# Essor babel plugin
+# aube babel plugin
 
 ## Install
 
 ```bash
-npm install babel-plugin-essor --save-dev
+npm install babel-plugin-aube --save-dev
 ```
 
 ## Usage
 
 ```js
-import EssorBabelPlugin from 'babel-plugin-essor';
+import aubeBabelPlugin from 'babel-plugin-aube';
 {
-  "plugins": [[EssorBabelPlugin,pluginOptions]]
+  "plugins": [[aubeBabelPlugin,pluginOptions]]
 }
 ```
 

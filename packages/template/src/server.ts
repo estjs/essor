@@ -1,7 +1,7 @@
 import { SSGNode } from './ssgNode';
 import { renderContext } from './sharedConfig';
 import { h } from './jsxRenderer';
-import type { EssorComponent, Props } from '../types';
+import type { Props, aubeComponent } from '../types';
 
 /**
  * Render a component to a string.
@@ -12,7 +12,7 @@ import type { EssorComponent, Props } from '../types';
  * @param props Optional props to pass to the component.
  * @returns The rendered HTML string.
  */
-export function renderToString(component: EssorComponent, props?: Props): string {
+export function renderToString(component: aubeComponent, props?: Props): string {
   renderContext.setSSG();
   // Create a new SSGNode with the component and props
   const ssrNode = new SSGNode(component, props || {});
@@ -31,7 +31,7 @@ export function renderToString(component: EssorComponent, props?: Props): string
  * @param container The container element to hydrate in. Can be a string selector or an Element.
  * @throws Error if the container is not found.
  */
-export function hydrate(component: EssorComponent, container: string | Element): void {
+export function hydrate(component: aubeComponent, container: string | Element): void {
   // Find the root element based on the container parameter
   const rootElement = typeof container === 'string' ? document.querySelector(container) : container;
 
@@ -53,7 +53,7 @@ export function hydrate(component: EssorComponent, container: string | Element):
  * @param props Optional props to pass to the component.
  * @returns The SSGNode or JSX element.
  */
-export function ssg(component: EssorComponent, props?: Props): SSGNode | JSX.Element {
+export function ssg(component: aubeComponent, props?: Props): SSGNode | JSX.Element {
   if (renderContext.isSSG) {
     return new SSGNode(component, props);
   }

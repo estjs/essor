@@ -12,7 +12,7 @@ import type { PluginObj } from '@babel/core';
 export { Options, State } from './types';
 export default function (): PluginObj {
   return {
-    name: 'babel-plugin-essor',
+    name: 'babel-plugin-aube',
     manipulateOptions({ filename }, parserOpts) {
       if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
         parserOpts.plugins.push('typescript');

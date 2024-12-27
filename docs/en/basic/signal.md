@@ -133,7 +133,7 @@ The `reactive` function creates a reactive object. The properties of the object 
 
 #### Example
 ```javascript
-import { reactive } from '@estjs/shared';
+import { reactive } from '@aube/shared';
 
 const state = reactive({ count: 0 });
 
@@ -157,7 +157,7 @@ The `isReactive` function checks if a given object is reactive.
 
 #### Example
 ```javascript
-import { isReactive, reactive } from '@estjs/shared';
+import { isReactive, reactive } from '@aube/shared';
 
 const state = reactive({ count: 0 });
 
@@ -179,7 +179,7 @@ The `unReactive` function creates a shallow copy of a reactive object.
 
 #### Example
 ```javascript
-import { unReactive, reactive } from '@estjs/shared';
+import { unReactive, reactive } from '@aube/shared';
 
 const state = reactive({ count: 0 });
 
@@ -201,7 +201,7 @@ The `shallowReactive` function creates a reactive object, but only the top-level
 
 #### Example
 ```javascript
-import { shallowReactive } from '@estjs/shared';
+import { shallowReactive } from '@aube/shared';
 
 const state = shallowReactive({ nested: { count: 0 } });
 
@@ -223,7 +223,7 @@ The `shallowSignal` function creates a shallow signal that does not recursively 
 
 #### Example
 ```javascript
-import { shallowSignal } from '@estjs/shared';
+import { shallowSignal } from '@aube/shared';
 
 const state = shallowSignal({ count: 0 });
 

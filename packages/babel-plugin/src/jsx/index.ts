@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { capitalize } from '@estjs/shared';
+import { capitalize } from '@aube/shared';
 import { imports } from '../program';
 import {
   type ClientResult,

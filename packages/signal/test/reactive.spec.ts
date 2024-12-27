@@ -925,7 +925,7 @@ describe('clearReactive', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     clearReactive({});
     expect(warnSpy).toHaveBeenCalledWith(
-      '[Essor warn]: clearReactive: argument must be a useReactive object',
+      '[aube warn]: clearReactive: argument must be a useReactive object',
     );
     warnSpy.mockRestore();
   });

@@ -1,73 +1,73 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`transform custom symbol > should work with basic types 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(false);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 2`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(true);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 3`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(0);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 4`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(1);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 5`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(1);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 6`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(123);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 7`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(null);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 8`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(undefined);
 __a.value = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 9`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const __a = _useSignal$(NaN);
 __a.value = 1;"
 `;
 
 exports[`transform symbol > should not work with add value symbol 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$([1]);
 $a.value.push(2);"
 `;
 
 exports[`transform symbol > should work with array 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$([1, 2, 3]);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array 2`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$([1, {
   a: 1
 }, 3, 4]);
@@ -75,79 +75,79 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array 3`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$([1, 2, 3, 4, 5]);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with array index  1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$([1]);
 console.log($a.value[0]);"
 `;
 
 exports[`transform symbol > should work with basic types 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(false);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 2`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(true);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 3`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(0);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 4`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(1);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 5`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(1);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 6`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(123);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 7`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(null);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 8`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(undefined);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with basic types 9`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$(NaN);
 $a.value = 1;"
 `;
 
 exports[`transform symbol > should work with const function transform useComputed 1`] = `
-"import { useComputed as _useComputed$ } from "essor";
+"import { useComputed as _useComputed$ } from "aube";
 const $a = _useComputed$(() => 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with const function transform useComputed 2`] = `
-"import { useComputed as _useComputed$ } from "essor";
+"import { useComputed as _useComputed$ } from "aube";
 const $a = _useComputed$(a => a + 1);
 $a.value = 2;"
 `;
@@ -159,19 +159,19 @@ console.log($a.value, b);"
 `;
 
 exports[`transform symbol > should work with let function transform useComputed 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 let $a = _useSignal$(() => 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with let function transform useComputed 2`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 let $a = _useSignal$(a => a + 1);
 $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 1`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$({
   a: 1
 });
@@ -179,7 +179,7 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 2`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$({
   a: 1,
   b: 2
@@ -188,7 +188,7 @@ $a.value = 2;"
 `;
 
 exports[`transform symbol > should work with object 3`] = `
-"import { useSignal as _useSignal$ } from "essor";
+"import { useSignal as _useSignal$ } from "aube";
 const $a = _useSignal$({
   a: 1,
   b: {

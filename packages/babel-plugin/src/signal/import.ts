@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { startsWith } from '@estjs/shared';
+import { startsWith } from '@aube/shared';
 
 /**
  * Replaces import declarations

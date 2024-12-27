@@ -1,10 +1,10 @@
-import { escape, isArray, isFunction } from '@estjs/shared';
-import { isSignal } from '@estjs/signal';
+import { escape, isArray, isFunction } from '@aube/shared';
+import { isSignal } from '@aube/signal';
 import { LifecycleContext } from './lifecycleContext';
 import { extractSignal } from './utils';
 import { CHILDREN_PROP, ComponentType, PLACEHOLDER, enterComponent } from './sharedConfig';
-import type { Signal } from '@estjs/signal';
-import type { EssorNode, Props } from '../types';
+import type { Signal } from '@aube/signal';
+import type { Props, aubeNode } from '../types';
 
 export function isSSGNode(node: unknown): node is SSGNode {
   return node instanceof SSGNode;
@@ -112,7 +112,7 @@ export class SSGNode extends LifecycleContext {
     });
   }
 
-  private renderChild(child: EssorNode | Function | Signal<unknown>): string {
+  private renderChild(child: aubeNode | Function | Signal<unknown>): string {
     if (isSignal(child)) {
       return `<!--${ComponentType.TEXT_COMPONENT}-${componentIndex}-->${(child as Signal<any>).value}<!$>`;
     } else if (isFunction(child)) {

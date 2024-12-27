@@ -1,4 +1,4 @@
-import { shallowSignal,  useSignal} from 'essor';
+import { shallowSignal,  useSignal} from 'aube';
 const A = [
   'pretty',
   'large',
@@ -143,7 +143,7 @@ function Jumbotron() {
     <div class="jumbotron">
       <div class="row">
         <div class="col-md-6">
-          <h1>Essor keyed</h1>
+          <h1>aube keyed</h1>
         </div>
         <div class="col-md-6">
           <div class="row">

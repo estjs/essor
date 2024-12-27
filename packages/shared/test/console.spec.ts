@@ -25,7 +25,7 @@ describe('logger Functions', () => {
     warn(message, ...additionalArgs);
 
     expect(consoleWarnSpy).toHaveBeenCalledWith(
-      '[Essor warn]: This is a warning',
+      '[aube warn]: This is a warning',
       ...additionalArgs,
     );
   });
@@ -37,7 +37,7 @@ describe('logger Functions', () => {
     info(message, ...additionalArgs);
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
-      '[Essor info]: This is an info message',
+      '[aube info]: This is an info message',
       ...additionalArgs,
     );
   });
@@ -49,7 +49,7 @@ describe('logger Functions', () => {
     error(message, ...additionalArgs);
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
-      '[Essor error]: This is an error',
+      '[aube error]: This is an error',
       ...additionalArgs,
     );
   });
@@ -59,7 +59,7 @@ describe('logger Functions', () => {
 
     warn(message);
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith('[Essor warn]: Simple warning');
+    expect(consoleWarnSpy).toHaveBeenCalledWith('[aube warn]: Simple warning');
   });
 
   it('info() should call console.info with only the message if no additional arguments are provided', () => {
@@ -67,7 +67,7 @@ describe('logger Functions', () => {
 
     info(message);
 
-    expect(consoleInfoSpy).toHaveBeenCalledWith('[Essor info]: Simple info');
+    expect(consoleInfoSpy).toHaveBeenCalledWith('[aube info]: Simple info');
   });
 
   it('error() should call console.error with only the message if no additional arguments are provided', () => {
@@ -75,6 +75,6 @@ describe('logger Functions', () => {
 
     error(message);
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith('[Essor error]: Simple error');
+    expect(consoleErrorSpy).toHaveBeenCalledWith('[aube error]: Simple error');
   });
 });

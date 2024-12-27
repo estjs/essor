@@ -1,64 +1,64 @@
 {
-  "name": "essor",
-  "version": "0.0.14-beta.21",
+  "name": "aube",
+  "version": "0.0.1",
   "description": "",
   "type": "module",
   "keywords": [],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/essor#readme",
-  "bugs": "https://github.com/estjs/essor/issues",
+  "homepage": "https://github.com/aube/aube#readme",
+  "bugs": "https://github.com/aube/aube/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/aube/aube.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
-  "funding": "https://github.com/sponsors/estjs",
+  "funding": "https://github.com/sponsors/aube",
   "files": [
     "dist",
     "types"
   ],
-  "main": "./dist/essor.esm.js",
-  "module": "./dist/essor.esm.js",
-  "types": "./dist/essor.d.ts",
+  "main": "./dist/aube.esm.js",
+  "module": "./dist/aube.esm.js",
+  "types": "./dist/aube.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
-          "types": "./dist/essor.d.ts",
-          "require": "./dist/essor.dev.cjs.js",
-          "import": "./dist/essor.dev.esm.js"
+          "types": "./dist/aube.d.ts",
+          "require": "./dist/aube.dev.cjs.js",
+          "import": "./dist/aube.dev.esm.js"
         },
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.cjs.js",
-        "import": "./dist/essor.esm.js"
+        "types": "./dist/aube.d.ts",
+        "require": "./dist/aube.cjs.js",
+        "import": "./dist/aube.esm.js"
       },
       "development": {
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.dev.cjs.js",
-        "import": "./dist/essor.dev.esm.js"
+        "types": "./dist/aube.d.ts",
+        "require": "./dist/aube.dev.cjs.js",
+        "import": "./dist/aube.dev.esm.js"
       },
-      "types": "./dist/essor.d.ts",
-      "require": "./dist/essor.cjs.js",
-      "import": "./dist/essor.esm.js"
+      "types": "./dist/aube.d.ts",
+      "require": "./dist/aube.cjs.js",
+      "import": "./dist/aube.esm.js"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "./dist/essor.d.ts"
+        "./dist/aube.d.ts"
       ]
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/essor.esm.js",
-  "jsdelivr": "dist/essor.esm.js",
+  "unpkg": "dist/aube.esm.js",
+  "jsdelivr": "dist/aube.esm.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@estjs/shared": "workspace:*",
-    "@estjs/signal": "workspace:*",
-    "@estjs/template": "workspace:*"
+    "@aube/shared": "workspace:*",
+    "@aube/signal": "workspace:*",
+    "@aube/template": "workspace:*"
   }
 }

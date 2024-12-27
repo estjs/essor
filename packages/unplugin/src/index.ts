@@ -1,6 +1,6 @@
 import { createUnplugin } from 'unplugin';
 import * as babel from '@babel/core';
-import essorBabelPlugin from 'babel-plugin-essor';
+import aubeBabelPlugin from 'babel-plugin-aube';
 import { createFilter } from 'vite';
 import type { UnpluginFactory } from 'unplugin';
 import type { Options } from './types';
@@ -17,7 +17,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options = 
   const filter = createFilter(options.include, options.exclude);
 
   return {
-    name: 'unplugin-essor',
+    name: 'unplugin-aube',
     // enforce: 'pre',
     config() {
       return {
@@ -40,7 +40,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options = 
         filename: id,
         sourceMaps: true,
         sourceType: 'module',
-        plugins: [[essorBabelPlugin, { ...DEFAULT_OPTIONS, ...options }]],
+        plugins: [[aubeBabelPlugin, { ...DEFAULT_OPTIONS, ...options }]],
       });
       if (result?.code) {
         return {

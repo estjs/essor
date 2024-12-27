@@ -13,7 +13,7 @@ import {
   isWeakMap,
   isWeakSet,
   warn,
-} from '@estjs/shared';
+} from '@aube/shared';
 import { createScheduler } from './scheduler';
 
 // Define the type for useEffect functions

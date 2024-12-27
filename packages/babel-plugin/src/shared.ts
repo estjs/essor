@@ -1,5 +1,5 @@
 import { type NodePath, types as t } from '@babel/core';
-import { startsWith } from '@estjs/shared';
+import { startsWith } from '@aube/shared';
 import type { State } from './types';
 
 export type JSXElement = t.JSXElement | t.JSXFragment;

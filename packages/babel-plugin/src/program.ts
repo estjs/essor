@@ -38,7 +38,7 @@ export const transformProgram = {
       path.node.body.splice(index, 0, state.tmplDeclaration);
     }
     if (imports.size > 0) {
-      path.node.body.unshift(createImport(state, 'essor'));
+      path.node.body.unshift(createImport(state, 'aube'));
     }
   },
 };

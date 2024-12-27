@@ -1,4 +1,4 @@
-import { inject } from 'essor';
+import { inject } from 'aube';
 import { ProvideKey } from './main';
 
 export default function InjectComponent() {

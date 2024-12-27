@@ -7,7 +7,7 @@
     "paths": {
       "@/*": ["./src/*"]
     },
-    "types": ["vitest/globals", "essor"],
+    "types": ["vitest/globals", "aube"],
     "allowJs": true,
     "checkJs": true,
     "strict": true,

@@ -1,5 +1,5 @@
 import type * as csstype from 'csstype';
-import type { EssorNode } from './node';
+import type { aubeNode } from './node';
 /**
  * Based on JSX types for Surplus and Inferno and adapted for `dom-expressions`.
  *
@@ -9,13 +9,13 @@ import type { EssorNode } from './node';
 type DOMElement = Element;
 declare const SERIALIZABLE: unique symbol;
 
-type Component<Props> = (props: Props) => EssorNode;
+type Component<Props> = (props: Props) => aubeNode;
 type PropsOf<C> = C extends (props: infer P) => any ? P : never;
 
 declare global {
   export namespace JSX {
-    export type Element = EssorNode;
-    export type JSXElement = EssorNode;
+    export type Element = aubeNode;
+    export type JSXElement = aubeNode;
 
     type Children =
       | string
@@ -149,10 +149,10 @@ declare global {
       ref?: Signal<T> | ((el: T) => void);
       key?: string | number | symbol;
     }
-    type Accessor<T> = () => T;
+    type Accaube<T> = () => T;
     interface Directives {}
     interface DirectiveFunctions {
-      [x: string]: (el: DOMElement, accessor: Accessor<any>) => void;
+      [x: string]: (el: DOMElement, accaube: Accaube<any>) => void;
     }
     interface ExplicitProperties<T> {
       value: Signal<T>;

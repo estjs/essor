@@ -28,7 +28,7 @@ export default defineConfig({
   sourcemap: false,
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
-  external: ['csstype', '@estjs/shared', '@estjs/signal'],
+  external: ['csstype', '@aube/shared', '@aube/signal'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },

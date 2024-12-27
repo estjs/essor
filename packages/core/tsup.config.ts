@@ -11,7 +11,7 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    essor: './src/index.ts',
+    aube: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
@@ -25,7 +25,7 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: false,
-  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signal'],
+  noExternal: ['@aube/shared', '@aube/template', '@aube/signal'],
   minify: env === 'production' ? true : false,
   tsconfig: '../../tsconfig.build.json',
   define: {

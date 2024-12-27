@@ -8,7 +8,7 @@ import {
   isSet,
   noop,
   warn,
-} from '@estjs/shared';
+} from '@aube/shared';
 import { nextTick } from './scheduler';
 import {
   type ComputedImpl,

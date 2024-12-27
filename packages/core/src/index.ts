@@ -1,10 +1,10 @@
-import { essor_version } from './version';
+import { aube_version } from './version';
 
-export * from '@estjs/template';
-export * from '@estjs/signal';
+export * from '@aube/template';
+export * from '@aube/signal';
 
 if (globalThis) {
-  globalThis.__essor_version__ = essor_version;
+  globalThis.__aube_version__ = aube_version;
 }
 
-export { essor_version };
+export { aube_version };

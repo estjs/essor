@@ -1,4 +1,4 @@
-import { noop } from '@estjs/shared';
+import { noop } from '@aube/shared';
 import { useComputed, useReactive, useSignal, useWatch } from '../src';
 import { nextTick } from '../src/scheduler';
 import { resolveSource, traverse } from '../src/watch';
@@ -245,7 +245,7 @@ describe('resolveSource', () => {
     const invalidSource = 123;
     //@ts-ignore
     const result = resolveSource(invalidSource);
-    expect(mockWarn).toHaveBeenCalledWith('[Essor warn]: Invalid source', invalidSource);
+    expect(mockWarn).toHaveBeenCalledWith('[aube warn]: Invalid source', invalidSource);
     expect(result).toBe(noop);
   });
 

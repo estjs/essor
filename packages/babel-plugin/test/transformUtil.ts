@@ -56,7 +56,7 @@ export function getTransform(
   }
 
   const babelPlugin = {
-    name: 'babel-plugin-essor',
+    name: 'babel-plugin-aube',
     manipulateOptions({ filename }, parserOpts) {
       if (filename.endsWith('ts') || filename.endsWith('tsx')) {
         parserOpts.plugins.push('typescript');

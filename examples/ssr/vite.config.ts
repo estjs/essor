@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { defineConfig } from 'vite';
 import Inspect from 'vite-plugin-inspect';
-import essor from 'unplugin-essor/vite';
+import aube from 'unplugin-aube/vite';
 
 export default defineConfig({
   base: './',
@@ -10,5 +10,5 @@ export default defineConfig({
       '@/': `${path.resolve(__dirname, '/src')}/`,
     },
   },
-  plugins: [Inspect(), essor({ ssg: true })],
+  plugins: [Inspect(), aube({ ssg: true })],
 });

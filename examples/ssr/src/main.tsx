@@ -1,4 +1,4 @@
-import { hydrate, renderToString } from 'essor';
+import { hydrate, renderToString } from 'aube';
 
 function Com1(props) {
   const children = props.children;

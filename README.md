@@ -1,14 +1,14 @@
 
 <p align="center">
-<a href="https://essor.netlify.app/" target="_blank" rel="noopener noreferrer"><img width="100" src="./logo.svg" alt="Essor logo"></a>
+<a href="https://aube.netlify.app/" target="_blank" rel="noopener noreferrer"><img width="100" src="./logo.svg" alt="aube logo"></a>
 </p>
 <div align="center">
 
-![ci](https://img.shields.io/github/actions/workflow/status/estjs/essor/ci.yml?label=CI&logo=GitHub)
-![license](https://img.shields.io/github/license/estjs/essor)
-![version](https://img.shields.io/npm/v/essor)
-![download](https://img.shields.io/npm/dm/essor)
-![codecov](https://img.shields.io/codecov/c/github/estjs/essor)
+![ci](https://img.shields.io/github/actions/workflow/status/aube/aube/ci.yml?label=CI&logo=GitHub)
+![license](https://img.shields.io/github/license/aube/aube)
+![version](https://img.shields.io/npm/v/aube)
+![download](https://img.shields.io/npm/dm/aube)
+![codecov](https://img.shields.io/codecov/c/github/aube/aube)
 
 </div>
 

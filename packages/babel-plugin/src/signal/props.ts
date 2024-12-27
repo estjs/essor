@@ -1,4 +1,4 @@
-import { startsWith } from '@estjs/shared';
+import { startsWith } from '@aube/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { imports } from '../program';
 import type { State } from '../types';

@@ -6,8 +6,8 @@ import {
   isHTMLElement,
   isNil,
   startsWith,
-} from '@estjs/shared';
-import { isComputed, isSignal, shallowSignal, useEffect } from '@estjs/signal';
+} from '@aube/shared';
+import { isComputed, isSignal, shallowSignal, useEffect } from '@aube/signal';
 import {
   addEventListener,
   bindNode,

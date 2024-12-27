@@ -1,11 +1,11 @@
-import { hasChanged, isFunction, startsWith } from '@estjs/shared';
-import { type Signal, shallowReactive, useEffect } from '@estjs/signal';
-import { useReactive } from '@estjs/signal';
+import { hasChanged, isFunction, startsWith } from '@aube/shared';
+import { type Signal, shallowReactive, useEffect } from '@aube/signal';
+import { useReactive } from '@aube/signal';
 import { addEventListener, extractSignal } from './utils';
 import { LifecycleContext } from './lifecycleContext';
 import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
 import { componentCache } from './jsxRenderer';
-import type { EssorComponent, NodeTrack, Props } from '../types';
+import type { NodeTrack, Props, aubeComponent } from '../types';
 import type { TemplateNode } from './templateNode';
 
 export class ComponentNode extends LifecycleContext implements JSX.Element {
@@ -18,7 +18,7 @@ export class ComponentNode extends LifecycleContext implements JSX.Element {
   protected before: Node | null = null;
 
   constructor(
-    public template: EssorComponent,
+    public template: aubeComponent,
     public props: Props,
     public key?: string,
   ) {
