@@ -5,6 +5,11 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.1](https://github.com/aube/aube/compare/v0.0.14-beta.21...v0.0.1) `2024-12-27`
+
+
+
+
 ## [0.0.14-beta.21](https://github.com/aube/aube/compare/v0.0.14-beta.20...v0.0.14-beta.21) `2024-11-22`
 
 ## [0.0.1](https://github.com/aube/aube/compare/v0.0.14-beta.21...v0.0.1) `2024-12-27`
