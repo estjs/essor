@@ -5,6 +5,27 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14-beta.21](https://github.com/aube/aube/compare/v0.0.14-beta.20...v0.0.14-beta.21) `2024-11-22`
+
+## [0.0.1](https://github.com/aube/aube/compare/v0.0.14-beta.21...v0.0.1) `2024-12-27`
+
+
+### Bug Fixes
+
+* **babel-plugin:** fix children compile ([b70db8e](https://github.com/aube/aube/commit/b70db8e6e650554e272d8ab9249163e53b50b6f3))
+
+
+### Features
+
+* **babel-plugin:** update babel plugin ([fec5818](https://github.com/aube/aube/commit/fec58181115b78bd818c9cae395c8031ead02de8))
+* dont need reactive exclude ([89e7420](https://github.com/aube/aube/commit/89e74207fce6a51a3994aaf8e23854b218c19dae))
+* try new name ([ae51b9f](https://github.com/aube/aube/commit/ae51b9fb85b866ab2db581c9c06464a47810342a))
+* update more performance code ([e30f96f](https://github.com/aube/aube/commit/e30f96f3a3a76873d64e61886f1382ad69c71fe1))
+* update render ([7d4057a](https://github.com/aube/aube/commit/7d4057a4f66208e8171b35429e43d58f9ad60cb6))
+
+
+
+
 <<<<<<< Updated upstream
 ## [0.0.14-beta.20](https://github.com/estjs/essor/compare/v0.0.14-beta.19...v0.0.14-beta.20) `2024-11-11`
 =======
