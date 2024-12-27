@@ -10,6 +10,17 @@ docClass: timeline
 
 ### Features
 
+* update ([393053a](https://github.com/aube/aube/commit/393053a30831708c9634f95fa5cac9a882ba5fd5))
+* update ([322204f](https://github.com/aube/aube/commit/322204f5ed726b5717d8fc33b241abea5fa765e2))
+
+
+
+
+## [0.0.1](https://github.com/aube/aube/compare/v0.0.14-beta.21...v0.0.1) `2024-12-27`
+
+
+### Features
+
 * update ([322204f](https://github.com/aube/aube/commit/322204f5ed726b5717d8fc33b241abea5fa765e2))
 
 
