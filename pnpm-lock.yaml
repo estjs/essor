@@ -337,10 +337,10 @@ importers:
         version: link:../babel-plugin
       esbuild:
         specifier: '*'
-        version: 0.23.1
+        version: 0.24.0
       unplugin:
         specifier: ^2.1.0
-        version: 2.1.0
+        version: 2.1.2
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -365,7 +365,7 @@ importers:
         version: 6.0.6(@types/node@22.10.2)(jiti@2.4.2)(terser@5.27.0)(tsx@4.19.2)(yaml@2.6.1)
       webpack:
         specifier: ^5.97.1
-        version: 5.97.1(esbuild@0.23.1)
+        version: 5.97.1(esbuild@0.24.0)
 
 packages:
 
@@ -1824,11 +1824,6 @@ packages:
     peerDependencies:
       acorn: ^6.0.0 || ^7.0.0 || ^8.0.0
 
-  acorn@8.12.1:
-    resolution: {integrity: sha512-tcpGyI9zbizT9JbV6oYE477V6mTlXvvi0T0G3SNIYE2apm/G5huBa1+K89VGeovbg+jycCrfhl3ADxErOuO6Jg==}
-    engines: {node: '>=0.4.0'}
-    hasBin: true
-
   acorn@8.14.0:
     resolution: {integrity: sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==}
     engines: {node: '>=0.4.0'}
@@ -3275,8 +3270,8 @@ packages:
     resolution: {integrity: sha512-7vuh85V5cdDofPyxn58nrPjBktZo0u9x1g8WtjQol+jZDaE+fhN+cIvTj11GndBnMnyfrUOG1sZQxCdjKh+DKg==}
     engines: {node: '>= 10.13.0'}
 
-  jiti@1.21.6:
-    resolution: {integrity: sha512-2yTgeWTWzMWkHu6Jp9NKgePDaYHbntiwvYuuJLbbN9vl7DC9DvXKOB2BC3ZZ92D3cvV/aflH0osDfwpHepQ53w==}
+  jiti@1.21.7:
+    resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
 
   jiti@2.0.0-beta.2:
@@ -4761,8 +4756,8 @@ packages:
       vite:
         optional: true
 
-  unplugin@2.1.0:
-    resolution: {integrity: sha512-us4j03/499KhbGP8BU7Hrzrgseo+KdfJYWcbcajCOqsAyb8Gk0Yn2kiUIcZISYCb1JFaZfIuG3b42HmguVOKCQ==}
+  unplugin@2.1.2:
+    resolution: {integrity: sha512-Q3LU0e4zxKfRko1wMV2HmP8lB9KWislY7hxXpxd+lGx0PRInE4vhMBVEZwpdVYHvtqzhSrzuIfErsob6bQfCzw==}
     engines: {node: '>=18.12.0'}
 
   update-browserslist-db@1.1.0:
@@ -6546,8 +6541,6 @@ snapshots:
     dependencies:
       acorn: 8.14.0
 
-  acorn@8.12.1: {}
-
   acorn@8.14.0: {}
 
   add-stream@1.0.0: {}
@@ -8155,7 +8148,7 @@ snapshots:
       debug: 4.3.7
       esbuild: 0.23.1
       jiti: 2.0.0-beta.2
-      jiti-v1: jiti@1.21.6
+      jiti-v1: jiti@1.21.7
       pathe: 1.1.2
       pkg-types: 1.2.0
       tsx: 4.19.2
@@ -8398,7 +8391,7 @@ snapshots:
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
-  jiti@1.21.6: {}
+  jiti@1.21.7: {}
 
   jiti@2.0.0-beta.2: {}
 
@@ -9402,7 +9395,7 @@ snapshots:
       '@mdx-js/mdx': 3.0.1
       '@mdx-js/rollup': 3.0.1(rollup@4.29.1)
       '@shikijs/rehype': 1.16.1
-      acorn: 8.12.1
+      acorn: 8.14.0
       fs-extra: 11.2.0
       github-slugger: 2.0.0
       hast-util-from-html: 2.0.2
@@ -10080,16 +10073,16 @@ snapshots:
       mkdirp: 1.0.4
       yallist: 4.0.0
 
-  terser-webpack-plugin@5.3.10(esbuild@0.23.1)(webpack@5.97.1(esbuild@0.23.1)):
+  terser-webpack-plugin@5.3.10(esbuild@0.24.0)(webpack@5.97.1(esbuild@0.24.0)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 3.3.0
       serialize-javascript: 6.0.1
       terser: 5.27.0
-      webpack: 5.97.1(esbuild@0.23.1)
+      webpack: 5.97.1(esbuild@0.24.0)
     optionalDependencies:
-      esbuild: 0.23.1
+      esbuild: 0.24.0
 
   terser@5.27.0:
     dependencies:
@@ -10431,7 +10424,7 @@ snapshots:
       - rollup
       - supports-color
 
-  unplugin@2.1.0:
+  unplugin@2.1.2:
     dependencies:
       acorn: 8.14.0
       webpack-virtual-modules: 0.6.2
@@ -10620,7 +10613,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.97.1(esbuild@0.23.1):
+  webpack@5.97.1(esbuild@0.24.0):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.6
@@ -10642,7 +10635,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.10(esbuild@0.23.1)(webpack@5.97.1(esbuild@0.23.1))
+      terser-webpack-plugin: 5.3.10(esbuild@0.24.0)(webpack@5.97.1(esbuild@0.24.0))
       watchpack: 2.4.1
       webpack-sources: 3.2.3
     transitivePeerDependencies:
