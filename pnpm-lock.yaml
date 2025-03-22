@@ -68,13 +68,16 @@ importers:
 
   benchmark:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -87,9 +90,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -108,13 +108,16 @@ importers:
 
   examples/basic:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -127,9 +130,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -142,13 +142,16 @@ importers:
 
   examples/provide:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -161,9 +164,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -176,13 +176,16 @@ importers:
 
   examples/ssg:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -195,9 +198,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -210,13 +210,16 @@ importers:
 
   examples/ssr:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -229,9 +232,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -244,13 +244,16 @@ importers:
 
   examples/todo:
     dependencies:
-      essor:
+      '@estjs/core':
         specifier: workspace:*
         version: link:../../packages/core
     devDependencies:
       '@estjs/eslint-config':
         specifier: ^1.2.12
         version: 1.2.12(@types/eslint@8.44.7)(@typescript-eslint/utils@8.18.2(eslint@9.23.0(jiti@2.4.2))(typescript@5.8.2))(eslint@9.23.0(jiti@2.4.2))(prettier@3.5.3)(typescript@5.8.2)(vitest@3.0.9(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@2.4.2)(jsdom@26.0.0)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0))
+      '@estjs/unplugin':
+        specifier: workspace:*
+        version: link:../../packages/unplugin
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
@@ -263,9 +266,6 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.8.2
-      unplugin-essor:
-        specifier: workspace:*
-        version: link:../../packages/unplugin
       vite:
         specifier: ^6.2.2
         version: 6.2.2(@types/node@22.13.11)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.3)(yaml@2.7.0)
@@ -332,7 +332,7 @@ importers:
       '@babel/core':
         specifier: ^7.26.10
         version: 7.26.10
-      babel-plugin-essor:
+      '@estjs/babel-plugin':
         specifier: workspace:*
         version: link:../babel-plugin
       esbuild:

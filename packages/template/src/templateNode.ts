@@ -7,7 +7,7 @@ import {
   isNil,
   startsWith,
 } from '@estjs/shared';
-import { isComputed, isSignal, shallowSignal, useEffect } from '@estjs/signal';
+import { effect, isComputed, isSignal, shallowSignal } from '@estjs/signal';
 import {
   addEventListener,
   bindNode,
@@ -244,9 +244,9 @@ export class TemplateNode implements JSX.Element {
     updateFn?: Function,
   ): void {
     const track = this.getNodeTrack(`${key}:${attr}`);
-    const triggerValue = shallowSignal();
+    const triggerValue = shallowSignal<any>(null);
     // FIXME: need support {a:b.value ?'1':'2'}, like this condition,value is signal or computed
-    const cleanup = useEffect(() => {
+    const cleanup = effect(() => {
       triggerValue.value = isSignal(value) || isComputed(value) ? value.value : value;
       setAttribute(element, attr, triggerValue.value);
     });
@@ -282,7 +282,7 @@ export class TemplateNode implements JSX.Element {
 
   protected patchChild(track: NodeTrack, parent: Node, child: unknown, before: Node | null): void {
     if (isFunction(child)) {
-      track.cleanup = useEffect(() => {
+      track.cleanup = effect(() => {
         const nextNodes = coerceArray((child as Function)()).map(coerceNode) as Node[];
         if (renderContext.isSSR) {
           track.lastNodes = this.reconcileChildren(parent, nextNodes, before);

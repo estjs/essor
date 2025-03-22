@@ -1,5 +1,5 @@
 {
-  "name": "essor-monorepo",
+  "name": "est-monorepo",
   "version": "0.0.14",
   "private": "true",
   "packageManager": "pnpm@10.6.5",
@@ -13,11 +13,11 @@
     "framework"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/essor#readme",
-  "bugs": "https://github.com/estjs/essor/issues",
+  "homepage": "https://github.com/estjs/est#readme",
+  "bugs": "https://github.com/estjs/est/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/estjs/est.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",

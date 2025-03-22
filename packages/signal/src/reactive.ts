@@ -1,13 +1,13 @@
 import {
-  isArray,
-  isObject,
-  hasOwn,
   hasChanged,
-  isSet,
+  hasOwn,
+  isArray,
   isMap,
+  isObject,
+  isSet,
+  isStringNumber,
   isWeakMap,
   isWeakSet,
-  isStringNumber,
 } from '@estjs/shared';
 import { ArrayKey, CollectionKey, SignalFlags, WeakCollectionKey } from './constants';
 import { isSignal } from './signal';

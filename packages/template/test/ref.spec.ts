@@ -1,4 +1,4 @@
-import { useRef, useSignal } from '@estjs/signal';
+import { ref, useSignal } from '@estjs/signal';
 import { h as _h$, template as _template$ } from '../src';
 import { mount } from './testUtils';
 
@@ -12,7 +12,7 @@ describe('html element ref', () => {
   let signalRef;
 
   function normalValue() {
-    const templateRef = (normalRef = useRef());
+    const templateRef = (normalRef = ref());
     return _h$(_tmpl$, {
       '1': {
         ref: templateRef,

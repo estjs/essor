@@ -1,51 +1,64 @@
-import { escape } from '../src';
-describe('escape', () => {
-  it('escapes ampersands', () => {
-    expect(escape('AT&T')).toBe('AT&amp;T');
+import { escapeHTML, escapeHTMLComment, getEscapedCssVarName } from '../src';
+
+describe('escapeHTML Utils', () => {
+  describe('escapeHTML', () => {
+    it('should escape HTML special characters', () => {
+      expect(escapeHTML('<div>')).toBe('&lt;div&gt;');
+      expect(escapeHTML('"quote"')).toBe('&quot;quote&quot;');
+      expect(escapeHTML('&ampersand')).toBe('&amp;ampersand');
+      expect(escapeHTML("'single'")).toBe('&#39;single&#39;');
+    });
+
+    it('should handle strings with multiple special characters', () => {
+      expect(escapeHTML('<div class="test">&</div>')).toBe(
+        '&lt;div class=&quot;test&quot;&gt;&amp;&lt;/div&gt;',
+      );
+    });
+
+    it('should handle empty strings and strings without special characters', () => {
+      expect(escapeHTML('')).toBe('');
+      expect(escapeHTML('normal text')).toBe('normal text');
+    });
   });
 
-  it('escapes less than signs', () => {
-    expect(escape('3 < 5')).toBe('3 &lt; 5');
+  describe('escapeHTMLComment', () => {
+    it('should escape HTML comments', () => {
+      expect(escapeHTMLComment('<!-- comment -->')).toBe(' comment ');
+      expect(escapeHTMLComment('text <!-- comment --> text')).toBe('text  comment  text');
+    });
+
+    it('should handle nested comments', () => {
+      expect(escapeHTMLComment('<!-- outer <!-- inner --> outer -->')).toBe(
+        ' outer  inner  outer ',
+      );
+    });
+
+    it('should handle empty strings and strings without comments', () => {
+      expect(escapeHTMLComment('')).toBe('');
+      expect(escapeHTMLComment('normal text')).toBe('normal text');
+    });
   });
 
-  it('escapes greater than signs', () => {
-    expect(escape('5 > 3')).toBe('5 &gt; 3');
-  });
+  describe('getEscapedCssVarName', () => {
+    it('should escapeHTML CSS variable names with single escapeHTML', () => {
+      expect(getEscapedCssVarName('foo bar', false)).toBe('foo\\ bar');
+      expect(getEscapedCssVarName('foo@bar', false)).toBe('foo\\@bar');
+      expect(getEscapedCssVarName('foo:bar', false)).toBe('foo\\:bar');
+    });
 
-  it('escapes double quotes', () => {
-    expect(escape('"Hello"')).toBe('&quot;Hello&quot;');
-  });
+    it('should escapeHTML CSS variable names with double escapeHTML', () => {
+      expect(getEscapedCssVarName('foo bar', true)).toBe('foo\\\\ bar');
+      expect(getEscapedCssVarName('foo@bar', true)).toBe('foo\\\\@bar');
+      expect(getEscapedCssVarName('foo:bar', true)).toBe('foo\\\\:bar');
+    });
 
-  it('escapes single quotes', () => {
-    expect(escape("It's OK")).toBe('It&#039;s OK');
-  });
+    it('should handle strings without special characters', () => {
+      expect(getEscapedCssVarName('foobar', false)).toBe('foobar');
+      expect(getEscapedCssVarName('foo-bar', false)).toBe('foo-bar');
+    });
 
-  it('escapes multiple special characters', () => {
-    expect(escape('5 > 3 & 3 < 5')).toBe('5 &gt; 3 &amp; 3 &lt; 5');
-  });
-
-  it('returns the same string if no special characters', () => {
-    expect(escape('Hello, World!')).toBe('Hello, World!');
-  });
-
-  it('handles empty strings', () => {
-    expect(escape('')).toBe('');
-  });
-
-  it('handles strings with only special characters', () => {
-    expect(escape('&<>"\'')).toBe('&amp;&lt;&gt;&quot;&#039;');
-  });
-
-  it('handles strings with repeated special characters', () => {
-    expect(escape('&&&&')).toBe('&amp;&amp;&amp;&amp;');
-    expect(escape('<<>>')).toBe('&lt;&lt;&gt;&gt;');
-    expect(escape('""""')).toBe('&quot;&quot;&quot;&quot;');
-    expect(escape("''''")).toBe('&#039;&#039;&#039;&#039;');
-  });
-
-  it('should not modify the original string', () => {
-    const str = 'Hello, World!';
-    const escaped = escape(str);
-    expect(escaped).toBe('Hello, World!');
+    it('should handle empty strings', () => {
+      expect(getEscapedCssVarName('', false)).toBe('');
+    });
   });
 });

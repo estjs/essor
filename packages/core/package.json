@@ -1,15 +1,15 @@
 {
-  "name": "essor",
+  "name": "@estjs/core",
   "version": "0.0.14",
   "description": "",
   "type": "module",
   "keywords": [],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/essor#readme",
-  "bugs": "https://github.com/estjs/essor/issues",
+  "homepage": "https://github.com/estjs/est#readme",
+  "bugs": "https://github.com/estjs/est/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/estjs/est.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
@@ -17,41 +17,41 @@
     "dist",
     "types"
   ],
-  "main": "./dist/essor.esm.js",
-  "module": "./dist/essor.esm.js",
-  "types": "./dist/essor.d.ts",
+  "main": "./dist/est.esm.js",
+  "module": "./dist/est.esm.js",
+  "types": "./dist/est.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
-          "types": "./dist/essor.d.ts",
-          "require": "./dist/essor.dev.cjs.js",
-          "import": "./dist/essor.dev.esm.js"
+          "types": "./dist/est.d.ts",
+          "require": "./dist/est.dev.cjs.js",
+          "import": "./dist/est.dev.esm.js"
         },
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.cjs.js",
-        "import": "./dist/essor.esm.js"
+        "types": "./dist/est.d.ts",
+        "require": "./dist/est.cjs.js",
+        "import": "./dist/est.esm.js"
       },
       "development": {
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.dev.cjs.js",
-        "import": "./dist/essor.dev.esm.js"
+        "types": "./dist/est.d.ts",
+        "require": "./dist/est.dev.cjs.js",
+        "import": "./dist/est.dev.esm.js"
       },
-      "types": "./dist/essor.d.ts",
-      "require": "./dist/essor.cjs.js",
-      "import": "./dist/essor.esm.js"
+      "types": "./dist/est.d.ts",
+      "require": "./dist/est.cjs.js",
+      "import": "./dist/est.esm.js"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "./dist/essor.d.ts"
+        "./dist/est.d.ts"
       ]
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/essor.esm.js",
-  "jsdelivr": "dist/essor.esm.js",
+  "unpkg": "dist/est.esm.js",
+  "jsdelivr": "dist/est.esm.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"

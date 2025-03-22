@@ -1,21 +1,21 @@
 import type * as csstype from 'csstype';
-import type { EssorNode } from './node';
+import type { estNode } from './node';
 /**
  * Based on JSX types for Surplus and Inferno and adapted for `dom-expressions`.
  *
  * https://github.com/adamhaile/surplus/blob/master/index.d.ts
- * https://github.com/infernojs/inferno/blob/master/packages/inferno/src/core/types.ts
+ * https://github.com/infernojs/inferno/blob/master/packages/inferno/src/est/types.ts
  */
 type DOMElement = Element;
 declare const SERIALIZABLE: unique symbol;
 
-type Component<Props> = (props: Props) => EssorNode;
+type Component<Props> = (props: Props) => estNode;
 type PropsOf<C> = C extends (props: infer P) => any ? P : never;
 
 declare global {
   export namespace JSX {
-    export type Element = EssorNode;
-    export type JSXElement = EssorNode;
+    export type Element = estNode;
+    export type JSXElement = estNode;
 
     type Children =
       | string
@@ -149,10 +149,10 @@ declare global {
       ref?: Signal<T> | ((el: T) => void);
       key?: string | number | symbol;
     }
-    type Accessor<T> = () => T;
+    type Accest<T> = () => T;
     interface Directives {}
     interface DirectiveFunctions {
-      [x: string]: (el: DOMElement, accessor: Accessor<any>) => void;
+      [x: string]: (el: DOMElement, accest: Accest<any>) => void;
     }
     interface ExplicitProperties<T> {
       value: Signal<T>;
@@ -406,7 +406,7 @@ declare global {
       | 'allow-orientation-lock'
       | 'allow-pointer-lock'
       | 'allow-popups'
-      | 'allow-popups-to-escape-sandbox'
+      | 'allow-popups-to-escapeHTML-sandbox'
       | 'allow-presentation'
       | 'allow-same-origin'
       | 'allow-scripts'
@@ -1208,7 +1208,7 @@ declare global {
       | 'defer xMidYMax slice'
       | 'defer xMaxYMax slice';
     type SVGUnits = 'userSpaceOnUse' | 'objectBoundingBox';
-    interface CoreSVGAttributes<T> extends AriaAttributes, DOMAttributes<T> {
+    interface estSVGAttributes<T> extends AriaAttributes, DOMAttributes<T> {
       id?: string;
       lang?: string;
       tabIndex?: number | string;
@@ -1366,11 +1366,11 @@ declare global {
       'writing-mode'?: 'lr-tb' | 'rl-tb' | 'tb-rl' | 'lr' | 'rl' | 'tb' | 'inherit';
     }
     interface AnimationElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         ConditionalProcessingSVGAttributes {}
     interface ContainerElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
@@ -1384,7 +1384,7 @@ declare global {
           | 'color-rendering'
         > {}
     interface FilterPrimitiveElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<PresentationSVGAttributes, 'color-interpolation-filters'> {
       x?: number | string;
       y?: number | string;
@@ -1404,7 +1404,7 @@ declare global {
       preserveAspectRatio?: SVGPreserveAspectRatio;
     }
     interface GradientElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
       gradientUnits?: SVGUnits;
@@ -1413,7 +1413,7 @@ declare global {
       href?: string;
     }
     interface GraphicsElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'clip-rule'
@@ -1427,14 +1427,14 @@ declare global {
           | 'color-interpolation'
           | 'color-rendering'
         > {}
-    interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
+    interface LightSourceElementSVGAttributes<T> extends estSVGAttributes<T> {}
     interface NewViewportSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<PresentationSVGAttributes, 'overflow' | 'clip'> {
       viewBox?: string;
     }
     interface ShapeElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'color'
@@ -1453,7 +1453,7 @@ declare global {
           | 'pathLength'
         > {}
     interface TextContentElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'font-family'
@@ -1525,7 +1525,7 @@ declare global {
       r?: number | string;
     }
     interface ClipPathSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1539,7 +1539,7 @@ declare global {
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         TransformableSVGAttributes {}
-    interface DescSVGAttributes<T> extends CoreSVGAttributes<T>, StylableSVGAttributes {}
+    interface DescSVGAttributes<T> extends estSVGAttributes<T>, StylableSVGAttributes {}
     interface EllipseSVGAttributes<T>
       extends GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
@@ -1615,7 +1615,7 @@ declare global {
       elevation?: number | string;
     }
     interface FeDropShadowSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {
@@ -1627,7 +1627,7 @@ declare global {
       extends FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {}
-    interface FeFuncSVGAttributes<T> extends CoreSVGAttributes<T> {
+    interface FeFuncSVGAttributes<T> extends estSVGAttributes<T> {
       type?: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma';
       tableValues?: string;
       slope?: number | string;
@@ -1653,7 +1653,7 @@ declare global {
       extends FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes {}
     interface FeMergeNodeSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         SingleInputFilterSVGAttributes {}
     interface FeMorphologySVGAttributes<T>
       extends FilterPrimitiveElementSVGAttributes<T>,
@@ -1708,7 +1708,7 @@ declare global {
       type?: 'fractalNoise' | 'turbulence';
     }
     interface FilterSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
       filterUnits?: SVGUnits;
@@ -1796,8 +1796,8 @@ declare global {
       width?: number | string;
       height?: number | string;
     }
-    interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
-    interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
+    interface MetadataSVGAttributes<T> extends estSVGAttributes<T> {}
+    interface MPathSVGAttributes<T> extends estSVGAttributes<T> {}
     interface PathSVGAttributes<T>
       extends GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
@@ -1867,11 +1867,11 @@ declare global {
       ry?: number | string;
     }
     interface SetSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         StylableSVGAttributes,
         AnimationTimingSVGAttributes {}
     interface StopSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'stop-color' | 'stop-opacity'> {
       offset?: number | string;
@@ -1977,7 +1977,7 @@ declare global {
       href?: string;
     }
     interface ViewSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         FitToViewBoxSVGAttributes,
         ZoomAndPanSVGAttributes {

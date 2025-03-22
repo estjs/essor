@@ -5,13 +5,7 @@ export { signal, shallowSignal, isSignal, Signal } from './signal';
 export { effect, useBatch, unTrack } from './effect';
 
 // Reactive APIs
-export {
-  reactive,
-  shallowReactive,
-  isReactive,
-  toRaw,
-  Reactive,
-} from './reactive';
+export { reactive, shallowReactive, isReactive, toRaw, Reactive } from './reactive';
 
 // Computed API
 export { computed, isComputed, Computed } from './computed';

@@ -3,13 +3,13 @@ import { convertToHtmlTag } from './utils';
 import { ComponentNode } from './componentNode';
 import { TemplateNode } from './templateNode';
 import { EMPTY_TEMPLATE, FRAGMENT_PROP_KEY, SINGLE_PROP_KEY } from './sharedConfig';
-import type { EssorComponent, EssorNode, Props } from '../types';
+import type { Props, estComponent, estNode } from '../types';
 
 export const componentCache = new Map();
 
 function createNodeCache(
   NodeConstructor: typeof ComponentNode | typeof TemplateNode,
-  template: EssorComponent | HTMLTemplateElement | string,
+  template: estComponent | HTMLTemplateElement | string,
   props: Props = {},
   key?: string,
 ): JSX.Element {
@@ -40,7 +40,7 @@ function createNodeCache(
  * @returns The created JSX element.
  */
 export function h<K extends keyof HTMLElementTagNameMap>(
-  template: EssorComponent | HTMLTemplateElement | K | '',
+  template: estComponent | HTMLTemplateElement | K | '',
   props: Props = {},
   key?: string,
 ): JSX.Element {
@@ -82,7 +82,7 @@ export function isComponent(node: unknown): node is ComponentNode {
  * @param node The node to check.
  * @returns `true` if the node is a JSX element, otherwise `false`.
  */
-export function isJsxElement(node: unknown): node is EssorNode {
+export function isJsxElement(node: unknown): node is estNode {
   return node instanceof ComponentNode || node instanceof TemplateNode;
 }
 
@@ -131,7 +131,7 @@ export function Fragment<
   return createNodeCache(TemplateNode, templateElement, processedProps);
 }
 
-export function createApp(component: EssorComponent, root: HTMLElement | string) {
+export function createApp(component: estComponent, root: HTMLElement | string) {
   const rootElement = typeof root === 'string' ? document.querySelector(root) : root;
   if (!rootElement) {
     throw new Error('Root element not found');

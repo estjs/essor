@@ -2,8 +2,8 @@
 pageType: home
 
 hero:
-  name: essor docs
-  text:  Essor
+  name: est docs
+  text:  est
   tagline: A simple and powerful framework
   image:
     src: /logo.png
@@ -14,7 +14,7 @@ hero:
       link: /en/guide/getting-started
     - theme: alt
       text: GitHub
-      link: https://github.com/estjs/essor
+      link: https://github.com/estjs/est
 features:
   - title: Feature 1
     details: Feature 1 的详细内容

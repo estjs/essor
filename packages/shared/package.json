@@ -5,11 +5,11 @@
   "type": "module",
   "keywords": [],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/essor#readme",
-  "bugs": "https://github.com/estjs/essor/issues",
+  "homepage": "https://github.com/estjs/est#readme",
+  "bugs": "https://github.com/estjs/est/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/estjs/est.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",

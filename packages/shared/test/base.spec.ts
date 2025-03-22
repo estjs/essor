@@ -1,15 +1,73 @@
-import { coerceArray, generateUniqueId, hasChanged, hasOwn, isBrowser, startsWith } from '../src';
+import {
+  type ExcludeType,
+  cacheStringFunction,
+  coerceArray,
+  generateUniqueId,
+  hasChanged,
+  hasOwn,
+  isBrowser,
+  isExclude,
+  isOn,
+  startsWith,
+} from '../src';
 
-describe('coerceArray function', () => {
-  it('should return an array containing the input value if it is not an array', () => {
-    expect(coerceArray(5)).toEqual([5]);
-    expect(coerceArray('test')).toEqual(['test']);
-    expect(coerceArray({ key: 'value' })).toEqual([{ key: 'value' }]);
+describe('base Utils', () => {
+  describe('coerceArray', () => {
+    it('should return array as is', () => {
+      expect(coerceArray([1, 2, 3])).toEqual([1, 2, 3]);
+      expect(coerceArray(['a', 'b'])).toEqual(['a', 'b']);
+    });
+
+    it('should wrap non-array value in array', () => {
+      expect(coerceArray(1)).toEqual([1]);
+      expect(coerceArray('test')).toEqual(['test']);
+      expect(coerceArray(null)).toEqual([null]);
+      expect(coerceArray(undefined)).toEqual([undefined]);
+    });
   });
 
-  it('should return the input array unchanged if it is already an array', () => {
-    const inputArray = [1, 2, 3];
-    expect(coerceArray(inputArray)).toEqual(inputArray);
+  describe('cacheStringFunction', () => {
+    it('should cache function results', () => {
+      const fn = cacheStringFunction((str: string) => str.toUpperCase());
+
+      // First call should compute the result
+      expect(fn('hello')).toBe('HELLO');
+
+      // Second call should return cached result
+      expect(fn('hello')).toBe('HELLO');
+
+      // Different input should compute new result
+      expect(fn('world')).toBe('WORLD');
+    });
+
+    it('should handle empty strings', () => {
+      const fn = cacheStringFunction((str: string) => str);
+      expect(fn('')).toBe('');
+    });
+  });
+
+  describe('isExclude', () => {
+    it('should handle array excludes', () => {
+      const exclude: ExcludeType = ['a', 'b'];
+      expect(isExclude('a', exclude)).toBe(true);
+      expect(isExclude('c', exclude)).toBe(false);
+    });
+
+    it('should handle function excludes', () => {
+      const excludeFn: ExcludeType = (key: string | symbol) => key === 'test';
+      expect(isExclude('test', excludeFn)).toBe(true);
+      expect(isExclude('other', excludeFn)).toBe(false);
+    });
+
+    it('should handle falsy excludes', () => {
+      expect(isExclude('test', undefined)).toBe(false);
+    });
+
+    it('should handle empty array excludes', () => {
+      const exclude: ExcludeType = [];
+      expect(isExclude('test', exclude)).toBe(false);
+      expect(isExclude('other', exclude)).toBe(false);
+    });
   });
 });
 
@@ -42,8 +100,11 @@ describe('startsWith', () => {
   });
 
   it('should return false if the first argument is not a string', () => {
+    //@ts-ignore
     expect(startsWith(null, 'hello')).toBe(false);
+    // @ts-ignore
     expect(startsWith(123, 'hello')).toBe(false);
+    // @ts-ignore
     expect(startsWith({}, 'hello')).toBe(false);
   });
 
@@ -119,5 +180,38 @@ describe('generateUniqueId', () => {
 describe('isBrowser', () => {
   it('should return true if the current environment is a browser', () => {
     expect(isBrowser()).toBe(true);
+  });
+});
+describe('isOn', () => {
+  it('should return true for "on" followed by an uppercase letter', () => {
+    expect(isOn('onA')).toBe(true);
+    expect(isOn('onZ')).toBe(true);
+  });
+
+  it('should return false if third character is not an uppercase letter', () => {
+    expect(isOn('on1')).toBe(false);
+    expect(isOn('onb')).toBe(false);
+    expect(isOn('on ')).toBe(false);
+  });
+
+  it('should return false if the string is not "on" at the beginning', () => {
+    expect(isOn('off')).toBe(false);
+    expect(isOn('oN')).toBe(false);
+  });
+
+  it('should return false for an empty string', () => {
+    expect(isOn('')).toBe(false);
+  });
+
+  it('should return false for "o" without the third character', () => {
+    expect(isOn('o')).toBe(false);
+  });
+
+  it('should return false for a string that starts with "on" but third character is not uppercase', () => {
+    expect(isOn('onb')).toBe(false);
+  });
+
+  it('should handle strings that start with "on" and then non-alphabet characters', () => {
+    expect(isOn('on!')).toBe(false);
   });
 });

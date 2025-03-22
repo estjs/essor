@@ -1,5 +1,5 @@
 {
-  "name": "essor-example-basic",
+  "name": "est-example-basic",
   "private": true,
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "vitest -r test"
   },
   "dependencies": {
-    "essor": "workspace:*"
+    "@estjs/core": "workspace:*"
   },
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.12",
@@ -18,7 +18,7 @@
     "eslint": "^9.23.0",
     "jsdom": "^26.0.0",
     "typescript": "^5.8.2",
-    "unplugin-essor": "workspace:*",
+    "@estjs/unplugin": "workspace:*",
     "vite": "^6.2.2",
     "vite-plugin-inspect": "^11.0.0",
     "vitest": "^3.0.9"

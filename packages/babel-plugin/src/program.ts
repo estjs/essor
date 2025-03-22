@@ -1,55 +1,45 @@
 import { type NodePath, types as t } from '@babel/core';
-import type { Options, State } from './types';
-export const imports = new Set<string>();
-
-const defaultOption: Options = {
-  server: false,
-  symbol: '$',
-  props: true,
-};
+import { clearImport, createImport, createImportIdentifiers } from './import';
+import { DEFAULT_OPTIONS } from './constants';
+import type { State } from './types';
 
 export const transformProgram = {
   enter(path: NodePath<t.Program>, state) {
-    imports.clear();
+    const mergedOption = { ...DEFAULT_OPTIONS, ...state.opts };
 
-    // merge options
-    state.opts = { ...defaultOption, ...state.opts };
+    const identifiers = createImportIdentifiers(path);
+
+    clearImport();
 
     path.state = {
-      h: path.scope.generateUidIdentifier('h$'),
-      template: path.scope.generateUidIdentifier('template$'),
-      ssg: path.scope.generateUidIdentifier('ssg$'),
-      Fragment: path.scope.generateUidIdentifier('fragment$'),
-
-      useSignal: path.scope.generateUidIdentifier('useSignal$'),
-      useComputed: path.scope.generateUidIdentifier('useComputed$'),
-      useReactive: path.scope.generateUidIdentifier('useReactive$'),
-
-      tmplDeclaration: t.variableDeclaration('const', []),
-      opts: state.opts,
-    } as State;
+      ...state,
+      ...mergedOption,
+      imports: identifiers,
+      templateDeclaration: t.variableDeclaration('const', []),
+    };
   },
   exit(path: NodePath<t.Program>) {
-    const state: State = path.state;
-    if (state.tmplDeclaration.declarations.length > 0) {
-      const index = path.node.body.findIndex(
+    const { templateDeclaration, imports } = path.state as State;
+
+    // Insert template declaration (if exists)
+    if (templateDeclaration.declarations.length > 0) {
+      // Find the first non-import/non-export declaration
+      const insertIndex = path.node.body.findIndex(
         node => !t.isImportDeclaration(node) && !t.isExportDeclaration(node),
       );
-      path.node.body.splice(index, 0, state.tmplDeclaration);
+
+      // Insert template declaration
+      if (insertIndex !== -1) {
+        path.node.body.splice(insertIndex, 0, templateDeclaration);
+      } else {
+        path.node.body.push(templateDeclaration);
+      }
     }
-    if (imports.size > 0) {
-      path.node.body.unshift(createImport(state, 'essor'));
-    }
+
+    // Choose import path based on rendering mode
+    const importPath =
+      (path.state as State).opts.mode === 'client' ? '@estjs/est' : '@estjs/server';
+
+    createImport(path, imports, importPath);
   },
 };
-function createImport(state: State, from: string) {
-  const ImportSpecifier: t.ImportSpecifier[] = [];
-  imports.forEach(name => {
-    const local = t.identifier(state[name].name);
-    const imported = t.identifier(name);
-    ImportSpecifier.push(t.importSpecifier(local, imported));
-  });
-
-  const importSource = t.stringLiteral(from);
-  return t.importDeclaration(ImportSpecifier, importSource);
-}

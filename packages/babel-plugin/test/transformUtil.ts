@@ -1,43 +1,19 @@
 import babel from '@babel/core';
 import { transformProgram } from '../src/program';
-import {
-  replaceSymbol,
-  symbolArrayPattern,
-  symbolIdentifier,
-  symbolObjectPattern,
-} from '../src/signal/symbol';
-import { replaceImportDeclaration } from '../src/signal/import';
-import { replaceProps } from '../src/signal/props';
 import { transformJSX } from '../src/jsx';
+import { replaceProps } from '../src/transformers/props';
 
 const transforms = {
-  jsxClient: {
-    Program: transformProgram,
-    JSXElement: transformJSX,
-    JSXFragment: transformJSX,
-  },
-  jsxServe: {
+  jsx: {
     Program: transformProgram,
     JSXElement: transformJSX,
     JSXFragment: transformJSX,
   },
 
-  symbol: {
-    Program: transformProgram,
-    VariableDeclarator: replaceSymbol,
-    Identifier: symbolIdentifier,
-    ObjectPattern: symbolObjectPattern,
-    ArrayPattern: symbolArrayPattern,
-    FunctionDeclaration: replaceProps,
-  },
   props: {
     Program: transformProgram,
     FunctionDeclaration: replaceProps,
-  },
-  import: {
-    Program: transformProgram,
-    VariableDeclarator: replaceSymbol,
-    ImportDeclaration: replaceImportDeclaration,
+    ArrowFunctionExpression: replaceProps,
   },
 };
 
@@ -47,7 +23,7 @@ export function getTransform(
 ): (code: string) => string {
   const transform = Array.isArray(transformName)
     ? transformName.reduce((obj, key) => {
-        Object.assign(obj, transform[key]);
+        Object.assign(obj, transforms[key]);
         return obj;
       }, {})
     : transforms[transformName];
@@ -56,9 +32,9 @@ export function getTransform(
   }
 
   const babelPlugin = {
-    name: 'babel-plugin-essor',
+    name: '@estjs/babel-plugin',
     manipulateOptions({ filename }, parserOpts) {
-      if (filename.endsWith('ts') || filename.endsWith('tsx')) {
+      if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
         parserOpts.plugins.push('typescript');
       }
       parserOpts.plugins.push('jsx');
@@ -67,7 +43,7 @@ export function getTransform(
   };
   return code => {
     const result = babel.transformSync(code, {
-      filename: 'test',
+      filename: 'test.jsx',
       sourceType: 'module',
       plugins: [[babelPlugin, opts]],
     });

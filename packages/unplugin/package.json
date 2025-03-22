@@ -1,11 +1,13 @@
 {
-  "name": "unplugin-essor",
+  "name": "@estjs/unplugin",
   "version": "0.0.14",
   "description": "",
   "type": "module",
   "keywords": [
     "unplugin",
     "vite",
+    "est",
+    "estjs",
     "webpack",
     "rollup",
     "transform"
@@ -13,7 +15,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/essor.git"
+    "url": "git+https://github.com/estjs/est.git"
   },
   "files": [
     "dist"
@@ -99,7 +101,7 @@
   },
   "dependencies": {
     "@babel/core": "^7.26.10",
-    "babel-plugin-essor": "workspace:*",
+    "@estjs/babel-plugin": "workspace:*",
     "unplugin": "^2.2.2"
   },
   "devDependencies": {

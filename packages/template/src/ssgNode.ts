@@ -1,10 +1,10 @@
-import { escape, isArray, isFunction } from '@estjs/shared';
+import { escapeHTML, isArray, isFunction } from '@estjs/shared';
 import { isSignal } from '@estjs/signal';
 import { LifecycleContext } from './lifecycleContext';
 import { extractSignal } from './utils';
 import { CHILDREN_PROP, ComponentType, PLACEHOLDER, enterComponent } from './sharedConfig';
 import type { Signal } from '@estjs/signal';
-import type { EssorNode, Props } from '../types';
+import type { Props, estNode } from '../types';
 
 export function isSSGNode(node: unknown): node is SSGNode {
   return node instanceof SSGNode;
@@ -100,7 +100,7 @@ export class SSGNode extends LifecycleContext {
   private generateAttributes(props: Props): string {
     return Object.entries(props)
       .filter(([key, value]) => key !== CHILDREN_PROP && !isFunction(value))
-      .map(([key, value]) => `${key}="${escape(String(value))}"`)
+      .map(([key, value]) => `${key}="${escapeHTML(String(value))}"`)
       .join(' ');
   }
 
@@ -112,7 +112,7 @@ export class SSGNode extends LifecycleContext {
     });
   }
 
-  private renderChild(child: EssorNode | Function | Signal<unknown>): string {
+  private renderChild(child: estNode | Function | Signal<unknown>): string {
     if (isSignal(child)) {
       return `<!--${ComponentType.TEXT_COMPONENT}-${componentIndex}-->${(child as Signal<any>).value}<!$>`;
     } else if (isFunction(child)) {

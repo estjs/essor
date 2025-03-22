@@ -1,8 +1,8 @@
-import type { EssorComponent } from './component';
+import type { estComponent } from './component';
 
-export interface EssorNode<T = Record<string, any>> {
+export interface estNode<T = Record<string, any>> {
   props?: T;
-  template: EssorComponent | HTMLTemplateElement;
+  template: estComponent | HTMLTemplateElement;
 
   get firstChild(): Node | null;
   get isConnected(): boolean;

@@ -3,7 +3,7 @@ export interface Output<T> {
   type: 'output';
 }
 
-export type EssorComponent = (props: Record<string, unknown>) => JSX.Element | TemplateNode;
+export type estComponent = (props: Record<string, unknown>) => JSX.Element | TemplateNode;
 
 export interface NodeTrack {
   cleanup: () => void;

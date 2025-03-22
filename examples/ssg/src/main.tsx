@@ -1,4 +1,4 @@
-import { renderToString } from 'essor';
+import { renderToString } from 'est';
 
 function Com1(props) {
   const children = props.children;

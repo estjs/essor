@@ -35,7 +35,7 @@ export interface EffectOptions {
 
 /**
  * An effect function with additional metadata.
- * Effects are the core primitive of the reactivity system.
+ * Effects are the est primitive of the reactivity system.
  */
 export interface EffectFn {
   (): void;

@@ -1,24 +1,25 @@
 import { createUnplugin } from 'unplugin';
 import * as babel from '@babel/core';
-import essorBabelPlugin from 'babel-plugin-essor';
+import essorBabelPlugin from '@estjs/babel-plugin';
 import { createFilter } from 'vite';
 import type { UnpluginFactory } from 'unplugin';
 import type { Options } from './types';
+import type { ModuleNode, ViteDevServer } from 'vite';
 
 const CSS_EXTENSIONS = ['.css', '.scss', '.sass'];
+const JSX_EXTENSIONS = ['.jsx', '.tsx'];
 
 const DEFAULT_OPTIONS = {
   symbol: '$',
-  props: true,
-  server: false,
+  mode: 'client',
+  autoProps: true,
+  hmr: true,
 };
-
-export const unpluginFactory: UnpluginFactory<Options | undefined> = (options = {}) => {
+export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: Options = {}) => {
   const filter = createFilter(options.include, options.exclude);
 
   return {
-    name: 'unplugin-essor',
-    // enforce: 'pre',
+    name: '@estjs/unplugin',
     config() {
       return {
         esbuild: {
@@ -50,33 +51,78 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options = 
       }
       return code;
     },
-    handleHotUpdate(ctx: any) {
-      for (const mod of ctx.modules) {
-        const deps = mod.info?.meta?.deps;
-        if (deps && deps.length > 0) {
-          for (const dep of deps) {
-            const mod = ctx.server.moduleGraph.getModuleById(dep);
-            if (mod) {
-              ctx.server.moduleGraph.invalidateModule(mod);
-            }
-          }
-        } else if (
-          mod.type === 'js' &&
-          Array.from(mod.importers).every(
-            (m: any) => m.type === 'css' || CSS_EXTENSIONS.some(ext => m.file?.endsWith(ext)),
-          )
-        ) {
-          // invalidate all modules that import this module
-          ctx.server.moduleGraph.invalidateAll();
-        }
+
+    handleHotUpdate(ctx: { file: string; modules: ModuleNode[]; server: ViteDevServer }) {
+      const { file, modules, server } = ctx;
+
+      // 1. 处理样式文件的热更新
+      if (CSS_EXTENSIONS.some(ext => file.endsWith(ext))) {
+        // 只更新样式模块，不需要全页面刷新
+        return modules;
       }
 
-      if (CSS_EXTENSIONS.some(ext => ctx.file.endsWith(ext))) {
-        ctx.server.ws.send({
-          type: 'full-reload',
-        });
-        return [];
+      // 2. 处理 JSX/TSX 组件文件
+      if (JSX_EXTENSIONS.some(ext => file.endsWith(ext))) {
+        const updatedModules = new Set<ModuleNode>();
+
+        for (const mod of modules) {
+          // 获取模块的依赖信息
+          const deps = mod.info?.meta?.deps || [];
+          const importers = Array.from(mod.importers || []);
+
+          // 检查是否是组件文件
+          const isComponent = JSX_EXTENSIONS.some(ext => mod.file?.endsWith(ext));
+
+          if (isComponent) {
+            // 对于组件文件，我们只更新组件本身和直接依赖它的模块
+            updatedModules.add(mod);
+
+            // 处理直接依赖
+            for (const dep of deps) {
+              const depMod = server.moduleGraph.getModuleById(dep);
+              if (depMod) {
+                updatedModules.add(depMod);
+              }
+            }
+
+            // 处理导入该组件的模块
+            for (const importer of importers) {
+              if ((importer as ModuleNode).type === 'js') {
+                updatedModules.add(importer as ModuleNode);
+              }
+            }
+
+            // 发送 HMR 更新事件
+            server.ws.send({
+              type: 'custom',
+              event: 'essor:hmr',
+              data: {
+                id: mod.id,
+                timestamp: Date.now(),
+              },
+            });
+          } else {
+            // 对于非组件文件，我们需要更新所有依赖它的模块
+            updatedModules.add(mod);
+            server.moduleGraph.invalidateModule(mod);
+
+            // 递归处理所有依赖
+            const stack = [...importers];
+            while (stack.length) {
+              const current = stack.pop() as ModuleNode;
+              if (current && !updatedModules.has(current)) {
+                updatedModules.add(current);
+                stack.push(...Array.from(current.importers || []));
+              }
+            }
+          }
+        }
+
+        return Array.from(updatedModules);
       }
+
+      // 3. 其他文件类型，保持默认行为
+      return modules;
     },
   };
 };
