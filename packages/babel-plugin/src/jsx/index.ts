@@ -219,10 +219,6 @@ export function getAttrProps(path: NodePath<t.JSXElement>, state: State): Record
                 const value = path.scope.generateUidIdentifier('value');
                 const bindName = name.slice(5).toLocaleLowerCase();
                 props[bindName] = expression.node;
-                // props[bindName] = t.memberExpression(
-                //   t.identifier((expression.node as Identifier).name),
-                //   t.identifier('value'),
-                // );
                 props[`update${capitalize(bindName)}`] = t.arrowFunctionExpression(
                   [value],
                   t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),

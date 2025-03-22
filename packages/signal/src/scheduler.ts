@@ -1,64 +1,114 @@
-import type { EffectFn } from './signal';
+import type { EffectFn } from './effect';
 
-type Job = () => void;
-type PreFlushCb = () => void;
+/**
+ * Represents a job that can be scheduled for execution.
+ */
+export type Job = () => void;
 
-// Main job queue
+/**
+ * Represents a callback that should be executed before the main job queue.
+ */
+export type PreFlushCallback = () => void;
+
+/**
+ * Represents the possible flush timing strategies for effects.
+ * - 'pre': Execute before the main queue
+ * - 'post': Execute after the main queue
+ * - 'sync': Execute immediately
+ */
+export type FlushTiming = 'pre' | 'post' | 'sync';
+
+// Queue for main jobs
 const queue: Job[] = [];
+
 // Queue for pre-flush callbacks
-const activePreFlushCbs: PreFlushCb[] = [];
+const activePreFlushCbs: PreFlushCallback[] = [];
+
 // A resolved Promise for microtask scheduling
 const p = Promise.resolve();
-// Flag indicating if a flush is pending
+
+// Flag to prevent multiple flush operations from being scheduled
 let isFlushPending = false;
 
 /**
- * Wraps a function in a microtask and executes it in the next event loop.
- * @param fn - Function to be executed in the next event loop
- * @returns A Promise representing the completion of the microtask
+ * Schedules a function to be executed in the next microtask.
+ * If no function is provided, returns a Promise that resolves in the next microtask.
+ *
+ * @param fn - Optional function to execute
+ * @returns A Promise that resolves after the function executes
+ *
+ * @example
+ * ```ts
+ * // With a callback
+ * nextTick(() => console.log('Next tick'));
+ *
+ * // Without a callback
+ *
+ * console.log('Next tick');
+ * ```
  */
 export function nextTick(fn?: () => void): Promise<void> {
   return fn ? p.then(fn) : p;
 }
 
 /**
- * Adds a job to the main job queue and triggers the flush process.
- * @param job - The job function to be executed
+ * Adds a job to the main queue and ensures it will be executed.
+ * Jobs are deduplicated - the same job will not be added twice.
+ *
+ * @param job - The job to queue
+ *
+ * @example
+ * ```ts
+ * queueJob(() => {
+ *   console.log('This will run in the main queue');
+ * });
+ * ```
  */
 export function queueJob(job: Job): void {
   if (!queue.includes(job)) {
     queue.push(job);
-    queueFlush(); // Ensure that the job queue is processed
+    queueFlush();
   }
 }
 
 /**
- * Schedules the flush process for jobs.
- * If a flush is already pending, it returns early. Otherwise, it sets the flag
- * and schedules the flushJobs function to be executed in the next event loop.
+ * Schedules the queue to be flushed in the next microtask if it isn't already scheduled.
+ *
+ * @internal
  */
 function queueFlush(): void {
-  if (isFlushPending) {
-    return;
+  if (!isFlushPending) {
+    isFlushPending = true;
+    nextTick(flushJobs);
   }
-  isFlushPending = true;
-  nextTick(flushJobs);
 }
 
 /**
- * Adds a pre-flush callback to the pre-flush callback queue and triggers the flush process.
- * @param cb - The pre-flush callback function to be executed
+ * Adds a callback to be executed before the main queue is processed.
+ * Pre-flush callbacks are useful for performing setup work before effects run.
+ *
+ * @param cb - The callback to execute before the main queue
+ *
+ * @example
+ * ```ts
+ * queuePreFlushCb(() => {
+ *   console.log('This runs before the main queue');
+ * });
+ * ```
  */
-export function queuePreFlushCb(cb: PreFlushCb): void {
+export function queuePreFlushCb(cb: PreFlushCallback): void {
   queueCb(cb, activePreFlushCbs);
 }
 
 /**
- * Adds a callback to the specified queue and triggers the flush process.
- * @param cb - The callback function to be added to the queue
- * @param activeQueue - The active queue to which the callback is added
+ * Helper function to add a callback to a specific queue.
+ * Ensures callbacks are not duplicated within their queue.
+ *
+ * @param cb - The callback to add
+ * @param activeQueue - The queue to add the callback to
+ * @internal
  */
-function queueCb(cb: PreFlushCb, activeQueue: PreFlushCb[]): void {
+function queueCb(cb: PreFlushCallback, activeQueue: PreFlushCallback[]): void {
   if (!activeQueue.includes(cb)) {
     activeQueue.push(cb);
     queueFlush();
@@ -66,21 +116,35 @@ function queueCb(cb: PreFlushCb, activeQueue: PreFlushCb[]): void {
 }
 
 /**
- * Executes all jobs and pre-flush callbacks in the queue.
+ * Executes all queued jobs and pre-flush callbacks.
+ * This function runs in a microtask and processes the entire queue.
+ *
+ * @internal
  */
 function flushJobs(): void {
   isFlushPending = false;
+
+  // First run pre-flush callbacks
   flushPreFlushCbs();
+
+  // Then process the main queue
   let job: Job | undefined;
   while ((job = queue.shift())) {
-    if (job) {
+    try {
       job();
+    } catch (error) {
+      if (__DEV__) {
+        console.error('Error executing queued job:', error);
+      }
+      // In production, we continue processing the queue even if one job fails
     }
   }
 }
 
 /**
- * Executes all pre-flush callback functions.
+ * Executes all pre-flush callbacks.
+ *
+ * @internal
  */
 function flushPreFlushCbs(): void {
   while (activePreFlushCbs.length > 0) {
@@ -92,27 +156,27 @@ function flushPreFlushCbs(): void {
 }
 
 /**
- * Creates a scheduler function that runs the given useEffect function
- * with the specified flush strategy.
+ * Creates a scheduler function for an effect based on the specified flush timing.
+ * This is used internally by the effect system to control when effects are executed.
  *
- * The flush strategy can be one of the following:
+ * @param effect - The effect function to schedule
+ * @param flush - When to execute the effect
+ * @returns A scheduler function that will run the effect at the appropriate time
  *
- * - `'pre'`: Run the useEffect function as a pre-flush callback.
- * - `'post'`: Run the useEffect function in the next event loop.
- * - `'sync'`: Run the useEffect function immediately.
- *
- * The scheduler function is a function that takes no arguments.
- * When called, it schedules the useEffect function to be executed
- * according to the specified flush strategy.
+ * @internal
  */
-export function createScheduler(useEffect: EffectFn, flush: 'pre' | 'post' | 'sync') {
-  if (flush === 'sync') {
-    return () => useEffect();
-  } else if (flush === 'pre') {
-    return () => queuePreFlushCb(useEffect);
-  } else {
-    return () => {
-      nextTick(() => queueJob(useEffect));
-    };
+export function createScheduler(effect: EffectFn, flush: FlushTiming): () => void {
+  switch (flush) {
+    case 'sync':
+      return () => effect();
+    case 'pre':
+      return () => queuePreFlushCb(effect);
+    case 'post':
+      return () => queueJob(effect);
+    default:
+      if (__DEV__) {
+        console.warn(`Invalid flush timing: ${flush}. Defaulting to 'post'.`);
+      }
+      return () => queueJob(effect);
   }
 }

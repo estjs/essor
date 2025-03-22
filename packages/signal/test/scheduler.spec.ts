@@ -1,4 +1,7 @@
-import { createScheduler, nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+import { nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+
+// packages/signal/test/scheduler.spec.ts
+
 describe('nextTick', () => {
   it('should execute the function in the next microtask', async () => {
     const fn = vi.fn();
@@ -80,29 +83,50 @@ describe('queueJob', () => {
   });
 });
 
-describe('createScheduler', () => {
-  it('should schedule useEffect immediately for "sync" flush type', () => {
-    const useEffect = vi.fn();
-    const scheduler = createScheduler(useEffect, 'sync');
-    scheduler();
-    expect(useEffect).toHaveBeenCalled();
+describe('scheduler', () => {
+  it('should handle multiple jobs in correct order', async () => {
+    const order: number[] = [];
+
+    queueJob(() => order.push(1));
+    queueJob(() => order.push(2));
+    queueJob(() => order.push(3));
+
+    await nextTick();
+    expect(order).toEqual([1, 2, 3]);
   });
 
-  it('should schedule useEffect as a pre-flush callback for "pre" flush type', async () => {
-    const useEffect = vi.fn();
-    const scheduler = createScheduler(useEffect, 'pre');
-    scheduler();
+  it('should deduplicate jobs', async () => {
+    const counter = { count: 0 };
+    const job = () => counter.count++;
+
+    queueJob(job);
+    queueJob(job);
+    queueJob(job);
+
     await nextTick();
-    expect(useEffect).toHaveBeenCalled();
+    expect(counter.count).toBe(1);
   });
 
-  it('should schedule useEffect in the next tick for "post" flush type', async () => {
-    const useEffect = vi.fn();
-    const scheduler = createScheduler(useEffect, 'post');
-    scheduler();
-    expect(useEffect).not.toHaveBeenCalled(); // should not be called immediately
+  it('should handle pre-flush callbacks', async () => {
+    const order: string[] = [];
+
+    queuePreFlushCb(() => order.push('pre-1'));
+    queueJob(() => order.push('job-1'));
+    queuePreFlushCb(() => order.push('pre-2'));
+
     await nextTick();
+    expect(order).toEqual(['pre-1', 'pre-2', 'job-1']);
+  });
+
+  it('should handle nested queueJob calls', async () => {
+    const order: number[] = [];
+
+    queueJob(() => {
+      order.push(1);
+      queueJob(() => order.push(2));
+    });
+
     await nextTick();
-    expect(useEffect).toHaveBeenCalled();
+    expect(order).toEqual([1, 2]);
   });
 });

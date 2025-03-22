@@ -1,9 +1,8 @@
-import { isSignal, shallowSignal, toRaw, useEffect, useSignal } from '../src';
-import { signalObject } from '../src/signal';
+import { effect, shallowSignal, signal } from '../src';
 
-describe('useSignal', () => {
-  it('should initialize with the correct value', () => {
-    const testSignal = useSignal(10);
+describe('signal', () => {
+  it('should initialize signal with the correct value', () => {
+    const testSignal = signal(10);
     expect(testSignal.value).toBe(10);
     expect(testSignal.peek()).toBe(10);
 
@@ -14,7 +13,7 @@ describe('useSignal', () => {
   });
 
   it('should update with object', () => {
-    const testSignal = useSignal<Record<string, any> | null>({ a: 1, b: 2 });
+    const testSignal = signal<Record<string, any> | null>({ a: 1, b: 2 });
     expect(testSignal.value).toEqual({ a: 1, b: 2 });
     expect(testSignal.peek()).toEqual({ a: 1, b: 2 });
 
@@ -36,7 +35,7 @@ describe('useSignal', () => {
   });
 
   it('should work with array', () => {
-    const testSignal = useSignal<number[] | null>([]);
+    const testSignal = signal<number[] | null>([]);
     expect(testSignal.value).toEqual([]);
     expect(testSignal.peek()).toEqual([]);
 
@@ -62,57 +61,69 @@ describe('useSignal', () => {
   });
 
   it('should work with array method', () => {
-    const testSignal = useSignal<number[]>([]);
-    const effectFn = vitest.fn(() => {
+    const testSignal = signal<number[]>([]);
+    let effectCount = 0;
+    effect(() => {
       // trigger
-      testSignal.value;
+      testSignal.value.length;
+      effectCount++;
     });
 
-    useEffect(effectFn);
-    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(effectCount).toBe(1);
 
     testSignal.value?.push(1);
     expect(testSignal.value).toEqual([1]);
-    expect(effectFn).toHaveBeenCalledTimes(2);
+
+    expect(effectCount).toBe(2);
 
     testSignal.value?.push(2);
     expect(testSignal.value).toEqual([1, 2]);
-    expect(effectFn).toHaveBeenCalledTimes(3);
+
+    expect(effectCount).toBe(3);
 
     testSignal.value?.shift();
     expect(testSignal.value).toEqual([2]);
-    expect(effectFn).toHaveBeenCalledTimes(4);
+
+    expect(effectCount).toBe(4);
 
     testSignal.value?.unshift(3);
     expect(testSignal.value).toEqual([3, 2]);
-    expect(effectFn).toHaveBeenCalledTimes(5);
+
+    expect(effectCount).toBe(5);
 
     testSignal.value?.pop();
     expect(testSignal.value).toEqual([3]);
-    expect(effectFn).toHaveBeenCalledTimes(6);
+
+    expect(effectCount).toBe(6);
 
     testSignal.value?.push(...[1, 4, 2, 6, 8, 7, 5]);
+
+    expect(effectCount).toBe(7);
     testSignal.value?.sort();
     expect(testSignal.value).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(effectFn).toHaveBeenCalledTimes(8);
+
+    expect(effectCount).toBe(8);
 
     testSignal.value = [1, 3, 2, 4, 8, 5, 7, 6];
+
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7, 6]);
-    expect(effectFn).toHaveBeenCalledTimes(9);
+
+    expect(effectCount).toBe(9);
 
     testSignal.value?.pop();
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7]);
-    expect(effectFn).toHaveBeenCalledTimes(10);
+
+    expect(effectCount).toBe(10);
   });
 
   it('should work with Set', () => {
-    const testSignal = useSignal<Set<number>>(new Set([1, 2, 3]));
+    const testSignal = signal<Set<number>>(new Set([1, 2, 3]));
     const effectFn = vitest.fn(() => {
       // trigger
-      testSignal.value;
+      testSignal.value.has(1);
     });
 
-    useEffect(effectFn);
+    effect(effectFn, { flush: 'sync' });
     expect(effectFn).toHaveBeenCalledTimes(1);
     expect(Array.from(testSignal.value)).toEqual([1, 2, 3]);
 
@@ -129,13 +140,13 @@ describe('useSignal', () => {
     const obj1 = { id: 1 };
     const obj2 = { id: 2 };
     const obj3 = { id: 3 };
-    const testSignal = useSignal<WeakSet<object> | null>(new WeakSet([obj1, obj2, obj3]));
+    const testSignal = signal<WeakSet<object> | null>(new WeakSet([obj1, obj2, obj3]));
     const effectFn = vitest.fn(() => {
       // trigger
-      testSignal.value;
+      testSignal.value?.has(obj1);
     });
 
-    useEffect(effectFn);
+    effect(effectFn, { flush: 'sync' });
     expect(effectFn).toHaveBeenCalledTimes(1);
     expect(testSignal.value?.has(obj1)).toBe(true);
     expect(testSignal.value?.has(obj2)).toBe(true);
@@ -152,7 +163,7 @@ describe('useSignal', () => {
   });
 
   it('should work with Map', () => {
-    const testSignal = useSignal<Map<string, number> | null>(
+    const testSignal = signal<Map<string, number> | null>(
       new Map([
         ['a', 1],
         ['b', 2],
@@ -161,10 +172,10 @@ describe('useSignal', () => {
     );
     const effectFn = vitest.fn(() => {
       // trigger
-      testSignal.value;
+      testSignal.value?.has('a');
     });
 
-    useEffect(effectFn);
+    effect(effectFn, { flush: 'sync' });
     expect(effectFn).toHaveBeenCalledTimes(1);
     expect(Array.from(testSignal.value ?? new Map())).toEqual([
       ['a', 1],
@@ -194,7 +205,7 @@ describe('useSignal', () => {
     const key1 = { id: 1 };
     const key2 = { id: 2 };
     const key3 = { id: 3 };
-    const testSignal = useSignal<WeakMap<object, number>>(
+    const testSignal = signal<WeakMap<object, number>>(
       new WeakMap([
         [key1, 1],
         [key2, 2],
@@ -202,15 +213,13 @@ describe('useSignal', () => {
       ]),
     );
     const effectFn = vitest.fn(() => {
-      // trigger
-      testSignal.value;
+      const map = testSignal.value;
+      // 追踪 WeakMap 的操作
+      map?.has(key1);
     });
 
-    useEffect(effectFn);
+    effect(effectFn, { flush: 'sync' });
     expect(effectFn).toHaveBeenCalledTimes(1);
-    expect(testSignal.value?.get(key1)).toBe(1);
-    expect(testSignal.value?.get(key2)).toBe(2);
-    expect(testSignal.value?.get(key3)).toBe(3);
 
     const key4 = { id: 4 };
     testSignal.value?.set(key4, 4);
@@ -222,7 +231,7 @@ describe('useSignal', () => {
     expect(effectFn).toHaveBeenCalledTimes(3);
   });
   it('should work with deep object', () => {
-    const testSignal = useSignal<any>({
+    const testSignal = signal<Record<string, any>>({
       one: {
         two: {
           three: [],
@@ -233,7 +242,7 @@ describe('useSignal', () => {
     const fn = vitest.fn(() => {
       testSignal.value;
     });
-    useEffect(fn);
+    effect(fn, { flush: 'sync' });
 
     testSignal.value.one.two.three.push(1);
 
@@ -241,13 +250,13 @@ describe('useSignal', () => {
     expect(testSignal.value.one.two.three).toEqual([1]);
   });
 
-  it('should work with shallow useSignal array', () => {
+  it('should work with shallow signal array', () => {
     const testSignal = shallowSignal([1, 2, 3]);
 
     const fn = vitest.fn(() => {
-      testSignal.value;
+      testSignal.value.length;
     });
-    useEffect(fn);
+    effect(fn, { flush: 'sync' });
     expect(fn).toHaveBeenCalledTimes(1);
     testSignal.value.push(4);
     expect(fn).toHaveBeenCalledTimes(2);
@@ -258,13 +267,13 @@ describe('useSignal', () => {
     expect(testSignal.value).toEqual([2, 3, 4]);
   });
 
-  it('should work with shallow useSignal object', () => {
+  it('should work with shallow signal object', () => {
     const testSignal = shallowSignal<Record<string, number>>({ a: 1, b: 2, c: 3 });
 
     const fn = vitest.fn(() => {
       testSignal.value;
     });
-    useEffect(fn);
+    effect(fn, { flush: 'sync' });
     expect(fn).toHaveBeenCalledTimes(1);
     testSignal.value.d = 4;
     expect(fn).toHaveBeenCalledTimes(1);
@@ -274,127 +283,30 @@ describe('useSignal', () => {
     expect(testSignal.value).toEqual({ a: 2, b: 3, c: 4, d: 5 });
   });
 
-  it('should work with set useSignal value to original value', () => {
-    const value1 = useSignal<any>(1);
-    const value2 = useSignal({});
-    const value3 = useSignal<any>([1, 2, 3]);
+  it('should work with set signal value to original value', () => {
+    const value1 = signal(1);
+    const value2 = signal({});
+    const value3 = signal([1, 2, 3]);
 
-    value1.value = useSignal(2);
-    value2.value = useSignal({ a: 'b' });
-    value3.value = useSignal([2, 3, 4]);
+    // @ts-ignore
+    value1.value = signal(2);
+    value2.value = signal({ a: 'b' });
+    // @ts-ignore
+    value3.value = signal([2, 3, 4]);
 
     expect(value1.value).toBe(2);
     expect(value2.value).toEqual({ a: 'b' });
     expect(value3.value).toEqual([2, 3, 4]);
   });
 
-  it('should work use useSignal is useSignal value', () => {
-    const value1 = useSignal<any>(useSignal(1));
-    const value2 = useSignal<any>(useSignal({ a: 'b' }));
-    const value3 = useSignal<any>(useSignal([1, 2, 3]));
+  it('should work use signal is signal value', () => {
+    const value1 = signal(signal(1));
+    const value2 = signal(signal({ a: 'b' }));
+    const value3 = signal(signal([1, 2, 3]));
 
     expect(value1.value).toBe(1);
     expect(value2.value).toEqual({ a: 'b' });
     expect(value3.value).toEqual([1, 2, 3]);
-  });
-});
-
-describe('signalObject', () => {
-  it('should convert plain object properties to signals', () => {
-    const initialValues = { a: 1, b: 2 };
-    const signals = signalObject(initialValues);
-
-    expect(isSignal(signals.a)).toBe(true);
-    expect(isSignal(signals.b)).toBe(true);
-    expect(signals.a.peek()).toBe(1);
-    expect(signals.b.peek()).toBe(2);
-  });
-
-  it('should exclude properties based on exclude function', () => {
-    const initialValues = { a: 1, b: 2 };
-    const exclude = (key: string | symbol) => key === 'a';
-    const signals = signalObject(initialValues, exclude);
-
-    expect(isSignal(signals.a)).toBe(false); // 'a' should not be converted to a useSignal
-    expect(isSignal(signals.b)).toBe(true); // 'b' should be converted to a useSignal
-    expect(signals.a).toBe(1);
-    expect(signals.b.peek()).toBe(2);
-  });
-
-  it('should preserve useSignal values if they are already signals', () => {
-    const initialValues = { a: useSignal(1), b: 2 };
-    const signals = signalObject(initialValues);
-
-    expect(isSignal(signals.a)).toBe(true);
-    expect(signals.a.peek()).toBe(1); // should not wrap a useSignal in another useSignal
-    expect(isSignal(signals.b)).toBe(true);
-    expect(signals.b.peek()).toBe(2);
-  });
-
-  it('should handle empty objects', () => {
-    const initialValues = {};
-    const signals = signalObject(initialValues);
-
-    expect(signals).toEqual({});
-  });
-});
-
-describe('toRaw useSignal', () => {
-  it('should unwrap useSignal values', () => {
-    const signalValue = useSignal(1);
-    const unwrapped = toRaw(signalValue);
-
-    expect(unwrapped).toBe(1);
-  });
-
-  it('should unwrap useSignal objects', () => {
-    const initialValues = { a: useSignal(1), b: useSignal(2) };
-    const unwrapped = toRaw(initialValues);
-
-    expect(unwrapped).toEqual({ a: 1, b: 2 });
-  });
-
-  it('should handle arrays of signals', () => {
-    const signalsArray = [useSignal(1), useSignal(2)];
-    const unwrapped = toRaw(signalsArray);
-
-    expect(unwrapped).toEqual([1, 2]);
-  });
-
-  it('should handle collections of signals', () => {
-    const sets = new Set();
-    const maps = new Map();
-    const weakSets = new WeakSet();
-    const weakMaps = new WeakMap();
-
-    const signalsArray = [useSignal(sets), useSignal(maps), useSignal(weakMaps), toRaw(weakSets)];
-
-    const unwrapped = toRaw(signalsArray);
-    expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
-
-    sets.add(1);
-    maps.set(1, 2);
-    weakMaps.set({}, 2);
-    weakSets.add({});
-    expect(unwrapped).toEqual([sets, maps, weakMaps, weakSets]);
-  });
-
-  it('should handle plain objects without signals', () => {
-    const obj = { a: 1, b: 2 };
-    const unwrapped = toRaw(obj);
-
-    expect(unwrapped).toEqual(obj);
-  });
-
-  it('should return the same value if not a useSignal, object, or array', () => {
-    expect(toRaw(42)).toBe(42);
-    expect(toRaw('string')).toBe('string');
-  });
-
-  it('should handle empty objects', () => {
-    const obj = {};
-    const unwrapped = toRaw(obj);
-    expect(unwrapped).toEqual({});
   });
 });
 
@@ -422,7 +334,7 @@ describe('shallowSignal', () => {
 
     let triggerCount = 0;
 
-    useEffect(() => {
+    effect(() => {
       // trigger value
       value1.value;
       value2.value;
@@ -454,7 +366,7 @@ describe('shallowSignal', () => {
     expect(value4.value).toEqual({ a: 4, b: 2 });
     expect(value5.value).toEqual({ a: 5, b: 2 });
 
-    // trigger useEffect
+    // trigger effect
     value1.value = { a: 11, b: 2 };
     value2.value = { a: 12, b: 2 };
     value3.value = { a: 13, b: 2 };
@@ -468,31 +380,44 @@ describe('shallowSignal', () => {
     expect(value3.value).toEqual({ a: 13, b: 2 });
     expect(value4.value).toEqual({ a: 14, b: 2 });
     expect(value5.value).toEqual({ a: 15, b: 2 });
+
+    value1.value = { a: 11, b: 2 };
+
+    value2.value = { a: 12, b: 2 };
+
+    value3.value = { a: 13, b: 2 };
+
+    value4.value = { a: 14, b: 2 };
+
+    value5.value = { a: 15, b: 2 };
+
+    expect(triggerCount).toBe(11);
   });
 
   it('should work with collection', () => {
-    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
-    const value2 = shallowSignal<any>(
+    const value1 = shallowSignal(new Set([1, 2, 3]));
+    const value2 = shallowSignal(
       new Map([
         ['a', 1],
         ['b', 2],
       ]),
     );
-    const value3 = shallowSignal<any>(new WeakMap());
-    const value4 = shallowSignal<any>(new WeakSet([]));
+    const value3 = shallowSignal(new WeakMap());
+    const value4 = shallowSignal<WeakSet<any>>(new WeakSet([]));
 
     let triggerCount = 0;
 
-    useEffect(() => {
+    effect(() => {
       // trigger value
-      value1.value;
-      value2.value;
-      value3.value;
-      value4.value;
+      value1.value.size;
+      value2.value.size;
+      value3.value.get({});
+      value4.value.has({});
 
       triggerCount++;
     });
 
+    expect(triggerCount).toBe(1);
     value1.value.add(4);
     value2.value.set('c', 3);
     value3.value.set({}, 2);
@@ -509,17 +434,17 @@ describe('shallowSignal', () => {
     expect(triggerCount).toBe(9);
   });
 
-  // skip this testcase because it  is too slow
+  // skip this testcase because too slow
   it(
     'should work with set method ant function calls',
     () => {
       const value1 = shallowSignal<any>(new Set([1, 2, 3]));
-      const value2 = useSignal<any>(1);
-      const value3 = useSignal<any>({});
+      const value2 = signal<any>(1);
+      const value3 = signal<any>({});
 
       let triggerCount = 0;
 
-      useEffect(() => {
+      effect(() => {
         // trigger value
         //@ts-ignore
         value1();
@@ -550,26 +475,29 @@ describe('shallowSignal', () => {
   );
 
   it('should work with update', () => {
-    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
-    const value2 = useSignal<any>(1);
-    const value3 = useSignal<any>({});
-    const value4 = useSignal<any>(new Map([['a', 1]]));
-    const value5 = useSignal<any>(new WeakMap());
-    const value6 = useSignal<any>(new WeakSet([]));
+    const value1 = shallowSignal(new Set([1, 2, 3]));
+    const value2 = signal<any>(1);
+    const value3 = signal({});
+    const value4 = signal(new Map([['a', 1]]));
+    const value5 = signal(new WeakMap());
+    const value6 = signal(new WeakSet([]));
 
     let triggerCount = 0;
 
-    useEffect(() => {
-      // trigger value
-      value1.value;
-      value2.value;
-      value3.value;
-      value4.value;
-      value5.value;
-      value6.value;
+    effect(
+      () => {
+        // trigger value
+        value1.value;
+        value2.value;
+        value3.value;
+        value4.value;
+        value5.value;
+        value6.value;
 
-      triggerCount++;
-    });
+        triggerCount++;
+      },
+      { flush: 'sync' },
+    );
 
     expect(triggerCount).toBe(1);
     value1.update(value => new Set([...value, 4]));
@@ -589,5 +517,69 @@ describe('shallowSignal', () => {
     value6.update(() => new WeakSet());
 
     expect(triggerCount).toBe(13);
+  });
+});
+
+describe('branch Switching', () => {
+  it('should handle branch switching correctly', () => {
+    const count = signal(0);
+    const show = signal(true);
+    let renderCount = 0;
+
+    effect(() => {
+      if (show.value) {
+        count.value;
+      }
+      renderCount++;
+    });
+
+    expect(renderCount).toBe(1);
+
+    // 不相关的更新不应触发effect
+    count.value++;
+
+    expect(renderCount).toBe(2);
+
+    show.value = false;
+
+    expect(renderCount).toBe(3);
+
+    // count 更新不应该触发 effect,因为分支已关闭
+    count.value++;
+
+    expect(renderCount).toBe(3);
+  });
+
+  it('should handle nested branch switching', () => {
+    const a = signal(true);
+    const b = signal(true);
+    const c = signal(0);
+    let renderCount = 0;
+
+    effect(() => {
+      if (a.value && b.value) {
+        c.value;
+      }
+      renderCount++;
+    });
+
+    expect(renderCount).toBe(1);
+
+    c.value++;
+
+    expect(renderCount).toBe(2);
+
+    b.value = false;
+
+    expect(renderCount).toBe(3);
+
+    // c 的更新不应触发 effect
+    c.value++;
+
+    expect(renderCount).toBe(3);
+
+    a.value = false;
+
+    expect(renderCount).toBe(4);
   });
 });

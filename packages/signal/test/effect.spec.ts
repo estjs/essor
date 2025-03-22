@@ -1,23 +1,28 @@
-import { useEffect, useSignal } from '../src';
-import { nextTick } from '../src/scheduler';
+import { effect, signal } from '../src';
 
-describe('useEffect', () => {
-  it('should run the useEffect function', () => {
+describe('effect', () => {
+  it('should run the effect function', () => {
     let testValue = 0;
-    useEffect(() => {
-      testValue = 10;
-    });
+    effect(
+      () => {
+        testValue = 10;
+      },
+      { flush: 'sync' },
+    );
     expect(testValue).toBe(10);
   });
 
-  it('should get correct value after useEffect execution', () => {
-    const name = useSignal('Dnt');
+  it('should get correct value after effect execution', () => {
+    const name = signal('Dnt');
 
     let effectTimes = 0;
-    const dispose = useEffect(() => {
-      effectTimes++;
-      name.value;
-    });
+    const dispose = effect(
+      () => {
+        effectTimes++;
+        name.value;
+      },
+      { flush: 'sync' },
+    );
     expect(effectTimes).toBe(1);
     dispose();
     name.value = 'John';
@@ -26,37 +31,38 @@ describe('useEffect', () => {
     expect(effectTimes).toBe(1);
   });
 
-  it('should re-run the useEffect when useSignal value changes', () => {
-    const testSignal = useSignal([1, 2, 3]);
+  it('should re-run the effect when signal value changes', () => {
+    const testSignal = signal([1, 2, 3]);
     let effectTimes = 0;
-    useEffect(() => {
-      testSignal.value;
+    effect(() => {
+      testSignal.value.length;
       effectTimes++;
     });
     expect(effectTimes).toBe(1);
     testSignal.value.push(4);
+
     expect(effectTimes).toBe(2);
   });
 
   it('should handle different flush options', () => {
     const mockEffect = vi.fn();
-    const dispose = useEffect(mockEffect, { flush: 'sync' });
+    const dispose = effect(mockEffect, { flush: 'sync' });
     expect(mockEffect).toHaveBeenCalled();
     dispose();
   });
 
   it('should handle "pre" flush option', () => {
     const mockEffect = vi.fn();
-    const dispose = useEffect(mockEffect, { flush: 'pre' });
+    const dispose = effect(mockEffect, { flush: 'pre' });
     // Effect should be scheduled to run on pre-flush
     expect(mockEffect).toHaveBeenCalled();
     dispose();
   });
 
-  it('should handle "post" flush option', async () => {
+  it('should handle "post" flush option', () => {
     const mockEffect = vi.fn();
-    useEffect(mockEffect, { flush: 'post' });
-    await nextTick();
+    effect(mockEffect, { flush: 'post' });
+
     expect(mockEffect).toHaveBeenCalled();
   });
 
@@ -64,8 +70,8 @@ describe('useEffect', () => {
     const onTrack = vi.fn();
     const onTrigger = vi.fn();
 
-    const name = useSignal('Dnt');
-    const dispose = useEffect(
+    const name = signal('Dnt');
+    const dispose = effect(
       () => {
         name.value;
       },
@@ -77,20 +83,20 @@ describe('useEffect', () => {
     dispose();
   });
 
-  it('should not call useEffect function after disposal', () => {
+  it('should not call effect function after disposal', () => {
     const mockEffect = vi.fn();
-    const dispose = useEffect(mockEffect);
+    const dispose = effect(mockEffect);
     dispose();
-    const name = useSignal('Dnt');
+    const name = signal('Dnt');
     name.value = 'Changed';
     expect(mockEffect).toHaveBeenCalledTimes(1);
   });
 
   it('should clean up correctly', () => {
     const mockEffect = vi.fn();
-    const dispose = useEffect(mockEffect);
+    const dispose = effect(mockEffect);
     dispose();
-    const name = useSignal('Dnt');
+    const name = signal('Dnt');
     name.value = 'Changed';
     expect(mockEffect).toHaveBeenCalledTimes(1);
   });

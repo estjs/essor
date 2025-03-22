@@ -10,16 +10,9 @@ import {
   warn,
 } from '@estjs/shared';
 import { nextTick } from './scheduler';
-import {
-  type ComputedImpl,
-  type SignalImpl,
-  isComputed,
-  isReactive,
-  isSignal,
-  useEffect,
-} from './signal';
+import { type Computed, type Signal, effect, isComputed, isReactive, isSignal } from './';
 
-export type WatchSource<T = any> = SignalImpl<T> | ComputedImpl<T> | (() => T);
+export type WatchSource<T = any> = Signal<T> | Computed<T> | (() => T);
 export type WatchCallback<V = any, OV = any> = (value: V, oldValue: OV) => any;
 export type WatchStopHandle = () => void;
 
@@ -37,7 +30,7 @@ export interface WatchOptions<Immediate = boolean> {
 }
 
 // Overload signatures
-export function useWatch<
+export function watch<
   T extends Readonly<WatchSource<unknown>[] | object>,
   Immediate extends boolean = false,
 >(
@@ -46,20 +39,20 @@ export function useWatch<
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function useWatch<T, Immediate extends boolean = false>(
+export function watch<T, Immediate extends boolean = false>(
   source: WatchSource<T>,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-export function useWatch<T extends object, Immediate extends boolean = false>(
+export function watch<T extends object, Immediate extends boolean = false>(
   source: T,
   cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
   options?: WatchOptions<Immediate>,
 ): WatchStopHandle;
 
-// Main implementation of useWatch
-export function useWatch<T = any>(
+// Main implementation of watch
+export function watch<T = any>(
   source: WatchSource<T> | WatchSource<T>[] | object,
   cb: WatchCallback<T>,
   options?: WatchOptions,
@@ -81,13 +74,13 @@ function queueWatcher(fn: Function) {
 }
 
 function flushWatchers() {
-  watcher && watcher();
+  watcher?.();
   watcher = null;
   flushing = false;
 }
 
 /**
- * Creates a watcher for the given source, which can be a useSignal, useComputed, useReactive object, or an array of them.
+ * Creates a watcher for the given source, which can be a signal, computed, reactive object, or an array of them.
  * The watcher will be triggered whenever the source value changes, and will call the given callback function with the new value and old value.
  * @param {WatchSource | WatchSource[] | object} source The source to watch.
  * @param {WatchCallback | null} cb The callback function to call when the source value changes.
@@ -98,10 +91,10 @@ function flushWatchers() {
  *
  * @examples
  *
- * const count = useSignal(0);
- * const name = useSignal('Alice');
+ * const count = signal(0);
+ * const name = signal('Alice');
  *
- * useWatch([count, name], ([newCount, newName], [oldCount, oldName]) => {
+ * watch([count, name], ([newCount, newName], [oldCount, oldName]) => {
  *   console.log(`Count changed from ${oldCount} to ${newCount}`);
  *  })
  *
@@ -131,7 +124,7 @@ function doWatch(
 
   if (cb && deep) {
     const baseGetter = getter;
-    const depth = deep === true ? Infinity : deep;
+    const depth = deep === true ? Number.POSITIVE_INFINITY : deep;
     getter = () => traverse(baseGetter(), depth);
   }
 
@@ -157,7 +150,7 @@ function doWatch(
     }
   };
 
-  const stop = useEffect(effectFn, { flush: 'sync' });
+  const stop = effect(effectFn, { flush: 'sync' });
   runCb = true;
 
   if (immediate) {
@@ -168,14 +161,24 @@ function doWatch(
 }
 
 export function resolveSource(s: WatchSource | object) {
-  if (isSignal(s) || isComputed(s)) return s.value;
-  if (isReactive(s)) return { ...s };
-  if (isFunction(s)) return (s as Function)();
+  if (isSignal(s) || isComputed(s)) {
+    return s.value;
+  }
+  if (isReactive(s)) {
+    return { ...s };
+  }
+  if (isFunction(s)) {
+    return (s as Function)();
+  }
   warn('Invalid source', s);
   return noop;
 }
 
-export function traverse(value: unknown, depth: number = Infinity, seen?: Set<unknown>): unknown {
+export function traverse(
+  value: unknown,
+  depth: number = Number.POSITIVE_INFINITY,
+  seen?: Set<unknown>,
+): unknown {
   if (depth <= 0 || !isObject(value)) {
     return value;
   }
@@ -187,7 +190,7 @@ export function traverse(value: unknown, depth: number = Infinity, seen?: Set<un
   seen.add(value);
   depth--;
   if (isSignal(value)) {
-    traverse((value as SignalImpl<any>).value, depth, seen);
+    traverse((value as Signal<any>).value, depth, seen);
   } else if (isArray(value)) {
     for (const element of value) {
       traverse(element, depth, seen);
