@@ -22,7 +22,7 @@ import {
 } from './common';
 import { generateChildrenMaps, processChildren } from './common';
 import type { State } from '../types';
-import type { OptionalMemberExpression } from '@babel/types';
+import type { Identifier } from '@babel/types';
 import type { NodePath } from '@babel/core';
 let currentResult: ClientResult;
 
@@ -57,8 +57,8 @@ export function transformJSX(path: NodePath<JSXElement>) {
       // Check if it's a root-level component (function return value or variable declaration)
       if (isRoot) {
         // Create HMR wrapper node
-        const hmrWrapped = createHMRWrapper(path, tagName, currentResult.props);
-        path.replaceWith(hmrWrapped);
+        // const hmrWrapped = createHMRWrapper(path, tagName, currentResult.props);
+        // path.replaceWith(hmrWrapped);
       } else {
         // Nested component processing - ensure the component can be tracked
         path.replaceWith(createNestedComponentNode(path, tagName));
@@ -291,7 +291,14 @@ export function getAttrProps(
                 props[bindName] = expression.node;
                 props[`update${capitalize(bindName)}`] = t.arrowFunctionExpression(
                   [value],
-                  t.assignmentExpression('=', expression.node as OptionalMemberExpression, value),
+                  t.assignmentExpression(
+                    '=',
+                    t.memberExpression(
+                      t.identifier((expression.node as Identifier).name),
+                      t.identifier('value'),
+                    ),
+                    value,
+                  ),
                 );
               } else {
                 if (expression.isConditionalExpression()) {

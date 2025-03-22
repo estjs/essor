@@ -147,7 +147,7 @@ export function coerceNode(data: unknown): NodeOrComponent {
  */
 export function insert(
   parent: Node,
-  node: Node | (() => NodeOrComponent | NodeOrComponent[]),
+  node: NodeOrComponent | NodeOrComponent[] | (() => NodeOrComponent | NodeOrComponent[]),
   before?: Node,
 ): void {
   if (!parent) {
@@ -156,21 +156,18 @@ export function insert(
 
   const context = getCurrentContext()!;
   context.renderedIndex++;
-  const cleanup = effect(
-    () => {
-      const renderedNode = getOrInitRenderedNodes(context, context.renderedIndex);
-      const result = typeof node === 'function' ? node() : node;
-      const newNodes = coerceArray(result).map(coerceNode) as Node[];
+  const cleanup = effect(() => {
+    const renderedNode = getOrInitRenderedNodes(context, context.renderedIndex);
+    const result = typeof node === 'function' ? node() : node;
+    const newNodes = coerceArray(result).map(coerceNode) as Node[];
 
-      context.renderedNodes[context.renderedIndex] = patchChildren(
-        parent,
-        renderedNode,
-        newNodes,
-        before,
-      );
-    },
-    { flush: 'post' },
-  );
+    context.renderedNodes[context.renderedIndex] = patchChildren(
+      parent,
+      renderedNode,
+      newNodes,
+      before,
+    );
+  });
 
   // Mark this cleanup as an effect cleanup
   context.cleanup.add(cleanup);

@@ -1,7 +1,7 @@
 import { __version } from './version';
 
-export * from '../../template';
-export * from '../../signal';
+export * from '@estjs/signal';
+export * from '@estjs/template';
 
 if (globalThis) {
   globalThis.__est_version__ = __version;

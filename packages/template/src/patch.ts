@@ -1,13 +1,8 @@
 import { isFalsy } from '@estjs/shared';
 import { isComponent } from './renderer';
 import { ComponentNode } from './componentNode';
+import { isFragment } from './components';
 import type { FragmentNode, NodeOrComponent } from './types';
-
-// Define isFragment function since we can't locate the implementation
-// This is a temporary fix until we find the correct import
-function isFragment(node: unknown): boolean {
-  return node !== null && typeof node === 'object' && 'childNodes' in node && 'isConnected' in node;
-}
 
 /**
  * Patches children of a parent node with new children.
@@ -223,9 +218,7 @@ export function insertChild(
     child.mount(parent, beforeNode);
     return;
   }
-  if (globalThis.isHydrating) {
-    return;
-  }
+
   if (beforeNode) {
     parent.insertBefore(child as Node, beforeNode);
   } else {
