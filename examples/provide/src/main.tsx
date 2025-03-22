@@ -1,4 +1,4 @@
-import { type InjectionKey, provide, reactive } from 'est';
+import { type InjectionKey, provide, reactive } from '@estjs/core';
 import InjectComponent from './inject';
 
 export const ProvideKey: InjectionKey<{ count: number }> = Symbol('ProvideKey');

@@ -1,4 +1,4 @@
-import { getTransform } from './transformUtil';
+import { getTransform } from './util';
 const transformCode = getTransform('jsx', { server: 'client', hmr: false });
 describe('jsx transform', () => {
   it('transforms simple JSX element', () => {

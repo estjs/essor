@@ -1,6 +1,12 @@
 import { transformProgram } from './program';
 import { replaceProps } from './transformers/props';
 import { transformJSX } from './jsx';
+import {
+  replaceSymbol,
+  symbolArrayPattern,
+  symbolIdentifier,
+  symbolObjectPattern,
+} from './transformers/symbol';
 import type { PluginObj } from '@babel/core';
 
 export default function (): PluginObj {
@@ -16,8 +22,15 @@ export default function (): PluginObj {
 
     visitor: {
       Program: transformProgram,
+
       FunctionDeclaration: replaceProps,
       ArrowFunctionExpression: replaceProps,
+
+      VariableDeclarator: replaceSymbol,
+      Identifier: symbolIdentifier,
+      ObjectPattern: symbolObjectPattern,
+      ArrayPattern: symbolArrayPattern,
+
       JSXElement: transformJSX,
       JSXFragment: transformJSX,
     },

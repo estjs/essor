@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx SSG transform > should work with CSS-in-JS in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", " data-styled=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = [];
 const StyledComponent = ({
@@ -12,7 +12,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with async data in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >", "<!--2--></div>"],
   _tmpl$2 = [];
 const AsyncComponent = async ({
@@ -25,21 +25,21 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with bind api 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" ", ">Paragraph 1</p><p data-idx=\\"3\\" >Paragraph 2</p></div>"];
 const value = 1;
 _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("value", _escapeHTML$(value), false));"
 `;
 
 exports[`jsx SSG transform > should work with comment in JSX 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" ", ">Paragraph 1</p><p data-idx=\\"3\\" >Paragraph 2</p></div>"];
 const value = 1;
 _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("value", _escapeHTML$(value), false));"
 `;
 
 exports[`jsx SSG transform > should work with conditional rendering in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >", "<!--2-->", "<!--3--></div>"],
   _tmpl$2 = ["<p data-idx=\\"1\\" >Visible Content</p>"],
   _tmpl$3 = ["<span data-idx=\\"1\\" >True</span>"],
@@ -49,7 +49,7 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(isVisible 
 `;
 
 exports[`jsx SSG transform > should work with context in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-theme=\\"dark\\">Themed Content</div>"],
   _tmpl$2 = [];
 const ThemeContext = {
@@ -62,7 +62,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with data fetching in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-ssr-data=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = [];
 const DataComponent = ({
@@ -72,7 +72,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with error handling in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >Error Page</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" >Protected Content</div>"],
   _tmpl$3 = [];
@@ -90,14 +90,14 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with event handlers in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<button data-idx=\\"1\\" >Click me</button>"];
 const handleClick = () => console.log('clicked');
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with head management in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<head data-idx=\\"1\\"  data-ssr=\\"true\\">", "<!--2--></head>"],
   _tmpl$2 = ["<title data-idx=\\"1\\" >Page Title</title>"],
   _tmpl$3 = ["<meta data-idx=\\"1\\"  name=\\"description\\" content=\\"Page description\\"", "/>"],
@@ -109,13 +109,13 @@ const element = _renderSSG$(_tmpl$4, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with hydration attributes 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-hydrate=\\"true\\">Hydration Content</div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with list rendering in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<ul data-idx=\\"1\\" >", "<!--2--></ul>"],
   _tmpl$2 = ["<li data-idx=\\"1\\" ", ">", "<!--2--></li>"];
 const items = ['Item 1', 'Item 2', 'Item 3'];
@@ -123,7 +123,7 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(items.map(
 `;
 
 exports[`jsx SSG transform > should work with nested components and props in SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >Name:", "<!--2-->, Age:", "<!--3--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" >", "<!--2-->", "<!--3--></div>"];
 const Child = ({
@@ -140,7 +140,7 @@ const Parent = () => _renderSSG$(_tmpl$2, _getHydrationKey$(), _escapeHTML$(_esc
 `;
 
 exports[`jsx SSG transform > should work with static API routes 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-api=\\"true\\"", ">", "<!--2--></div>"],
   _tmpl$2 = [];
 const StaticApi = ({
@@ -151,7 +151,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static data fetching in SSG 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-static=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = [];
 const StaticDataComponent = ({
@@ -161,7 +161,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static environment variables 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-env=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -172,7 +172,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static error pages 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-error=\\"true\\"", "><h1 data-idx=\\"2\\" >", "<!--3--></h1><p data-idx=\\"4\\" >", "<!--5--></p></div>"],
   _tmpl$2 = [];
 const StaticError = ({
@@ -183,7 +183,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static headers 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-headers=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -194,7 +194,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static image optimization 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<img data-idx=\\"1\\" ", " data-static-image=\\"true\\"", "/>"],
   _tmpl$2 = [];
 const StaticImage = ({
@@ -205,7 +205,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static locales 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -217,7 +217,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static manifest.json 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-manifest=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -228,7 +228,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static metadata 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<head data-idx=\\"1\\"  data-static-metadata=\\"true\\"><title data-idx=\\"2\\" >", "<!--3--></title><meta data-idx=\\"4\\"  name=\\"description\\"", "/></head>"],
   _tmpl$2 = [];
 const StaticMetadata = ({
@@ -238,7 +238,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static middleware 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-middleware=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = [];
 const StaticMiddleware = ({
@@ -248,7 +248,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static paths generation 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-paths=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -259,7 +259,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static props generation 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-props=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -270,7 +270,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static redirects 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-redirect=\\"true\\"", "></div>"],
   _tmpl$2 = [];
 const StaticRedirect = ({
@@ -281,7 +281,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static rewrites 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-rewrite=\\"true\\"", "></div>"],
   _tmpl$2 = [];
 const StaticRewrite = ({
@@ -292,7 +292,7 @@ const element = _renderSSG$(_tmpl$2, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static robots.txt 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-robots=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -303,7 +303,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static security headers 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-security=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -314,7 +314,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with static sitemap.xml 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  data-sitemap=\\"true\\">", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", "></div>"],
   _tmpl$3 = [];
@@ -325,7 +325,7 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with streaming SSR 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >", "<!--2--></div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\" ", ">", "<!--2--></div>"],
   _tmpl$3 = [];
@@ -336,43 +336,43 @@ const element = _renderSSG$(_tmpl$3, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with JSX fragment 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<p data-idx=\\"1\\" >Paragraph 1</p><p data-idx=\\"2\\" >Paragraph 2</p>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with JSX fragment as children 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" >Paragraph 1</p><p data-idx=\\"3\\" >Paragraph 2</p></div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with SVG tags 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<svg data-idx=\\"1\\" ><circle data-idx=\\"2\\"  cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\"></circle></svg>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with attributes 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\"  id=\\"myId\\" class=\\"myClass\\">Hello, World!</div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with boolean attribute 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<input data-idx=\\"1\\"  disabled=\\"true\\"", "/>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with children 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" >Paragraph 1</p><p data-idx=\\"3\\" >Paragraph 2</p></div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with class and style attributes 1`] = `
-"import { computed as _computed$, renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { computed as _computed$, renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">Hello, World!</div>"];
 const hasClass = true;
 const style = {
@@ -383,21 +383,21 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("class", _
 `;
 
 exports[`jsx SSG transform > transforms JSX element with conditional attributes 1`] = `
-"import { computed as _computed$, renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { computed as _computed$, renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">Hello, World!</div>"];
 const hasClass = true;
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("class", _escapeHTML$(_computed$(() => hasClass ? 'myClass' : 'otherClass')), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with dynamic expressions 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >Hello,", "<!--2-->!</div>"];
 const name = 'John';
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(name));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with function components 1`] = `
-"import { createSSGComponent as _createSSGComponent$, escapeHTML as _escapeHTML$, renderSSG as _renderSSG$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { createSSGComponent as _createSSGComponent$, escapeHTML as _escapeHTML$, renderSSG as _renderSSG$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >", "<!--2-->", "<!--3--></div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(_escapeHTML$(_createSSGComponent$(MyComponent, {
   "text": "Component 1"
@@ -407,7 +407,7 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(_escapeHTM
 `;
 
 exports[`jsx SSG transform > transforms JSX element with nested expressions and children 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" >", "<!--3-->'s Profile</p><ul data-idx=\\"4\\" >", "<!--5--></ul></div>"],
   _tmpl$2 = ["<li data-idx=\\"1\\" ", ">Item", "<!--2--></li>"];
 const name = 'John';
@@ -417,32 +417,32 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(name), _es
 `;
 
 exports[`jsx SSG transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">Hello, World!</div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("id", _escapeHTML$(null), false), _setSSGAttr$("class", _escapeHTML$(undefined), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with null and undefined children 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >", "<!--2--><p data-idx=\\"3\\" >Paragraph 1</p>", "<!--4-->", "<!--5--><p data-idx=\\"6\\" >Paragraph 2</p></div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(null), _escapeHTML$(undefined), _escapeHTML$(false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with null and undefined in expressions 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><p data-idx=\\"2\\" >", "<!--3-->'s Profile</p>", "<!--4--><p data-idx=\\"5\\" >Paragraph 2</p></div>"];
 const name = null;
 const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _escapeHTML$(name), _escapeHTML$(undefined));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with self-closing tags 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ><img data-idx=\\"2\\"  src=\\"image.jpg\\" alt=\\"Image 1\\"", "/><input data-idx=\\"3\\"  type=\\"text\\"", "/><br data-idx=\\"4\\" ", "/></div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with spread attributes 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">Hello, World!</div>"];
 const props = {
   id: 'myId',
@@ -452,7 +452,7 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("_$spread$
 `;
 
 exports[`jsx SSG transform > transforms JSX element with style attribute 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" ", ">Hello, World!</div>"];
 const style = {
   color: 'red',
@@ -462,7 +462,7 @@ const element = _renderSSG$(_tmpl$, _getHydrationKey$(), _setSSGAttr$("style", _
 `;
 
 exports[`jsx SSG transform > transforms simple JSX element 1`] = `
-"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "est";
+"import { renderSSG as _renderSSG$, escapeHTML as _escapeHTML$, setSSGAttr as _setSSGAttr$, getHydrationKey as _getHydrationKey$ } from "@estjs/server";
 const _tmpl$ = ["<div data-idx=\\"1\\" >Hello, World!</div>"];
 const element = _renderSSG$(_tmpl$, _getHydrationKey$());"
 `;

@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx SSR transform > should work with CSS-in-JS in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-styled>");
 const StyledComponent = ({
   className,
@@ -20,7 +20,7 @@ const element = _createComponent$(StyledComponent, {
 `;
 
 exports[`jsx SSR transform > should work with async data in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>");
 const AsyncComponent = async ({
   data
@@ -39,7 +39,7 @@ const element = _createComponent$(AsyncComponent, {
 `;
 
 exports[`jsx SSR transform > should work with bind api 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
 const value = 1;
 (() => {
@@ -52,7 +52,7 @@ const value = 1;
 `;
 
 exports[`jsx SSR transform > should work with comment in JSX 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
 const value = 1;
 (() => {
@@ -65,7 +65,7 @@ const value = 1;
 `;
 
 exports[`jsx SSR transform > should work with conditional rendering in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><!>"),
   _tmpl$2 = _getNextElement$("<p>Visible Content"),
   _tmpl$3 = _getNextElement$("<span>True"),
@@ -90,7 +90,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with context in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-theme=\\"dark\\">Themed Content");
 const ThemeContext = {
   Provider: ({
@@ -108,7 +108,7 @@ const element = _createComponent$(ThemeContext.Provider, {
 `;
 
 exports[`jsx SSR transform > should work with data fetching in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-ssr-data>");
 const DataComponent = ({
   data
@@ -126,7 +126,7 @@ const element = _createComponent$(DataComponent, {
 `;
 
 exports[`jsx SSR transform > should work with error handling in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Error Page"),
   _tmpl$2 = _getNextElement$("<div>Protected Content");
 const ErrorBoundary = ({
@@ -152,7 +152,7 @@ const element = _createComponent$(ErrorBoundary, {
 `;
 
 exports[`jsx SSR transform > should work with event handlers in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, addEventListener as _addEventListener$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, addEventListener as _addEventListener$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<button>Click me");
 const handleClick = () => console.log('clicked');
 const element = (() => {
@@ -164,7 +164,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with head management in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<head data-ssr>"),
   _tmpl$2 = _getNextElement$("<svg _svg_><title>Page Title</title>"),
   _tmpl$3 = _getNextElement$("<meta name=\\"description\\" content=\\"Page description\\"/>");
@@ -188,7 +188,7 @@ const element = _createComponent$(Head, {
 `;
 
 exports[`jsx SSR transform > should work with hydration attributes 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-hydrate=\\"true\\">Hydration Content");
 const element = (() => {
   const _el = _tmpl$();
@@ -197,7 +197,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with list rendering in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<ul>"),
   _tmpl$2 = _getNextElement$("<li>");
 const items = ['Item 1', 'Item 2', 'Item 3'];
@@ -215,7 +215,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with nested components and props in SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Name:<!>, Age:"),
   _tmpl$2 = _getNextElement$("<div><!>");
 const Child = ({
@@ -244,7 +244,7 @@ const Parent = () => (() => {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$, setAttr as _setAttr$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$, setAttr as _setAttr$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>"),
   _tmpl$2 = _getNextElement$("<div>");
 const StreamingComponent = ({
@@ -267,7 +267,7 @@ const element = _createComponent$(StreamingComponent, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and context 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-context>"),
   _tmpl$2 = _getNextElement$("<div>Streaming Context Content");
 const StreamingContext = ({
@@ -292,7 +292,7 @@ const element = _createComponent$(StreamingContext, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and custom hooks 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-hook>");
 const useStreamingHook = () => ({
   value: 'streaming'
@@ -312,7 +312,7 @@ const element = _createComponent$(StreamingHook, {});"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and data fetching 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-data>"),
   _tmpl$2 = _getNextElement$("<div>Loading data..."),
   _tmpl$3 = _getNextElement$("<div>Data Content");
@@ -340,7 +340,7 @@ const element = _createComponent$(StreamingData, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and dynamic imports 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-dynamic>"),
   _tmpl$2 = _getNextElement$("<div>Loading...");
 const StreamingDynamic = ({
@@ -363,7 +363,7 @@ const element = _createComponent$(Suspense, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and error boundaries 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-error>"),
   _tmpl$2 = _getNextElement$("<div>Error occurred!"),
   _tmpl$3 = _getNextElement$("<div>Protected Streaming Content");
@@ -392,7 +392,7 @@ const element = _createComponent$(StreamingErrorBoundary, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and error boundaries 2`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-error-boundary>"),
   _tmpl$2 = _getNextElement$("<div>Error occurred!"),
   _tmpl$3 = _getNextElement$("<div>Protected Content");
@@ -421,7 +421,7 @@ const element = _createComponent$(StreamingErrorBoundary, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and error handling 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-error>"),
   _tmpl$2 = _getNextElement$("<div>Error:"),
   _tmpl$3 = _getNextElement$("<div>Streaming Content");
@@ -449,7 +449,7 @@ const element = _createComponent$(StreamingError, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and forwardRef 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-forward>"),
   _tmpl$2 = _getNextElement$("<div>Streaming Forward Ref Content");
 const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
@@ -469,7 +469,7 @@ const element = _createComponent$(StreamingForwardRef, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and hydration 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-hydration>"),
   _tmpl$2 = _getNextElement$("<div data-hydrate=\\"true\\">Hydration Content");
 const StreamingHydration = ({
@@ -489,7 +489,7 @@ const element = _createComponent$(StreamingHydration, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and lazy loading 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-lazy>"),
   _tmpl$2 = _getNextElement$("<div>Loading...");
 const StreamingLazy = ({
@@ -513,7 +513,7 @@ const element = _createComponent$(Suspense, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and loading states 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-loading>"),
   _tmpl$2 = _getNextElement$("<div>Loading..."),
   _tmpl$3 = _getNextElement$("<div>Loaded Content");
@@ -539,7 +539,7 @@ const element = _createComponent$(StreamingLoading, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and memo 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-memo>");
 const StreamingMemo = ({
   value
@@ -556,7 +556,7 @@ const element = _createComponent$(StreamingMemo, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and multiple contexts 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-contexts>"),
   _tmpl$2 = _getNextElement$("<div>Multiple Contexts Content");
 const StreamingContexts = ({
@@ -588,7 +588,7 @@ const element = _createComponent$(StreamingContexts, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and portals 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-portal>"),
   _tmpl$2 = _getNextElement$("<div>Streaming Portal Content");
 const StreamingPortal = ({
@@ -611,7 +611,7 @@ const element = _createComponent$(StreamingPortal, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and refs 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-ref>"),
   _tmpl$2 = _getNextElement$("<div>Streaming Ref Content");
 const StreamingRef = ({
@@ -633,7 +633,7 @@ const element = _createComponent$(StreamingRef, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and suspense 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming>"),
   _tmpl$2 = _getNextElement$("<div>Loading..."),
   _tmpl$3 = _getNextElement$("<div>Streaming Content");
@@ -662,7 +662,7 @@ const element = _createComponent$(StreamingSuspense, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and suspense boundaries 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div data-streaming-suspense>"),
   _tmpl$2 = _getNextElement$("<div>Loading..."),
   _tmpl$3 = _getNextElement$("<div>Suspense Content");
@@ -691,7 +691,7 @@ const element = _createComponent$(StreamingSuspenseBoundary, {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with JSX fragment 1`] = `
-"import { getNextElement as _getNextElement$, Fragment as _Fragment$ } from "est";
+"import { getNextElement as _getNextElement$, Fragment as _Fragment$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<p>Paragraph 1</p><p>Paragraph 2</p>");
 const element = (() => {
   const _el = _tmpl$();
@@ -700,7 +700,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with JSX fragment as children 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
 const element = (() => {
   const _el = _tmpl$();
@@ -709,7 +709,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with SVG tags 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<svg _svg_><svg><circle cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\">");
 const element = (() => {
   const _el = _tmpl$();
@@ -718,7 +718,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with attributes 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div id=\\"myId\\" class=\\"myClass\\">Hello, World!");
 const element = (() => {
   const _el = _tmpl$();
@@ -727,7 +727,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with boolean attribute 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<input disabled/>");
 const element = (() => {
   const _el = _tmpl$();
@@ -736,7 +736,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with children 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p>Paragraph 1</p><p>Paragraph 2</p>");
 const element = (() => {
   const _el = _tmpl$();
@@ -745,7 +745,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with class and style attributes 1`] = `
-"import { computed as _computed$, getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, setStyle as _setStyle$, insert as _insert$ } from "est";
+"import { computed as _computed$, getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, setStyle as _setStyle$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const hasClass = true;
 const style = {
@@ -762,7 +762,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with conditional attributes 1`] = `
-"import { computed as _computed$, getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, insert as _insert$ } from "est";
+"import { computed as _computed$, getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setClass as _setClass$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const hasClass = true;
 const element = (() => {
@@ -774,7 +774,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with dynamic expressions 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello,<!>!");
 const name = 'John';
 const element = (() => {
@@ -786,7 +786,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with function components 1`] = `
-"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { createComponent as _createComponent$, getNextElement as _getNextElement$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><!>");
 const element = (() => {
   const _el = _tmpl$();
@@ -802,7 +802,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with nested expressions and children 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p><!>'s Profile</p><ul></ul>"),
   _tmpl$2 = _getNextElement$("<li>Item");
 const name = 'John';
@@ -823,7 +823,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, setClass as _setClass$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, setClass as _setClass$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const element = (() => {
   const _el = _tmpl$();
@@ -835,7 +835,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with null and undefined children 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><!><p>Paragraph 1</p><!><!><p>Paragraph 2</p>");
 const element = (() => {
   const _el = _tmpl$();
@@ -848,7 +848,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with null and undefined in expressions 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><p><!>'s Profile</p><!><p>Paragraph 2</p>");
 const name = null;
 const element = (() => {
@@ -861,7 +861,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with self-closing tags 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div><img src=\\"image.jpg\\" alt=\\"Image 1\\"/><img src=\\"image.jpg\\" alt=\\"Image 2\\"/>");
 const element = (() => {
   const _el = _tmpl$();
@@ -870,7 +870,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with spread attributes 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setAttr as _setAttr$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const props = {
   id: 'myId',
@@ -885,7 +885,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with style attribute 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setStyle as _setStyle$, insert as _insert$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$, mapNodes as _mapNodes$, setStyle as _setStyle$, insert as _insert$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const style = {
   color: 'red',
@@ -900,7 +900,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms simple JSX element 1`] = `
-"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "est";
+"import { getNextElement as _getNextElement$, createComponent as _createComponent$ } from "@estjs/server";
 const _tmpl$ = _getNextElement$("<div>Hello, World!");
 const element = (() => {
   const _el = _tmpl$();

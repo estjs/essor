@@ -1,13 +1,13 @@
-import { isArray, capitalize } from '@estjs/shared';
+import { capitalize, isArray } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { addImport, importObject } from '../import';
 import type { State } from '../types';
 import type {
-  Identifier,
-  StringLiteral,
   Expression,
+  Identifier,
   ObjectProperty,
   SpreadElement,
+  StringLiteral,
 } from '@babel/types';
 
 /**

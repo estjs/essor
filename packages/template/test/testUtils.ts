@@ -1,8 +1,8 @@
-import { h } from '../src';
+import { createApp } from '../src';
 
 export function mount(code, props = {}) {
   const container = document.createElement('div');
-  const nodes = h(code, props).mount(container);
+  const nodes = createApp(code, container, props);
 
   return {
     nodes,

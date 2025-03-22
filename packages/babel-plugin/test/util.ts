@@ -2,6 +2,12 @@ import babel from '@babel/core';
 import { transformProgram } from '../src/program';
 import { transformJSX } from '../src/jsx';
 import { replaceProps } from '../src/transformers/props';
+import {
+  replaceSymbol,
+  symbolArrayPattern,
+  symbolIdentifier,
+  symbolObjectPattern,
+} from '../src/transformers/symbol';
 
 const transforms = {
   jsx: {
@@ -14,6 +20,14 @@ const transforms = {
     Program: transformProgram,
     FunctionDeclaration: replaceProps,
     ArrowFunctionExpression: replaceProps,
+  },
+  symbol: {
+    Program: transformProgram,
+    VariableDeclarator: replaceSymbol,
+    Identifier: symbolIdentifier,
+    ObjectPattern: symbolObjectPattern,
+    ArrayPattern: symbolArrayPattern,
+    FunctionDeclaration: replaceProps,
   },
 };
 

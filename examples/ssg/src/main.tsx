@@ -1,4 +1,4 @@
-import { renderToString } from 'est';
+import { renderToString } from '@estjs/core';
 
 function Com1(props) {
   const children = props.children;

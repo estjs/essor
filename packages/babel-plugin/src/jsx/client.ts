@@ -6,7 +6,9 @@ import {
   type JSXChild,
   type JSXElement,
   createClientResult,
+  createPropsObjectExpression,
   getAttrName,
+  getChildren,
   getNodeText,
   getTagName,
   hasObjectExpression,
@@ -14,13 +16,11 @@ import {
   isComponentName,
   isTextChild,
   isValidChild,
+  processJSXAttributes,
   replaceSpace,
   setNodeText,
-  createPropsObjectExpression,
-  processJSXAttributes,
-  getChildren,
 } from './common';
-import { processChildren, generateChildrenMaps } from './common';
+import { generateChildrenMaps, processChildren } from './common';
 import type { State } from '../types';
 import type { OptionalMemberExpression } from '@babel/types';
 import type { NodePath } from '@babel/core';
@@ -494,7 +494,7 @@ function createHMRWrapper(
   // HMR: Create hot update wrapper
   return t.callExpression(path.state.imports.createHMR, [
     // Component identification info (name:location)
-    t.stringLiteral(`${componentName}${location ? ':' + location : ''}`),
+    t.stringLiteral(`${componentName}${location ? `:${location}` : ''}`),
     // Component itself
     t.identifier(componentName),
     // Component properties

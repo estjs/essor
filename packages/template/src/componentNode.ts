@@ -1,161 +1,184 @@
-import { hasChanged, isFunction, startsWith } from '@estjs/shared';
-import { type Signal, effect, shallowReactive } from '@estjs/signal';
-import { reactive } from '@estjs/signal';
-import { addEventListener, extractSignal } from './utils';
-import { LifecycleContext } from './lifecycleContext';
-import { CHILDREN_PROP, EVENT_PREFIX, REF_KEY, UPDATE_PREFIX } from './sharedConfig';
-import { componentCache } from './jsxRenderer';
-import type { NodeTrack, Props, estComponent } from '../types';
-import type { TemplateNode } from './templateNode';
+import { hasChanged, startsWith } from '@estjs/shared';
+import { shallowReactive } from '@estjs/signal';
+import { createContext, popContext, setCurrentContext } from './context';
+import { insertChild, removeChild } from './patch';
+import { EVENT_PREFIX, REF_KEY } from './constants';
+import { addEventListener } from './dom';
+import { cleanupLifecycle } from './lifecycle';
+import type { RenderContext } from './types';
 
-export class ComponentNode extends LifecycleContext implements JSX.Element {
-  protected proxyProps: Record<string, Signal<unknown>>;
-  protected emitter = new Set<() => void>();
-  protected rootNode: TemplateNode | null = null;
-  protected trackMap = new Map<string, NodeTrack>();
-  protected nodes: Node[] = [];
-  protected parent: Node | null = null;
-  protected before: Node | null = null;
+/**
+ * ComponentNode class represents a component instance in the DOM
+ * Optimized for performance and memory usage
+ */
+export class ComponentNode<T extends Record<string, any> = Record<string, any>> {
+  private nodes: Node | null = null;
+  private context: RenderContext | null = null;
+  private parent: Node | null = null;
+  private before: Node | null = null;
+  private proxyProps: T;
+  private isMount = false;
+  private key: string | number | null;
 
-  constructor(
-    public template: estComponent,
-    public props: Props,
-    public key?: string,
-  ) {
-    super();
-    this.key ||= props && (props.key as string);
-    this.proxyProps ||= shallowReactive(props || {});
-  }
-
-  get firstChild(): Node | null {
-    return this.rootNode?.firstChild ?? null;
-  }
-
+  /**
+   * Check if the component is connected to the DOM
+   */
   get isConnected(): boolean {
-    return this.rootNode?.isConnected ?? false;
+    return this.isMount;
   }
 
-  mount(parent: Node, before: Node | null): Node[] {
-    this.parent = parent;
-    if (!isFunction(this.template)) {
-      throw new Error('Template must be a function');
-    }
-    if (this.isConnected) {
-      return this.rootNode?.mount(parent, before) ?? [];
-    }
-    this.initRef();
-    this.rootNode = this.template(reactive(this.proxyProps));
-    this.nodes = this.rootNode?.mount(parent, before) ?? [];
-    this.callMountHooks();
-    this.patchProps(this.props);
-    this.removeRef();
-
+  /**
+   * Get the first child node of the component
+   */
+  get firstChild(): Node | null {
     return this.nodes;
   }
 
+  /**
+   * Create a new ComponentNode instance
+   * @param component The component function
+   * @param props The component properties
+   * @param key Optional key for reconciliation
+   */
+  constructor(
+    public component: (props: T) => Node,
+    public props?: T,
+    key?: string | number | null,
+  ) {
+    this.key = key ?? props?.key ?? null;
+    // Use shallowReactive for better performance
+    this.proxyProps = shallowReactive(props || ({} as T));
+  }
+
+  /**
+   * Mount the component to the DOM
+   * @param parent The parent node
+   * @param before The node to insert before
+   * @returns The mounted node
+   */
+  mount(parent: Node, before?: Node | null): Node | null {
+    this.parent = parent;
+    this.before = before || null;
+
+    // Fast path: reuse existing nodes if available
+    if (this.nodes) {
+      insertChild(parent, this.nodes, before);
+      return this.nodes;
+    }
+
+    // Create a new context for the component
+    this.context = createContext();
+    setCurrentContext(this.context);
+
+    try {
+      // Render the component
+      const renderNode = this.component(this.proxyProps);
+      this.nodes = renderNode;
+
+      // Insert the component into the DOM
+      insertChild(parent, renderNode, before);
+
+      // Apply props and event handlers
+      this.patchProps(this.props);
+
+      // Call mounted lifecycle hooks using microtask to ensure DOM is fully updated
+      queueMicrotask(() => {
+        if (this.isMount && this.context) {
+          this.context.mounted.forEach(cb => cb());
+        }
+      });
+
+      this.isMount = true;
+      return renderNode;
+    } finally {
+      popContext();
+    }
+  }
+
+  /**
+   * Update the component with new props
+   * @param prev The previous component instance
+   * @returns The updated component
+   */
+  update(prev: ComponentNode<T>): ComponentNode<T> {
+    // Fast path: different keys require remounting
+    if (this.key !== prev.key) {
+      this.mount(this.parent!, this.before);
+      return this;
+    }
+
+    // Skip update if props haven't changed
+    if (!hasChanged(this.props, prev.props)) {
+      return this;
+    }
+
+    // Reuse context and nodes from previous instance
+    this.context = prev.context;
+    this.proxyProps = prev.proxyProps;
+    this.props = prev.props;
+    this.nodes = prev.nodes;
+    this.isMount = prev.isMount;
+
+    // Update props and event handlers
+    this.patchProps(this.props);
+
+    // Call updated lifecycle hooks
+    if (this.context) {
+      this.context.updated.forEach(cb => cb());
+    }
+
+    return this;
+  }
+
+  /**
+   * Unmount the component from the DOM
+   * Cleans up resources and calls lifecycle hooks
+   */
   unmount(): void {
-    this.callLifecycleHooks('destroy');
-    this.cleanup();
-    this.rootNode?.unmount();
-    this.resetState();
-
-    if (this.key) {
-      componentCache.delete(this.key);
+    // Call unmounted lifecycle hooks first
+    if (this.context) {
+      this.context.unmounted.forEach(cb => cb());
+      this.context.isUnmounted = true;
     }
-  }
 
-  private resetState(): void {
-    this.rootNode = null;
-    this.proxyProps = {};
-    this.nodes = [];
+    // Remove from DOM
+    if (this.nodes) {
+      removeChild(this.nodes);
+    }
+
+    // Clean up lifecycle hooks
+    cleanupLifecycle();
+
+    // Clear references to help garbage collection
+    this.isMount = false;
+    this.nodes = null;
     this.parent = null;
+    this.before = null;
   }
 
-  protected callLifecycleHooks(type: 'mounted' | 'destroy'): void {
-    this.hooks[type].forEach(handler => handler());
-  }
-
-  protected callMountHooks(): void {
-    this.hooks.mounted.forEach(handler => handler());
-  }
-
-  protected callDestroyHooks(): void {
-    this.hooks.destroy.forEach(handler => handler());
-  }
-
-  protected clearEmitter(): void {
-    for (const cleanup of this.emitter) {
-      cleanup();
-    }
-    this.emitter.clear();
-  }
-
-  inheritNode(node: ComponentNode): void {
-    Object.assign(this.proxyProps, node.proxyProps);
-    this.rootNode = node.rootNode;
-    this.trackMap = node.trackMap;
-    this.hooks = node.hooks;
-    if (hasChanged(node.props, this.props)) {
-      const props = this.props;
-      this.props = node.props;
-      this.patchProps(props);
-    }
-  }
-
-  protected getNodeTrack(trackKey: string): NodeTrack {
-    let track = this.trackMap.get(trackKey);
-    if (!track) {
-      track = { cleanup: () => {} };
-      this.trackMap.set(trackKey, track);
-    }
-    track.cleanup();
-    return track;
-  }
-
-  patchProps(props: Record<string, any> | undefined) {
+  /**
+   * Apply props and event handlers to the component
+   * @param props The component properties
+   */
+  patchProps(props: T | undefined): void {
     if (!props) {
       return;
     }
 
+    // Apply new props and event handlers
     for (const [key, prop] of Object.entries(props)) {
-      if (startsWith(key, EVENT_PREFIX) && this.rootNode?.firstChild) {
-        this.patchEventListener(key, prop);
-      } else if (key === REF_KEY) {
-        this.patchRef(prop);
-      } else if (startsWith(key, UPDATE_PREFIX)) {
-        this.patchUpdateHandler(key, prop);
-      } else if (key !== CHILDREN_PROP) {
-        this.patchNormalProp(key, prop);
+      if (startsWith(key, EVENT_PREFIX) && this.nodes) {
+        // Handle event props (e.g., onClick)
+        const event = key.slice(2).toLowerCase();
+        if (this.nodes instanceof Element) {
+          addEventListener(this.nodes, event, prop as EventListener);
+        }
+      } else if (key === REF_KEY && typeof prop === 'object' && prop !== null) {
+        // Handle ref prop with type safety
+        (prop as { value: Node | null }).value = this.nodes;
       }
     }
+
     this.props = props;
-  }
-
-  protected patchEventListener(key: string, prop: any): void {
-    const event = key.slice(2).toLowerCase();
-    const cleanup = addEventListener((this.rootNode as any)!.nodes[0], event, prop);
-    this.emitter.add(cleanup);
-  }
-
-  protected patchRef(prop: { value: Node | null }): void {
-    prop.value = this.rootNode?.firstChild ?? null;
-  }
-
-  protected patchUpdateHandler(key: string, prop: any): void {
-    this.proxyProps![key] = extractSignal(prop);
-  }
-
-  protected patchNormalProp(key: string, prop: any): void {
-    const track = this.getNodeTrack(key);
-    track.cleanup = effect(() => {
-      this.proxyProps[key] = isFunction(prop) ? prop() : prop;
-    });
-  }
-
-  protected cleanup(): void {
-    this.trackMap.forEach(track => track.cleanup?.());
-    this.trackMap.clear();
-    this.emitter.forEach(cleanup => cleanup());
-    this.emitter.clear();
   }
 }

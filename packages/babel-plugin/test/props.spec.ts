@@ -1,4 +1,4 @@
-import { getTransform } from './transformUtil';
+import { getTransform } from './util';
 const transformCode = getTransform('props', { hmr: false });
 describe('jsx props transform', () => {
   it('should replace function parameter with "props"', () => {

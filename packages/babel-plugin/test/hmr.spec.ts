@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  */
 import { describe, expect, it } from 'vitest';
-import { getTransform } from './transformUtil';
+import { getTransform } from './util';
 
 describe('hMR Transformation', () => {
   it('should wrap root component with HMR wrapper', () => {
