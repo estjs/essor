@@ -98,18 +98,18 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.26.0",
+    "@babel/core": "^7.26.10",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^2.1.2"
+    "unplugin": "^2.3.2"
   },
   "devDependencies": {
-    "@types/node": "^22.10.5",
+    "@types/node": "^22.14.1",
     "chalk": "^5.4.1",
-    "fast-glob": "^3.3.2",
-    "rollup": "^4.29.1",
-    "tsup": "^8.3.5",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.7",
-    "webpack": "^5.97.1"
+    "fast-glob": "^3.3.3",
+    "rollup": "^4.40.0",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.2",
+    "webpack": "^5.99.5"
   }
 }
