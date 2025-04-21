@@ -1,4 +1,4 @@
-import { hydrate, renderToString } from '@estjs/core';
+import { hydrate, renderToString } from 'essor';
 
 function Com1(props) {
   const children = props.children;

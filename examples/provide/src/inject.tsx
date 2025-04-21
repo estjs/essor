@@ -1,4 +1,4 @@
-import { inject } from '@estjs/core';
+import { inject } from 'essor';
 import { ProvideKey } from './main';
 
 export default function InjectComponent() {

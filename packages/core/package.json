@@ -1,5 +1,5 @@
 {
-  "name": "@estjs/core",
+  "name": "essor",
   "version": "0.0.14",
   "description": "",
   "type": "module",
@@ -9,7 +9,7 @@
   "bugs": "https://github.com/estjs/est/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/estjs/est.git"
+    "url": "git+https://github.com/estjs/essor.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
@@ -17,41 +17,41 @@
     "dist",
     "types"
   ],
-  "main": "./dist/est.esm.js",
-  "module": "./dist/est.esm.js",
-  "types": "./dist/est.d.ts",
+  "main": "./dist/essor.esm.js",
+  "module": "./dist/essor.esm.js",
+  "types": "./dist/essor.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
-          "types": "./dist/est.d.ts",
-          "require": "./dist/est.dev.cjs.js",
-          "import": "./dist/est.dev.esm.js"
+          "types": "./dist/essor.d.ts",
+          "require": "./dist/essor.dev.cjs.js",
+          "import": "./dist/essor.dev.esm.js"
         },
-        "types": "./dist/est.d.ts",
-        "require": "./dist/est.cjs.js",
-        "import": "./dist/est.esm.js"
+        "types": "./dist/essor.d.ts",
+        "require": "./dist/essor.cjs.js",
+        "import": "./dist/essor.esm.js"
       },
       "development": {
-        "types": "./dist/est.d.ts",
-        "require": "./dist/est.dev.cjs.js",
-        "import": "./dist/est.dev.esm.js"
+        "types": "./dist/essor.d.ts",
+        "require": "./dist/essor.dev.cjs.js",
+        "import": "./dist/essor.dev.esm.js"
       },
-      "types": "./dist/est.d.ts",
-      "require": "./dist/est.cjs.js",
-      "import": "./dist/est.esm.js"
+      "types": "./dist/essor.d.ts",
+      "require": "./dist/essor.cjs.js",
+      "import": "./dist/essor.esm.js"
     }
   },
   "typesVersions": {
     "*": {
       "*": [
-        "./dist/est.d.ts"
+        "./dist/essor.d.ts"
       ]
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/est.esm.js",
-  "jsdelivr": "dist/est.esm.js",
+  "unpkg": "dist/essor.esm.js",
+  "jsdelivr": "dist/essor.esm.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"
