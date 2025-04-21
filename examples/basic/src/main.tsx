@@ -1,4 +1,4 @@
-import { createApp, signal } from '@estjs/core';
+import { createApp, signal } from 'essor';
 
 function App() {
   const value = signal('Hello, World!');

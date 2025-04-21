@@ -10,7 +10,7 @@
     "test": "vitest -r test"
   },
   "dependencies": {
-    "@estjs/core": "workspace:*"
+    "essor": "workspace:*"
   },
   "devDependencies": {
     "@estjs/eslint-config": "^1.2.12",
