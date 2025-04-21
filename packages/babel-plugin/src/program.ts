@@ -37,9 +37,9 @@ export const transformProgram = {
     }
 
     // Choose import path based on rendering mode
-    const importPath =
-      (path.state as State).opts.mode === 'client' ? '@estjs/core' : '@estjs/server';
+    // const importPath =
+    //   (path.state as State).opts.mode === 'client' ? 'essor' : '@estjs/server';
 
-    createImport(path, imports, importPath);
+    createImport(path, imports, 'essor');
   },
 };

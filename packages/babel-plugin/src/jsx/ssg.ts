@@ -1,243 +1,324 @@
+/**
+ * @file Static Site Generation (SSG) transformation strategy
+ */
+
 import { isPrimitive, isSelfClosingTag, isSymbol } from '@estjs/shared';
-import { types as t } from '@babel/core';
+import { type NodePath, types as t } from '@babel/core';
 import { addImport, importObject } from '../import';
+import { getChildren, processJSXAttributes } from './attributes';
 import {
-  type JSXElement,
-  type SSGResult,
   createPropsObjectExpression,
-  createSSGResult,
-  getChildren,
-  getTagName,
   isComponentName,
   isValidChild,
-  processJSXAttributes,
   replaceSpace,
-} from './common';
-import type { State } from '../types';
-import type { NodePath } from '@babel/core';
-
-// Current transformation state
-let currentResult: SSGResult;
+} from './utils';
+import { BaseTransformStrategy } from './base';
+import type { JSXChild, JSXElement, SSGResult } from './types';
 
 /**
- * Add content to template
+ * Static Site Generation (SSG) transformation strategy
  */
-function addTemplate(content: string, join = false): void {
-  if (currentResult.template.length === 0) {
-    currentResult.template.push(content);
-  } else {
-    if (join) {
-      currentResult.template[currentResult.template.length - 1] += content;
+export class SSGTransformStrategy extends BaseTransformStrategy {
+  /**
+   * Create SSG transformation result
+   */
+  createResult(): SSGResult {
+    return {
+      index: 1,
+      isLastChild: false,
+      parentIndex: 0,
+      props: {},
+      dynamics: [],
+      template: [],
+    };
+  }
+
+  /**
+   * Transform JSX element for SSG
+   * @param path JSX element path
+   */
+  transform(path: NodePath<JSXElement>): void {
+    const previousResult = this.result;
+    this.result = this.createResult();
+    (this.result as SSGResult).isLastChild = false;
+    (this.result as SSGResult).parentIndex = 0;
+
+    this.transformJSXElement(path, true);
+    path.replaceWith(this.createSSGNode(path));
+
+    this.result = previousResult;
+  }
+
+  /**
+   * Add content to template array
+   * @param content Content to add
+   * @param join Flag indicating whether to join with the previous content
+   */
+  private addTemplate(content: string, join = false): void {
+    const result = this.result as SSGResult;
+    if (result.template.length === 0) {
+      result.template.push(content);
     } else {
-      currentResult.template.push(content);
+      if (join) {
+        result.template[result.template.length - 1] += content;
+      } else {
+        result.template.push(content);
+      }
     }
   }
-}
 
-export function transformJSX(path: NodePath<JSXElement>): void {
-  const preResult = currentResult;
-  currentResult = createSSGResult();
-  currentResult.isLastChild = false;
-  currentResult.parentIndex = 0;
+  /**
+   * Create SSG node
+   * @param path JSX element path
+   * @returns SSG call expression
+   */
+  private createSSGNode(path: NodePath<JSXElement>): t.CallExpression {
+    const result = this.result as SSGResult;
+    const tmpl = path.scope.generateUidIdentifier('_tmpl$');
+    const filteredHtml = result.template.filter(part => part !== '');
+    const templateNode = t.arrayExpression(filteredHtml.map(t.stringLiteral));
 
-  transformJSXElement(path, true);
-  path.replaceWith(createSSGNode(path));
+    // Add template declaration to program
+    this.state.templateDeclaration.declarations.push(t.variableDeclarator(tmpl, templateNode));
 
-  currentResult = preResult;
-}
+    // Import necessary SSG utility functions
+    addImport(importObject.render);
+    addImport(importObject.getHydrationKey);
 
-function createSSGNode(path: NodePath<JSXElement>): t.CallExpression {
-  const state = path.state as State;
-  const tmpl = path.scope.generateUidIdentifier('_tmpl$');
-  const filteredHtml = currentResult.template.filter(part => part !== '');
-  const templateNode = t.arrayExpression(filteredHtml.map(t.stringLiteral));
-  path.state.templateDeclaration.declarations.push(t.variableDeclarator(tmpl, templateNode));
+    // Create parameters for render call
+    const args = [tmpl, t.callExpression(this.state.imports.getHydrationKey, [])];
 
-  // Import necessary SSG utility functions
-  addImport(importObject.renderSSG);
-  addImport(importObject.escapeHTML);
-  addImport(importObject.setSSGAttr);
-  addImport(importObject.getHydrationKey);
-
-  // Create parameters for renderSSG call
-  const args = [tmpl, t.callExpression(state.imports.getHydrationKey, [])];
-
-  // Add dynamic parameters in order
-  currentResult.dynamics.forEach(dynamic => {
-    if (dynamic.type === 'attr') {
-      args.push(
-        t.callExpression(state.imports.setSSGAttr, [
-          t.stringLiteral(dynamic.attrName!),
-          t.callExpression(state.imports.escapeHTML, [dynamic.node]),
-          t.booleanLiteral(false),
-        ]),
-      );
-    } else {
-      args.push(t.callExpression(state.imports.escapeHTML, [dynamic.node]));
-    }
-  });
-
-  return t.callExpression(state.imports.renderSSG, args);
-}
-
-/**
- * Transform JSX element
- */
-function transformJSXElement(path: NodePath<JSXElement>, isRoot = false): void {
-  const state = path.state as State;
-  if (path.isJSXElement()) {
-    const tagName = getTagName(path.node);
-    const isComponent = isComponentName(tagName);
-    const isSelfClosing = isSelfClosingTag(tagName);
-
-    const { props } = processJSXAttributes(path, state, transformJSX);
-
-    if (isComponent) {
-      if (isRoot) {
-        currentResult.props = props;
-        const children = getChildren(path, transformJSX);
-        if (children.length > 0) {
-          currentResult.props.children = children;
-        }
-      } else {
-        addTemplate(`<!--${currentResult.index}-->`, false);
-        addImport(importObject.createSSGComponent);
+    // Add dynamic parameters in order
+    result.dynamics.forEach(dynamic => {
+      if (dynamic.type === 'attr') {
+        addImport(importObject.setSSGAttr);
         addImport(importObject.escapeHTML);
+        args.push(
+          t.callExpression(this.state.imports.setSSGAttr, [
+            t.stringLiteral(dynamic.attrName!),
+            t.callExpression(this.state.imports.escapeHTML, [dynamic.node]),
+            t.booleanLiteral(false),
+          ]),
+        );
+      } else {
+        // For components, add directly without escaping
+        args.push(dynamic.node);
+      }
+    });
 
-        // Get children
-        const children = getChildren(path, transformJSX);
-        if (children.length > 0) {
-          props.children = children[0]; // Take only the first child as children
-        }
+    return t.callExpression(this.state.imports.render, args);
+  }
 
-        // Create component call
-        currentResult.dynamics.push({
-          type: 'text',
-          node: t.callExpression(state.imports.escapeHTML, [
-            t.callExpression(state.imports.createSSGComponent, [
+  /**
+   * Transform JSX element
+   * @param path JSX element path
+   * @param isRoot Flag indicating if this is a root element
+   */
+  private transformJSXElement(path: NodePath<JSXElement>, isRoot = false): void {
+    if (path.isJSXElement()) {
+      const { tagName, isComponent } = this.detectElementType(path);
+      const isSelfClosing = isSelfClosingTag(tagName);
+
+      const { props } = processJSXAttributes(path, this.state, this.transform.bind(this), 'ssg');
+
+      if (isComponent) {
+        if (isRoot) {
+          this.result.props = props;
+          const children = getChildren(path, this.transform.bind(this));
+          if (children.length > 0) {
+            this.result.props.children = children;
+          }
+        } else {
+          this.addTemplate(`<!--${(this.result as SSGResult).index}-->`, false);
+          addImport(importObject.createSSGComponent);
+          addImport(importObject.escapeHTML);
+
+          // Get children
+          const children = getChildren(path, this.transform.bind(this));
+          if (children.length > 0) {
+            props.children = children[0]; // Take only the first child as children
+          }
+
+          // Create component call
+          (this.result as SSGResult).dynamics.push({
+            type: 'text',
+            node: t.callExpression(this.state.imports.createSSGComponent, [
               t.identifier(tagName),
               createPropsObjectExpression(props, true),
             ]),
-          ]),
-        });
-        currentResult.index++;
-      }
-    } else {
-      addTemplate(`<${tagName} data-idx="${currentResult.index++}" `, true);
-      handleAttributes(props);
-
-      if (!isSelfClosing) {
-        addTemplate('>', true);
-        transformChildren(path);
-        addTemplate(`</${tagName}>`, true);
+          });
+          (this.result as SSGResult).index++;
+        }
       } else {
-        addTemplate(`/>`, false);
-      }
-    }
-  } else {
-    transformChildren(path);
-  }
-}
+        this.addTemplate(`<${tagName} data-idx="${(this.result as SSGResult).index++}" `, true);
+        this.handleAttributes(props);
 
-function handleAttributes(props: Record<string, any>): void {
-  const propsArray = Object.entries(props);
-  for (const [prop, value] of propsArray) {
-    if (isPrimitive(value) && !isSymbol(value)) {
-      addTemplate(` ${prop}="${value}"`, true);
-      delete props[prop];
-    } else if (prop !== 'children' && !prop.startsWith('on') && !prop.startsWith('update')) {
-      // Add an empty attribute, break
-      addTemplate('', false);
-      currentResult.dynamics.push({
-        type: 'attr',
-        node: value,
-        attrName: prop,
-      });
-    }
-  }
-}
-
-/**
- * Transform children
- */
-function transformChildren(path: NodePath<JSXElement>): void {
-  const children = path.get('children').filter(isValidChild);
-  children.forEach((child, i) => {
-    currentResult.isLastChild = i === children.length - 1;
-    transformChild(child);
-  });
-}
-
-/**
- * Transform a single child node
- */
-function transformChild(child: NodePath<any>): void {
-  if (child.isJSXElement() || child.isJSXFragment()) {
-    transformJSXElement(child);
-  } else if (child.isJSXExpressionContainer()) {
-    const expression = child.get('expression');
-    if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-      addTemplate(`${expression.node.value}`, true);
-    } else if (expression.isExpression() && !expression.isJSXEmptyExpression()) {
-      addTemplate(`<!--${currentResult.index}-->`, false);
-
-      // Process map function call
-      if (expression.isCallExpression() && expression.get('callee').isMemberExpression()) {
-        const mapCallback = expression.node.arguments[0];
-        if (t.isArrowFunctionExpression(mapCallback) || t.isFunctionExpression(mapCallback)) {
-          const callbackBody = t.isBlockStatement(mapCallback.body)
-            ? mapCallback.body.body[0]
-            : mapCallback.body;
-
-          let jsxElement: t.JSXElement | null = null;
-          if (t.isJSXElement(callbackBody)) {
-            jsxElement = callbackBody;
-          } else if (
-            t.isParenthesizedExpression(callbackBody) &&
-            t.isJSXElement(callbackBody.expression)
-          ) {
-            jsxElement = callbackBody.expression;
-          }
-
-          if (jsxElement && isComponentName(getTagName(jsxElement))) {
-            addImport(importObject.createSSGComponent);
-            // Get component props
-            const { props } = processJSXAttributes(
-              child.get('expression').get('arguments')[0].get('body'),
-              child.state,
-              transformJSX,
-            );
-
-            // Create new callback function, return createSSGComponent call
-            expression.node.arguments[0] = t.arrowFunctionExpression(
-              mapCallback.params,
-              t.callExpression(child.state.createSSGComponent, [
-                t.identifier(getTagName(jsxElement)),
-                createPropsObjectExpression(props, true),
-              ]),
-            );
-
-            currentResult.dynamics.push({
-              type: 'text',
-              node: expression.node,
-            });
-            currentResult.index++;
-            return;
-          }
+        if (!isSelfClosing) {
+          this.addTemplate('>', true);
+          this.transformChildren(path);
+          this.addTemplate(`</${tagName}>`, true);
+        } else {
+          this.addTemplate('/>', false);
         }
       }
+    } else {
+      this.transformChildren(path);
+    }
+  }
 
-      // Handle other expressions
-      currentResult.dynamics.push({
-        type: 'text',
-        node: expression.node as t.Expression,
-      });
-      currentResult.index++;
+  /**
+   * Handle attributes for SSG
+   * @param props Properties object
+   */
+  private handleAttributes(props: Record<string, any>): void {
+    const propsArray = Object.entries(props);
+    for (const [prop, value] of propsArray) {
+      if (isPrimitive(value) && !isSymbol(value)) {
+        this.addTemplate(` ${prop}="${value}"`, true);
+        delete props[prop];
+      } else if (prop !== 'children' && !prop.startsWith('on') && !prop.startsWith('update')) {
+        // Add an empty attribute, break
+        this.addTemplate('', false);
+        (this.result as SSGResult).dynamics.push({
+          type: 'attr',
+          node: value as t.Expression,
+          attrName: prop,
+        });
+      }
     }
-  } else if (child.isJSXText()) {
-    const text = replaceSpace(child.node);
-    if (text) {
-      addTemplate(text, true);
+  }
+
+  /**
+   * Transform children
+   * @param path JSX element path
+   */
+  private transformChildren(path: NodePath<JSXElement>): void {
+    const children = path.get('children').filter(isValidChild);
+    children.forEach((child, i) => {
+      this.result.isLastChild = i === children.length - 1;
+      this.transformChild(child as NodePath<JSXChild>);
+    });
+  }
+
+  /**
+   * Transform a single child node
+   * @param child Child node path
+   */
+  private transformChild(child: NodePath<JSXChild>): void {
+    if (child.isJSXElement() || child.isJSXFragment()) {
+      this.transformJSXElement(child as NodePath<JSXElement>);
+    } else if (child.isJSXExpressionContainer()) {
+      const expression = child.get('expression');
+      if (expression.isStringLiteral() || expression.isNumericLiteral()) {
+        this.addTemplate(`${expression.node.value}`, true);
+      } else if (expression.isExpression() && !expression.isJSXEmptyExpression()) {
+        this.addTemplate('', false);
+
+        // Process map function call
+        if (expression.isCallExpression() && expression.get('callee').isMemberExpression()) {
+          const mapCallback = expression.node.arguments[0];
+          if (t.isArrowFunctionExpression(mapCallback) || t.isFunctionExpression(mapCallback)) {
+            const callbackBody = t.isBlockStatement(mapCallback.body)
+              ? mapCallback.body.body[0]
+              : mapCallback.body;
+
+            let jsxElement: t.JSXElement | null = null;
+            if (t.isJSXElement(callbackBody)) {
+              jsxElement = callbackBody;
+            } else if (
+              t.isParenthesizedExpression(callbackBody) &&
+              t.isJSXElement(callbackBody.expression)
+            ) {
+              jsxElement = callbackBody.expression;
+            }
+
+            if (jsxElement && isComponentName(this.getTagName(jsxElement))) {
+              addImport(importObject.createSSGComponent);
+
+              this.addTemplate(`<!--${(this.result as SSGResult).index}-->`, true);
+              (this.result as SSGResult).index++;
+
+              // Get component props by handling the callback body path carefully
+              // This is a bit complex because we need to extract props from the JSX element inside the callback
+              let bodyPath: NodePath;
+              if (t.isBlockStatement(mapCallback.body)) {
+                // For block statements, we need to drill down to the expression
+                bodyPath = child.get('expression').get('arguments')[0].get('body').get('body')[0];
+                if (t.isReturnStatement(bodyPath.node)) {
+                  bodyPath = bodyPath.get('argument');
+                }
+              } else {
+                // For expression bodies, we can access directly
+                bodyPath = child.get('expression').get('arguments')[0].get('body');
+              }
+
+              // Only proceed if we have a valid JSX element
+              const { props } = processJSXAttributes(
+                bodyPath.isJSXElement() ? (bodyPath as NodePath<t.JSXElement>) : path,
+                this.state,
+                this.transform.bind(this),
+              );
+
+              // Create new callback function, return createSSGComponent call
+              expression.node.arguments[0] = t.arrowFunctionExpression(
+                mapCallback.params,
+                t.callExpression(this.state.imports.createSSGComponent, [
+                  t.identifier(this.getTagName(jsxElement)),
+                  createPropsObjectExpression(props, true),
+                ]),
+              );
+
+              (this.result as SSGResult).dynamics.push({
+                type: 'text',
+                node: expression.node,
+              });
+              return;
+            }
+          }
+        }
+
+        // Handle other expressions
+        (this.result as SSGResult).dynamics.push({
+          type: 'text',
+          node: expression.node as t.Expression,
+        });
+      }
+    } else if (child.isJSXText()) {
+      const text = replaceSpace(child.node);
+      if (text) {
+        this.addTemplate(text, true);
+      }
     }
+  }
+
+  /**
+   * Get tag name from JSX element
+   * @param node JSX element
+   * @returns Tag name
+   */
+  private getTagName(node: t.JSXElement): string {
+    const tag = node.openingElement.name;
+
+    if (t.isJSXMemberExpression(tag)) {
+      return this.jsxMemberExpressionToString(tag);
+    }
+
+    if (t.isJSXIdentifier(tag)) {
+      return tag.name;
+    }
+
+    return `${tag.namespace.name}:${tag.name.name}`;
+  }
+
+  /**
+   * Convert JSX member expression to string
+   * @param node JSX member expression
+   * @returns String representation
+   */
+  private jsxMemberExpressionToString(node: t.JSXMemberExpression): string {
+    if (t.isJSXMemberExpression(node.object)) {
+      return `${this.jsxMemberExpressionToString(node.object)}.${(node.property as t.JSXIdentifier).name}`;
+    }
+    return `${(node.object as t.JSXIdentifier).name}.${(node.property as t.JSXIdentifier).name}`;
   }
 }

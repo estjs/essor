@@ -20,14 +20,6 @@ export const USED_IMPORTS = [
   // Node mapping
   'mapNodes',
 
-  // Server-side rendering API
-  'setSSRStyle',
-  'setSSRClass',
-  'setSSRAttr',
-  'SSRInset',
-  'getHydrationKey',
-  'getNextElement',
-
   // Client-side API
   'insert',
   'setStyle',
@@ -42,12 +34,27 @@ export const USED_IMPORTS = [
   'reactive',
 
   // Static Site Generation API
-  'renderSSG',
+  'render',
   'createSSGComponent',
   'setSSGAttr',
   'escapeHTML',
 
+  // Server-side rendering API
+  'mapSSRNodes',
+  'getHydrationKey',
+  'getNextElement',
+
   // HMR API
   'createHMR',
   'acceptHMR',
+] as const;
+
+export const SERVER_IMPORTS = [
+  'render',
+  'createSSGComponent',
+  'setSSGAttr',
+  'escapeHTML',
+  'mapSSRNodes',
+  'getHydrationKey',
+  'getNextElement',
 ] as const;

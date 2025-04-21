@@ -1,6 +1,6 @@
-import { getTransform } from './util';
-const transformCode = getTransform('jsx', { server: 'client', hmr: false });
-describe('jsx transform', () => {
+import { getTransform } from './transform';
+const transformCode = getTransform('jsx', { mode: 'ssr', hmr: false });
+describe('jsx SSR transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `
       const element = <div>Hello, World!</div>;
@@ -228,28 +228,7 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with static style transform to inline style', () => {
-    const inputCode = `
-      const element = <div style={{ color: 'red', fontSize: '16px' }}>Hello, World!</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-  it('should work with CSS Variables transform to inline style', () => {
-    const inputCode = `
-      const element = <div style={"--color: red"}>Hello, World!</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-  it('should work with dynamic style transform to inline style', () => {
-    const inputCode = `
-      const color =  "red"
-      const style = { color, fontSize: '16px' };
-      const element = <div style={style}>Hello, World!</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with event handlers', () => {
+  it('should work with event handlers in SSR', () => {
     const inputCode = `
       const handleClick = () => console.log('clicked');
       const element = <button onClick={handleClick}>Click me</button>;
@@ -257,22 +236,14 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with multiple event handlers', () => {
+  it('should work with hydration attributes', () => {
     const inputCode = `
-      const element = (
-        <div
-          onClick={() => console.log('clicked')}
-          onMouseEnter={() => console.log('mouse enter')}
-          onMouseLeave={() => console.log('mouse leave')}
-        >
-          Multiple Events
-        </div>
-      );
+      const element = <div data-hydrate="true">Hydration Content</div>;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with conditional rendering', () => {
+  it('should work with conditional rendering in SSR', () => {
     const inputCode = `
       const isVisible = true;
       const element = (
@@ -285,7 +256,7 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with list rendering', () => {
+  it('should work with list rendering in SSR', () => {
     const inputCode = `
       const items = ['Item 1', 'Item 2', 'Item 3'];
       const element = (
@@ -299,7 +270,7 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with nested components and props', () => {
+  it('should work with nested components and props in SSR', () => {
     const inputCode = `
       const Child = ({ name, age }) => <div>Name: {name}, Age: {age}</div>;
       const Parent = () => (
@@ -312,142 +283,346 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with dynamic class names', () => {
+  it('should work with async data in SSR', () => {
     const inputCode = `
-      const isActive = true;
-      const element = <div class={isActive ? 'active' : ''}>Dynamic Class</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with dynamic styles', () => {
-    const inputCode = `
-      const color = 'red';
-      const element = <div style={{ color, fontSize: '16px' }}>Dynamic Style</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with fragments and keys', () => {
-    const inputCode = `
-      const element = (
-        <>
-          <div key="1">First</div>
-          <div key="2">Second</div>
-        </>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with error boundaries', () => {
-    const inputCode = `
-      const ErrorBoundary = ({ children }) => {
-        try {
-          return children;
-        } catch (error) {
-          return <div>Error occurred!</div>;
-        }
+      const AsyncComponent = async ({ data }) => {
+        const result = await data;
+        return <div>{result}</div>;
       };
-      const element = (
-        <ErrorBoundary>
-          <div>Protected Content</div>
-        </ErrorBoundary>
+      const element = <AsyncComponent data={Promise.resolve('async content')} />;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR', () => {
+    const inputCode = `
+      const StreamingComponent = ({ chunks }) => (
+        <div>
+          {chunks.map((chunk, index) => (
+            <div key={index} data-chunk={index}>{chunk}</div>
+          ))}
+        </div>
       );
+      const element = <StreamingComponent chunks={['chunk1', 'chunk2']} />;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with refs', () => {
+  it('should work with streaming SSR and suspense', () => {
     const inputCode = `
-      const myRef = { current: null };
-      const element = <div ref={myRef}>Reference Element</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with portals', () => {
-    const inputCode = `
-      const Portal = ({ children, target }) => {
-        return <div data-portal-target={target}>{children}</div>;
-      };
-      const element = (
-        <Portal target="modal">
-          <div>Modal Content</div>
-        </Portal>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with context', () => {
-    const inputCode = `
-      const ThemeContext = { Provider: ({ value, children }) => children };
-      const element = (
-        <ThemeContext.Provider value="dark">
-          <div>Themed Content</div>
-        </ThemeContext.Provider>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with memo components', () => {
-    const inputCode = `
-      const MemoComponent = ({ value }) => <div>Memo: {value}</div>;
-      MemoComponent._memo = true;
-      const element = <MemoComponent value={42} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with forwardRef components', () => {
-    const inputCode = `
-      const ForwardRefComponent = ({ children }, ref) => (
-        <div ref={ref}>{children}</div>
-      );
-      ForwardRefComponent._forward = true;
-      const element = <ForwardRefComponent>Forward Ref Content</ForwardRefComponent>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with lazy components', () => {
-    const inputCode = `
-      const LazyComponent = ({ children }) => <div data-lazy>{children}</div>;
-      LazyComponent._lazy = true;
-      const element = <LazyComponent>Lazy Content</LazyComponent>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with suspense boundaries', () => {
-    const inputCode = `
-      const Suspense = ({ children, fallback }) => (
-        <div data-suspense>
-          {children}
-          {fallback}
+      const StreamingSuspense = ({ children, fallback }) => (
+        <div data-streaming>
+          <Suspense fallback={fallback}>
+            {children}
+          </Suspense>
         </div>
       );
       const element = (
+        <StreamingSuspense fallback={<div>Loading...</div>}>
+          <div>Streaming Content</div>
+        </StreamingSuspense>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and error boundaries', () => {
+    const inputCode = `
+      const StreamingErrorBoundary = ({ children, fallback }) => (
+        <div data-streaming-error>
+          <ErrorBoundary fallback={fallback}>
+            {children}
+          </ErrorBoundary>
+        </div>
+      );
+      const element = (
+        <StreamingErrorBoundary fallback={<div>Error occurred!</div>}>
+          <div>Protected Streaming Content</div>
+        </StreamingErrorBoundary>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and context', () => {
+    const inputCode = `
+      const StreamingContext = ({ value, children }) => (
+        <div data-streaming-context>
+          <ThemeContext.Provider value={value}>
+            {children}
+          </ThemeContext.Provider>
+        </div>
+      );
+      const element = (
+        <StreamingContext value="dark">
+          <div>Streaming Context Content</div>
+        </StreamingContext>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and portals', () => {
+    const inputCode = `
+      const StreamingPortal = ({ target, children }) => (
+        <div data-streaming-portal data-target={target}>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingPortal target="modal">
+          <div>Streaming Portal Content</div>
+        </StreamingPortal>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and refs', () => {
+    const inputCode = `
+      const StreamingRef = ({ children }, ref) => (
+        <div ref={ref} data-streaming-ref>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingRef ref={React.createRef()}>
+          <div>Streaming Ref Content</div>
+        </StreamingRef>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and memo', () => {
+    const inputCode = `
+      const StreamingMemo = ({ value }) => (
+        <div data-streaming-memo>{value}</div>
+      );
+      StreamingMemo._memo = true;
+      const element = <StreamingMemo value="Memo Content" />;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and forwardRef', () => {
+    const inputCode = `
+      const StreamingForwardRef = React.forwardRef((props, ref) => (
+        <div ref={ref} data-streaming-forward>
+          {props.children}
+        </div>
+      ));
+      const element = (
+        <StreamingForwardRef ref={React.createRef()}>
+          <div>Streaming Forward Ref Content</div>
+        </StreamingForwardRef>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and lazy loading', () => {
+    const inputCode = `
+      const StreamingLazy = ({ children }) => (
+        <div data-streaming-lazy>{children}</div>
+      );
+      StreamingLazy._lazy = true;
+      const element = (
         <Suspense fallback={<div>Loading...</div>}>
-          <div>Content</div>
+          <StreamingLazy>Lazy Content</StreamingLazy>
         </Suspense>
       );
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with error boundaries', () => {
+  it('should work with streaming SSR and dynamic imports', () => {
     const inputCode = `
-      const ErrorBoundary = ({ children, fallback }) => (
-        <div data-error-boundary>
-          {children}
-          {fallback}
+      const StreamingDynamic = ({ children }) => (
+        <div data-streaming-dynamic>{children}</div>
+      );
+      const element = (
+        <Suspense fallback={<div>Loading...</div>}>
+          <StreamingDynamic>
+            {import('./Component')}
+          </StreamingDynamic>
+        </Suspense>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and multiple contexts', () => {
+    const inputCode = `
+      const StreamingContexts = ({ theme, user, children }) => (
+        <div data-streaming-contexts>
+          <ThemeContext.Provider value={theme}>
+            <UserContext.Provider value={user}>
+              {children}
+            </UserContext.Provider>
+          </ThemeContext.Provider>
         </div>
       );
       const element = (
-        <ErrorBoundary fallback={<div>Error occurred!</div>}>
+        <StreamingContexts
+          theme="dark"
+          user={{ name: 'John' }}
+        >
+          <div>Multiple Contexts Content</div>
+        </StreamingContexts>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and custom hooks', () => {
+    const inputCode = `
+      const useStreamingHook = () => ({ value: 'streaming' });
+      const StreamingHook = () => {
+        const { value } = useStreamingHook();
+        return <div data-streaming-hook>{value}</div>;
+      };
+      const element = <StreamingHook />;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and error handling', () => {
+    const inputCode = `
+      const StreamingError = ({ error, children }) => (
+        <div data-streaming-error>
+          {error ? (
+            <div>Error: {error.message}</div>
+          ) : (
+            children
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingError error={null}>
+          <div>Streaming Content</div>
+        </StreamingError>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and loading states', () => {
+    const inputCode = `
+      const StreamingLoading = ({ isLoading, children }) => (
+        <div data-streaming-loading>
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            children
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingLoading isLoading={false}>
+          <div>Loaded Content</div>
+        </StreamingLoading>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and data fetching', () => {
+    const inputCode = `
+      const StreamingData = ({ data, children }) => (
+        <div data-streaming-data>
+          {data ? (
+            children
+          ) : (
+            <div>Loading data...</div>
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingData data={{ key: 'value' }}>
+          <div>Data Content</div>
+        </StreamingData>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and hydration', () => {
+    const inputCode = `
+      const StreamingHydration = ({ children }) => (
+        <div data-streaming-hydration>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingHydration>
+          <div data-hydrate="true">Hydration Content</div>
+        </StreamingHydration>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and suspense boundaries', () => {
+    const inputCode = `
+      const StreamingSuspenseBoundary = ({ children, fallback }) => (
+        <div data-streaming-suspense>
+          <Suspense fallback={fallback}>
+            {children}
+          </Suspense>
+        </div>
+      );
+      const element = (
+        <StreamingSuspenseBoundary fallback={<div>Loading...</div>}>
+          <div>Suspense Content</div>
+        </StreamingSuspenseBoundary>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming SSR and error boundaries', () => {
+    const inputCode = `
+      const StreamingErrorBoundary = ({ children, fallback }) => (
+        <div data-streaming-error-boundary>
+          <ErrorBoundary fallback={fallback}>
+            {children}
+          </ErrorBoundary>
+        </div>
+      );
+      const element = (
+        <StreamingErrorBoundary fallback={<div>Error occurred!</div>}>
+          <div>Protected Content</div>
+        </StreamingErrorBoundary>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with head management in SSR', () => {
+    const inputCode = `
+      const Head = ({ children }) => <head data-ssr>{children}</head>;
+      const element = (
+        <Head>
+          <title>Page Title</title>
+          <meta name="description" content="Page description" />
+        </Head>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with error handling in SSR', () => {
+    const inputCode = `
+      const ErrorBoundary = ({ fallback, children }) => {
+        try {
+          return children;
+        } catch (error) {
+          return fallback;
+        }
+      };
+      const element = (
+        <ErrorBoundary fallback={<div>Error Page</div>}>
           <div>Protected Content</div>
         </ErrorBoundary>
       );
@@ -455,21 +630,7 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with portals', () => {
-    const inputCode = `
-      const Portal = ({ children, target }) => (
-        <div data-portal-target={target}>{children}</div>
-      );
-      const element = (
-        <Portal target="modal">
-          <div>Modal Content</div>
-        </Portal>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with context providers', () => {
+  it('should work with context in SSR', () => {
     const inputCode = `
       const ThemeContext = { Provider: ({ value, children }) => children };
       const element = (
@@ -481,202 +642,30 @@ describe('jsx transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with dynamic imports', () => {
+  it('should work with CSS-in-JS in SSR', () => {
     const inputCode = `
-      const DynamicComponent = ({ children }) => (
-        <div data-dynamic>{children}</div>
+      const StyledComponent = ({ className, children }) => (
+        <div class={className} data-styled>
+          {children}
+        </div>
       );
       const element = (
-        <DynamicComponent>
-          {import('./Component')}
-        </DynamicComponent>
+        <StyledComponent className="generated-class">
+          Styled Content
+        </StyledComponent>
       );
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with refs and ref forwarding', () => {
+  it('should work with data fetching in SSR', () => {
     const inputCode = `
-      const RefComponent = ({ children }, ref) => (
-        <div ref={ref} data-ref>{children}</div>
+      const DataComponent = ({ data }) => (
+        <div data-ssr-data>
+          {JSON.stringify(data)}
+        </div>
       );
-      const element = (
-        <RefComponent ref={React.createRef()}>
-          Ref Content
-        </RefComponent>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with strict mode', () => {
-    const inputCode = `
-      const StrictMode = ({ children }) => (
-        <div data-strict>{children}</div>
-      );
-      const element = (
-        <StrictMode>
-          <div>Strict Mode Content</div>
-        </StrictMode>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with concurrent mode', () => {
-    const inputCode = `
-      const ConcurrentMode = ({ children }) => (
-        <div data-concurrent>{children}</div>
-      );
-      const element = (
-        <ConcurrentMode>
-          <div>Concurrent Mode Content</div>
-        </ConcurrentMode>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with suspense and lazy loading', () => {
-    const inputCode = `
-      const LazyComponent = ({ children }) => <div data-lazy>{children}</div>;
-      LazyComponent._lazy = true;
-      const element = (
-        <Suspense fallback={<div>Loading...</div>}>
-          <LazyComponent>Lazy Content</LazyComponent>
-        </Suspense>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with multiple contexts', () => {
-    const inputCode = `
-      const ThemeContext = { Provider: ({ value, children }) => children };
-      const UserContext = { Provider: ({ value, children }) => children };
-      const element = (
-        <ThemeContext.Provider value="dark">
-          <UserContext.Provider value={{ name: 'John' }}>
-            <div data-theme="dark" data-user="John">
-              Nested Context Content
-            </div>
-          </UserContext.Provider>
-        </ThemeContext.Provider>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with custom hooks in components', () => {
-    const inputCode = `
-      const useCustomHook = () => ({ value: 'custom' });
-      const Component = () => {
-        const { value } = useCustomHook();
-        return <div data-hook={value}>Hook Content</div>;
-      };
-      const element = <Component />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with memo and custom comparison', () => {
-    const inputCode = `
-      const MemoComponent = ({ value }) => <div>Memo: {value}</div>;
-      MemoComponent._memo = true;
-      MemoComponent._compare = (prev, next) => prev.value === next.value;
-      const element = <MemoComponent value={42} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with forwardRef and memo', () => {
-    const inputCode = `
-      const ForwardRefMemoComponent = React.memo(React.forwardRef((props, ref) => (
-        <div ref={ref}>Forward Ref Memo: {props.value}</div>
-      )));
-      const element = <ForwardRefMemoComponent value={42} ref={React.createRef()} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with suspense and error boundary combination', () => {
-    const inputCode = `
-      const element = (
-        <ErrorBoundary fallback={<div>Error occurred!</div>}>
-          <Suspense fallback={<div>Loading...</div>}>
-            <div>Protected and Suspended Content</div>
-          </Suspense>
-        </ErrorBoundary>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with portals and refs', () => {
-    const inputCode = `
-      const Portal = ({ children, target }, ref) => (
-        <div ref={ref} data-portal-target={target}>{children}</div>
-      );
-      const element = (
-        <Portal target="modal" ref={React.createRef()}>
-          <div>Modal Content with Ref</div>
-        </Portal>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with context and memo combination', () => {
-    const inputCode = `
-      const ThemeContext = { Provider: ({ value, children }) => children };
-      const MemoComponent = ({ theme }) => <div data-theme={theme}>Memo Content</div>;
-      MemoComponent._memo = true;
-      const element = (
-        <ThemeContext.Provider value="dark">
-          <MemoComponent theme="dark" />
-        </ThemeContext.Provider>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with suspense and dynamic imports', () => {
-    const inputCode = `
-      const LazyComponent = ({ children }) => <div data-lazy>{children}</div>;
-      LazyComponent._lazy = true;
-      const element = (
-        <Suspense fallback={<div>Loading...</div>}>
-          <LazyComponent>
-            {import('./Component')}
-          </LazyComponent>
-        </Suspense>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with strict mode and error boundary', () => {
-    const inputCode = `
-      const element = (
-        <StrictMode>
-          <ErrorBoundary fallback={<div>Error occurred!</div>}>
-            <div>Strict Mode Protected Content</div>
-          </ErrorBoundary>
-        </StrictMode>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with concurrent mode and suspense', () => {
-    const inputCode = `
-      const element = (
-        <ConcurrentMode>
-          <Suspense fallback={<div>Loading...</div>}>
-            <div>Concurrent Mode Suspended Content</div>
-          </Suspense>
-        </ConcurrentMode>
-      );
+      const element = <DataComponent data={{ key: 'value' }} />;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });

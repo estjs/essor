@@ -1,43 +1,53 @@
 /**
- * @file JSX transformation module
+ * @file JSX transformation factory and entry point
  * @description Handles JSX transformation based on different rendering strategies
- * @module jsx-transformer
  */
 
-import { transformJSX as transformClient } from './client';
-import { transformJSX as transformSSR } from './ssr';
-import { transformJSX as transformSSG } from './ssg';
+import { ClientTransformStrategy } from './client';
+import { SSGTransformStrategy } from './ssg';
+import { SSRTransformStrategy } from './ssr';
 import type { NodePath } from '@babel/core';
-import type { JSXElement } from '../types';
+import type { State } from '../types';
+import type { JSXElement } from './types';
+import type { TransformStrategy } from './types';
 
 /**
- * Available transformation strategies for different rendering modes
+ * Strategy factory that creates the appropriate transformation strategy
+ * based on the rendering mode
+ * @param state Babel state
+ * @returns Transformation strategy instance
  */
-const transformStrategies = {
-  client: transformClient,
-  ssr: transformSSR,
-  ssg: transformSSG,
-};
+export function createTransformStrategy(state: State): TransformStrategy {
+  // Select the appropriate transformation strategy based on mode
+  const mode = state.opts.mode || 'client';
+
+  switch (mode) {
+    case 'client':
+      return new ClientTransformStrategy(state);
+    case 'ssg':
+      return new SSGTransformStrategy(state);
+    case 'ssr':
+      return new SSRTransformStrategy(state);
+    default:
+      throw new Error(`Invalid rendering mode: ${mode}`);
+  }
+}
 
 /**
  * Transform JSX elements based on server rendering strategy
- * @description Applies the appropriate transformation based on the server rendering mode
- * @param path - The path to the JSX element
+ * @param path JSX element path
  * @throws {Error} If mode type is invalid or transformation fails
  */
 export function transformJSX(path: NodePath<JSXElement>): void {
   try {
-    // Get rendering mode from options
-    const mode = path.state?.opts?.mode || 'client';
+    // Get Babel state from path
+    const state = path.state as State;
 
-    // Apply the corresponding transformation strategy
-    const transform = transformStrategies[mode];
+    // Create the appropriate strategy based on rendering mode
+    const strategy = createTransformStrategy(state);
 
-    if (!transform) {
-      throw new Error(`Invalid rendering mode: ${mode}`);
-    }
-
-    transform(path);
+    // Apply the transformation
+    strategy.transform(path);
   } catch (error) {
     console.error('JSX transformation failed:', error);
     throw error;

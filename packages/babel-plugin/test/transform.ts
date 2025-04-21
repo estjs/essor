@@ -8,7 +8,6 @@ import {
   symbolIdentifier,
   symbolObjectPattern,
 } from '../src/transformers/symbol';
-
 const transforms = {
   jsx: {
     Program: transformProgram,

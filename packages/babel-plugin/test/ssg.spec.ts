@@ -1,4 +1,4 @@
-import { getTransform } from './util';
+import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'ssg', hmr: false });
 describe('jsx SSG transform', () => {
   it('transforms simple JSX element', () => {

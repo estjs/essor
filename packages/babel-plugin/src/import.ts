@@ -33,6 +33,14 @@ export function addImport(name: ImportsNames): void {
 export function clearImport(): void {
   importedSets.clear();
 }
+/**
+ * Creates an import declaration for given program path.
+ *
+ * @param {NodePath<t.Program>} path The program path
+ * @param {Record<string, t.Identifier>} imports Imported identifiers
+ * @param {string} from The module path to import
+ */
+
 export function createImport(
   path: NodePath<t.Program>,
   imports: Record<string, t.Identifier>,
@@ -42,7 +50,6 @@ export function createImport(
   if (!importedSets.size) {
     return;
   }
-
   try {
     // Create import specifiers
     const importSpecifiers = Array.from(importedSets).map(name => {
