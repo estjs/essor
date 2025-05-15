@@ -12,7 +12,7 @@ function Com2() {
 function Com3() {
   return (
     <div>
-      <Com5></Com5>
+      <Com5 />
     </div>
   );
 }
@@ -20,8 +20,8 @@ function Com3() {
 function Com5() {
   return (
     <div>
-      <Com2></Com2>
-      <Com6></Com6>
+      <Com2 />
+      <Com6 />
     </div>
   );
 }
@@ -35,7 +35,7 @@ function Com4() {
     <div>
       8
       <Com1>
-        <Com3></Com3>
+        <Com3 />
       </Com1>
     </div>
   );
@@ -49,10 +49,16 @@ function App2() {
       <div>
         3
         <div>
-          4<Com4></Com4>
+          4<Com4 />
         </div>
       </div>
-      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
+      <input
+        bind:value={$value}
+        type='text'
+        val={$value}
+        placeholder='test'
+        val2={$value}
+      />
     </div>
   );
 }
@@ -64,10 +70,16 @@ function App3() {
       <div>
         5{$value}
         <div>
-          6<Com4></Com4>
+          6<Com4 />
         </div>
       </div>
-      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
+      <input
+        bind:value={$value}
+        type='text'
+        val={$value}
+        placeholder='test'
+        val2={$value}
+      />
     </div>
   );
 }
@@ -77,12 +89,18 @@ function App() {
     <div>
       <p>{$value}</p>
       <div>
-        1{$value}2<App2></App2>
+        1{$value}2<App2 />
         <div>
-          <App3></App3>7<Com4></Com4>
+          <App3 />7<Com4 />
         </div>
       </div>
-      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
+      <input
+        bind:value={$value}
+        type='text'
+        val={$value}
+        placeholder='test'
+        val2={$value}
+      />
     </div>
   );
 }

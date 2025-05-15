@@ -179,7 +179,7 @@ The `unReactive` function creates a shallow copy of a reactive object.
 
 #### Example
 ```javascript
-import { unReactive, reactive } from '@estjs/shared';
+import { reactive, unReactive } from '@estjs/shared';
 
 const state = reactive({ count: 0 });
 

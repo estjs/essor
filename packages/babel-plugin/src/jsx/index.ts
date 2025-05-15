@@ -8,8 +8,7 @@ import { SSGTransformStrategy } from './ssg';
 import { SSRTransformStrategy } from './ssr';
 import type { NodePath } from '@babel/core';
 import type { State } from '../types';
-import type { JSXElement } from './types';
-import type { TransformStrategy } from './types';
+import type { JSXElement, TransformStrategy } from './types';
 
 /**
  * Strategy factory that creates the appropriate transformation strategy

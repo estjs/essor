@@ -6,8 +6,7 @@ import { capitalize } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { addImport, importObject } from '../import';
 import { getAttrName } from './utils';
-import type { State } from '../types';
-import type { JSXElement } from '../types';
+import type { JSXElement, State } from '../types';
 
 /**
  * Process JSX attributes and return props object

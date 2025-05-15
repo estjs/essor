@@ -6,7 +6,11 @@ function App() {
   return (
     <div>
       <p>{value.value}</p>
-      <input type="text" value={value.value} oninput={e => (value.value = e.target.value)} />
+      <input
+        type='text'
+        value={value.value}
+        oninput={e => (value.value = e.target.value)}
+      />
     </div>
   );
 }

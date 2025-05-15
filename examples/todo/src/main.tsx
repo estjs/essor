@@ -1,10 +1,12 @@
 function App() {
   const $list: string[] = [];
-  let $val: string = '';
+  let $val = '';
   const $checkedList: string[] = [];
 
   const addTodo = () => {
-    if (!$val) return;
+    if (!$val) {
+      return;
+    }
     $list.push($val);
     $val = '';
   };
@@ -22,13 +24,19 @@ function App() {
   };
   return (
     <div>
-      <input type="text" bind:value={$val} />
+      <input
+        type='text'
+        bind:value={$val}
+      />
       <button onClick={addTodo}>Add</button>
 
       <ul>
         {$list.map((item, index) => (
           <li>
-            <input type="checkbox" onChange={e => itemChecked(e, item)} />
+            <input
+              type='checkbox'
+              onChange={e => itemChecked(e, item)}
+            />
             <span>{item}</span>
             <button onClick={() => deleteTodo(index)}>{`del-${index}`}</button>
           </li>

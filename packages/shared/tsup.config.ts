@@ -15,6 +15,6 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   cjsInterop: true,
-  minify: env === 'production' ? true : false,
+  minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
 });

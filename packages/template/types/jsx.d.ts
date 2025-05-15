@@ -39,14 +39,12 @@ declare global {
     interface ElementChildrenAttribute {
       children: {};
     }
-    interface EventHandler<T, E extends Event> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: DOMElement;
-        },
-      ): void;
-    }
+    type EventHandler<T, E extends Event> = (
+      e: E & {
+        currentTarget: T;
+        target: DOMElement;
+      },
+    ) => void;
     interface BoundEventHandler<T, E extends Event> {
       0: (
         data: any,
@@ -59,16 +57,14 @@ declare global {
     }
     type EventHandlerUnion<T, E extends Event> = EventHandler<T, E> | BoundEventHandler<T, E>;
 
-    interface InputEventHandler<T, E extends InputEvent> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type InputEventHandler<T, E extends InputEvent> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundInputEventHandler<T, E extends InputEvent> {
       0: (
         data: any,
@@ -85,16 +81,14 @@ declare global {
       | InputEventHandler<T, E>
       | BoundInputEventHandler<T, E>;
 
-    interface ChangeEventHandler<T, E extends Event> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type ChangeEventHandler<T, E extends Event> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundChangeEventHandler<T, E extends Event> {
       0: (
         data: any,
@@ -111,16 +105,14 @@ declare global {
       | ChangeEventHandler<T, E>
       | BoundChangeEventHandler<T, E>;
 
-    interface FocusEventHandler<T, E extends FocusEvent> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type FocusEventHandler<T, E extends FocusEvent> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundFocusEventHandler<T, E extends FocusEvent> {
       0: (
         data: any,
@@ -632,7 +624,7 @@ declare global {
       'aria-valuenow'?: number | string;
       /** Defines the human readable text alternative of aria-valuenow for a range widget. */
       'aria-valuetext'?: string;
-      'role'?:
+      role?:
         | 'alert'
         | 'alertdialog'
         | 'application'
@@ -845,15 +837,15 @@ declare global {
     }
     interface FormHTMLAttributes<T> extends HTMLAttributes<T> {
       'accept-charset'?: string;
-      'action'?: string | SerializableAttributeValue;
-      'autocomplete'?: string;
-      'encoding'?: HTMLFormEncType;
-      'enctype'?: HTMLFormEncType;
-      'method'?: HTMLFormMethod;
-      'name'?: string;
-      'novalidate'?: boolean;
-      'target'?: string;
-      'noValidate'?: boolean;
+      action?: string | SerializableAttributeValue;
+      autocomplete?: string;
+      encoding?: HTMLFormEncType;
+      enctype?: HTMLFormEncType;
+      method?: HTMLFormMethod;
+      name?: string;
+      novalidate?: boolean;
+      target?: string;
+      noValidate?: boolean;
     }
     interface IframeHTMLAttributes<T> extends HTMLAttributes<T> {
       allow?: string;
@@ -994,11 +986,11 @@ declare global {
       type?: 'context' | 'toolbar';
     }
     interface MetaHTMLAttributes<T> extends HTMLAttributes<T> {
-      'charset'?: string;
-      'content'?: string;
+      charset?: string;
+      content?: string;
       'http-equiv'?: string;
-      'name'?: string;
-      'media'?: string;
+      name?: string;
+      media?: string;
     }
     interface MeterHTMLAttributes<T> extends HTMLAttributes<T> {
       form?: string;
@@ -1274,17 +1266,17 @@ declare global {
         | 'mathematical'
         | 'inherit';
       'baseline-shift'?: number | string;
-      'clip'?: string;
+      clip?: string;
       'clip-path'?: string;
       'clip-rule'?: 'nonzero' | 'evenodd' | 'inherit';
-      'color'?: string;
+      color?: string;
       'color-interpolation'?: 'auto' | 'sRGB' | 'linearRGB' | 'inherit';
       'color-interpolation-filters'?: 'auto' | 'sRGB' | 'linearRGB' | 'inherit';
       'color-profile'?: string;
       'color-rendering'?: 'auto' | 'optimizeSpeed' | 'optimizeQuality' | 'inherit';
-      'cursor'?: string;
-      'direction'?: 'ltr' | 'rtl' | 'inherit';
-      'display'?: string;
+      cursor?: string;
+      direction?: 'ltr' | 'rtl' | 'inherit';
+      display?: string;
       'dominant-baseline'?:
         | 'auto'
         | 'text-bottom'
@@ -1297,10 +1289,10 @@ declare global {
         | 'text-top'
         | 'inherit';
       'enable-background'?: string;
-      'fill'?: string;
+      fill?: string;
       'fill-opacity'?: number | string | 'inherit';
       'fill-rule'?: 'nonzero' | 'evenodd' | 'inherit';
-      'filter'?: string;
+      filter?: string;
       'flood-color'?: string;
       'flood-opacity'?: number | string | 'inherit';
       'font-family'?: string;
@@ -1313,16 +1305,16 @@ declare global {
       'glyph-orientation-horizontal'?: string;
       'glyph-orientation-vertical'?: string;
       'image-rendering'?: 'auto' | 'optimizeQuality' | 'optimizeSpeed' | 'inherit';
-      'kerning'?: string;
+      kerning?: string;
       'letter-spacing'?: number | string;
       'lighting-color'?: string;
       'marker-end'?: string;
       'marker-mid'?: string;
       'marker-start'?: string;
-      'mask'?: string;
-      'opacity'?: number | string | 'inherit';
-      'overflow'?: 'visible' | 'hidden' | 'scroll' | 'auto' | 'inherit';
-      'pathLength'?: string | number;
+      mask?: string;
+      opacity?: number | string | 'inherit';
+      overflow?: 'visible' | 'hidden' | 'scroll' | 'auto' | 'inherit';
+      pathLength?: string | number;
       'pointer-events'?:
         | 'bounding-box'
         | 'visiblePainted'
@@ -1344,7 +1336,7 @@ declare global {
         | 'inherit';
       'stop-color'?: string;
       'stop-opacity'?: number | string | 'inherit';
-      'stroke'?: string;
+      stroke?: string;
       'stroke-dasharray'?: string;
       'stroke-dashoffset'?: number | string;
       'stroke-linecap'?: 'butt' | 'round' | 'square' | 'inherit';
@@ -1361,7 +1353,7 @@ declare global {
         | 'geometricPrecision'
         | 'inherit';
       'unicode-bidi'?: string;
-      'visibility'?: 'visible' | 'hidden' | 'collapse' | 'inherit';
+      visibility?: 'visible' | 'hidden' | 'collapse' | 'inherit';
       'word-spacing'?: number | string;
       'writing-mode'?: 'lr-tb' | 'rl-tb' | 'tb-rl' | 'lr' | 'rl' | 'tb' | 'inherit';
     }

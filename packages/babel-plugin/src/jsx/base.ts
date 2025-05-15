@@ -9,7 +9,7 @@ import { createPropsObjectExpression, getTagName, isComponentName } from './util
 import type { ClientResult, JSXElement, SSGResult, SSRResult, TransformStrategy } from './types';
 import type { State } from '../types';
 
-/** 
+/**
  * Abstract base strategy class for JSX transformations
  */
 export abstract class BaseTransformStrategy implements TransformStrategy {

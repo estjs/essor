@@ -28,7 +28,9 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
   const { init, id } = path.node;
   const variableName = (id as Identifier).name;
 
-  if (t.isObjectPattern(id) || t.isArrayPattern(id) || !isSymbolStart(path, variableName)) return;
+  if (t.isObjectPattern(id) || t.isArrayPattern(id) || !isSymbolStart(path, variableName)) {
+    return;
+  }
 
   const isComputed =
     init &&
@@ -47,10 +49,14 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>) {
 
 export function symbolIdentifier(path) {
   const parentPath = path.parentPath;
-  if (!shouldProcessIdentifier(parentPath)) return;
+  if (!shouldProcessIdentifier(parentPath)) {
+    return;
+  }
 
   const { node } = path;
-  if (!isSymbolStart(path, node.name)) return;
+  if (!isSymbolStart(path, node.name)) {
+    return;
+  }
 
   if (!path.findParent(p => p.isMemberExpression() && p.node.property.name === 'value')) {
     path.replaceWith(t.memberExpression(t.identifier(node.name), t.identifier('value')));

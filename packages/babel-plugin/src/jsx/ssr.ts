@@ -11,7 +11,7 @@ import {
   getNodeText,
   getTagName,
   hasSiblingElement,
-  isComponentName,  
+  isComponentName,
   isTextChild,
   isValidChild,
   replaceSpace,
@@ -346,26 +346,29 @@ export class SSRTransformStrategy extends BaseTransformStrategy {
    */
   private extractComponentProps(node: t.JSXElement): Record<string, any> {
     const props: Record<string, any> = {};
-    
+
     // Extract attributes
     node.openingElement.attributes.forEach(attr => {
       if (t.isJSXAttribute(attr)) {
-        const name = t.isJSXIdentifier(attr.name) 
-          ? attr.name.name 
+        const name = t.isJSXIdentifier(attr.name)
+          ? attr.name.name
           : `${attr.name.namespace.name}:${attr.name.name.name}`;
-          
+
         if (!attr.value) {
           props[name] = true;
         } else if (t.isStringLiteral(attr.value)) {
           props[name] = attr.value.value;
-        } else if (t.isJSXExpressionContainer(attr.value) && !t.isJSXEmptyExpression(attr.value.expression)) {
+        } else if (
+          t.isJSXExpressionContainer(attr.value) &&
+          !t.isJSXEmptyExpression(attr.value.expression)
+        ) {
           props[name] = attr.value.expression;
         }
       } else if (t.isJSXSpreadAttribute(attr)) {
         props._$spread$ = attr.argument;
       }
     });
-    
+
     // Extract children
     const children: t.Expression[] = [];
     node.children.forEach(child => {
@@ -380,26 +383,27 @@ export class SSRTransformStrategy extends BaseTransformStrategy {
         // For nested JSX elements, create a temporary path and transform it
         const childProps = this.extractComponentProps(child as t.JSXElement);
         const childTagName = t.isJSXElement(child) ? getTagName(child) : 'Fragment';
-        
+
         if (childTagName === 'Fragment') {
           addImport(importObject.Fragment);
         } else {
           addImport(importObject.createComponent);
         }
-        
+
         const importName = childTagName === 'Fragment' ? 'Fragment' : 'createComponent';
-        const args = childTagName === 'Fragment' 
-          ? [createPropsObjectExpression(childProps, true)]
-          : [t.identifier(childTagName), createPropsObjectExpression(childProps, true)];
-          
+        const args =
+          childTagName === 'Fragment'
+            ? [createPropsObjectExpression(childProps, true)]
+            : [t.identifier(childTagName), createPropsObjectExpression(childProps, true)];
+
         children.push(t.callExpression(this.state.imports[importName], args));
       }
     });
-    
+
     if (children.length > 0) {
       props.children = children;
     }
-    
+
     return props;
   }
 

@@ -14,6 +14,6 @@ export default defineConfig({
   noExternal: ['@estjs/shared'],
   tsconfig: '../../tsconfig.build.json',
   define: {
-    __DEV__: `${process.env.BUILD_ENV !== 'production'}` + ``,
+    __DEV__: `${process.env.BUILD_ENV !== 'production'}`,
   },
 });

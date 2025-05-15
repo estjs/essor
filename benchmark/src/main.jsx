@@ -118,24 +118,31 @@ const actions = {
 function Row(props) {
   return (
     <tr class={selected.value === props.item.id ? 'danger' : ''}>
-      <td class="col-md-1 1">{props.item.id}</td>
-      <td class="col-md-4 2">
+      <td class='col-md-1 1'>{props.item.id}</td>
+      <td class='col-md-4 2'>
         <a onClick={() => actions.select(props.item.id)}>{props.item.label}</a>
       </td>
-      <td class="col-md-1 3">
+      <td class='col-md-1 3'>
         <a onClick={() => actions.remove(props.item.id)}>
-          <span class="glyphicon glyphicon-remove" aria-hidden="true" />
+          <span
+            class='glyphicon glyphicon-remove'
+            aria-hidden='true'
+          />
         </a>
       </td>
-      <td class="col-md-6 4" />
+      <td class='col-md-6 4' />
     </tr>
   );
 }
 
 function Button(props) {
   return (
-    <div class="col-sm-6 smallpad">
-      <button type="button" class="btn btn-primary btn-block" id={props.id}>
+    <div class='col-sm-6 smallpad'>
+      <button
+        type='button'
+        class='btn btn-primary btn-block'
+        id={props.id}
+      >
         {props.children}
       </button>
     </div>
@@ -144,29 +151,47 @@ function Button(props) {
 
 function Jumbotron() {
   return (
-    <div class="jumbotron">
-      <div class="row">
-        <div class="col-md-6">
+    <div class='jumbotron'>
+      <div class='row'>
+        <div class='col-md-6'>
           <h1>Essor keyed</h1>
         </div>
-        <div class="col-md-6">
-          <div class="row">
-            <Button id="run" onClick={() => actions.run()}>
+        <div class='col-md-6'>
+          <div class='row'>
+            <Button
+              id='run'
+              onClick={() => actions.run()}
+            >
               Create 1,000 rows
             </Button>
-            <Button id="runlots" onClick={() => actions.runLots()}>
+            <Button
+              id='runlots'
+              onClick={() => actions.runLots()}
+            >
               Create 10,000 rows
             </Button>
-            <Button id="add" onClick={() => actions.add()}>
+            <Button
+              id='add'
+              onClick={() => actions.add()}
+            >
               Append 1,000 rows
             </Button>
-            <Button id="update" onClick={() => actions.update()}>
+            <Button
+              id='update'
+              onClick={() => actions.update()}
+            >
               Update every 10th row
             </Button>
-            <Button id="clear" onClick={() => actions.clear()}>
+            <Button
+              id='clear'
+              onClick={() => actions.clear()}
+            >
               Clear
             </Button>
-            <Button id="swaprows" onClick={() => actions.swapRows()}>
+            <Button
+              id='swaprows'
+              onClick={() => actions.swapRows()}
+            >
               Swap Rows
             </Button>
           </div>
@@ -178,12 +203,15 @@ function Jumbotron() {
 
 function Main() {
   return (
-    <div class="container">
+    <div class='container'>
       <Jumbotron />
-      <table class="table table-hover table-striped test-data">
+      <table class='table table-hover table-striped test-data'>
         <tbody>
           {data.value.map(item => (
-            <Row key={item.id} item={item} />
+            <Row
+              key={item.id}
+              item={item}
+            />
           ))}
 
           {/* <For each={data} >
@@ -191,7 +219,10 @@ function Main() {
           </For> */}
         </tbody>
       </table>
-      <span class="preloadicon glyphicon glyphicon-remove" aria-hidden="true" />
+      <span
+        class='preloadicon glyphicon glyphicon-remove'
+        aria-hidden='true'
+      />
     </div>
   );
 }

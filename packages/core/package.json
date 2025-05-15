@@ -13,10 +13,7 @@
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
-  "files": [
-    "dist",
-    "types"
-  ],
+  "files": ["dist", "types"],
   "main": "./dist/essor.esm.js",
   "module": "./dist/essor.esm.js",
   "types": "./dist/essor.d.ts",
@@ -44,9 +41,7 @@
   },
   "typesVersions": {
     "*": {
-      "*": [
-        "./dist/essor.d.ts"
-      ]
+      "*": ["./dist/essor.d.ts"]
     }
   },
   "sideEffects": false,

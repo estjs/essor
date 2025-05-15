@@ -53,7 +53,7 @@ export class ClientTransformStrategy extends BaseTransformStrategy {
     // Check if HMR functionality is enabled
     const isHmrEnabled = this.state.opts.hmr !== false;
 
-    // Add Fragment import for JSX Fragment elements 
+    // Add Fragment import for JSX Fragment elements
     if (path.isJSXFragment()) {
       addImport(importObject.Fragment);
     }
@@ -112,7 +112,7 @@ export class ClientTransformStrategy extends BaseTransformStrategy {
         if (tagName === 'Fragment') {
           addImport(importObject.Fragment);
         }
-        
+
         if (isRoot) {
           this.result.props = props;
           const children = getChildren(path, this.transform.bind(this));
@@ -140,7 +140,7 @@ export class ClientTransformStrategy extends BaseTransformStrategy {
         }
       }
     } else if (path.isJSXFragment()) {
-      // Handle Fragments 
+      // Handle Fragments
       addImport(importObject.Fragment);
       (this.result as ClientResult).index--;
       this.transformChildren(path);
@@ -290,15 +290,17 @@ export class ClientTransformStrategy extends BaseTransformStrategy {
     // For fragments, return a simple Fragment call with children if any
     if (isJSXFragment || (isComponent && tagName === 'Fragment')) {
       addImport(importObject.Fragment);
-      
+
       // Extract children from props
       const props = this.result.props || {};
       const children = this.extractChildren(path);
       if (children.length > 0) {
         props.children = children;
       }
-      
-      return t.callExpression(this.state.imports.Fragment, [createPropsObjectExpression(props, true)]);
+
+      return t.callExpression(this.state.imports.Fragment, [
+        createPropsObjectExpression(props, true),
+      ]);
     }
 
     const tmpl = isComponent ? t.identifier(tagName) : path.scope.generateUidIdentifier('_tmpl$');
@@ -476,7 +478,7 @@ export class ClientTransformStrategy extends BaseTransformStrategy {
     if (children.length > 0) {
       props.children = children;
     }
-    
+
     const propsArg = this.createPropsObjectExpression(props, true);
 
     // For Fragment component, use the Fragment import

@@ -6,12 +6,7 @@ import { isPrimitive, isSelfClosingTag, isSymbol } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { addImport, importObject } from '../import';
 import { getChildren, processJSXAttributes } from './attributes';
-import {
-  createPropsObjectExpression,
-  isComponentName,
-  isValidChild,
-  replaceSpace,
-} from './utils';
+import { createPropsObjectExpression, isComponentName, isValidChild, replaceSpace } from './utils';
 import { BaseTransformStrategy } from './base';
 import type { JSXChild, JSXElement, SSGResult } from './types';
 

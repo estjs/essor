@@ -10,6 +10,6 @@ function App() {
     value.count++;
   }, 600);
 
-  return <InjectComponent></InjectComponent>;
+  return <InjectComponent />;
 }
 (<App />).mount(document.querySelector('#app')!);

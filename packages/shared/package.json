@@ -13,9 +13,7 @@
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
-  "files": [
-    "dist"
-  ],
+  "files": ["dist"],
   "main": "./dist/shared.js",
   "module": "./dist/shared.js",
   "types": "./dist/shared.d.ts",
@@ -28,9 +26,7 @@
   },
   "typesVersions": {
     "*": {
-      "*": [
-        "./dist/shared.d.ts"
-      ]
+      "*": ["./dist/shared.d.ts"]
     }
   },
   "sideEffects": false,
