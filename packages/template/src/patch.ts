@@ -3,9 +3,16 @@ import { isComponent } from './component';
 import { isHydrating } from './server/shared';
 import type { AnyNode } from './types';
 
+// Correctly import process
+const process = require('process');
+
+// Use more meaningful prefixes and naming
+const AUTO_KEY_PREFIX = '$$_auto_';
 let KEY_COUNTER = 0;
 // WeakMap mapping from nodes to internal keys
 const NODE_KEYS = new WeakMap<AnyNode, string>();
+// For detecting duplicate keys in development environment
+const DEV_KEY_MAP = new Map<string, AnyNode>();
 
 /**
  * Patches children of a parent node with new children.
@@ -197,15 +204,35 @@ export function patch(parent: Node, node: AnyNode, next: AnyNode): AnyNode {
 }
 
 /**
- * Maps an array of firstChild to a Map, using their keys as identifiers.
+ * Maps an array of children to a Map, using their keys as identifiers.
  *
- * @param {AnyNode[]} children - The array of firstChild to map
- * @returns {Map<string, AnyNode>} A Map of firstChild, keyed by their unique identifiers
+ * @param {AnyNode[]} children - The array of children to map
+ * @returns {Map<string, AnyNode>} A Map of children, keyed by their unique identifiers
  */
 export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
   const result = new Map();
+
+  // Detect duplicate keys in development environment
+  if (__DEV__) {
+    DEV_KEY_MAP.clear();
+  }
+
   for (const [i, child] of children.entries()) {
     const key = getKey(child, i);
+
+    // Detect duplicate user-provided keys in development environment
+    if (__DEV__ && !key.startsWith(AUTO_KEY_PREFIX)) {
+      if (DEV_KEY_MAP.has(key)) {
+        console.warn(
+          `[Key Warning] Duplicate key detected: "${key}". ` +
+            `This may cause rendering issues as keys should be unique. ` +
+            `Consider providing unique keys for list items.`,
+        );
+      } else {
+        DEV_KEY_MAP.set(key, child);
+      }
+    }
+
     result.set(key, child);
   }
   return result;
@@ -213,30 +240,71 @@ export function mapKeys(children: AnyNode[]): Map<string, AnyNode> {
 
 /**
  * Get unique key for a node
- * Optimization: prefer user-provided key, fall back to internally generated key, lastly use index-based key
+ * Following Vue and Solid patterns:
+ * 1. Prefer user-provided key (string or number)
+ * 2. Fall back to stable node identity-based keys
+ * 3. For list items without keys, provide helpful warnings in dev
  *
  * @param {AnyNode} node - The node to get key for
  * @param {number} index - The index of the node in the parent's children array
  * @returns {string} The unique key for the node
  */
-export function getKey(node: AnyNode, index?: number): string {
-  // Handle empty node case, add stable prefix
+export function getKey(node: AnyNode, index: number = 0): string {
+  // Handle empty node case with stable format
   if (!node) {
-    return `_${index}`;
+    return `${AUTO_KEY_PREFIX}empty_${index}`;
   }
 
-  // Prioritize user-provided key (most common case)
+  // Prioritize user-provided key
   if (isComponent(node) && !isNil(node.key)) {
-    return `${String(node.key)}`;
+    const userKey = node.key;
+
+    // Validate key and normalize to string
+    if (__DEV__) {
+      if (typeof userKey === 'object') {
+        console.warn(
+          `[Key Warning] Complex object used as key. ` +
+            `This may lead to unexpected behavior. ` +
+            `Please use string or number as key.`,
+        );
+      }
+    }
+
+    // Convert to string
+    return `${String(userKey)}`;
   }
 
-  // Check cache
+  // Use cached internal key
   if (NODE_KEYS.has(node)) {
     return NODE_KEYS.get(node)!;
   }
 
-  const internalKey = `${++KEY_COUNTER}`;
+  // Generate more meaningful automatic keys for different node types
+  let nodeType = 'node';
+  if (node instanceof Text) {
+    nodeType = 'text';
+  } else if (node instanceof Comment) {
+    nodeType = 'comment';
+  } else if (node instanceof Element) {
+    nodeType = node.tagName.toLowerCase();
+  } else if (isComponent(node)) {
+    nodeType = 'component';
+  }
+
+  const internalKey = `${AUTO_KEY_PREFIX}${nodeType}_${++KEY_COUNTER}`;
   NODE_KEYS.set(node, internalKey);
+
+  // If it's a list item without a key, warn in development environment
+  if (__DEV__ && index > 0) {
+    if (isComponent(node)) {
+      console.warn(
+        `[Key Warning] No "key" specified for component at index ${index}. ` +
+          `This may negatively impact performance when updating lists. ` +
+          `Consider providing a unique "key" prop.`,
+      );
+    }
+  }
+
   return internalKey;
 }
 
@@ -287,11 +355,15 @@ export function removeChild(child: AnyNode): void {
  * @param {AnyNode} child The old node or JSX.Element
  */
 export function replaceChild(parent: Node, node: AnyNode, child: AnyNode): void {
-  // Preserve old node's internal key for stability in subsequent operations
+  if (node === child) {
+    return;
+  }
+
   if (NODE_KEYS.has(child) && !NODE_KEYS.has(node)) {
     NODE_KEYS.set(node, NODE_KEYS.get(child)!);
   }
 
+  // Execute standard replacement when optimization is not possible
   insertNode(parent, node, child as Node);
   removeChild(child);
 }

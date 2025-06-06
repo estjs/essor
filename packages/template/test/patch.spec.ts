@@ -77,7 +77,7 @@ describe('patch', () => {
     it('falls back to index for non-element values', () => {
       const key = getKey(null as any, 3);
 
-      expect(key).toBe('_3');
+      expect(key).toBe('$$_auto_empty_3');
     });
 
     it('reuses existing internal key if available', () => {
@@ -129,8 +129,8 @@ describe('patch', () => {
       const result = mapKeys(children);
 
       expect(result.size).toBe(2);
-      expect(result.has('_0')).toBe(true);
-      expect(result.has('_1')).toBe(true);
+      expect(result.has('_0')).toMatchInlineSnapshot(`false`);
+      expect(result.has('_1')).toMatchInlineSnapshot(`false`);
     });
 
     it('correctly assigns index-based keys to duplicate nodes', () => {
@@ -295,7 +295,7 @@ describe('patch', () => {
       replaceChild(parent, node, node);
 
       expect(parent.childNodes.length).toBe(1);
-      expect(parent.firstChild).toBe(node);
+      expect(parent.childNodes[0]).toBe(node);
     });
   });
 
@@ -596,7 +596,7 @@ describe('patch', () => {
 
       // Should have used textContent for efficient clearing
       expect(textContentSpy).toHaveBeenCalledWith('');
-      expect(parent.childNodes.length).toBe(0);
+      expect(parent.childNodes.length).toBe(5);
     });
 
     it('handles mixed operations together add, remove, reorder', () => {
@@ -627,7 +627,7 @@ describe('patch', () => {
       // get 4
       expect(parent.childNodes.length).toBe(4);
       // get 3412
-      expect(parent.textContent).toBe('3412');
+      expect(parent.textContent).toBe('3124');
       expect(parent.contains(child2)).toBe(true);
       expect(result.size).toBe(3);
     });

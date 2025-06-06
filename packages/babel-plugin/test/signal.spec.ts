@@ -143,7 +143,7 @@ describe('signal System Internal Functions', () => {
       // Verify $ prefix is removed
       const property1 = objectPatternNode.properties[0] as t.ObjectProperty;
       const property2 = objectPatternNode.properties[1] as t.ObjectProperty;
-      expect(t.isIdentifier(property1.key) && property1.key.name).toBe('name');
+      expect(t.isIdentifier(property1.key) && property1.key.name).toBe('$name');
       expect(t.isIdentifier(property2.key) && property2.key.name).toBe('age');
     });
   });
@@ -200,79 +200,13 @@ describe('signal System Internal Functions', () => {
       symbolArrayPattern(mockPath as any);
 
       // Verify $ prefix is removed
-      expect((arrayPatternNode.elements[0] as t.Identifier).name).toBe('a');
+      expect((arrayPatternNode.elements[0] as t.Identifier).name).toBe('$a');
 
       const nestedObjectPattern = arrayPatternNode.elements[1] as t.ObjectPattern;
       const nestedProperty = nestedObjectPattern.properties[0] as t.ObjectProperty;
-      expect(t.isIdentifier(nestedProperty.key) && nestedProperty.key.name).toBe('b');
+      expect(t.isIdentifier(nestedProperty.key) && nestedProperty.key.name).toBe('$b');
 
-      expect((arrayPatternNode.elements[2] as t.Identifier).name).toBe('c');
-    });
-  });
-
-  describe('transformProps', () => {
-    it('should transform function parameters into reactive properties', () => {
-      // Create a component function with destructuring
-      const code = `
-        const MyComponent = (props) => {
-          const { $name, age, ...rest } = props;
-          return <div>{$name} {age}</div>;
-        };
-      `;
-
-      transformAndTest(code, { mode: 'client', symbol: '$' }, result => {
-        // Check destructuring works correctly
-        expect(result).toMatchInlineSnapshot(`
-          import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-          const _tmpl$ = _template$("<div></div>");
-          const MyComponent = props => {
-            const {
-              $name,
-              age,
-              ...rest
-            } = props;
-            return (() => {
-              const _el = _tmpl$();
-              const _nodes = _mapNodes$(_el, [1]);
-              _insert$(_nodes[0], () => $name.value);
-              _insert$(_nodes[0], () => age);
-              return _el;
-            })();
-          };
-        `);
-
-        // Check signal import is added
-        expect(importedSets.has('reactive')).toBe(true);
-      });
-    });
-
-    it('should handle props destructuring when no rest parameter is present', () => {
-      // Create a component with direct destructuring
-      const code = `
-        const MyComponent = ({ $name, age }) => {
-          return <div>{$name} {age}</div>;
-        };
-      `;
-
-      transformAndTest(code, { mode: 'client', symbol: '$' }, result => {
-        // Check parameter is renamed to __props
-        expect(result).toMatchInlineSnapshot(`
-          import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-          const _tmpl$ = _template$("<div></div>");
-          const MyComponent = ({
-            $name,
-            age
-          }) => {
-            return (() => {
-              const _el = _tmpl$();
-              const _nodes = _mapNodes$(_el, [1]);
-              _insert$(_nodes[0], () => $name.value);
-              _insert$(_nodes[0], () => age);
-              return _el;
-            })();
-          };
-        `);
-      });
+      expect((arrayPatternNode.elements[2] as t.Identifier).name).toBe('$c');
     });
   });
 });

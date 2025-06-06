@@ -30,7 +30,6 @@ function hasJSXReturn(path: NodePath<FunctionDeclaration | ArrowFunctionExpressi
 
 /**
  * Recursively replace object destructuring properties
- * @param context - Property transformation context
  */
 function replaceObjectProperties({ path, properties, parentPath }: PropertyTransformContext): void {
   properties.forEach(property => {
