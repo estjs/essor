@@ -16,21 +16,21 @@ import type { State } from '../types';
 import type { JSXElement, SSGProcessResult, TreeNode } from './types';
 import type { NodePath } from '@babel/core';
 /**
- * 转换JSX为静态站点生成代码
- * @param {NodePath<JSXElement>} path - JSX节点路径
- * @returns {t.Expression | undefined} 转换后的表达式
+ * Transform JSX to static site generation code
+ * @param {NodePath<JSXElement>} path - JSX node path
+ * @returns {t.Expression | undefined} Transformed expression
  */
 export function transformJSX(path: NodePath<JSXElement>): t.Expression | undefined {
   const state = path.state as State;
 
   setContext({ path, state });
 
-  // 创建JSX节点树
+  // Create JSX node tree
   const tree = createTree(path, state);
 
-  // 处理SSG特定的模板和动态内容
+  // Process SSG specific templates and dynamic content
   const { templates, dynamics } = processSSGTemplate(tree);
-  // 生成SSG渲染函数
+  // Generate SSG render function
   return generateSSGRenderFunction(tree, templates, dynamics);
 }
 /**
@@ -49,7 +49,7 @@ export function addTemplate(currentResult, content: string, join = false): void 
 }
 
 /**
- * 处理SSG模板和动态内容
+ * Process SSG templates and dynamic content
  */
 export function processSSGTemplate(tree: TreeNode): SSGProcessResult {
   const result: SSGProcessResult = {
@@ -58,14 +58,14 @@ export function processSSGTemplate(tree: TreeNode): SSGProcessResult {
     root: tree,
   };
 
-  // 递归处理节点
+  // Recursively process nodes
   processNodeForSSG(tree, result);
 
   return result;
 }
 
 /**
- * 递归处理节点，生成SSG模板和收集动态内容
+ * Recursively process nodes, generate SSG templates and collect dynamic content
  */
 export function processNodeForSSG(node: TreeNode, result: SSGProcessResult): void {
   if (!node) {
@@ -75,17 +75,17 @@ export function processNodeForSSG(node: TreeNode, result: SSGProcessResult): voi
   switch (node.type) {
     case NODE_TYPE.COMPONENT:
     case NODE_TYPE.FRAGMENT:
-      // 组件和Fragment处理为动态内容
+      // Handle components and Fragments as dynamic content
       handleComponentForSSG(node, result);
       break;
 
     case NODE_TYPE.EXPRESSION:
-      // 表达式处理为动态内容
+      // Handle expressions as dynamic content
       handleExpressionForSSG(node, result);
       break;
 
     case NODE_TYPE.TEXT:
-      // 文本直接添加到模板
+      // Text directly added to template
       if (node.children && node.children.length > 0) {
         addTemplate(result, node.children.join(''), true);
       }
@@ -93,25 +93,25 @@ export function processNodeForSSG(node: TreeNode, result: SSGProcessResult): voi
 
     case NODE_TYPE.NORMAL:
     case NODE_TYPE.SVG:
-      // 处理普通HTML元素
+      // Process regular HTML elements
       handleElementForSSG(node, result);
       break;
 
     case NODE_TYPE.COMMENT:
-      // 注释节点
+      // Comment node
       addTemplate(result, '<!>', true);
       break;
   }
 }
 
 /**
- * 处理组件节点
+ * Handle component node
  */
 export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult): void {
-  // 添加占位符
+  // Add placeholder
   result.templates.push('');
 
-  // 创建组件表达式
+  // Create component expression
   const componentProps = { ...node.props };
 
   if (node.children.length) {
@@ -119,20 +119,20 @@ export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult):
   }
   const { state } = getContext();
 
-  // 添加必要的导入
+  // Add necessary imports
   addImport(importMap.createComponent);
 
-  // 创建组件调用表达式
+  // Create component call expression
   const componentExpr = t.callExpression(state.imports.createComponent, [
     t.identifier(node.tag as string),
     createPropsObjectExpression(componentProps, (treeNode: TreeNode) => {
-      // 递归处理嵌套的 TreeNode，这里需要确保传入的是 TreeNode 类型
+      // Recursively process nested TreeNode, ensuring the input is TreeNode type
       const { templates, dynamics } = processSSGTemplate(treeNode);
       return generateSSGRenderFunction(treeNode, templates, dynamics);
     }),
   ]);
 
-  // 添加到动态内容
+  // Add to dynamic content
   result.dynamics.push({
     type: 'text',
     node: componentExpr,
@@ -140,7 +140,7 @@ export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult):
 }
 
 /**
- * 处理表达式节点
+ * Handle expression node
  */
 export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult): void {
   if (!node.children || node.children.length === 0) {
@@ -149,12 +149,12 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
 
   const firstChild = node.children[0];
 
-  // 在表达式出现的地方断开模板
+  // Break template at expression location
   result.templates.push('');
 
-  // 处理各种类型的表达式
+  // Process various types of expressions
   if (isPrimitive(firstChild)) {
-    // 原始值处理
+    // Primitive value processing
     const { state } = getContext();
     addImport(importMap.escapeHTML);
 
@@ -164,10 +164,10 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
     });
     // TODO: need fix type
   } else if (isObject(firstChild)) {
-    // AST表达式节点处理
+    // AST expression node processing
     const exprNode = firstChild as t.Expression;
 
-    // 处理map函数调用的特殊情况
+    // Process special case for map function calls
     if (
       t.isCallExpression(exprNode) &&
       t.isMemberExpression(exprNode.callee) &&
@@ -179,7 +179,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
         (t.isArrowFunctionExpression(mapCallback) || t.isFunctionExpression(mapCallback)) &&
         mapCallback.body
       ) {
-        // 检查是否返回JSX元素
+        // Check if it returns JSX element
         let jsxElement: t.JSXElement | undefined = undefined;
 
         if (t.isJSXElement(mapCallback.body)) {
@@ -201,7 +201,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
           jsxElement = mapCallback.body.expression;
         }
 
-        // 处理JSX元素
+        // Process JSX element
         if (jsxElement) {
           const { state } = getContext();
           const tagName =
@@ -209,7 +209,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
               ? jsxElement.openingElement.name.name
               : '';
 
-          // 提取props
+          // Extract props
           const props: Record<string, any> = {};
           jsxElement.openingElement.attributes.forEach(attr => {
             if (t.isJSXAttribute(attr)) {
@@ -256,7 +256,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
       }
     }
 
-    // 添加到动态内容
+    // Add to dynamic content
     result.dynamics.push({
       type: 'text',
       node: exprNode,
@@ -265,20 +265,20 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
 }
 
 /**
- * 处理HTML元素节点
+ * Handle HTML element node
  */
 export function handleElementForSSG(node: TreeNode, result: SSGProcessResult): void {
-  // 构建开始标签
+  // Build start tag
   let openTag = `<${node.tag} data-idx="${node.index}" `;
 
-  // 处理属性
+  // Process attributes
   const { staticAttrs, dynamicAttrs } = processAttributesForSSG(node.props || {});
   openTag += staticAttrs;
   addTemplate(result, openTag, true);
 
   addTemplate(result, node.isSelfClosing ? '/>' : '>', dynamicAttrs.length === 0);
 
-  // 处理子节点
+  // Process child nodes
   if (node.children && node.children.length > 0) {
     node.children.forEach(child => {
       if (isTreeNode(child)) {
@@ -289,12 +289,12 @@ export function handleElementForSSG(node: TreeNode, result: SSGProcessResult): v
     });
   }
 
-  // 添加结束标签
+  // Add end tag
   if (!node.isSelfClosing) {
     addTemplate(result, `</${node.tag}>`, true);
   }
 
-  // 处理动态属性
+  // Process dynamic attributes
   dynamicAttrs.forEach(attr => {
     const { state } = getContext();
     addImport(importMap.setAttr);
@@ -313,7 +313,7 @@ export function handleElementForSSG(node: TreeNode, result: SSGProcessResult): v
 }
 
 /**
- * 处理SSG的属性
+ * Process SSG attributes
  */
 export function processAttributesForSSG(props: Record<string, any>): {
   staticAttrs: string;
@@ -323,12 +323,12 @@ export function processAttributesForSSG(props: Record<string, any>): {
   const dynamicAttrs: Array<{ name: string; value: t.Expression }> = [];
 
   for (const [prop, value] of Object.entries(props)) {
-    // 跳过事件处理器和更新函数
+    // Skip event handlers and update functions
     if (prop.startsWith(EVENT_ATTR_NAME) || prop.startsWith(UPDATE_NAME)) {
       continue;
     }
 
-    // 处理静态属性
+    // Process static attributes
     if (isPrimitive(value)) {
       if (value === true) {
         staticAttrs += ` ${prop}`;
@@ -338,7 +338,7 @@ export function processAttributesForSSG(props: Record<string, any>): {
         staticAttrs += ` ${prop}="${value}"`;
       }
     }
-    // 处理动态属性
+    // Process dynamic attributes
     else if (t.isExpression(value)) {
       dynamicAttrs.push({ name: prop, value });
     }
@@ -348,7 +348,7 @@ export function processAttributesForSSG(props: Record<string, any>): {
 }
 
 /**
- * 生成SSG渲染函数
+ * Generate SSG render function
  */
 export function generateSSGRenderFunction(
   jsxTree: TreeNode,
@@ -357,7 +357,7 @@ export function generateSSGRenderFunction(
 ): t.Expression {
   const { path, state } = getContext();
 
-  // 如果是根组件，直接返回组件调用表达式
+  // If it's the root component, directly return component call expression
   if (jsxTree.type === NODE_TYPE.COMPONENT) {
     const componentProps = { ...jsxTree.props, children: jsxTree.children };
 
@@ -371,18 +371,18 @@ export function generateSSGRenderFunction(
       }),
     ]);
   }
-  // 创建render调用参数
+  // Create render call parameters
   const renderArgs: t.Expression[] = [];
 
   if (templates?.length) {
-    // 为模板创建标识符
+    // Create identifier for template
     let id: any = null;
 
     const hasedTemplate = hasTemplateMaps(templates);
     if (hasedTemplate) {
       id = hasedTemplate.id;
     } else {
-      // 添加必要的导入
+      // Add necessary imports
       addImport(importMap.template);
       id = path.scope.generateUidIdentifier('_tmpl$');
       addTemplateMaps({
@@ -394,32 +394,32 @@ export function generateSSGRenderFunction(
     renderArgs.push(id);
   }
 
-  // 创建render调用参数
+  // Create render call parameters
   renderArgs.push(t.callExpression(state.imports.getHydrationKey, []));
-  // 添加必要的导入
+  // Add necessary imports
   addImport(importMap.render);
   addImport(importMap.getHydrationKey);
 
-  // 属性应该放在前面，文本内容应该放在后面
+  // Attributes should be placed before text content
   const textDynamics = dynamics.filter(d => d.type === 'text');
   const attrDynamics = dynamics.filter(d => d.type === 'attr');
 
-  // 添加属性动态内容
+  // Add attribute dynamic content
   attrDynamics.forEach(dynamic => {
     renderArgs.push(dynamic.node);
   });
 
-  // 添加文本动态内容
+  // Add text dynamic content
   textDynamics.forEach(dynamic => {
     renderArgs.push(dynamic.node);
   });
 
-  // 创建render调用
+  // Create render call
   return t.callExpression(state.imports.render, renderArgs);
 }
 
 /**
- * 创建props对象表达式
+ * Create props object expression
  */
 export function createPropsObjectExpression(
   propsData: Record<string, any>,
@@ -429,14 +429,14 @@ export function createPropsObjectExpression(
 
   for (const propName in propsData) {
     let propValue = propsData[propName];
-    // 跳过空的children
+    // Skip empty children
     if (propName === CHILDREN_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
       continue;
     }
 
     propValue = convertValueToASTNode(propValue, transformJSXHandler);
 
-    // 处理扩展属性
+    // Process spread attributes
     if (propName === SPREAD_NAME) {
       objectProperties.push(t.spreadElement(propValue));
     } else {
@@ -448,13 +448,13 @@ export function createPropsObjectExpression(
 }
 
 /**
- * 将JavaScript值转换为对应的AST节点
+ * Convert JavaScript value to corresponding AST node
  */
 export function convertValueToASTNode(
   value: any,
   transformJSXHandler: (tree: TreeNode) => t.Expression,
 ): t.Expression {
-  // 如果已经是AST节点，直接返回
+  // If it's already AST node, directly return
   if (t.isExpression(value)) {
     return value;
   }
@@ -469,18 +469,18 @@ export function convertValueToASTNode(
       value.type === NODE_TYPE.TEXT ||
       value.type === NODE_TYPE.SVG
     ) {
-      // 已经是 TreeNode 类型，直接递归处理
+      // Already TreeNode type, directly recursively process
       return transformJSXHandler(value);
     }
 
-    // 如果是原始的 JSX AST 节点 (例如 t.JSXElement, t.JSXFragment)
-    // 并且它们是作为属性值传入的，需要先转换为 TreeNode
+    // If it's original JSX AST node (e.g. t.JSXElement, t.JSXFragment)
+    // And they are passed as attribute values, need to convert to TreeNode first
     if (t.isJSXElement(value) || t.isJSXFragment(value)) {
       const { path, state } = getContext();
       const mockNodePath = {
         node: value,
-        parentPath: path, // 保持父路径引用
-        scope: path.scope, // 保持 scope 引用
+        parentPath: path, // Keep parent path reference
+        scope: path.scope, // Keep scope reference
       } as NodePath<t.JSXElement | t.JSXFragment> as any;
       const tree = createTree(mockNodePath, state);
       return transformJSXHandler(tree);

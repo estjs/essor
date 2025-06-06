@@ -222,7 +222,24 @@ describe('signal System Internal Functions', () => {
 
       transformAndTest(code, { mode: 'client', symbol: '$' }, result => {
         // Check destructuring works correctly
-        expect(result).toMatchInlineSnapshot();
+        expect(result).toMatchInlineSnapshot(`
+          import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+          const _tmpl$ = _template$("<div></div>");
+          const MyComponent = props => {
+            const {
+              $name,
+              age,
+              ...rest
+            } = props;
+            return (() => {
+              const _el = _tmpl$();
+              const _nodes = _mapNodes$(_el, [1]);
+              _insert$(_nodes[0], () => $name.value);
+              _insert$(_nodes[0], () => age);
+              return _el;
+            })();
+          };
+        `);
 
         // Check signal import is added
         expect(importedSets.has('reactive')).toBe(true);
@@ -239,7 +256,22 @@ describe('signal System Internal Functions', () => {
 
       transformAndTest(code, { mode: 'client', symbol: '$' }, result => {
         // Check parameter is renamed to __props
-        expect(result).toMatchInlineSnapshot();
+        expect(result).toMatchInlineSnapshot(`
+          import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+          const _tmpl$ = _template$("<div></div>");
+          const MyComponent = ({
+            $name,
+            age
+          }) => {
+            return (() => {
+              const _el = _tmpl$();
+              const _nodes = _mapNodes$(_el, [1]);
+              _insert$(_nodes[0], () => $name.value);
+              _insert$(_nodes[0], () => age);
+              return _el;
+            })();
+          };
+        `);
       });
     });
   });

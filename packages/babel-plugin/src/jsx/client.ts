@@ -20,9 +20,9 @@ import type { NodePath } from '@babel/core';
 import type { State } from '../types';
 import type { DynamicCollection, DynamicContent, JSXElement, TreeNode } from './types';
 /**
- * 处理JSX树节点并生成HTML模板
- * @param {TreeNode} tree - JSX树节点
- * @returns {string | null} 模板信息对象，如果生成失败则返回null
+ * Process JSX tree node and generate HTML template
+ * @param {TreeNode} tree - JSX tree node
+ * @returns {string | null} Template information object, returns null if generation fails
  */
 export function processTemplate(tree: TreeNode): string | null {
   const templateString = buildTemplateString(tree);
@@ -35,9 +35,9 @@ export function processTemplate(tree: TreeNode): string | null {
 }
 
 /**
- * 构建节点的模板字符串
- * @param {TreeNode} node - 当前节点
- * @returns {string} 构建的模板字符串
+ * Build template string for a node
+ * @param {TreeNode} node - Current node
+ * @returns {string} Built template string
  */
 function buildTemplateString(node: TreeNode): string {
   if (!node || node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
@@ -55,7 +55,7 @@ function buildTemplateString(node: TreeNode): string {
   } else if (node.tag) {
     templateHtml = `<${node.tag}${serializeAttributes(node.props)}>`;
 
-    // 添加所有子节点的模板
+    // Add templates for all child nodes
     if (node.children && node.children.length > 0) {
       node.children.forEach((child: any) => {
         templateHtml += buildTemplateString(child);
@@ -64,7 +64,7 @@ function buildTemplateString(node: TreeNode): string {
 
     templateHtml += `</${node.tag}>`;
   } else if (node.children) {
-    // 容器节点，处理其子节点
+    // Container node, process its children
     node.children.forEach((child: any) => {
       templateHtml += buildTemplateString(child);
     });
@@ -74,37 +74,37 @@ function buildTemplateString(node: TreeNode): string {
 }
 
 /**
- * 收集动态内容
- * @param {TreeNode} node - JSX树结构
- * @return {DynamicCollection} 动态内容集合
+ * Collect dynamic content
+ * @param {TreeNode} node - JSX tree structure
+ * @return {DynamicCollection} Dynamic content collection
  */
 export function processDynamic(node: TreeNode): DynamicCollection {
-  // 收集容器
+  // Collection container
   const result: DynamicCollection = {
     children: [],
     props: [],
   };
 
-  // 执行实际的收集逻辑
+  // Execute the actual collection logic
   collectDynamicRecursive(node, null, result);
 
   return result;
 }
 /**
- * 递归收集动态内容
- * @param {TreeNode} node - 当前节点
- * @param {TreeNode | null} parentNode - 父节点
- * @param {DynamicCollection} result - 结果集合
+ * Recursively collect dynamic content
+ * @param {TreeNode} node - Current node
+ * @param {TreeNode | null} parentNode - Parent node
+ * @param {DynamicCollection} result - Result collection
  */
 function collectDynamicRecursive(
   node: TreeNode,
   parentNode: TreeNode | null,
   result: DynamicCollection,
 ): void {
-  // 根据节点类型处理
+  // Process based on node type
   processDynamicNode(node, parentNode, result);
 
-  // 递归处理子节点
+  // Recursively process child nodes
   if (node.children && node.children.length > 0) {
     node.children.forEach((child: any) => {
       collectDynamicRecursive(child, node, result);
@@ -112,10 +112,10 @@ function collectDynamicRecursive(
   }
 }
 /**
- * 处理单个节点的动态内容
- * @param {TreeNode} node - 当前节点
- * @param {TreeNode | null} parent - 父节点
- * @param {DynamicCollection} result - 结果集合
+ * Process single node dynamic content
+ * @param {TreeNode} node - Current node
+ * @param {TreeNode | null} parent - Parent node
+ * @param {DynamicCollection} result - Result collection
  */
 function processDynamicNode(
   node: TreeNode,
@@ -127,13 +127,13 @@ function processDynamicNode(
   switch (node.type) {
     case NODE_TYPE.COMPONENT:
     case NODE_TYPE.FRAGMENT: {
-      // 准备组件属性
+      // Prepare component attributes
       const componentProps = { ...node.props, children: node.children };
 
-      // 创建组件调用表达式
+      // Create component call expression
       const componentExpr = createComponentExpression(node, componentProps);
 
-      // 添加到动态内容列表
+      // Add to dynamic content list
       children.push({
         index: node.index,
         node: componentExpr,
@@ -144,10 +144,10 @@ function processDynamicNode(
     }
 
     case NODE_TYPE.EXPRESSION:
-      // 确保children数组不为空且第一个元素是表达式
+      // Ensure children array is not empty and the first element is expression
       if (node.children && node.children.length > 0) {
         const firstChild = node.children[0];
-        // 处理表达式节点
+        // Process expression node
         if (isObject(firstChild) && t.isExpression(firstChild as t.Node)) {
           children.push({
             index: node.index,
@@ -170,12 +170,12 @@ function processDynamicNode(
       }
       break;
 
-    // 文本节点不处理
+    // Text node does not process
     case NODE_TYPE.TEXT:
       break;
 
     default:
-      // 处理动态属性
+      // Process dynamic attributes
       if (Object.keys(node.props || {}).length > 0) {
         props.push({
           props: node.props as Record<string, any>,
@@ -187,19 +187,19 @@ function processDynamicNode(
 }
 
 /**
- * 收集节点索引映射
- * @param dynamicChildren - 动态子节点集合
- * @param dynamicProps - 动态属性集合
- * @returns 索引映射数组
+ * Collect node index mapping
+ * @param dynamicChildren - Dynamic child node collection
+ * @param dynamicProps - Dynamic attribute collection
+ * @returns Index mapping array
  */
 export function collectNodeIndexMap(
   dynamicChildren: DynamicContent[],
   dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
 ): number[] {
-  // 创建集合以去重
+  // Create set to remove duplicates
   const indexSet = new Set<number>();
 
-  // 收集动态子节点的索引
+  // Collect dynamic child node indices
   dynamicChildren.forEach(item => {
     if (!isNil(item.parentIndex)) {
       indexSet.add(item.parentIndex);
@@ -209,59 +209,59 @@ export function collectNodeIndexMap(
     }
   });
 
-  // 收集动态属性的父节点索引
+  // Collect dynamic attribute parent node indices
   dynamicProps.forEach(item => {
     if (!isNil(item.parentIndex)) {
       indexSet.add(item.parentIndex);
     }
   });
 
-  // 转为数组并排序
+  // Convert to array and sort
   return Array.from(indexSet).sort((a, b) => a - b);
 }
 
 /**
- * 递归JSX转换函数
- * @description 内部使用的JSX转换函数，用于嵌套JSX的处理
- * @param {TreeNode} jsxTree - JSX树节点
- * @returns {t.Expression | undefined} 转换后的表达式
+ * Recursive JSX conversion function
+ * @description Internal used JSX conversion function for nested JSX processing
+ * @param {TreeNode} jsxTree - JSX tree node
+ * @returns {t.Expression | undefined} Converted expression
  */
 export function transformJSXChildren(jsxTree: TreeNode): t.Expression | undefined {
-  // 处理模板
+  // Process template
   const templates = processTemplate(jsxTree);
 
-  // 收集动态内容
+  // Collect dynamic content
   const { children, props } = processDynamic(jsxTree);
 
-  // 收集索引映射
+  // Collect index mapping
   const nodeIndexMap = collectNodeIndexMap(children, props);
 
-  // 生成渲染函数
+  // Generate rendering function
   const result = generateRenderFunction(jsxTree, templates, children, props, nodeIndexMap);
 
   return result;
 }
 
 /**
- * 创建组件表达式
- * @description 为组件或Fragment创建相应的函数调用表达式，并处理props中的嵌套JSX元素
- * @param {TreeNode} node - 节点
- * @param {Record<string, any>} props - 组件属性
- * @return {t.CallExpression} 组件函数调用表达式
+ * Create component expression
+ * @description Create corresponding function call expression for component or Fragment, and process nested JSX elements in props
+ * @param {TreeNode} node - Node
+ * @param {Record<string, any>} props - Component attributes
+ * @return {t.CallExpression} Component function call expression
  */
 function createComponentExpression(node: TreeNode, props: Record<string, any>): t.CallExpression {
   const { state } = getContext();
-  // 判断是否为Fragment组件
+  // Determine if it's a Fragment component
   const fnName = node.isFragment ? 'Fragment' : 'createComponent';
 
-  // 添加相应导入
+  // Add necessary imports
   addImport(importMap.createComponent);
   addImport(importMap[fnName]);
 
-  // 创建属性对象表达式，传入转换函数和上下文
+  // Create attribute object expression, pass conversion function and context
   const propsObj = createPropsObjectExpression(props, transformJSXChildren);
 
-  // 根据组件类型创建不同的调用表达式
+  // Create different call expressions based on component type
   if (node.isFragment) {
     return t.callExpression(state.imports[fnName], [propsObj]);
   }
@@ -269,11 +269,11 @@ function createComponentExpression(node: TreeNode, props: Record<string, any>): 
 }
 
 /**
- * 创建props对象表达式
- * @description 将属性记录转换为AST对象表达式
- * @param {Record<string, any>} propsData - 属性数据
- * @param {Function} transformJSX2 - JSX转换函数
- * @return {t.ObjectExpression} 生成的对象表达式
+ * Create props object expression
+ * @description Convert attribute record to AST object expression
+ * @param {Record<string, any>} propsData - Attribute data
+ * @param {Function} transformJSX2 - JSX conversion function
+ * @return {t.ObjectExpression} Generated object expression
  */
 export function createPropsObjectExpression(
   propsData: Record<string, any>,
@@ -283,13 +283,13 @@ export function createPropsObjectExpression(
 
   for (const propName in propsData) {
     let propValue = propsData[propName];
-    // 跳过空的children
+    // Skip empty children
     if (propName === CHILDREN_NAME && !propValue.length) {
       continue;
     }
     propValue = convertValueToASTNode(propValue, transformJSX2);
 
-    // 处理扩展属性
+    // Process spread attribute
     if (propName === SPREAD_NAME) {
       objectProperties.push(t.spreadElement(propValue));
     } else {
@@ -301,14 +301,14 @@ export function createPropsObjectExpression(
 }
 
 /**
- * 将JavaScript值转换为对应的AST节点
- * @description 根据值类型转换为对应的AST表达式节点
- * @param {any} value - 要转换的值
- * @param {Function} transformJSX2 - JSX转换函数
- * @return {t.Expression} 对应的AST节点
+ * Convert JavaScript value to corresponding AST node
+ * @description Convert value to corresponding AST expression node based on value type
+ * @param {any} value - Value to convert
+ * @param {Function} transformJSX2 - JSX conversion function
+ * @return {t.Expression} Corresponding AST node
  */
 function convertValueToASTNode(value: any, transformJSX2: Function): t.Expression {
-  // 如果已经是AST节点，直接返回
+  // If it's already an AST node, return directly
   if (t.isExpression(value)) {
     return value;
   }
@@ -326,7 +326,7 @@ function convertValueToASTNode(value: any, transformJSX2: Function): t.Expressio
       return transformJSX2(value);
     }
 
-    // 修复类型错误：确保children存在且是数组
+    // Fix type error: Ensure children exist and are arrays
     if (
       value.type === NODE_TYPE.EXPRESSION &&
       value.children &&
@@ -358,12 +358,12 @@ function convertValueToASTNode(value: any, transformJSX2: Function): t.Expressio
 }
 
 /**
- * 添加节点映射语句
- * @param statements - 语句数组
- * @param elementId - 元素ID
- * @param nodesId - 节点映射ID
- * @param indexMap - 索引映射
- * @param state - 插件状态
+ * Add node mapping statement
+ * @param statements - Statement array
+ * @param elementId - Element ID
+ * @param nodesId - Node mapping ID
+ * @param indexMap - Index mapping
+ * @param state - Plugin state
  */
 function addNodesMapping(
   statements: t.Statement[],
@@ -388,12 +388,12 @@ function addNodesMapping(
 }
 
 /**
- * 生成动态子节点插入代码
- * @param dynamicChildren - 动态子节点集合
- * @param statements - 语句集合
- * @param state - 插件状态
- * @param nodesId - 节点映射标识符
- * @param indexMap - 索引映射
+ * Generate dynamic child node insertion code
+ * @param dynamicChildren - Dynamic child node collection
+ * @param statements - Statement collection
+ * @param state - Plugin state
+ * @param nodesId - Node mapping identifier
+ * @param indexMap - Index mapping
  */
 function generateDynamicChildrenCode(
   dynamicChildren: DynamicContent[],
@@ -404,12 +404,12 @@ function generateDynamicChildrenCode(
 ): void {
   addImport(importMap.insert);
 
-  // 为每个动态内容创建插入语句
+  // Create insertion statement for each dynamic content
   dynamicChildren.forEach(dynamicContent => {
-    // 特殊处理IIFE表达式
+    // Special processing for IIFE expression
     const processedNode = processIIFEExpression(dynamicContent.node);
 
-    // 创建插入参数
+    // Create insertion parameters
     const insertArgs = createInsertArguments(
       { ...dynamicContent, node: processedNode },
       nodesId,
@@ -421,33 +421,33 @@ function generateDynamicChildrenCode(
 }
 
 /**
- * 处理IIFE表达式
- * @param node - 表达式节点
- * @returns 处理后的表达式
+ * Process IIFE expression
+ * @param node - Expression node
+ * @returns Processed expression
  */
 export function processIIFEExpression(node: t.Expression): t.Expression {
-  // 检查是否为IIFE（立即调用函数表达式）
+  // Check if it's an IIFE (Immediately Invoked Function Expression)
   if (
     t.isCallExpression(node) &&
     (t.isArrowFunctionExpression(node.callee) || t.isFunctionExpression(node.callee))
   ) {
-    // 对于IIFE，提取函数体中的返回语句
+    // For IIFE, extract return statement from function body
     const body = node.callee.body;
 
     if (t.isBlockStatement(body) && body.body.length > 0) {
       const lastStatement = body.body[body.body.length - 1];
 
       if (t.isReturnStatement(lastStatement) && lastStatement.argument) {
-        // 使用返回值替代整个IIFE
+        // Use return value instead of entire IIFE
         return lastStatement.argument;
       }
     } else if (!t.isBlockStatement(body)) {
-      // 对于箭头函数的简写形式，直接返回表达式体
+      // For arrow function shorthand, return expression body directly
       return body;
     }
   }
 
-  // 不是IIFE或无法提取返回值，保持原样
+  // Not an IIFE or unable to extract return value, keep original
   return node;
 }
 
@@ -456,17 +456,17 @@ export function createInsertArguments(
   nodesIdentifier: t.Identifier,
   indexMap: number[],
 ): t.Expression[] {
-  // 获取父节点在映射数组中的位置
+  // Get parent node position in mapping array
   const parentPosition = findIndexPosition(dynamicContent.parentIndex!, indexMap);
 
-  // 构建基础参数列表
+  // Build basic parameter list
   const argExpressions: t.Expression[] = [
-    // 目标节点引用: nodes[parentPosition]
+    // Target node reference: nodes[parentPosition]
     t.memberExpression(nodesIdentifier, t.numericLiteral(parentPosition), true),
-    // 内容函数: () => dynamicContent
+    // Content function: () => dynamicContent
     t.arrowFunctionExpression([], dynamicContent.node),
   ];
-  // 处理前置节点（用于定位插入位置）
+  // Process preceding node (for insertion position)
   if (dynamicContent.before !== null) {
     const beforePosition = findIndexPosition(dynamicContent.before, indexMap);
     argExpressions.push(
@@ -478,12 +478,12 @@ export function createInsertArguments(
 }
 
 /**
- * 生成动态属性设置代码
- * @param dynamicProps - 动态属性集合
- * @param statements - 语句集合
- * @param state - 插件状态
- * @param nodesId - 节点映射标识符
- * @param indexMap - 索引映射
+ * Generate dynamic attribute setting code
+ * @param dynamicProps - Dynamic attribute collection
+ * @param statements - Statement collection
+ * @param state - Plugin state
+ * @param nodesId - Node mapping identifier
+ * @param indexMap - Index mapping
  */
 function generateDynamicPropsCode(
   dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
@@ -492,24 +492,24 @@ function generateDynamicPropsCode(
   nodesId: t.Identifier,
   indexMap: number[],
 ): void {
-  // 处理每个动态属性项
+  // Process each dynamic attribute item
   dynamicProps.forEach(propItem => {
     const { parentIndex, props } = propItem;
     if (parentIndex === null) {
       return;
     }
 
-    // 查找父节点索引位置
+    // Find parent node index position
     const parentIndexPosition = indexMap.indexOf(parentIndex);
     if (parentIndexPosition === -1) {
-      warn(`找不到父节点索引: ${parentIndex}`);
+      warn(`Unable to find parent node index: ${parentIndex}`);
       return;
     }
 
-    // 处理每个属性
+    // Process each attribute
     Object.entries(props).forEach(([attrName, attrValue]) => {
       if (attrName.startsWith('on')) {
-        // 处理事件
+        // Process event
         addEventListenerStatement(
           attrName,
           attrValue as t.Expression,
@@ -519,7 +519,7 @@ function generateDynamicPropsCode(
           state,
         );
       } else {
-        // 处理其他类型的属性
+        // Process other attribute types
         generateSpecificAttributeCode(
           attrName,
           attrValue as t.Expression,
@@ -534,13 +534,13 @@ function generateDynamicPropsCode(
 }
 
 /**
- * 添加事件监听器语句
- * @param attrName - 属性名
- * @param attrValue - 属性值
- * @param nodesId - 节点映射标识符
- * @param nodeIndex - 节点索引位置
- * @param statements - 语句集合
- * @param state - 插件状态
+ * Add event listener statement
+ * @param attrName - Attribute name
+ * @param attrValue - Attribute value
+ * @param nodesId - Node mapping identifier
+ * @param nodeIndex - Node index position
+ * @param statements - Statement collection
+ * @param state - Plugin state
  */
 function addEventListenerStatement(
   attrName: string,
@@ -564,13 +564,13 @@ function addEventListenerStatement(
 }
 
 /**
- * 创建属性设置语句
- * @param functionIdentifier - 函数标识符
- * @param nodesId - 节点映射标识符
- * @param nodeIndex - 节点索引位置
- * @param value - 值表达式
- * @param key - 可选的键表达式
- * @returns 创建的语句
+ * Create attribute setting statement
+ * @param functionIdentifier - Function identifier
+ * @param nodesId - Node mapping identifier
+ * @param nodeIndex - Node index position
+ * @param value - Value expression
+ * @param key - Optional key expression
+ * @returns Created statement
  */
 export function createAttributeStatement(
   functionIdentifier: t.Identifier,
@@ -579,10 +579,10 @@ export function createAttributeStatement(
   value: t.Expression,
   key?: t.Expression,
 ): t.ExpressionStatement {
-  // 准备参数数组
+  // Prepare parameter array
   const args: t.Expression[] = [t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true)];
 
-  // 如果有键，添加它
+  // If there's a key, add it
   if (key) {
     args.push(key);
   }
@@ -591,18 +591,18 @@ export function createAttributeStatement(
     args.push(value);
   }
 
-  // 创建函数调用表达式语句
+  // Create function call expression statement
   return t.expressionStatement(t.callExpression(functionIdentifier, args));
 }
 
 /**
- * 根据属性名生成特定属性的设置代码
- * @param attributeName - 属性名
- * @param attributeValue - 属性值
- * @param nodesId - 节点映射标识符
- * @param nodeIndex - 节点索引位置
- * @param statements - 语句集合
- * @param state - 插件状态
+ * Generate specific attribute setting code based on attribute name
+ * @param attributeName - Attribute name
+ * @param attributeValue - Attribute value
+ * @param nodesId - Node mapping identifier
+ * @param nodeIndex - Node index position
+ * @param statements - Statement collection
+ * @param state - Plugin state
  */
 function generateSpecificAttributeCode(
   attributeName: string,
@@ -612,7 +612,7 @@ function generateSpecificAttributeCode(
   statements: t.Statement[],
   state: State,
 ): void {
-  // 为不同类型的属性选择合适的处理方法
+  // Select appropriate processing method for different attribute types
   switch (attributeName) {
     case CLASS_NAME:
       addImport(importMap.setClass);
@@ -636,7 +636,7 @@ function generateSpecificAttributeCode(
       break;
 
     default:
-      // 处理普通属性
+      // Process normal attributes
       addImport(importMap.setAttr);
       statements.push(
         createAttributeStatement(
@@ -651,13 +651,13 @@ function generateSpecificAttributeCode(
   }
 }
 /**
- * 生成客户端渲染代码
- * @param {TreeNode} jsxTree - JSX树结构
- * @param {TemplateInfo} template - 模板信息
- * @param {DynamicContent[]} dynamicChildren - 动态子节点集合
- * @param {Array<{ props: Record<string, any>; parentIndex: number | null }>} dynamicProps - 动态属性集合
- * @param {number[]} indexMap - 索引映射
- * @return {t.Expression} 生成的渲染函数表达式
+ * Generate client-side rendering code
+ * @param {TreeNode} jsxTree - JSX tree structure
+ * @param {TemplateInfo} template - Template information
+ * @param {DynamicContent[]} dynamicChildren - Dynamic child node collection
+ * @param {Array<{ props: Record<string, any>; parentIndex: number | null }>} dynamicProps - Dynamic attribute collection
+ * @param {number[]} indexMap - Index mapping
+ * @return {t.Expression} Generated rendering function expression
  */
 export function generateRenderFunction(
   jsxTree: TreeNode,
@@ -668,18 +668,18 @@ export function generateRenderFunction(
 ): t.Expression {
   const { path, state } = getContext();
 
-  // 如果是根组件，直接返回组件调用表达式
+  // If it's the root component, return component call expression directly
   if (jsxTree.type === NODE_TYPE.COMPONENT) {
-    // 处理组件的props
+    // Process component props
     const componentProps = { ...jsxTree.props, children: jsxTree.children };
     return createComponentExpression(jsxTree, componentProps);
   }
 
-  // 为根组件创建标识符
+  // Create identifier for root component
   const elementId = path.scope.generateUidIdentifier('_el');
   const nodesId = path.scope.generateUidIdentifier('_nodes');
 
-  // 创建函数体语句数组
+  // Create function body statement array
   const statements: t.Statement[] = [];
 
   if (template) {
@@ -688,7 +688,7 @@ export function generateRenderFunction(
     if (hasedTemplate) {
       id = hasedTemplate.id;
     } else {
-      // 添加必要的导入
+      // Add necessary imports
       addImport(importMap.template);
       id = path.scope.generateUidIdentifier('_tmpl$');
       addTemplateMaps({
@@ -697,57 +697,57 @@ export function generateRenderFunction(
       });
     }
 
-    // 添加根元素声明语句
+    // Add root element declaration statement
     statements.push(
       t.variableDeclaration('const', [t.variableDeclarator(elementId, t.callExpression(id, []))]),
     );
   }
 
-  // 处理动态内容
+  // Process dynamic content
   if (dynamicChildren.length > 0 || dynamicProps.length > 0) {
-    // 添加节点映射
+    // Add node mapping
     addNodesMapping(statements, elementId, nodesId, indexMap, state);
 
-    // 处理动态子节点
+    // Process dynamic child nodes
     if (dynamicChildren.length) {
       generateDynamicChildrenCode(dynamicChildren, statements, state, nodesId, indexMap);
     }
 
-    // 处理动态属性
+    // Process dynamic attributes
     if (dynamicProps.length) {
       generateDynamicPropsCode(dynamicProps, statements, state, nodesId, indexMap);
     }
   }
 
-  // 添加返回语句
+  // Add return statement
   statements.push(t.returnStatement(elementId));
 
-  // 创建并返回IIFE表达式
+  // Create and return IIFE expression
   return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(statements)), []);
 }
 
 /**
- * 转换 JSX 为客户端渲染代码的内部实现。
- * @description 负责客户端模式下 JSX 元素的 AST 转换流程，包括节点树构建、模板处理、动态内容收集和渲染函数生成。
- * @param {NodePath<JSXElement>} path - 当前 JSX 元素的 AST 路径。
- * @returns {t.Expression} 转换后的客户端渲染表达式。
+ * Convert JSX to internal implementation of client-side rendering code.
+ * @description Responsible for AST conversion process for JSX elements in client mode, including node tree construction, template processing, dynamic content collection, and rendering function generation.
+ * @param {NodePath<JSXElement>} path - AST path of current JSX element.
+ * @returns {t.Expression} Converted client-side rendering expression.
  */
 export function transformJSX(path: NodePath<JSXElement>): t.Expression {
   const state = path.state as State;
 
   setContext({ path, state });
 
-  // 创建JSX节点树
+  // Create JSX node tree
   const tree = createTree(path, state);
 
-  // 处理静态模板，提取静态HTML片段，并传入 state
+  // Process static template, extract static HTML fragment, and pass to state
   const template = processTemplate(tree);
 
-  // 收集动态内容，包括动态子节点和属性，并传入 state
+  // Collect dynamic content, including dynamic child nodes and attributes, and pass to state
   const { children, props } = processDynamic(tree);
-  // 收集索引映射
+  // Collect index mapping
   const nodeIndexMap = collectNodeIndexMap(children, props);
 
-  // 生成渲染函数
+  // Generate rendering function
   return generateRenderFunction(tree, template, children, props, nodeIndexMap);
 }
