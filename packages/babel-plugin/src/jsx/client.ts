@@ -8,6 +8,7 @@ import {
   isObject,
   isString,
   isUndefined,
+  warn,
 } from '@estjs/shared';
 import { addImport, importMap } from '../import';
 import { addTemplateMaps, getContext, hasTemplateMaps, setContext } from './context';
@@ -246,8 +247,6 @@ export function transformJSXChildren(jsxTree: TreeNode): t.Expression | undefine
  * @description 为组件或Fragment创建相应的函数调用表达式，并处理props中的嵌套JSX元素
  * @param {TreeNode} node - 节点
  * @param {Record<string, any>} props - 组件属性
- * @param {State} state - 转换状态
- * @param {TransformContext} context - 转换上下文
  * @return {t.CallExpression} 组件函数调用表达式
  */
 function createComponentExpression(node: TreeNode, props: Record<string, any>): t.CallExpression {
@@ -503,7 +502,7 @@ function generateDynamicPropsCode(
     // 查找父节点索引位置
     const parentIndexPosition = indexMap.indexOf(parentIndex);
     if (parentIndexPosition === -1) {
-      console.warn(`找不到父节点索引: ${parentIndex}`);
+      warn(`找不到父节点索引: ${parentIndex}`);
       return;
     }
 

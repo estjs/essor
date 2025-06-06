@@ -175,7 +175,7 @@ export function createScheduler(effect: EffectFn, flush: FlushTiming): () => voi
       return () => queueJob(effect);
     default:
       if (__DEV__) {
-        console.warn(`Invalid flush timing: ${flush}. Defaulting to 'post'.`);
+        warn(`Invalid flush timing: ${flush}. Defaulting to 'post'.`);
       }
       return () => queueJob(effect);
   }

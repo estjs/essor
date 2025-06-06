@@ -1,5 +1,5 @@
 import { type NodePath, types as t } from '@babel/core';
-import { capitalize, isSVGTag } from '@estjs/shared';
+import { capitalize, error, isSVGTag, warn } from '@estjs/shared';
 import { addImport, importMap } from '../import';
 import { FRAGMENT_NAME, NODE_TYPE, UPDATE_NAME } from './constants';
 import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './utils';
@@ -148,7 +148,7 @@ function processSingleJSXChild(
       processJSXTextNode(childPath, parentNode, isLastChild);
     } else if (childPath.isJSXSpreadChild()) {
       // Process JSX spread children (e.g., { ...items }), temporarily ignore or convert to expression as needed
-      console.warn(
+      warn(
         `Unsupported JSX spread child type, will be treated as an expression: ${childPath.type}`,
       );
       const exprNode: TreeNode = {
@@ -159,10 +159,10 @@ function processSingleJSXChild(
       };
       parentNode.children.push(exprNode);
     } else {
-      console.warn(`Encountered unsupported JSX child type: ${childPath.type}`);
+      warn(`Encountered unsupported JSX child type: ${childPath.type}`);
     }
-  } catch (error) {
-    console.error('Error processing child node:', error);
+  } catch (error_) {
+    error('Error processing child node:', error_);
   }
 }
 
@@ -203,7 +203,7 @@ function processJSXExpressionContainer(
   } else if (t.isJSXEmptyExpression(expression.node)) {
     // Ignore empty JSX expressions (e.g., {}), do not generate nodes
   } else {
-    console.warn(`Encountered unsupported expression type: ${expression.type}`);
+    warn(`Encountered unsupported expression type: ${expression.type}`);
   }
 }
 
@@ -399,9 +399,9 @@ function processConditionalExpression(
     props[name] = t.callExpression(path.state.imports.computed, [
       t.arrowFunctionExpression([], expression.node),
     ]);
-  } catch (error) {
+  } catch (error_) {
     // If an error occurs, use the expression directly
-    console.error('Error creating computed expression:', error);
+    error('Error creating computed expression:', error_);
     props[name] = expression.node;
   }
 }

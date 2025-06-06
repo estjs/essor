@@ -1,13 +1,3 @@
-/**
- * 客户端渲染模式JSX转换函数测试
- *
- * 本文件测试客户端渲染模式下的特定JSX处理函数，包括：
- * - 模板处理
- * - 动态内容处理
- * - 属性管理
- * - 插入操作
- */
-
 import { beforeEach, describe, expect, it } from 'vitest';
 import { types as t } from '@babel/core';
 import { importedSets } from '../src/import';
@@ -22,16 +12,21 @@ import {
   processTemplate,
 } from '../src/jsx/client';
 import { createDefaultTree } from '../src/jsx/tree'; // Used for creating TreeNode
-import { setupTestContext } from './test-utils';
+import { resetContext } from '../src/jsx/context';
+import { setupTestEnvironment, withTestContext } from './test-utils';
 
-beforeEach(() => {
-  setupTestContext('const A = () => <div/>;', 'client');
-});
+describe('client Rendering Mode Internal Functions', () => {
+  beforeEach(() => {
+    setupTestEnvironment();
+    withTestContext('const A = () => <div/>;', 'client', {}, () => {});
+  });
 
-describe('客户端渲染模式内部函数', () => {
-  describe('模板处理', () => {
+  afterEach(() => {
+    resetContext();
+  });
+  describe('template Processing', () => {
     describe('processTemplate', () => {
-      it('应为简单HTML树生成正确的模板字符串', () => {
+      it('should generate correct template string for simple HTML tree', () => {
         const tree = createDefaultTree();
         tree.tag = 'div';
         tree.index = 0; // Root node is usually 0
@@ -46,10 +41,10 @@ describe('客户端渲染模式内部函数', () => {
           },
         ] as any;
         const template = processTemplate(tree);
-        expect(template).toBe('<div data-idx="0-1">Hello<span data-idx="0-3">World</span></div>');
+        expect(template).toBe('<div>Hello<span>World</span></div>');
       });
 
-      it('应为自闭合标签生成正确的模板字符串', () => {
+      it('should generate correct template string for self-closing tags', () => {
         const tree = createDefaultTree();
         tree.tag = 'img';
         tree.isSelfClosing = true;
@@ -57,24 +52,24 @@ describe('客户端渲染模式内部函数', () => {
         tree.index = 0;
         tree.root = true;
         const template = processTemplate(tree);
-        expect(template).toBe('<img src="pic.jpg" data-idx="0-0"/>'); // Root node index is 0
+        expect(template).toBe('<img src="pic.jpg"/>'); // Root node index is 0
       });
 
-      it('应处理注释节点并生成正确的模板字符串', () => {
+      it('should handle comment nodes and generate correct template string', () => {
         const tree = createDefaultTree();
         tree.tag = 'div';
         tree.index = 0;
         tree.root = true;
         tree.children = [{ type: NODE_TYPE.COMMENT, children: [], index: 1 }] as any;
         const template = processTemplate(tree);
-        expect(template).toBe('<div data-idx="0-0"><!></div>');
+        expect(template).toBe('<div><!></div>');
       });
     });
   });
 
-  describe('动态内容处理', () => {
+  describe('dynamic Content Processing', () => {
     describe('processDynamic', () => {
-      it('应收集动态文本表达式', () => {
+      it('should collect dynamic text expressions', () => {
         const tree = createDefaultTree();
         tree.tag = 'div';
         tree.index = 0;
@@ -91,7 +86,7 @@ describe('客户端渲染模式内部函数', () => {
         expect(dynamicCollection.children[0].parentIndex).toBe(0); // div's index
       });
 
-      it('应收集动态属性', () => {
+      it('should collect dynamic attributes', () => {
         const tree = createDefaultTree();
         tree.tag = 'div';
         tree.index = 0;
@@ -103,7 +98,7 @@ describe('客户端渲染模式内部函数', () => {
         expect(dynamicCollection.props[0].parentIndex).toBe(0);
       });
 
-      it('应收集动态组件', () => {
+      it('should collect dynamic components', () => {
         const tree = createDefaultTree();
         tree.tag = 'div';
         tree.index = 0;
@@ -121,7 +116,7 @@ describe('客户端渲染模式内部函数', () => {
     describe('processIIFEExpression', () => {
       it.each([
         [
-          '从箭头函数IIFE中提取return语句参数',
+          'should extract return statement parameter from arrow function IIFE',
           () =>
             t.callExpression(
               t.arrowFunctionExpression(
@@ -134,13 +129,18 @@ describe('客户端渲染模式内部函数', () => {
           'returned value',
         ],
         [
-          '从简写箭头函数IIFE中提取表达式体',
+          'should extract expression body from shorthand arrow function IIFE',
           () =>
             t.callExpression(t.arrowFunctionExpression([], t.stringLiteral('shorthand value')), []),
           'StringLiteral',
           'shorthand value',
         ],
-        ['非IIFE表达式应保持不变', () => t.identifier('myVar'), 'Identifier', null],
+        [
+          'should keep non-IIFE expressions unchanged',
+          () => t.identifier('myVar'),
+          'Identifier',
+          null,
+        ],
       ])('%s', (_, exprFactory, expectedType, expectedValue) => {
         const expr = exprFactory();
         const processed = processIIFEExpression(expr);
@@ -153,16 +153,16 @@ describe('客户端渲染模式内部函数', () => {
             expect((processed as t.Identifier).name).toBe(expectedValue);
           }
         } else {
-          // 对于非IIFE表达式，应保持不变
+          // Non-IIFE expressions should remain unchanged
           expect(processed).toBe(expr);
         }
       });
     });
   });
 
-  describe('dOM操作', () => {
+  describe('dOM Operations', () => {
     describe('createInsertArguments', () => {
-      it('应为动态内容生成正确的插入参数，不带前置节点', () => {
+      it('should generate correct insert parameters for dynamic content without preceding node', () => {
         const dynamicContent: any = {
           index: 10,
           node: t.identifier('dynamicValue'),
@@ -178,7 +178,7 @@ describe('客户端渲染模式内部函数', () => {
         expect((args[1] as t.ArrowFunctionExpression).body.type).toBe('Identifier'); // () => dynamicValue
       });
 
-      it('应为动态内容生成正确的插入参数，带有前置节点', () => {
+      it('should generate correct insert parameters for dynamic content with preceding node', () => {
         const dynamicContent: any = {
           index: 10,
           node: t.identifier('dynamicValue'),
@@ -196,9 +196,9 @@ describe('客户端渲染模式内部函数', () => {
 
     describe('createAttributeStatement', () => {
       it.each([
-        ['不带key参数', false],
-        ['带key参数', true],
-      ])('应创建属性设置语句，%s', (_, withKey) => {
+        ['without key parameter', false],
+        ['with key parameter', true],
+      ])('should create attribute setting statement %s', (_, withKey) => {
         const funcId = t.identifier('setAttr');
         const nodesId = t.identifier('_nodes');
         const nodeIndex = 0;

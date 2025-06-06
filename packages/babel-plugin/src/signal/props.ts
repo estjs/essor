@@ -1,4 +1,4 @@
-import { startsWith } from '@estjs/shared';
+import { startsWith, warn } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import type { State } from '../types';
 import type {
@@ -102,7 +102,7 @@ export function transformProps(
   // Validate property names
   const notRestNames = notRestProperties.map(prop => (prop.key as Identifier).name);
   if (__DEV__ && notRestNames.some(name => startsWith(name, '$'))) {
-    console.warn('Props name cannot start with $');
+    warn('Props name cannot start with $');
     return;
   }
 

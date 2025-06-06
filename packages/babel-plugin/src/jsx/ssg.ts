@@ -276,7 +276,7 @@ export function handleElementForSSG(node: TreeNode, result: SSGProcessResult): v
   openTag += staticAttrs;
   addTemplate(result, openTag, true);
 
-  addTemplate(result, '>', dynamicAttrs.length === 0);
+  addTemplate(result, node.isSelfClosing ? '/>' : '>', dynamicAttrs.length === 0);
 
   // 处理子节点
   if (node.children && node.children.length > 0) {

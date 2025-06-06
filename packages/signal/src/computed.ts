@@ -95,7 +95,7 @@ export class ComputedImpl<T> implements Computed<T> {
    */
   set value(v: T) {
     if (__DEV__) {
-      console.warn('Write operation failed: computed value is readonly');
+      warn('Write operation failed: computed value is readonly');
     }
     this._setter?.(v);
   }

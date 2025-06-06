@@ -1,7 +1,7 @@
 import { type NodePath, types as t } from '@babel/core';
+import { error } from '@estjs/shared';
 import { RENDER_MODE, SSG_IMPORTS_MAPS, SSR_IMPORTS_MAPS, USED_IMPORTS } from './constants';
 import type { ImportsNames, State } from './types';
-
 /**
  * Generates a set of unique import identifiers for a given program path.
  *
@@ -96,8 +96,8 @@ export function createImport(
     const importDeclaration = t.importDeclaration(importSpecifiers, t.stringLiteral(from));
 
     path.node.body.unshift(importDeclaration);
-  } catch (error) {
-    console.error('Failed to create import declaration:', error);
-    throw error;
+  } catch (error_) {
+    error('Failed to create import declaration:', error);
+    throw error_;
   }
 }

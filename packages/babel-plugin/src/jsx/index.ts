@@ -1,9 +1,9 @@
+import { error } from '@estjs/shared';
 import { RENDER_MODE } from '../constants';
 import { transformJSX as clientTransform } from './client';
 import { transformJSX as ssgTransform } from './ssg';
 import type { JSXElement } from './types';
 import type { NodePath } from '@babel/core';
-
 /**
  * Transformation strategies corresponding to render modes
  */
@@ -38,9 +38,9 @@ export function transformJSX(path: NodePath<JSXElement>): void {
     if (result) {
       path.replaceWith(result);
     }
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('JSX transformation failed:', errorMessage);
-    throw error;
+  } catch (error_: unknown) {
+    const errorMessage = error_ instanceof Error ? error_.message : String(error_);
+    error('JSX transformation failed:', errorMessage);
+    throw error_;
   }
 }
