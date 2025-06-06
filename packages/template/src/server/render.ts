@@ -24,7 +24,7 @@ import type { ComponentFn, ComponentProps } from '../component';
  * @param {ComponentProps} props - the props to pass to the component
  * @returns {string} the rendered string
  */
-export function renderToString(component: ComponentFn, props: ComponentProps) {
+export function renderToString(component: ComponentFn, props?: ComponentProps) {
   if (!isFunction(component)) {
     error('Component must be a function');
     return '';

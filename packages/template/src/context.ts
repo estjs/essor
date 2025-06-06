@@ -98,6 +98,14 @@ export function pushContextStack(context: Context): void {
 export function popContextStack(): void {
   activeContext = contextStack.pop() || null;
 }
+export function withContext<T>(context: Context, fn: () => T): T {
+  pushContextStack(context);
+  try {
+    return fn();
+  } finally {
+    popContextStack();
+  }
+}
 
 /**
  * find a parent context

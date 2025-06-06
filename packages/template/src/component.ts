@@ -19,7 +19,7 @@ import { addEventListener, createComponentEffect } from './binding';
  */
 const componentParentContextCache = new WeakMap<object, Context | null>();
 
-export type ComponentFn = (props: ComponentProps) => Node;
+export type ComponentFn = (props?: ComponentProps) => Node;
 export type ComponentProps = Record<string, unknown>;
 
 export class Component {

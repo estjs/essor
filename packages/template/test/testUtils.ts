@@ -1,7 +1,6 @@
 import { createApp } from '../src';
 
-export function mount(code) {
-  const container = document.createElement('div');
+export function mount(code, container) {
   const nodes = createApp(code, container);
 
   return {

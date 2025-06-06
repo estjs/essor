@@ -11,4 +11,5 @@ export { template, createApp } from './renderer';
 export { setAttr, setStyle, setClass, addEventListener, mapNodes, insert } from './binding';
 export { onDestroyed, onMounted, onUpdated } from './lifecycle';
 
+export * from './components';
 export * from './server';
