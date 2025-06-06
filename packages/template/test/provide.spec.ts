@@ -22,7 +22,7 @@ describe('provide', () => {
   });
 
   // Basic provide/inject tests
-  describe(' basic', () => {
+  describe('provide/inject basic', () => {
     it('should provide and inject string keys', () => {
       const context = createContext();
       setActiveContext(context);
@@ -58,7 +58,7 @@ describe('provide', () => {
   });
 
   // Advanced provide/inject tests
-  describe(' advanced', () => {
+  describe('provide/inject advanced', () => {
     it('should resolve injection through parent chain', () => {
       const grandparent = createContext();
       const parent = createContext(grandparent);

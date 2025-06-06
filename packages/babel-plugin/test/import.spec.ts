@@ -11,31 +11,6 @@ import { RENDER_MODE } from '../src/constants';
 import { addTemplateMaps, hasTemplateMaps, resetContext, templateMaps } from '../src/jsx/context';
 import { getProgramPath } from './test-utils';
 
-// Helper function: Get the path of a Program node
-// const getProgramPath = (code: string, options?: any) => {
-//   let programPath: any = null;
-//   transformSync(code, {
-//     plugins: [
-//       () => ({
-//         visitor: {
-//           Program(path: any) {
-//             programPath = path;
-//             path.stop();
-//           },
-//         },
-//       }),
-//       [essorPlugin, { mode: 'client', ...options }],
-//     ],
-//     filename: 'test.tsx',
-//     parserOpts: {
-//       plugins: ['jsx', 'typescript'],
-//     },
-//     babelrc: false,
-//     configFile: false,
-//   });
-//   return programPath;
-// };
-
 beforeEach(() => {
   clearImport();
   resetContext();
