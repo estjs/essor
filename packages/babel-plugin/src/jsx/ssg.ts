@@ -3,7 +3,14 @@ import { isArray, isObject, isPrimitive, isString, isSymbol } from '@estjs/share
 import { addImport, importMap } from '../import';
 import { addTemplateMaps, getContext, hasTemplateMaps, setContext } from './context';
 import { createTree } from './tree';
-import { EVENT_ATTR_NAME, FRAGMENT_NAME, NODE_TYPE, SPREAD_NAME, UPDATE_NAME } from './constants';
+import {
+  CHILDREN_NAME,
+  EVENT_ATTR_NAME,
+  FRAGMENT_NAME,
+  NODE_TYPE,
+  SPREAD_NAME,
+  UPDATE_NAME,
+} from './constants';
 import { isTreeNode } from './utils';
 import type { State } from '../types';
 import type { JSXElement, SSGProcessResult, TreeNode } from './types';
@@ -105,7 +112,11 @@ export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult):
   result.templates.push('');
 
   // 创建组件表达式
-  const componentProps = { ...node.props, children: node.children };
+  const componentProps = { ...node.props };
+
+  if (node.children.length) {
+    componentProps.children = node.children;
+  }
   const { state } = getContext();
 
   // 添加必要的导入
@@ -419,7 +430,7 @@ export function createPropsObjectExpression(
   for (const propName in propsData) {
     let propValue = propsData[propName];
     // 跳过空的children
-    if (propName === SPREAD_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
+    if (propName === CHILDREN_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
       continue;
     }
 

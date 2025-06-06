@@ -83,18 +83,16 @@ describe('transformation Context Management', () => {
       expect(getContext()).toBe(context); // Confirm it's set
 
       resetContext();
-      // According to your `getContext(): TransformContext { return activeContext!; }` signature, calling it again after reset will throw
-      expect(() => getContext()).toThrow();
+      expect(getContext()).toBeNull();
     });
 
     it('multiple resets should have no side effects', () => {
       const context: TransformContext = { path: mockPath, state: mockState };
       setContext(context);
       resetContext();
-      expect(() => getContext()).toThrow();
-
+      expect(getContext()).toBeNull();
       resetContext(); // Reset again
-      expect(() => getContext()).toThrow(); // Still throws, no error
+      expect(getContext()).toBeNull();
     });
   });
 });

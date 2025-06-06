@@ -110,25 +110,15 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 exports[`jsx SSG transform > should work with head management in SSR 1`] = `
 "import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<head data-idx=\\"1\\"  data-ssr></head>"],
-  _tmpl$2 = ["Page Title"],
+  _tmpl$2 = ["<title data-idx=\\"2\\" ></title>"],
   _tmpl$3 = ["<meta data-idx=\\"4\\"  name=\\"description\\" content=\\"Page description\\"></meta>"],
-  _tmpl$4 = ["Page Title"],
+  _tmpl$4 = ["<title data-idx=\\"2\\" ></title>"],
   _tmpl$5 = ["<meta data-idx=\\"4\\"  name=\\"description\\" content=\\"Page description\\"></meta>"];
 const Head = ({
   children
 }) => _render$(_tmpl$, _getHydrationKey$());
 const element = _createComponent$(Head, {
-  "children": [{
-    "root": false,
-    "type": 5,
-    "tag": "title",
-    "props": {},
-    "children": [_render$(_tmpl$4, _getHydrationKey$())],
-    "index": 2,
-    "isLastChild": false,
-    "isSelfClosing": false,
-    "isFragment": false
-  }, _render$(_tmpl$5, _getHydrationKey$())]
+  "children": [_render$(_tmpl$4, _getHydrationKey$()), _render$(_tmpl$5, _getHydrationKey$())]
 });"
 `;
 

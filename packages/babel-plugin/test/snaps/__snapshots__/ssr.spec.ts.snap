@@ -171,7 +171,7 @@ const element = (() => {
 exports[`jsx SSR transform > should work with head management in SSR 1`] = `
 "import { getRenderedElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<head data-ssr></head>"),
-  _tmpl$2 = _template$("Page Title"),
+  _tmpl$2 = _template$("<title>Page Title</title>"),
   _tmpl$3 = _template$("<meta name=\\"description\\" content=\\"Page description\\"></meta>"),
   _tmpl$4 = _template$("<meta></meta>");
 const Head = ({
@@ -183,20 +183,10 @@ const Head = ({
   return _el;
 })();
 const element = _createComponent$(Head, {
-  "children": [{
-    "root": false,
-    "type": 5,
-    "tag": "title",
-    "props": {},
-    "children": [(() => {
-      const _el4 = _tmpl$2();
-      return _el4;
-    })()],
-    "index": 2,
-    "isLastChild": false,
-    "isSelfClosing": false,
-    "isFragment": false
-  }, (() => {
+  "children": [(() => {
+    const _el4 = _tmpl$2();
+    return _el4;
+  })(), (() => {
     const _el5 = _tmpl$4();
     return _el5;
   })()]
