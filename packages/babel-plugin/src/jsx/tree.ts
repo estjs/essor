@@ -1,7 +1,7 @@
 import { type NodePath, types as t } from '@babel/core';
 import { capitalize, isSVGTag } from '@estjs/shared';
 import { addImport, importMap } from '../import';
-import { FRAGMENT_NAME, NODE_TYPE } from './constants';
+import { FRAGMENT_NAME, NODE_TYPE, UPDATE_NAME } from './constants';
 import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './utils';
 import type { JSXChild, JSXElement, TreeNode } from './types';
 import type { State } from '../types';
@@ -374,7 +374,7 @@ function processBind(
   props[bindName] = expression.node;
 
   // Set update function
-  props[`update${capitalize(bindName)}`] = t.arrowFunctionExpression(
+  props[`${UPDATE_NAME}${capitalize(bindName)}`] = t.arrowFunctionExpression(
     [value],
     t.assignmentExpression('=', expression.node as t.LVal, value),
   );

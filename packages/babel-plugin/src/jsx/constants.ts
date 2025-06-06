@@ -45,10 +45,16 @@ export const STYLE_NAME = 'style';
  */
 export const EVENT_ATTR_NAME = 'on';
 
+export const UPDATE_NAME = 'update';
+
 /**
  * Tag name for Fragment components
  */
 export const FRAGMENT_NAME = 'Fragment';
+
+export const CHILDREN_NAME = 'children';
+
+export const SPREAD_NAME = '_$spread$';
 
 /**
  * data-idx regex for hydration

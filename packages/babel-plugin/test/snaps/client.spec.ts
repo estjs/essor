@@ -43,7 +43,18 @@ describe('should work with jsx client transform', () => {
 
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
-
+  it('should work with head management', () => {
+    const inputCode = `
+      const Head = ({ children }) => <head>{children}</head>;
+      const element = (
+        <Head>
+          <title>Page Title</title>
+          <meta name="description" content="Page description" />
+        </Head>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
   it('transforms JSX element with boolean attribute', () => {
     const inputCode = `
       const element = <input disabled />;

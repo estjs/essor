@@ -1,70 +1,70 @@
 import { type NodePath, types as t } from '@babel/core';
-import { isArray, isNumber, isObject, isString } from '@estjs/shared';
+import { isNumber, isObject, isString } from '@estjs/shared';
 import { addImport, importMap } from '../import';
 import { CLASS_NAME, FRAGMENT_NAME, NODE_TYPE, STYLE_NAME } from './constants';
 import type { DynamicContent, JSXChild, TreeNode } from './types';
 import type { State } from '../types';
 
 /**
- * Checks if a string is a component name
- * @description Determines if a tag represents a component based on whether its first letter is uppercase, contains a dot, or non-alphabetic characters.
- * @param {string} tagName - The tag name to check.
- * @returns {boolean} `true` if the tag represents a component, otherwise `false`.
+ * 判断一个字符串是否是组件名称
+ * @description 根据首字母是否大写、是否包含点号或非字母字符来判断是否为组件名。
+ * @param {string} tagName - 要检查的标签名。
+ * @returns {boolean} 如果标签表示一个组件，则为 `true`，否则为 `false`。
  */
 export function isComponentName(tagName: string): boolean {
   return (
-    (tagName[0] && tagName[0].toLowerCase() !== tagName[0]) || // Uppercase first letter
-    tagName.includes('.') || // Contains a dot (e.g., SomeLibrary.SomeComponent)
-    /[^a-z]/i.test(tagName[0]) // First letter is non-alphabetic (e.g., _Component)
+    (tagName[0] && tagName[0].toLowerCase() !== tagName[0]) || // 首字母大写
+    tagName.includes('.') || // 包含点号 (如 SomeLibrary.SomeComponent)
+    /[^a-z]/i.test(tagName[0]) // 首字母非字母 (如 _Component)
   );
 }
 
 /**
- * Gets the tag name from a JSX element node
- * @description Processes JSXElement and JSXFragment nodes and returns their corresponding tag string.
- * @param {t.JSXElement | t.JSXFragment} node - The AST node of the JSX element or fragment.
- * @returns {string} The tag name string (e.g., 'div', 'MyComponent', 'Fragment').
+ * 从 JSX 元素节点中获取标签名称
+ * @description 处理 JSXElement 和 JSXFragment 节点，返回其对应的标签字符串。
+ * @param {t.JSXElement | t.JSXFragment} node - JSX 元素或片段的 AST 节点。
+ * @returns {string} 标签名字符串（例如 'div', 'MyComponent', 'Fragment'）。
  */
 export const getTagName = (node: t.JSXElement | t.JSXFragment): string => {
-  // Handle JSX Fragment (<>...</> or <Fragment>...</Fragment>) cases
+  // 处理 JSX Fragment (<>...</> 或 <Fragment>...</Fragment>) 的情况
   if (t.isJSXFragment(node)) {
     return FRAGMENT_NAME;
   }
 
-  // Handle regular JSX elements (e.g., <div>, <MyComponent.Nested/>)
+  // 处理常规 JSX 元素 (如 <div>, <MyComponent.Nested/>)
   const tag = node.openingElement.name;
   return jsxElementNameToString(tag);
 };
 
 /**
- * Converts a JSX element name to its string representation
- * @description Supports forms such as JSXIdentifier (e.g., MyComponent), JSXMemberExpression (e.g., SomeLibrary.SomeComponent),
- * and JSXNamespacedName (e.g., namespace:ComponentName).
- * @param {t.JSXMemberExpression | t.JSXIdentifier | t.JSXNamespacedName} node - The AST node of the JSX element name.
- * @returns {string} The string representation of the JSX element name.
+ * 将 JSX 元素名称转换为字符串表示形式
+ * @description 支持 JSXIdentifier (如 MyComponent)、JSXMemberExpression (如 SomeLibrary.SomeComponent)
+ * 和 JSXNamespacedName (如 namespace:ComponentName) 等形式。
+ * @param {t.JSXMemberExpression | t.JSXIdentifier | t.JSXNamespacedName} node - JSX 元素名称的 AST 节点。
+ * @returns {string} JSX 元素名称的字符串表示。
  */
 export function jsxElementNameToString(
   node: t.JSXMemberExpression | t.JSXIdentifier | t.JSXNamespacedName,
 ): string {
   if (t.isJSXMemberExpression(node)) {
-    // Process member expressions, recursively concatenate (e.g., SomeLibrary.SomeComponent)
+    // 处理成员表达式，递归拼接 (如 SomeLibrary.SomeComponent)
     return `${jsxElementNameToString(node.object)}.${jsxElementNameToString(node.property)}`;
   }
 
   if (t.isJSXIdentifier(node) || t.isIdentifier(node)) {
-    // Process identifiers (e.g., MyComponent)
+    // 处理标识符 (如 MyComponent)
     return node.name;
   }
 
-  // Process namespaced expressions (e.g., namespace:ComponentName)
+  // 处理命名空间表达式 (如 namespace:ComponentName)
   return `${node.namespace.name}:${node.name.name}`;
 }
 
 /**
- * Checks if the given path represents a text child node within a JSX expression
- * @description Checks if the node is of type JSXText, StringLiteral, or NumericLiteral.
- * @param {NodePath<JSXChild>} path - The AST path of the potential text child node.
- * @returns {boolean} `true` if the path represents a text child node, otherwise `false`.
+ * 判断给定的路径是否表示 JSX 表达式中的文本子节点
+ * @description 检查节点是否为 JSXText、StringLiteral 或 NumericLiteral 类型。
+ * @param {NodePath<JSXChild>} path - 潜在文本子节点的 AST 路径。
+ * @returns {boolean} 如果路径表示文本子节点，则为 `true`，否则为 `false`。
  */
 export function isTextChild(path: NodePath<JSXChild>): boolean {
   if (path.isJSXExpressionContainer()) {
@@ -80,34 +80,34 @@ export function isTextChild(path: NodePath<JSXChild>): boolean {
 }
 
 /**
- * Trims the text content of a JSXText node
- * @description Removes excess whitespace and newlines, merging multiple whitespaces into a single space.
- * @param {t.JSXText} node - The JSXText AST node.
- * @returns {string} The trimmed text content.
+ * 修剪 JSXText 节点的文本内容
+ * @description 移除多余的空白字符和换行符，将多个空白合并为一个空格。
+ * @param {t.JSXText} node - JSXText AST 节点。
+ * @returns {string} 修剪后的文本内容。
  */
 export function textTrim(node: t.JSXText): string {
   return node.value.replaceAll(/\s+/g, ' ').trim();
 }
 
 /**
- * Checks if a JSX child node is a valid node
- * @description Ignores text nodes that only contain whitespace.
- * @param {NodePath<JSXChild>} path - The AST path of the JSX child node.
- * @returns {boolean} `true` if the node is valid, otherwise `false`.
+ * 判断一个 JSX 子节点是否为有效节点
+ * @description 忽略只包含空白字符的文本节点。
+ * @param {NodePath<JSXChild>} path - JSX 子节点的 AST 路径。
+ * @returns {boolean} 如果节点有效，则为 `true`，否则为 `false`。
  */
 export function isValidChild(path: NodePath<JSXChild>): boolean {
   const regex = /^\s*$/;
   if (path.isStringLiteral() || path.isJSXText()) {
     return !regex.test(path.node.value);
   }
-  return Object.keys(path.node).length > 0; // For other node types, it is considered valid as long as it has content
+  return Object.keys(path.node).length > 0; // 对于其他类型的节点，只要有内容就视为有效
 }
 
 /**
- * Gets the text content of a node
- * @description Extracts text from JSXText or JSXExpressionContainer containing StringLiteral/NumericLiteral.
- * @param {NodePath<JSXChild>} path - The AST path of the JSX child node.
- * @returns {string} The text content of the node, or an empty string if it is not a text node.
+ * 获取节点的文本内容
+ * @description 从 JSXText 或包含 StringLiteral/NumericLiteral 的 JSXExpressionContainer 中提取文本。
+ * @param {NodePath<JSXChild>} path - JSX 子节点的 AST 路径。
+ * @returns {string} 节点的文本内容，如果不是文本节点则返回空字符串。
  */
 export function getNodeText(path: NodePath<JSXChild>): string {
   if (path.isJSXText()) {
@@ -123,10 +123,10 @@ export function getNodeText(path: NodePath<JSXChild>): string {
 }
 
 /**
- * Sets the text content of a JSX child node
- * @description Updates the value of StringLiteral/NumericLiteral in JSXText or JSXExpressionContainer.
- * @param {NodePath<JSXChild>} path - The AST path of the JSX child node.
- * @param {string} text - The text content to set.
+ * 设置 JSX 子节点的文本内容
+ * @description 更新 JSXText 或 JSXExpressionContainer 中 StringLiteral/NumericLiteral 的值。
+ * @param {NodePath<JSXChild>} path - JSX 子节点的 AST 路径。
+ * @param {string} text - 要设置的文本内容。
  */
 export function setNodeText(path: NodePath<JSXChild>, text: string): void {
   if (path.isJSXText()) {
@@ -141,17 +141,17 @@ export function setNodeText(path: NodePath<JSXChild>, text: string): void {
 }
 
 /**
- * Optimizes the child node list, merging adjacent text nodes
- * @description Iterates through the child node list, merging consecutive text nodes into one, reducing the number of generated AST nodes and improving rendering performance.
- * @param {NodePath<JSXChild>[]} children - The original array of child node paths.
- * @returns {NodePath<JSXChild>[]} The optimized array of child node paths.
+ * 优化子节点列表，合并相邻文本节点
+ * @description 遍历子节点列表，将连续的文本节点合并为一个，减少生成的 AST 节点数量，提高渲染性能。
+ * @param {NodePath<JSXChild>[]} children - 原始的子节点路径数组。
+ * @returns {NodePath<JSXChild>[]} 优化后的子节点路径数组。
  */
 export function optimizeChildNodes(children: NodePath<JSXChild>[]): NodePath<JSXChild>[] {
   return children.reduce<NodePath<JSXChild>[]>((acc, cur) => {
     if (isValidChild(cur)) {
       const lastChild = acc.at(-1);
       if (lastChild && isTextChild(cur) && isTextChild(lastChild)) {
-        // Merge adjacent text nodes
+        // 合并相邻文本节点
         setNodeText(lastChild, getNodeText(lastChild) + getNodeText(cur));
       } else {
         acc.push(cur as NodePath<JSXChild>);
@@ -181,7 +181,7 @@ export function processObjectExpression(
 ): string {
   let classStyleString = '';
 
-  // Check if any property contains conditional expressions (ternary expressions)
+  // Check if any property contains conditional expressions (三元表达式)
   const hasConditionalProps = objectExpr.properties.some(
     property => t.isObjectProperty(property) && t.isConditionalExpression(property.value),
   );
@@ -217,11 +217,11 @@ export function processObjectExpression(
 }
 
 /**
- * Gets the name of a JSX attribute
- * @description Extracts the string name of an attribute from a JSXAttribute node.
- * @param {t.JSXAttribute} attribute - The AST node of the JSX attribute.
- * @returns {string} The name of the attribute.
- * @throws {Error} If the attribute type is not supported.
+ * 获取 JSX 属性的名称
+ * @description 从 JSXAttribute 节点中提取属性的字符串名称。
+ * @param {t.JSXAttribute} attribute - JSX 属性的 AST 节点。
+ * @returns {string} 属性的名称。
+ * @throws {Error} 如果属性类型不支持。
  */
 export function getAttrName(attribute: t.JSXAttribute): string {
   if (t.isJSXIdentifier(attribute.name)) {
@@ -230,15 +230,15 @@ export function getAttrName(attribute: t.JSXAttribute): string {
   if (t.isJSXNamespacedName(attribute.name)) {
     return `${attribute.name.namespace.name}:${attribute.name.name.name}`;
   }
-  throw new Error('Unsupported attribute type');
+  throw new Error('不支持的属性类型');
 }
 
 /**
- * Serializes HTML element attributes to a string
- * @description Serializes JSX attribute objects into an HTML attribute string
- * @param {Record<string, unknown>|undefined} attributes - The attribute object
- * @param {State} state - Plugin state
- * @return {string} The serialized HTML attribute string
+ * 序列化HTML元素属性为字符串
+ * @description 将JSX属性对象序列化为HTML属性字符串
+ * @param {Record<string, unknown>|undefined} attributes - 属性对象
+ * @param {State} state - 插件状态
+ * @return {string} 序列化后的HTML属性字符串
  */
 export function serializeAttributes(
   attributes: Record<string, unknown> | undefined,
@@ -252,80 +252,82 @@ export function serializeAttributes(
   let classNames = '';
   let styleString = '';
 
-  // Process all attributes
-  const entries = Object.entries(attributes);
-  if (!entries.length) return '';
-
-  // Process class attribute
-  const classAttr = entries.find(([key]) => key === CLASS_NAME);
-  if (classAttr) {
-    const [, value] = classAttr;
-    if (isString(value)) {
-      classNames = ` ${value}`;
+  // 处理所有属性
+  for (const [attrName, attrValue] of Object.entries(attributes)) {
+    // 处理class属性
+    if (attrName === CLASS_NAME && isString(attrValue)) {
+      classNames += ` ${attrValue}`;
+      delete attributes[attrName];
     }
-  }
-
-  // Process style attribute
-  const styleAttr = entries.find(([key]) => key === STYLE_NAME);
-  if (styleAttr) {
-    const [, value] = styleAttr;
-    if (isString(value)) {
-      styleString = `${value}${value.at(-1) === ';' ? '' : ';'}`;
+    // 处理style属性
+    else if (attrName === STYLE_NAME && isString(attrValue)) {
+      styleString += `${attrValue}${attrValue.at(-1) === ';' ? '' : ';'}`;
+      delete attributes[attrName];
     }
-  }
+    // 处理布尔属性
+    else if (attrValue === true) {
+      attributesString += ` ${attrName}`;
+      delete attributes[attrName];
+    }
+    // 忽略false属性
+    else if (attrValue === false) {
+      delete attributes[attrName];
+    }
+    // 处理字符串和数字属性
+    else if (isString(attrValue) || isNumber(attrValue)) {
+      attributesString += ` ${attrName}="${attrValue}"`;
+      delete attributes[attrName];
+    }
+    // 处理条件表达式
+    else if (t.isConditionalExpression(attrValue as t.Node)) {
+      addImport(importMap.computed);
+      attributes[attrName] = t.callExpression(state.imports.computed, [
+        t.arrowFunctionExpression([], attrValue as t.Expression),
+      ]);
+    }
+    // 处理对象表达式
+    else if (t.isObjectExpression(attrValue as t.Node)) {
+      const result = processObjectExpression(
+        attrName,
+        attrValue as t.ObjectExpression,
+        attributes,
+        state,
+        attrName === CLASS_NAME || attrName === STYLE_NAME,
+      );
 
-  // Process boolean attributes
-  const booleanAttrs = entries
-    .filter(([, value]) => value === true)
-    .map(([key]) => ` ${key}`)
-    .join('');
-
-  // Ignore false attributes
-  const stringAttrs = entries
-    .filter(([, value]) => value !== true && value !== false && !isObject(value))
-    .map(([key, value]) => {
-      if (isString(value) || isNumber(value)) {
-        return ` ${key}="${value}"`;
+      if (result) {
+        if (attrName === CLASS_NAME) {
+          classNames += ` ${result}`;
+        }
+        if (attrName === STYLE_NAME) {
+          styleString += `${result}${result.at(-1) === ';' ? '' : ';'}`;
+        }
       }
-      return '';
-    })
-    .join('');
+    }
+  }
 
-  // Process conditional expressions
-  const conditionalAttrs = entries
-    .filter(([, value]) => t.isConditionalExpression(value as any))
-    .map(([key, value]) => {
-      addImport(importMap.computed);
-      return ` ${key}={${state.imports.computed}(() => ${(value as any).value})}`;
-    })
-    .join('');
+  // 添加class和style属性
+  if (classNames.trim()) {
+    attributesString += ` ${CLASS_NAME}="${classNames.trim()}"`;
+  }
+  if (styleString.trim()) {
+    attributesString += ` ${STYLE_NAME}="${styleString.trim()}"`;
+  }
 
-  // Process object expressions
-  const objectAttrs = entries
-    .filter(([, value]) => t.isObjectExpression(value as any))
-    .map(([key, value]) => {
-      addImport(importMap.computed);
-      return ` ${key}={${state.imports.computed}(() => ${(value as any).value})}`;
-    })
-    .join('');
-
-  // Add class and style attributes
-  const result = `${classNames}${styleString}${booleanAttrs}${stringAttrs}${conditionalAttrs}${objectAttrs}`;
-
-  // If there is a value, ensure there is a leading space
-  return result.length > 0 ? result : '';
+  // 如果存在值，则确保前面有一个空格
+  return attributesString.length && attributesString.charAt(0) !== ' '
+    ? ` ${attributesString}`
+    : attributesString;
 }
 
 /**
- * Checks if a value is a TreeNode
- * @description Type guard to check if a value is a TreeNode
- * @param {any} value - The value to check
- * @returns {boolean} True if the value is a TreeNode
+ * 类型守卫，判断给定值是否为 TreeNode 类型。
+ * @description 检查对象是否具备 TreeNode 的关键属性。
+ * @param {any} value - 待检查的值。
+ * @returns {value is TreeNode} 如果是 TreeNode 类型，则为 true，否则为 false。
  */
 export function isTreeNode(value: any): value is TreeNode {
-  return (
-    isObject(value) && isString(value.type) && isArray(value.children) && isNumber(value.index)
-  );
+  return isObject(value) && !!value._isTreeNode;
 }
 
 /**
@@ -379,119 +381,125 @@ export function findBeforeIndex(currentNode: TreeNode, parentNode: TreeNode): nu
 
   return null; // 如果后面全部是动态节点或者没有节点，则追加到末尾 (返回 null)
 }
+
 /**
- * Collects node index mappings for dynamic content
- * @description Creates a map of parent indices and insertion points for dynamic content
- * @param {DynamicContent[]} dynamicChildren - Dynamic child nodes
- * @param {Array<{props: Record<string, any>; parentIndex: number | null}>} dynamicProps - Dynamic properties
- * @returns {number[]} Sorted array of parent indices
+ * 收集需要映射的 DOM 节点索引
+ * @description 从动态子节点和动态属性中提取需要在客户端引用的 DOM 节点索引。
+ * 这些索引用于在客户端代码中高效地访问特定 DOM 元素。
+ * @param {DynamicContent[]} dynamicChildren - 动态子节点集合。
+ * @param {Array<{props: Record<string, any>; parentIndex: number | null}>} dynamicProps - 动态属性集合。
+ * @returns {number[]} 去重并排序后的索引列表，代表需要映射的 DOM 节点。
  */
 export function collectNodeIndexMap(
   dynamicChildren: DynamicContent[],
   dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
 ): number[] {
-  // Use Set for automatic deduplication
-  const parentIndices = new Set<number>();
+  // 使用 Set 来自动去重
+  const indexSet = new Set<number>();
 
-  // Collect parent indices and insertion points for dynamic child nodes
-  dynamicChildren.forEach(({ parentIndex, beforeIndex }) => {
-    if (parentIndex !== null) {
-      parentIndices.add(parentIndex);
+  // 收集动态子节点的父节点索引和前置节点索引
+  dynamicChildren.forEach(item => {
+    if (item.parentIndex !== null) {
+      indexSet.add(item.parentIndex!);
     }
-    if (beforeIndex !== null) {
-      parentIndices.add(beforeIndex);
-    }
-  });
-
-  // Collect parent indices for dynamic attributes
-  dynamicProps.forEach(({ parentIndex }) => {
-    if (parentIndex !== null) {
-      parentIndices.add(parentIndex);
+    if (item.before !== null) {
+      indexSet.add(item.before);
     }
   });
 
-  // Convert Set to array and sort in ascending order
-  return Array.from(parentIndices).sort((a, b) => a - b);
+  // 收集动态属性的父节点索引
+  dynamicProps.forEach(item => {
+    if (item.parentIndex !== null) {
+      indexSet.add(item.parentIndex);
+    }
+  });
+
+  // 将 Set 转换为数组并进行升序排序
+  return Array.from(indexSet).sort((a, b) => a - b);
 }
 
 /**
- * Finds the position of a target index in an index map
- * @description Binary search to efficiently find the position of a target index
- * @param {number} targetIndex - The index to find
- * @param {number[]} indexMap - The sorted index map
- * @returns {number} The position of the target index
+ * 查找索引在映射数组中的位置
+ * @description 在预先生成的 DOM 节点索引映射数组中，查找特定目标索引的实际位置。
+ * 这在客户端运行时用于通过索引快速定位到 DOM 节点。
+ * @param {number} targetIndex - 目标节点的原始索引（TreeNode.index）。
+ * @param {number[]} indexMap - 预先收集并排序的 DOM 节点索引映射数组。
+ * @returns {number} 目标索引在 `indexMap` 数组中的位置（0-based index），如果未找到则返回 `-1`。
+ *
+ * 用例说明:
+ * 1. `targetIndex=1`, `indexMap=[1,2,3]` => 返回 `0`
+ * 2. `targetIndex=2`, `indexMap=[1,2,3]` => 返回 `1`
+ * 3. `targetIndex=3`, `indexMap=[1,2,3]` => 返回 `2`
+ * 4. `targetIndex=4`, `indexMap=[1,2,3]` => 返回 `-1` (未找到)
  */
 export function findIndexPosition(targetIndex: number, indexMap: number[]): number {
-  let left = 0;
-  let right = indexMap.length - 1;
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    if (indexMap[mid] === targetIndex) return mid;
-    if (indexMap[mid] < targetIndex) left = mid + 1;
-    else right = mid - 1;
-  }
-  return -1;
+  return indexMap.indexOf(targetIndex);
 }
 
 /**
- * Process text elements and insert comment nodes as needed
- * @description Inserts comment nodes between dynamic content to maintain proper rendering
- * @param {TreeNode} node - The tree node to process
+ * 在需要的地方为 TreeNode.children 插入注释节点 (type: COMMENT)
+ * @description 此函数用于在 JSX 树转换过程中，当表达式节点位于两个文本节点之间，或者表达式节点后面紧跟另一个表达式节点时，
+ * 插入一个空的注释节点 `<!>` 作为动态内容插入的标记。这有助于在客户端渲染时精确地定位插入位置。
+ * 该操作不影响原有 `TreeNode.index` 体系。
+ * @param {TreeNode} node - 当前需要处理的 TreeNode。
  */
 export function processTextElementAddComment(node: TreeNode): void {
-  // Recursively process all child nodes
-  node.children.forEach(child => {
-    // Only process child nodes that are TreeNode type
+  if (!node.children || node.children.length === 0) {
+    return;
+  }
+
+  // 递归处理所有子节点
+  for (const child of node.children) {
+    // 只有当子节点是 TreeNode 类型时才进行递归处理
     if (isTreeNode(child)) {
       processTextElementAddComment(child);
     }
-  });
+  }
 
-  // Only process comments insertion at this children level
-  const { children } = node;
-  for (let i = 0; i < children.length; i++) {
-    // Check if we need to insert a comment node at this position
-    if (shouldInsertComment(children, i)) {
-      // Insert comment node with index -1 as it's not a regular DOM node, just a marker
-      children.splice(
-        i + 1,
-        0,
-        {
-          type: NODE_TYPE.COMMENT,
-          index: -1,
-          children: [''],
-        } as TreeNode, // Force type assertion as it's a special internal node
-      );
-      i += 2; // Skip current node and the inserted comment node
+  // 只对本层 children 处理注释插入
+  let i = 0;
+  while (i < node.children.length) {
+    // 判断当前位置是否需要插入注释节点
+    if (shouldInsertComment(node.children, i)) {
+      // 插入注释节点，注意其 index 设置为 -1，因为它不是一个常规的 DOM 节点，仅作标记用。
+      node.children.splice(i + 1, 0, {
+        type: NODE_TYPE.COMMENT,
+        isComment: true,
+        children: [],
+        index: -1,
+      } as TreeNode); // 强制类型断言，因为它是一个特殊的内部节点
+      i += 2; // 跳过当前节点和刚插入的注释节点
+    } else {
+      i += 1;
     }
   }
 }
 
 /**
- * Determines if a comment node should be inserted between nodes
- * @description Checks if a comment marker is needed between dynamic content
- * @param {(TreeNode | string | t.Expression)[]} children - The child nodes
- * @param {number} idx - The current index
- * @returns {boolean} True if a comment node should be inserted
+ * 判断是否需要插入注释节点
+ * @description 辅助 `processTextElementAddComment` 函数，判断在给定位置是否需要插入注释节点。
+ * 规则：当前节点是表达式，且后面紧跟着非 HTML/SVG 元素 (即另一个动态内容或文本节点)。
+ * @param {(TreeNode | string)[]} children - 父节点的子节点数组。
+ * @param {number} idx - 当前要检查的子节点在数组中的索引。
+ * @returns {boolean} 如果需要插入注释节点，则为 `true`，否则为 `false`。
  */
-function shouldInsertComment(children: (TreeNode | string | t.Expression)[], idx: number): boolean {
-  const currentNode = children[idx];
-  const nextNode = children[idx + 1];
+function shouldInsertComment(children: (TreeNode | string | JSXChild)[], idx: number): boolean {
+  const cur = children[idx];
+  const next = children[idx + 1];
 
-  // Only process expression nodes, as comment nodes are used to separate adjacent dynamic content
-  if (isTreeNode(currentNode) && currentNode.type === NODE_TYPE.EXPRESSION) {
-    // If it's the last node, or followed by HTML/SVG element, no comment node needed
-    if (
-      !nextNode ||
-      (isTreeNode(nextNode) &&
-        (nextNode.type === NODE_TYPE.NORMAL || nextNode.type === NODE_TYPE.SVG))
-    ) {
-      return false;
-    }
-
-    // Other cases (expression followed by text, another expression, Fragment or Component), need comment node
-    return true;
+  // 只处理表达式节点，因为注释节点是用来分隔相邻的动态内容的
+  if (!cur || !isObject(cur) || cur.type !== NODE_TYPE.EXPRESSION) {
+    return false;
   }
 
-  return false;
+  // 如果是最后一个节点，或者后面紧跟着 HTML/SVG 元素，则不需要注释节点
+  if (
+    !next ||
+    (isObject(next) && (next.type === NODE_TYPE.NORMAL || next.type === NODE_TYPE.SVG))
+  ) {
+    return false;
+  }
+
+  // 其他情况 (表达式后面是文本、另一个表达式、Fragment 或 Component)，都需要插入注释节点
+  return true;
 }

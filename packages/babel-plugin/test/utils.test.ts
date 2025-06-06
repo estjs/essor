@@ -31,7 +31,7 @@ beforeEach(() => {
   setContext({ path: programPath!, state: programState! });
 });
 
-describe('jSX Utility Functions (packages/babel-plugin/src/jsx/utils.ts)', () => {
+describe('jSX Utility Functions ', () => {
   describe('isComponentName', () => {
     it('should return true for tags starting with an uppercase letter', () => {
       expect(isComponentName('MyComponent')).toBe(true);
