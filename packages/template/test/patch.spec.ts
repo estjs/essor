@@ -6,7 +6,7 @@ import {
   patchChildren,
   removeChild,
   replaceChild,
-} from '../src/patch-next';
+} from '../src/patch';
 import { type Component, createComponent, isComponent } from '../src/component';
 
 // Component render function

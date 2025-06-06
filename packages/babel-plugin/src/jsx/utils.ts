@@ -2,8 +2,8 @@ import { type NodePath, types as t } from '@babel/core';
 import { isNumber, isObject, isString } from '@estjs/shared';
 import { addImport, importMap } from '../import';
 import { CLASS_NAME, FRAGMENT_NAME, NODE_TYPE, STYLE_NAME } from './constants';
+import { getContext } from './context';
 import type { DynamicContent, JSXChild, TreeNode } from './types';
-import type { State } from '../types';
 
 /**
  * 判断一个字符串是否是组件名称
@@ -169,7 +169,6 @@ export function optimizeChildNodes(children: NodePath<JSXChild>[]): NodePath<JSX
  * @param propName - Current property name being processed (e.g., "class" or "style")
  * @param objectExpr - The object expression AST node to process
  * @param propsCollection - Collection of component props to modify
- * @param state - Babel transformation state object
  * @param isClassOrStyleAttr - Flag indicating if processing class/style attribute (special handling)
  * @returns Generated class/style string when processing class/style attributes
  */
@@ -177,9 +176,10 @@ export function processObjectExpression(
   propName: string,
   objectExpr: t.ObjectExpression,
   propsCollection: Record<string, any>,
-  state: State,
   isClassOrStyleAttr = false,
 ): string {
+  const { state } = getContext();
+
   let classStyleString = '';
 
   // Check if any property contains conditional expressions (三元表达式)
@@ -231,7 +231,8 @@ export function getAttrName(attribute: t.JSXAttribute): string {
   if (t.isJSXNamespacedName(attribute.name)) {
     return `${attribute.name.namespace.name}:${attribute.name.name.name}`;
   }
-  throw new Error('不支持的属性类型');
+
+  return '';
 }
 
 /**
@@ -241,10 +242,9 @@ export function getAttrName(attribute: t.JSXAttribute): string {
  * @param {State} state - 插件状态
  * @return {string} 序列化后的HTML属性字符串
  */
-export function serializeAttributes(
-  attributes: Record<string, unknown> | undefined,
-  state: State,
-): string {
+export function serializeAttributes(attributes: Record<string, unknown> | undefined): string {
+  const { state } = getContext();
+
   if (!attributes || !isObject(attributes)) {
     return '';
   }
@@ -292,7 +292,6 @@ export function serializeAttributes(
         attrName,
         attrValue as t.ObjectExpression,
         attributes,
-        state,
         attrName === CLASS_NAME || attrName === STYLE_NAME,
       );
 

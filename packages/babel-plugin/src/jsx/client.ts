@@ -42,7 +42,6 @@ function buildTemplateString(node: TreeNode): string {
   if (!node || node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
     return '';
   }
-  const { state } = getContext();
 
   let templateHtml = '';
 
@@ -51,9 +50,9 @@ function buildTemplateString(node: TreeNode): string {
   } else if (node.type === NODE_TYPE.COMMENT) {
     templateHtml = '<!>';
   } else if (node.isSelfClosing) {
-    templateHtml = `<${node.tag}${serializeAttributes(node.props, state)}/>`;
+    templateHtml = `<${node.tag}${serializeAttributes(node.props)}/>`;
   } else if (node.tag) {
-    templateHtml = `<${node.tag}${serializeAttributes(node.props, state)}>`;
+    templateHtml = `<${node.tag}${serializeAttributes(node.props)}>`;
 
     // 添加所有子节点的模板
     if (node.children && node.children.length > 0) {

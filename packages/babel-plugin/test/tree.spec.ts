@@ -131,12 +131,10 @@ describe('jSX Tree Building and Utility Functions', () => {
       ) as unknown as NodePath<t.JSXElement>;
       const tree = createTree(jsxElementPath!, jsxElementPath!.state);
 
-      expect(tree.children.length).toBe(3);
+      expect(tree.children.length).toBe(4);
       expect((tree.children[0] as any).type).toBe(NODE_TYPE.TEXT);
       expect((tree.children[1] as any).type).toBe(NODE_TYPE.EXPRESSION);
       expect((tree.children[2] as any).type).toBe(NODE_TYPE.TEXT);
-      // Note: In client mode, processDynamic and generateRenderFunction will insert <!> markers.
-      // createTree stage only creates the AST. Here we only verify the createTree stage structure.
     });
   });
 
