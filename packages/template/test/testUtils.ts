@@ -1,8 +1,8 @@
 import { createApp } from '../src';
 
-export function mount(code, props = {}) {
+export function mount(code) {
   const container = document.createElement('div');
-  const nodes = createApp(code, container, props);
+  const nodes = createApp(code, container);
 
   return {
     nodes,

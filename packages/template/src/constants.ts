@@ -1,27 +1,40 @@
-// Event prefix
+/**
+ * event prefix, used to distinguish event handler properties
+ */
 export const EVENT_PREFIX = 'on';
-// Update prefix
+
+/**
+ * update prefix, used to identify update callback properties
+ */
 export const UPDATE_PREFIX = 'update';
-// Children property
+
+/**
+ * children property name
+ */
 export const CHILDREN_PROP = 'children';
 
-// Empty template
-export const EMPTY_TEMPLATE = '';
-// Fragment property key
-export const FRAGMENT_PROP_KEY = '0';
-// Single property key
-export const SINGLE_PROP_KEY = '1';
-// Style key
-export const STYLE_KEY = 'style';
-// Reference key
+/**
+ * reference property key
+ * used to get the DOM element reference
+ */
 export const REF_KEY = 'ref';
 
-// Placeholder
-export const PLACEHOLDER = ' __PLACEHOLDER__ ';
+/**
+ * SVG namespace constant
+ */
+export const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 
-// Component type enumeration
-export enum ComponentType {
-  TEXT = 0, // Text
-  TEXT_COMPONENT = 1, // Text component
-  COMPONENT = 2, // Component
-}
+/**
+ * XML namespace for xlink attributes
+ */
+export const XLINK_NAMESPACE = 'http://www.w3.org/2000/xlink';
+
+/**
+ * xmlns namespace for SVG elements
+ */
+export const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
+
+/**
+ * data-idx regex
+ */
+export const DATA_IDX_REGEX = /^\d+-\d+$/;

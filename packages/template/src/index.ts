@@ -1,6 +1,14 @@
-export * from './componentNode';
-export * from './context';
-export * from './renderer';
-export * from './lifecycle';
-export * from './dom';
-export * from './components';
+export { provide, inject } from './provide';
+export { AnyNode } from './types';
+export {
+  Component,
+  ComponentProps,
+  createComponent,
+  isComponent,
+  componentEffect,
+} from './component';
+export { template, createApp } from './renderer';
+export { setAttr, setStyle, setClass, addEventListener, mapNodes, insert } from './binding';
+export { onDestroyed, onMounted, onUpdated } from './lifecycle';
+
+export * from './server';

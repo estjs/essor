@@ -5,8 +5,8 @@
   "type": "module",
   "keywords": [],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/est#readme",
-  "bugs": "https://github.com/estjs/est/issues",
+  "homepage": "https://github.com/estjs/essor",
+  "bugs": "https://github.com/estjs/essor/issues",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/estjs/essor.git"

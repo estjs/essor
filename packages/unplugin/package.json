@@ -3,7 +3,7 @@
   "version": "0.0.14",
   "description": "",
   "type": "module",
-  "keywords": ["unplugin", "vite", "est", "estjs", "webpack", "rollup", "transform"],
+  "keywords": ["unplugin", "vite", "essor", "estjs", "webpack", "rollup", "transform"],
   "license": "MIT",
   "repository": {
     "type": "git",

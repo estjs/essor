@@ -1,13 +1,17 @@
-import { ComponentNode } from './componentNode';
-import { insertChild } from './patch';
-import type { ComponentProps } from './types';
+import { error } from '@estjs/shared';
+import { type ComponentProps, createComponent } from './component';
+import { insertNode } from './patch';
 
 /**
- * Creates an HTML template element from a given HTML string.
+ * create a template
+ * @param {string} html - the html string
+ * @returns {Function} a factory function that returns a cloned node of the template
  */
 export function template(html: string) {
   let node: Node | undefined;
+
   const create = (): Node => {
+    // Regular HTML template
     const template = document.createElement('template');
     template.innerHTML = html;
     const firstChild = template.content.firstChild;
@@ -17,57 +21,35 @@ export function template(html: string) {
     return firstChild;
   };
 
+  // return a factory function: create the template when first called, reuse the cached template when called later
   return () => (node || (node = create())).cloneNode(true);
 }
 
 /**
- * Checks if the given node is an instance of `ComponentNode`.
- * @param node The node to check
- * @returns `true` if the node is a ComponentNode instance, `false` otherwise
+ * create a app
+ * @param {Function} component - the component to create the app
+ * @param {string|Element} target - the target to mount the app
+ * @returns {void}
  */
-export function isComponent(node: unknown): node is ComponentNode {
-  return node instanceof ComponentNode;
-}
-
-/**
- * Creates a component instance
- * @param Comp The component to create
- * @param props The component properties
- * @returns A new `ComponentNode` instance
- */
-export function createComponent<P extends ComponentProps>(Comp: (props: P) => Node, props?: P) {
-  return new ComponentNode(Comp, props);
-}
-
-/**
- * Creates a new application instance
- */
-export function createApp(
-  rootComponent: (props: ComponentProps) => Node,
-  container: string | Element,
-  props: ComponentProps = {},
-) {
-  const root = typeof container === 'string' ? document.querySelector(container) : container;
-  if (!root) {
-    throw new Error('Container element not found');
+export function createApp(component: (props: ComponentProps) => Node, target: string | Element) {
+  const container = typeof target === 'string' ? document.querySelector(target) : target;
+  if (!container) {
+    error(`Target element not found: ${target}`);
+    return;
   }
 
-  if (__DEV__) {
-    if (root.innerHTML) {
-      console.warn('Root element already has innerHTML, it will be overridden');
-    }
-  }
-  root.innerHTML = '';
-
-  const componentNode = new ComponentNode(rootComponent, props);
-  const el = componentNode.mount(root);
-
-  // Only insert if el is not null
-  if (el) {
-    insertChild(root, el);
+  const existingContext = container.innerHTML;
+  if (existingContext) {
+    error(`Target element is not empty, it will be delete: ${target}`);
+    container.innerHTML = '';
   }
 
-  return {
-    unmount: () => componentNode.unmount(),
-  };
+  const rootComponent = createComponent(component);
+  const rootNode = rootComponent.mount(container);
+
+  if (rootNode) {
+    insertNode(container, rootNode);
+  }
+
+  return rootComponent;
 }

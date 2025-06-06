@@ -34,6 +34,14 @@ export function isString(val: unknown): val is string {
 }
 
 /**
+ * Checks if a value is a number
+ * @param {unknown} val - The value to check
+ * @returns {boolean} - Returns true if the value is a number, false otherwise
+ */
+export function isNumber(val: unknown): val is number {
+  return typeof val === 'number';
+}
+/**
  * Checks if a value is null
  * @param {unknown} val - The value to check
  * @returns {boolean} - Returns true if the value is null, false otherwise
@@ -155,4 +163,31 @@ export function isStringNumber(val: unknown): val is StringNumber {
     return false;
   }
   return !Number.isNaN(Number(val));
+}
+
+/**
+ * Checks if a value is a HTML node
+ * @param {unknown} val - The value to check
+ * @returns {boolean} - Returns true if the value is a HTML node, false otherwise
+ */
+export function isHTMLNode(val: unknown): val is HTMLElement {
+  return val instanceof HTMLElement;
+}
+
+/**
+ * Checks if a value is undefined
+ * @param {unknown} val - The value to check
+ * @returns {boolean} - Returns true if the value is undefined, false otherwise
+ */
+export function isUndefined(val: unknown): val is undefined {
+  return typeof val === 'undefined';
+}
+
+/**
+ * Checks if a value is a boolean
+ * @param {unknown} val - The value to check
+ * @returns {boolean} - Returns true if the value is a boolean, false otherwise
+ */
+export function isBoolean(val: unknown): val is boolean {
+  return typeof val === 'boolean';
 }

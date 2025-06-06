@@ -17,8 +17,8 @@ if (!commitRE.test(msg)) {
       'invalid commit message format.',
     )}\n\n${pico.red(
       '  Proper commit message format is required for automated changelog generation. Examples:\n\n',
-    )}    ${pico.green(`feat(est): add 'comments' option`)}\n` +
-      `    ${pico.green('fix(test): handle events on blur (close #28)')}\n\n${pico.red(
+    )}    ${pico.green(`feat(core): add 'comments' option`)}\n` +
+      `    ${pico.green('fix(signal): handle events on blur (close #28)')}\n\n${pico.red(
         '  See .github/commit-convention.md for more details.\n',
       )}`,
   );

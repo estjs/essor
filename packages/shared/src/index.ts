@@ -1,4 +1,4 @@
-// 工具函数导出
+// Utility function exports
 export {
   noop,
   extend,
@@ -27,6 +27,7 @@ export {
   isWeakSet,
   isFunction,
   isNil,
+  isNull,
   isPromise,
   isSymbol,
   isFalsy,
@@ -34,6 +35,10 @@ export {
   isPrimitive,
   isHTMLElement,
   isStringNumber,
+  isHTMLNode,
+  isNumber,
+  isUndefined,
+  isBoolean,
   type StringNumber,
 } from './is';
 

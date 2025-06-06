@@ -4,7 +4,7 @@ import type { types as t } from '@babel/core';
 export interface Options {
   mode: 'client' | 'ssr' | 'ssg';
   symbol?: string;
-  autoProps?: boolean;
+  props?: boolean;
   /**
    * Whether to enable hot module replacement functionality
    * @default true Enabled by default in client mode, this configuration is ignored in ssr and ssg modes

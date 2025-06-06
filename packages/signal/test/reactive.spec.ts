@@ -1,4 +1,4 @@
-import { effect, isReactive, reactive, shallowReactive, toRaw } from '../src';
+import { computed, effect, isReactive, reactive, shallowReactive, toRaw } from '../src';
 
 describe('reactive - basic reactivity tests', () => {
   it('should initialize with provided properties', () => {
@@ -213,60 +213,72 @@ describe('reactive - nested objects and arrays', () => {
     state.users[1].addresses[0].city = 'Los Angeles';
     expect(state.users[1].addresses[0].city).toBe('Los Angeles');
   });
+  // Node 20+
+  // @ts-expect-error tests are not limited to es2016
+  it.skipIf(!Array.prototype.toReversed)('toReversed should return reactive array', () => {
+    const array = reactive([1, { val: 2 }]);
+    const result = computed(() => (array as any).toReversed());
+    expect(result.value).toStrictEqual([{ val: 2 }, 1]);
+    expect(isReactive(result.value[0])).toBe(true);
 
-  it(
-    'toReversed should return reactive array',
-    () => {
-      const original = reactive([1, 2, 3]);
-      // @ts-ignore
-      const reversed = original.toReversed();
+    array.splice(1, 1, 2);
+    expect(result.value).toStrictEqual([2, 1]);
+  });
 
-      effect(() => {
-        reversed.join(',');
-      });
+  // Node 20+
+  // @ts-expect-error tests are not limited to es2016
+  it.skipIf(!Array.prototype.toSorted)('toSorted should return reactive array', () => {
+    // No comparer
+    // @ts-expect-error
+    expect(shallowReactive([2, 1, 3] as number[]).toSorted()).toStrictEqual([1, 2, 3]);
 
-      // 修改原数组不应影响反转后的数组
-      original.push(4);
-      expect(reversed).toEqual([3, 2, 1]); // 保持不可变性
-    },
-    { skip: true },
-  );
+    const shallow = shallowReactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
+    let result;
+    result = computed(() => (shallow as any).toSorted((a, b) => a.val - b.val));
+    expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
+    expect(isReactive(result.value[0])).toBe(true);
 
-  it(
-    'toSorted should return reactive array',
-    () => {
-      const original = reactive([1, 2, 3]);
-      // @ts-ignore
-      const sorted = original.toSorted();
+    shallow[0].val = 4;
+    expect(result.value.map(x => x.val)).toStrictEqual([1, 4, 3]);
 
-      effect(() => {
-        sorted.join(',');
-      });
+    shallow.pop();
+    expect(result.value.map(x => x.val)).toStrictEqual([1, 4]);
 
-      // 修改原数组不应影响排序后的数组
-      original.push(4);
-      expect(sorted).toEqual([1, 2, 3]); // 保持不可变性
-    },
-    { skip: true },
-  );
+    const deep = reactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
+    result = computed(() => (deep as any).toSorted((a, b) => a.val - b.val));
+    expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
+    expect(isReactive(result.value[0])).toBe(true);
 
-  it(
-    'toSpliced should return reactive array',
-    () => {
-      const original = reactive([1, 2, 3]);
-      // @ts-ignore
-      const spliced = original.toSpliced(1, 1);
+    deep[0].val = 4;
+    expect(result.value.map(x => x.val)).toStrictEqual([1, 4, 3]);
+  });
 
-      effect(() => {
-        spliced.join(',');
-      });
+  // Node 20+
+  // @ts-expect-error tests are not limited to es2016
+  it.skipIf(!Array.prototype.toSpliced)('toSpliced should return reactive array', () => {
+    const array = reactive([1, 2, 3]);
+    const result = computed(() => (array as any).toSpliced(1, 1, -2));
+    expect(result.value).toStrictEqual([1, -2, 3]);
 
-      // 修改原数组不应影响截取后的数组
-      original.push(4);
-      expect(spliced).toEqual([1, 3]); // 保持不可变性
-    },
-    { skip: true },
-  );
+    // Now modify the original array
+    array[0] = 0;
+    // The result should be updated with the new value at index 0
+    expect(result.value).toStrictEqual([0, -2, 3]);
+  });
+
+  it('values', () => {
+    const shallow = shallowReactive([{ val: 1 }, { val: 2 }]);
+    const result = computed(() => Array.from(shallow.values()));
+    expect(result.value).toStrictEqual([{ val: 1 }, { val: 2 }]);
+    expect(isReactive(result.value[0])).toBe(true);
+
+    shallow.pop();
+    expect(result.value).toStrictEqual([{ val: 1 }]);
+
+    const deep = reactive([{ val: 1 }, { val: 2 }]);
+    const firstItem = Array.from(deep.values())[0];
+    expect(isReactive(firstItem)).toBe(true);
+  });
 });
 describe('shallowReactive - shallow reactivity behavior', () => {
   // Shallow object reactivity

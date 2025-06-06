@@ -11,7 +11,7 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    est: './src/index.ts',
+    essor: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],

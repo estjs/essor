@@ -1,54 +1,46 @@
-/**
- * @file JSX transformation factory and entry point
- * @description Handles JSX transformation based on different rendering strategies
- */
-
-import { ClientTransformStrategy } from './client';
-import { SSGTransformStrategy } from './ssg';
-import { SSRTransformStrategy } from './ssr';
+import { RENDER_MODE } from '../constants';
+import { transformJSX as clientTransform } from './client';
+import { transformJSX as ssgTransform } from './ssg';
+import type { JSXElement } from './types';
 import type { NodePath } from '@babel/core';
-import type { State } from '../types';
-import type { JSXElement, TransformStrategy } from './types';
 
 /**
- * Strategy factory that creates the appropriate transformation strategy
- * based on the rendering mode
- * @param state Babel state
- * @returns Transformation strategy instance
+ * Transformation strategies corresponding to render modes
  */
-export function createTransformStrategy(state: State): TransformStrategy {
-  // Select the appropriate transformation strategy based on mode
-  const mode = state.opts.mode || 'client';
-
-  switch (mode) {
-    case 'client':
-      return new ClientTransformStrategy(state);
-    case 'ssg':
-      return new SSGTransformStrategy(state);
-    case 'ssr':
-      return new SSRTransformStrategy(state);
-    default:
-      throw new Error(`Invalid rendering mode: ${mode}`);
-  }
-}
+const transformStrategies = {
+  [RENDER_MODE.CLIENT]: clientTransform,
+  [RENDER_MODE.SSG]: ssgTransform,
+  [RENDER_MODE.SSR]: clientTransform,
+};
 
 /**
- * Transform JSX elements based on server rendering strategy
- * @param path JSX element path
- * @throws {Error} If mode type is invalid or transformation fails
+ * Main JSX transformation function
+ * Entry point, responsible for delegating calls to the appropriate rendering strategy
+ *
+ * @param {NodePath<JSXElement>} path - JSX element path
  */
 export function transformJSX(path: NodePath<JSXElement>): void {
   try {
-    // Get Babel state from path
-    const state = path.state as State;
+    // Get render mode from options, default to client-side rendering
+    const mode = (path.state?.opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
-    // Create the appropriate strategy based on rendering mode
-    const strategy = createTransformStrategy(state);
+    // Get the corresponding transformation strategy
+    const transformStrategy = transformStrategies[mode];
 
-    // Apply the transformation
-    strategy.transform(path);
-  } catch (error) {
-    console.error('JSX transformation failed:', error);
+    if (!transformStrategy) {
+      throw new Error(`Invalid render mode: ${mode}`);
+    }
+
+    // Apply core transformation using the selected strategy
+    const result = transformStrategy(path);
+
+    // Replace JSX element with transformation result
+    if (result) {
+      path.replaceWith(result);
+    }
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('JSX transformation failed:', errorMessage);
     throw error;
   }
 }

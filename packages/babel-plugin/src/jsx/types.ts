@@ -1,86 +1,109 @@
-/**
- * @file Core types for JSX transformation
- */
-
-import type { NodePath, types as t } from '@babel/core';
 import type { State } from '../types';
+import type { NODE_TYPE } from './constants';
+import type { NodePath, types as t } from '@babel/core';
 
-/**
- * JSX element types supported by the transformer
- */
 export type JSXElement = t.JSXElement | t.JSXFragment;
 
-/**
- * JSX child node types
- */
 export type JSXChild =
   | t.JSXElement
   | t.JSXFragment
   | t.JSXExpressionContainer
+  | t.Expression
   | t.JSXSpreadChild
   | t.JSXText;
 
-/**
- * Base result interface with common properties
- */
-export interface TransformationResult {
+export interface TreeNode {
+  // is root node
+  root?: boolean;
+  // node type
+  type: NODE_TYPE;
+  // node name
+  tag?: string;
+  // node attributes
+  props?: Record<string, unknown>;
+  // node children
+  children: (TreeNode | JSXChild | string)[];
+  // index, default start from 1
   index: number;
-  isLastChild: boolean;
-  parentIndex: number;
-  props: Record<string, any>;
+
+  // is last child
+  isLastChild?: boolean;
+  // is self closing
+  isSelfClosing?: boolean;
+  // is fragment
+  isFragment?: boolean;
+
+  _isTreeNode?: boolean;
 }
 
 /**
- * Client-side rendering result
- */
-export interface ClientResult extends TransformationResult {
-  template: string;
-}
-
-/**
- * Server-side rendering result
- */
-export interface SSRResult extends TransformationResult {
-  template: string;
-}
-
-/**
- * Static site generation result
- */
-export interface SSGResult extends TransformationResult {
-  template: string[];
-  dynamics: DynamicContent[];
-}
-
-/**
- * Dynamic content representation for SSG
+ * Dynamic Content Interface
+ * @description Represents JSX content that needs dynamic processing, such as components, expressions, etc.
  */
 export interface DynamicContent {
-  type: 'attr' | 'text';
+  /** Dynamic content type identifier */
+  type?: string;
+  /** Node index */
+  index: number;
+  /** AST node expression */
   node: t.Expression;
+  /** Previous node index, used to determine insertion position */
+  before: number | null;
+  /** Template index */
+  templateIndex?: number;
+  /** Parent node index */
+  parentIndex?: number | null;
+  /** Attribute name, used for dynamic attributes */
   attrName?: string;
 }
 
 /**
- * Transformation context passed to strategies
+ * Dynamic Content Collection Interface
+ * @description Used to type-strengthen dynamic content collection results
  */
+export interface DynamicCollection {
+  /** Dynamic child node list */
+  children: DynamicContent[];
+  /** Dynamic attribute list */
+  props: Array<{
+    /** Attribute object */
+    props: Record<string, any>;
+    /** Parent node index */
+    parentIndex: number | null;
+  }>;
+}
+
 export interface TransformContext {
-  state: State;
   path: NodePath<JSXElement>;
-  result: ClientResult | SSRResult | SSGResult;
+  state: State;
 }
 
 /**
- * Strategy interface for transformation implementations
+ * SSG Processing Result Interface
+ * @description Stores template and dynamic content information in SSG mode
  */
-export interface TransformStrategy {
-  /**
-   * Transform a JSX element according to the strategy
-   */
-  transform(path: NodePath<JSXElement>): void;
-
-  /**
-   * Create a transformation result object
-   */
-  createResult(): ClientResult | SSRResult | SSGResult;
+export interface SSGProcessResult {
+  /** Template string array */
+  templates: string[];
+  /** Dynamic content array */
+  dynamics: Array<{
+    /** Content type: text or attribute */
+    type: 'text' | 'attr';
+    /** Expression node */
+    node: t.Expression;
+    /** Attribute name (only for attr type) */
+    attrName?: string;
+  }>;
+  /** Root node */
+  root: TreeNode | null;
+}
+/**
+ * Template Information Interface
+ * @description Describes information related to a template fragment
+ */
+export interface TemplateInfo {
+  /** Template identifier */
+  id: t.Identifier;
+  /** Template content */
+  template: string | Array<string>;
 }

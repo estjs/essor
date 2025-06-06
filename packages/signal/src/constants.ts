@@ -22,6 +22,9 @@ export enum SignalFlags {
 
   /** Marks an object as a computed value */
   IS_COMPUTED = '__s_isComputed',
+
+  /** Marks an object as a ref */
+  IS_REF = '__s_isRef',
 }
 
 /**

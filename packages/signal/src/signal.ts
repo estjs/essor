@@ -49,7 +49,7 @@ export interface Signal<T> {
  * @internal
  */
 export class SignalImpl<T> implements Signal<T> {
-  private _value: T;
+  protected _value: T;
   private readonly [SignalFlags.IS_SHALLOW]: boolean;
   // @ts-ignore
   private readonly [SignalFlags.IS_SIGNAL] = true;
@@ -60,8 +60,8 @@ export class SignalImpl<T> implements Signal<T> {
    * @param value - The initial value
    * @param shallow - Whether to make only the top level reactive
    */
-  constructor(value: T, shallow = false) {
-    this._value = value;
+  constructor(value?: T, shallow = false) {
+    this._value = value as T;
     this[SignalFlags.IS_SHALLOW] = shallow;
   }
 
@@ -81,7 +81,7 @@ export class SignalImpl<T> implements Signal<T> {
   set value(value: T) {
     // Handle nested signals by unwrapping them
     if (isSignal(value)) {
-      value = value.peek() as T;
+      value = value.value as T;
     }
 
     // Only trigger updates if the value has actually changed
@@ -135,7 +135,7 @@ export class SignalImpl<T> implements Signal<T> {
  * count.update(n => n + 1);
  * ```
  */
-export function signal<T>(value: T): Signal<T> {
+export function signal<T>(value?: T): Signal<T> {
   if (isSignal(value)) {
     if (__DEV__) {
       warn(
@@ -167,7 +167,7 @@ export function signal<T>(value: T): Signal<T> {
  * user.value.address.city = 'Boston'; // Does not trigger updates
  * ```
  */
-export function shallowSignal<T>(value: T): Signal<T> {
+export function shallowSignal<T>(value?: T): Signal<T> {
   return new SignalImpl(value, true);
 }
 
@@ -178,17 +178,9 @@ export function shallowSignal<T>(value: T): Signal<T> {
  * @param value - The value to check
  * @returns True if the value is a Signal instance
  */
-export function isSignal<T>(value: any): value is Signal<T> {
-  return !!value?.[SignalFlags.IS_SIGNAL];
+export function isSignal<T>(value: unknown): value is Signal<T> {
+  return !!value && isObject(value) && !!value[SignalFlags.IS_SIGNAL];
 }
-
-/**
- * A read-only version of the Signal type.
- * Useful when you want to expose a signal for reading but prevent writes.
- *
- * @template T - The type of value held by the signal
- */
-export type ReadonlySignal<T> = Readonly<Signal<T>>;
 
 /**
  * A more precise type for the value held by a signal.

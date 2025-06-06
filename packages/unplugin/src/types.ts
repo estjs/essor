@@ -3,7 +3,7 @@ export interface Options {
   include?: FilterPattern;
   exclude?: FilterPattern;
   mode?: 'ssg' | 'ssr' | 'client';
-  autoProps?: boolean;
+  props?: boolean;
   symbol?: '$';
   hmr?: boolean;
 }

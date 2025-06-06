@@ -12,7 +12,7 @@ const JSX_EXTENSIONS = ['.jsx', '.tsx'];
 const DEFAULT_OPTIONS = {
   symbol: '$',
   mode: 'client',
-  autoProps: true,
+  props: true,
   hmr: true,
 };
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: Options = {}) => {
@@ -55,29 +55,29 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: O
     handleHotUpdate(ctx: { file: string; modules: ModuleNode[]; server: ViteDevServer }) {
       const { file, modules, server } = ctx;
 
-      // 1. 处理样式文件的热更新
+      // 1. Handle style file hot updates
       if (CSS_EXTENSIONS.some(ext => file.endsWith(ext))) {
-        // 只更新样式模块，不需要全页面刷新
+        // Only update style modules, no need for full page refresh
         return modules;
       }
 
-      // 2. 处理 JSX/TSX 组件文件
+      // 2. Handle JSX/TSX component files
       if (JSX_EXTENSIONS.some(ext => file.endsWith(ext))) {
         const updatedModules = new Set<ModuleNode>();
 
         for (const mod of modules) {
-          // 获取模块的依赖信息
+          // Get module dependency information
           const deps = mod.info?.meta?.deps || [];
           const importers = Array.from(mod.importers || []);
 
-          // 检查是否是组件文件
+          // Check if it's a component file
           const isComponent = JSX_EXTENSIONS.some(ext => mod.file?.endsWith(ext));
 
           if (isComponent) {
-            // 对于组件文件，我们只更新组件本身和直接依赖它的模块
+            // For component files, we only update the component itself and modules that directly depend on it
             updatedModules.add(mod);
 
-            // 处理直接依赖
+            // Process direct dependencies
             for (const dep of deps) {
               const depMod = server.moduleGraph.getModuleById(dep);
               if (depMod) {
@@ -85,14 +85,14 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: O
               }
             }
 
-            // 处理导入该组件的模块
+            // Process modules that import this component
             for (const importer of importers) {
               if ((importer as ModuleNode).type === 'js') {
                 updatedModules.add(importer as ModuleNode);
               }
             }
 
-            // 发送 HMR 更新事件
+            // Send HMR update event
             server.ws.send({
               type: 'custom',
               event: 'essor:hmr',
@@ -102,11 +102,11 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: O
               },
             });
           } else {
-            // 对于非组件文件，我们需要更新所有依赖它的模块
+            // For non-component files, we need to update all modules that depend on it
             updatedModules.add(mod);
             server.moduleGraph.invalidateModule(mod);
 
-            // 递归处理所有依赖
+            // Recursively process all dependencies
             const stack = [...importers];
             while (stack.length) {
               const current = stack.pop() as ModuleNode;
@@ -121,7 +121,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: O
         return Array.from(updatedModules);
       }
 
-      // 3. 其他文件类型，保持默认行为
+      // 3. Other file types, maintain default behavior
       return modules;
     },
   };

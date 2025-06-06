@@ -85,15 +85,75 @@ function createArrayInstrumentations() {
     },
   );
 
-  // Instrument iteration methods such as 'values', 'keys', 'entries', and the default iterator.
+  // Enhanced implementation for ES2023 array methods
+  ['toReversed', 'toSorted', 'toSpliced', 'join', 'concat'].forEach(key => {
+    instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+      const arr = toRaw(this);
+      const isShallowMode = isShallow(this);
+
+      // Track access to the entire array for reactivity
+      track(arr, ArrayKey);
+
+      // Special case for toSpliced to ensure we properly track all elements
+      if (key === 'toSpliced') {
+        // Explicitly track all indices
+        for (let i = 0, l = arr.length; i < l; i++) {
+          track(arr, `${i}`);
+        }
+      }
+
+      const currentArr = toRaw(this);
+      const res = Array.prototype[key].apply(currentArr, args);
+
+      // For shallow reactive objects or primitive results, return as is
+      if (isShallowMode || !isObject(res)) {
+        return res;
+      }
+
+      // For deep reactive objects and array results, make each object in the result reactive
+      if (Array.isArray(res)) {
+        return res.map(item => (isObject(item) ? reactiveImpl(item) : item));
+      }
+
+      // For other object types
+      return isObject(res) ? reactiveImpl(res) : res;
+    };
+  });
+
+  // Properly implement iterators to ensure they track and maintain reactivity
   ['values', 'keys', 'entries', Symbol.iterator].forEach(key => {
     instrumentations[key] = function (this: unknown[]) {
       const arr = toRaw(this);
+      // Track the entire array for changes
       track(arr, ArrayKey);
       const rawIterator = arr[key]();
+      const isShallowMode = isShallow(this);
+
       return {
         next() {
           const { value, done } = rawIterator.next();
+          if (done) {
+            return { value, done };
+          }
+
+          // Handle values based on whether this is a shallow reactive
+          if (Array.isArray(value)) {
+            // For shallow reactive, return raw values
+            if (isShallowMode) {
+              return { value, done };
+            }
+            // For deep reactive, make each item reactive
+            return {
+              value: value.map(v => (isObject(v) ? reactiveImpl(v) : v)),
+              done,
+            };
+          }
+
+          // For non-array values
+          if (isShallowMode) {
+            return { value, done };
+          }
+
           return {
             value: isObject(value) ? reactiveImpl(value) : value,
             done,
@@ -105,6 +165,7 @@ function createArrayInstrumentations() {
       };
     };
   });
+
   return instrumentations;
 }
 
@@ -434,6 +495,27 @@ export function reactive<T extends object>(target: T): T {
 export function shallowReactive<T extends object>(target: T): T {
   return reactiveImpl(target, true);
 }
+
+/**
+ * Checks if the target object is a shallow reactive proxy.
+ *
+ * @template T - The target object type.
+ * @param target - The object to check.
+ * @returns True if the object is shallow reactive; false otherwise.
+ */
+export function isShallow<T extends object>(target: T): boolean {
+  return target[SignalFlags.IS_SHALLOW];
+}
+
+/**
+ * Returns a reactive proxy of the given value (if possible).
+ *
+ * If the given value is not an object, the original value itself is returned.
+ *
+ * @param value - The value for which a reactive proxy shall be created.
+ */
+export const toReactive = <T extends unknown>(value: T): T =>
+  isObject(value) ? reactive(value) : value;
 
 /**
  * A type alias representing a reactive object. In this simplified context, it is the same as the original object type.

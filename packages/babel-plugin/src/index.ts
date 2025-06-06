@@ -1,18 +1,17 @@
 import { transformProgram } from './program';
-import { replaceProps } from './transformers/props';
+import { transformProps } from './signal/props';
 import { transformJSX } from './jsx';
 import {
   replaceSymbol,
   symbolArrayPattern,
   symbolIdentifier,
   symbolObjectPattern,
-} from './transformers/symbol';
+} from './signal/symbol';
 import type { PluginObj } from '@babel/core';
 
 export default function (): PluginObj {
   return {
     name: '@estjs/babel-plugin',
-
     manipulateOptions({ filename }, parserOpts) {
       if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
         parserOpts.plugins.push('typescript');
@@ -23,8 +22,8 @@ export default function (): PluginObj {
     visitor: {
       Program: transformProgram,
 
-      FunctionDeclaration: replaceProps,
-      ArrowFunctionExpression: replaceProps,
+      FunctionDeclaration: transformProps,
+      ArrowFunctionExpression: transformProps,
 
       VariableDeclarator: replaceSymbol,
       Identifier: symbolIdentifier,

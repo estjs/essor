@@ -2,7 +2,7 @@ import { defineConfig } from 'athen';
 
 export default defineConfig({
   lang: 'en-US',
-  title: 'est',
+  title: 'Essor',
   icon: '/logo.png',
 
   themeConfig: {
@@ -27,7 +27,7 @@ export default defineConfig({
             items: [
               {
                 text: '更新日志',
-                link: 'https://github.com/estjs/est/blob/master/CHANGELOG.md',
+                link: 'https://github.com/estjs/essor/blob/master/CHANGELOG.md',
               },
             ],
           },
@@ -74,13 +74,13 @@ export default defineConfig({
             },
           ],
         },
-        title: 'est',
+        title: 'Essor',
         outlineTitle: '目录',
         prevPageText: '上一页',
         nextPageText: '下一页',
         description: '',
         editLink: {
-          pattern: 'https://github.com/estjs/est/tree/master/docs/:path',
+          pattern: 'https://github.com/estjs/essor/tree/master/docs/:path',
           text: '📝 在 GitHub 上编辑此页',
         },
       },
@@ -104,7 +104,7 @@ export default defineConfig({
             items: [
               {
                 text: 'Changelog',
-                link: 'https://github.com/estjs/est/blob/master/CHANGELOG.md',
+                link: 'https://github.com/estjs/essor/blob/master/CHANGELOG.md',
               },
             ],
           },
@@ -160,11 +160,11 @@ export default defineConfig({
             },
           ],
         },
-        title: 'est',
+        title: 'Essor',
         description: '',
         lastUpdatedText: 'Last Updated',
         editLink: {
-          pattern: 'https://github.com/estjs/est/tree/master/docs/:path',
+          pattern: 'https://github.com/estjs/essor/tree/master/docs/:path',
           text: '📝 Edit this page on GitHub',
         },
       },
@@ -174,7 +174,7 @@ export default defineConfig({
       {
         icon: 'github',
         mode: 'link',
-        content: 'https://github.com/estjs/est',
+        content: 'https://github.com/estjs/essor',
       },
       {
         icon: 'discord',

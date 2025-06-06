@@ -1,6 +1,14 @@
-import { nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createScheduler, flushJobs, nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
 
-// packages/signal/test/scheduler.spec.ts
+// Define __DEV__ for test environment
+// @ts-expect-error defining global __DEV__ for testing
+globalThis.__DEV__ = true;
+
+// Reset modules between tests to ensure a clean state
+beforeEach(() => {
+  vi.resetModules();
+});
 
 describe('nextTick', () => {
   it('should execute the function in the next microtask', async () => {
@@ -17,6 +25,7 @@ describe('nextTick', () => {
     await expect(result).resolves.toBeUndefined();
   });
 });
+
 describe('queueJob', () => {
   it('should execute jobs in the queue', async () => {
     const mockJob1 = vi.fn();
@@ -128,5 +137,127 @@ describe('scheduler', () => {
 
     await nextTick();
     expect(order).toEqual([1, 2]);
+  });
+
+  it('should work with createScheduler', () => {
+    const scheduler = createScheduler(() => {}, 'post');
+    scheduler();
+
+    expect(scheduler).toBeDefined();
+  });
+});
+
+describe('scheduler Test Suite', () => {
+  let mockEffect: ReturnType<typeof vi.fn>;
+
+  beforeEach(() => {
+    mockEffect = vi.fn();
+
+    // Spy on console methods
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('createScheduler', () => {
+    it('sync mode should execute effect immediately', () => {
+      const scheduler = createScheduler(mockEffect, 'sync');
+      scheduler();
+      expect(mockEffect).toHaveBeenCalledTimes(1);
+    });
+
+    it('pre mode should execute effect in the next microtask', async () => {
+      const scheduler = createScheduler(mockEffect, 'pre');
+      scheduler();
+      expect(mockEffect).not.toHaveBeenCalled();
+
+      await nextTick();
+      expect(mockEffect).toHaveBeenCalledTimes(1);
+    });
+
+    it('post mode should execute effect in the next microtask', async () => {
+      const scheduler = createScheduler(mockEffect, 'post');
+      scheduler();
+      expect(mockEffect).not.toHaveBeenCalled();
+
+      await nextTick();
+      expect(mockEffect).toHaveBeenCalledTimes(1);
+    });
+
+    it('microtask scheduling - nextTick should correctly return Promise', async () => {
+      const spy = vi.fn();
+      await nextTick(spy);
+      expect(spy).toHaveBeenCalled();
+    });
+
+    it('microtask scheduling - flushJobs should execute pre-processing and main queue in order', async () => {
+      const executionOrder: string[] = [];
+
+      queuePreFlushCb(() => {
+        executionOrder.push('pre');
+      });
+
+      queueJob(() => {
+        executionOrder.push('job');
+      });
+
+      await nextTick();
+      expect(executionOrder).toEqual(['pre', 'job']);
+    });
+
+    it('error handling - development environment should catch job errors', async () => {
+      // @ts-expect-error setting __DEV__ for testing
+      globalThis.__DEV__ = true;
+
+      const errorSpy = vi.spyOn(console, 'error');
+      const faultyJob = () => {
+        throw new Error('test');
+      };
+
+      queueJob(faultyJob);
+      await nextTick();
+
+      expect(errorSpy).toHaveBeenCalledWith('Error executing queued job:', expect.any(Error));
+    });
+
+    it('error handling - production environment should ignore job errors', async () => {
+      // @ts-expect-error setting __DEV__ for testing
+      globalThis.__DEV__ = false;
+
+      const errorSpy = vi.spyOn(console, 'error');
+      const faultyJob = () => {
+        throw new Error('test');
+      };
+
+      queueJob(faultyJob);
+      await nextTick();
+
+      expect(errorSpy).not.toHaveBeenCalled();
+
+      // Reset __DEV__ for other tests
+      // @ts-expect-error setting __DEV__ for testing
+      globalThis.__DEV__ = true;
+    });
+
+    it('edge cases - invalid flush parameter should trigger warning', async () => {
+      // @ts-expect-error setting __DEV__ for testing
+      globalThis.__DEV__ = true;
+
+      const warnSpy = vi.spyOn(console, 'warn');
+
+      // @ts-expect-error testing invalid parameters
+      const scheduler = createScheduler(mockEffect, 'invalid');
+      scheduler();
+
+      await nextTick();
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    it('edge cases - empty queue should not trigger processing', () => {
+      expect(() => flushJobs()).not.toThrow();
+    });
   });
 });

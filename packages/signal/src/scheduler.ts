@@ -121,7 +121,7 @@ function queueCb(cb: PreFlushCallback, activeQueue: PreFlushCallback[]): void {
  *
  * @internal
  */
-function flushJobs(): void {
+export function flushJobs(): void {
   isFlushPending = false;
 
   // First run pre-flush callbacks
@@ -159,8 +159,8 @@ function flushPreFlushCbs(): void {
  * Creates a scheduler function for an effect based on the specified flush timing.
  * This is used internally by the effect system to control when effects are executed.
  *
- * @param effect - The effect function to schedule
- * @param flush - When to execute the effect
+ * @param {EffectFn} effect - The effect function to schedule
+ * @param {FlushTiming} flush - When to execute the effect
  * @returns A scheduler function that will run the effect at the appropriate time
  *
  * @internal

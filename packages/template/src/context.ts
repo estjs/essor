@@ -1,115 +1,181 @@
-import type { InjectionKey, RenderContext, RenderedNodeMap } from './types';
-
-// Current active context
-let activeContext: RenderContext | null = null;
+import { error } from '@estjs/shared';
+import type { InjectionKey } from './provide';
 
 /**
- * Creates a new render context
+ * context interface
  */
-export function createContext(): RenderContext {
-  const context: RenderContext = {
+export interface Context {
+  isMounted: boolean;
+  isDestroyed: boolean;
+
+  mounted: Set<() => void>;
+  updated: Set<() => void>;
+  destroyed: Set<() => void>;
+
+  provides: Map<InjectionKey<unknown> | string | number, unknown>;
+
+  cleanup: Set<() => void>;
+
+  deps: Map<unknown, Set<(newValue: unknown, prevValue?: unknown) => void>>;
+  componentEffect: Set<() => void>;
+
+  parent: Context | null;
+  children: Set<Context>;
+}
+
+// active context
+let activeContext: Context | null = null;
+// context stack
+const contextStack: Context[] = [];
+
+/**
+ * create a new context
+ * @param {Context} parent - the parent context
+ * @returns {Context} the new context
+ */
+export function createContext(parent: Context | null = null) {
+  const context: Context = {
+    // status
+    isMounted: false,
+    isDestroyed: false,
+
+    // lifecycle
     mounted: new Set(),
-    unmounted: new Set(),
     updated: new Set(),
-    renderedIndex: 0,
-    renderedNodes: {},
+    destroyed: new Set(),
+
+    // provide
+    provides: new Map(parent?.provides || []),
+
+    // clearup
     cleanup: new Set(),
-    provides: new Map(),
-    parent: activeContext,
+
+    // parent
+    parent,
+    children: new Set<Context>(),
+
+    // deps
+    deps: new Map(),
+    componentEffect: new Set(),
   };
-  activeContext = context;
+
+  if (parent) {
+    parent.children.add(context);
+  }
+
+  return context;
+}
+
+/**
+ * get the active context
+ */
+export function getActiveContext(): Context | null {
   return activeContext;
 }
 
 /**
- * Gets the current active context
+ * set the active context
+ * @param {Context} context - the context to set as active
  */
-export function getCurrentContext(): RenderContext | null {
-  return activeContext;
-}
-
-/**
- * Sets the current active context
- */
-export function setCurrentContext(context: RenderContext | null): void {
+export function setActiveContext(context: Context | null) {
   activeContext = context;
 }
 
 /**
- * Provides a value that can be injected into child components
- * @param key Injection key
- * @param value Value to be provided
+ * push a context to the stack
+ * @param {Context} context - the context to push to the stack
  */
-export function provide<T>(key: InjectionKey<T> | string, value: T): void {
-  const context = getCurrentContext();
-  if (!context) {
-    throw new Error('provide() can only be used inside setup() or functional components.');
+export function pushContextStack(context: Context): void {
+  if (activeContext) {
+    contextStack.push(activeContext);
   }
-
-  context.provides.set(key, value);
+  activeContext = context;
 }
 
 /**
- * Injects a value provided by parent components
- * @param key Injection key
- * @param defaultValue Optional default value
- * @returns The injected value
+ * pop a context from the stack
  */
-export function inject<T>(key: InjectionKey<T> | string, defaultValue?: T): T {
-  const context = getCurrentContext();
-  if (!context) {
-    throw new Error('not found context');
+export function popContextStack(): void {
+  activeContext = contextStack.pop() || null;
+}
+
+/**
+ * find a parent context
+ */
+export function findParentContext(): Context | null {
+  // use current active context
+  if (activeContext) {
+    return activeContext;
   }
 
-  // Search from current context up through the parent chain
-  let current: RenderContext | null = context;
-
-  while (current) {
-    if (current.provides.has(key)) {
-      return current.provides.get(key) as T;
+  // find the first not destroyed context from the top of the stack
+  for (let i = contextStack.length - 1; i >= 0; i--) {
+    const contextItem = contextStack[i];
+    if (contextItem && !contextItem.isDestroyed) {
+      return contextItem;
     }
-    current = current.parent;
   }
 
-  if (defaultValue) {
-    return defaultValue as T;
-  }
-
-  throw new Error(`injection "${String(key)}" not found.`);
-}
-
-export function popContext(): void {
-  if (activeContext?.parent) {
-    activeContext = activeContext.parent;
-  }
+  return null;
 }
 /**
- * Executes a function within a specified context
+ * destroy a context and all its children
+ * @param {Context} context - the context to destroy
  */
-export function withContext<T>(context: RenderContext, fn: () => T): T {
-  setCurrentContext(context);
+export function destroyContext(context: Context): void {
+  // already destroyed
+  if (!context || context.isDestroyed) {
+    return;
+  }
+
+  // Make a copy of children to avoid modification during iteration
+  const childrenToDestroy = Array.from(context.children);
+
+  // destroy all children contexts
+  childrenToDestroy.forEach(destroyContext);
+
+  // cleanup the current context
+  cleanupContext(context);
+}
+
+/**
+ * cleanup a context
+ * @param {Context} context - the context to cleanup
+ */
+export function cleanupContext(context: Context) {
+  // already destroyed
+  if (!context || context.isDestroyed) {
+    return;
+  }
+
+  // Clean parent-child relationship to break potential circular references
+  if (context.parent) {
+    context.parent.children.delete(context);
+    context.parent = null;
+  }
+
   try {
-    return fn();
-  } finally {
-    popContext();
-  }
-}
+    // cleanup functions
+    context.cleanup.forEach(fn => fn());
+    context.cleanup.clear();
 
-/**
- * Gets or initializes a Map in renderedNodes
- * @param context The render context
- * @param index The index
- * @returns The initialized Map
- */
-export function getOrInitRenderedNodes(context: RenderContext, index: number): RenderedNodeMap {
-  if (!context.renderedNodes[index]) {
-    context.renderedNodes[index] = new Map();
+    // lifecycle
+    context.mounted.clear();
+    context.updated.clear();
+    context.destroyed.clear();
+
+    // deps
+    context.deps.clear();
+
+    // componentEffect
+    context.componentEffect.clear();
+
+    // Empty children set
+    context.children.clear();
+  } catch (error_) {
+    error('Error during context cleanup:', error_);
   }
-  return context.renderedNodes[index];
-}
-/**
- * Creates an injection key
- */
-export function createInjectionKey<T>(description: string): InjectionKey<T> {
-  return Symbol(description) as InjectionKey<T>;
+
+  // mark as destroyed
+  context.isDestroyed = true;
 }

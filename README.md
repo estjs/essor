@@ -1,14 +1,14 @@
 
 <p align="center">
-<a href="https://estjs.netlify.app/" target="_blank" rel="noopener noreferrer"><img width="100" src="./logo.svg" alt="est logo"></a>
+<a href="https://estjs.netlify.app/" target="_blank" rel="noopener noreferrer"><img width="100" src="./logo.svg" alt="essor logo"></a>
 </p>
 <div align="center">
 
-![ci](https://img.shields.io/github/actions/workflow/status/estjs/est/ci.yml?label=CI&logo=GitHub)
-![license](https://img.shields.io/github/license/estjs/est)
-![version](https://img.shields.io/npm/v/est)
-![download](https://img.shields.io/npm/dm/est)
-![codecov](https://img.shields.io/codecov/c/github/estjs/est)
+![ci](https://img.shields.io/github/actions/workflow/status/estjs/essor/ci.yml?label=CI&logo=GitHub)
+![license](https://img.shields.io/github/license/estjs/essor)
+![version](https://img.shields.io/npm/v/essor)
+![download](https://img.shields.io/npm/dm/essor)
+![codecov](https://img.shields.io/codecov/c/github/estjs/essor)
 
 </div>
 

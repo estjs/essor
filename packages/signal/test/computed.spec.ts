@@ -68,4 +68,38 @@ describe('computed', () => {
 
     expect(effectTimes).toBe(2);
   });
+
+  it('should work computed with set', () => {
+    const count = signal(0);
+    const computedValue = computed(() => count.value * 2);
+    count.value = 1;
+
+    expect(computedValue.value).toBe(2);
+  });
+
+  it('should work computed with get/set', () => {
+    const count = signal(0);
+    const computedValue = computed({
+      get: () => count.value * 2,
+      set: value => {
+        count.value = value / 2;
+      },
+    });
+    count.value = 1;
+
+    expect(computedValue.value).toBe(2);
+    // @ts-expect-error test error
+    computedValue.value = 10;
+    expect(count.value).toBe(5);
+  });
+
+  it('should throw error when computed getter is not provided', () => {
+    // @ts-expect-error test error
+    expect(() => computed({})).toThrow('Computed getter is required');
+  });
+
+  it('should throw error when computed is not provided', () => {
+    // @ts-expect-error test error
+    expect(() => computed()).toThrow('Invalid computed options');
+  });
 });

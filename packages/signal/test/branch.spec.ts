@@ -20,28 +20,28 @@ describe('branch Tracking', () => {
 
     expect(renderCount).toBe(1);
 
-    // a的值为false，应该不触发effect
+    // a's value is false, should not trigger effect
     value.value++;
     expect(renderCount).toBe(1);
 
     a.value = true;
     expect(renderCount).toBe(2);
     value.value++;
-    // a的值为true，应该触发effect
+    // a's value is true, should trigger effect
     expect(renderCount).toBe(3);
 
     b.value = false;
     expect(renderCount).toBe(4);
 
-    // b的值为false，value变化不应触发effect
+    // b's value is false, value change should not trigger effect
     value.value++;
     expect(renderCount).toBe(4);
 
-    // 重新打开中间分支
+    // Reopen the middle branch
     b.value = true;
     expect(renderCount).toBe(5);
 
-    // b的值为true value变化应该触发effect
+    // b's value is true, value change should trigger effect
     value.value++;
     expect(renderCount).toBe(6);
   });
@@ -64,15 +64,15 @@ describe('branch Tracking', () => {
 
     expect(renderCount).toBe(1);
 
-    // 当 show 为 true 时，count 变化应该触发 effect
+    // When show is true, count change should trigger effect
     count.value++;
     expect(renderCount).toBe(2);
 
-    // 关闭分支
+    // Close branch
     show.value = false;
     expect(renderCount).toBe(3);
 
-    // count 变化不应触发 effect
+    // count change should not trigger effect
     count.value++;
     expect(renderCount).toBe(3);
   });
@@ -92,19 +92,19 @@ describe('branch Tracking', () => {
       return 1;
     });
 
-    // 默认运行一次收集依赖
+    // Default run once to collect dependencies
     expect(runCount).toBe(1);
 
-    // a的值改变，触发computed
+    // a's value changes, triggers computed
     a.value = false;
     expect(runCount).toBe(2);
-    // b的值改变，因为a的值为false，不触发
+    // b's value changes, but since a's value is false, doesn't trigger
     b.value = 4;
     expect(runCount).toBe(2);
-    // a的值改变，触发computed
+    // a's value changes, triggers computed
     a.value = true;
     expect(runCount).toBe(3);
-    // b的值改变，触发computed
+    // b's value changes, triggers computed
     b.value = 5;
     expect(runCount).toBe(4);
   });
@@ -134,11 +134,11 @@ describe('branch Tracking', () => {
 
     expect(results).toEqual([2]);
 
-    // 切换显示条件
+    // Switch display condition
     showEven.value = false;
     expect(results).toEqual([1, 3]);
 
-    // 添加新项
+    // Add new item
     items.value.push(4);
     expect(results).toEqual([1, 3]);
   });

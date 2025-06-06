@@ -1,677 +1,499 @@
-import { getTransform } from './transform';
-const transformCode = getTransform('jsx', { mode: 'ssg', hmr: false });
-describe('jsx SSG transform', () => {
-  it('transforms simple JSX element', () => {
-    const inputCode = `
-      const element = <div>Hello, World!</div>;
-    `;
+import { beforeEach, describe, expect, it } from 'vitest';
+import { NodePath, types as t } from '@babel/core';
+import { clearImport, importedSets } from '../src/import';
+import { resetContext, setContext } from '../src/jsx/context';
+import { NODE_TYPE } from '../src/jsx/constants';
+import { createDefaultTree } from '../src/jsx/tree';
+import { isTreeNode } from '../src/jsx/utils';
+import {
+  convertValueToASTNode, // SSG version
+  createPropsObjectExpression, // SSG version
+  generateSSGRenderFunction,
+  handleComponentForSSG,
+  handleElementForSSG,
+  handleExpressionForSSG,
+  processAttributesForSSG,
+  processSSGTemplate,
+} from '../src/jsx/ssg'; // Note: All internal functions need to be imported here
+import { getPath, getProgramPathAndState } from './test-utils';
 
-    expect(transformCode(inputCode)).toMatchSnapshot();
+// Import internal SSG functions to be tested
+
+beforeEach(() => {
+  clearImport();
+  resetContext();
+  const { programPath, programState } = getProgramPathAndState(
+    'const A = () => <div/>;',
+    { mode: 'ssg' },
+    'ssg',
+  );
+  setContext({ path: programPath!, state: programState! });
+});
+
+describe('sSG JSX Transformation Internal Functions', () => {
+  describe('processSSGTemplate', () => {
+    it('should generate a single template fragment for a pure HTML element', () => {
+      const tree = createDefaultTree();
+      tree.tag = 'div';
+      tree.index = 0;
+      tree.children = [{ type: NODE_TYPE.TEXT, children: ['Hello'], index: 1 }] as any;
+
+      const result = processSSGTemplate(tree);
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0]).toBe('<div data-idx="0-0">Hello</div>');
+      expect(result.dynamics.length).toBe(0);
+    });
+
+    it('should split template at dynamic expressions and collect dynamic content', () => {
+      const tree = createDefaultTree();
+      tree.tag = 'div';
+      tree.index = 0;
+      tree.children = [
+        { type: NODE_TYPE.TEXT, children: ['Hello '], index: 1 },
+        { type: NODE_TYPE.EXPRESSION, children: [t.identifier('name')], index: 2 },
+        { type: NODE_TYPE.TEXT, children: ['!'], index: 3 },
+      ] as any;
+
+      const result = processSSGTemplate(tree);
+      expect(result.templates.length).toBe(3);
+      expect(result.templates[0]).toBe('<div data-idx="0-0">Hello ');
+      expect(result.templates[1]).toBe(''); // Expression placeholder
+      expect(result.templates[2]).toBe('!</div>');
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].type).toBe('text');
+      expect(result.dynamics[0].node.type).toBe('Identifier'); // name
+    });
+
+    it('should correctly handle nested components and expressions', () => {
+      const innerComponentTree = createDefaultTree();
+      innerComponentTree.type = NODE_TYPE.COMPONENT;
+      innerComponentTree.tag = 'InnerComp';
+      innerComponentTree.index = 2;
+
+      const tree = createDefaultTree();
+      tree.tag = 'div';
+      tree.index = 0;
+      tree.children = [
+        { type: NODE_TYPE.TEXT, children: ['Before '], index: 1 },
+        innerComponentTree,
+        { type: NODE_TYPE.EXPRESSION, children: [t.identifier('someValue')], index: 3 },
+        { type: NODE_TYPE.NORMAL, tag: 'span', children: [], index: 4 },
+      ] as any;
+
+      const result = processSSGTemplate(tree);
+      expect(result.templates.length).toBe(5); // "Before ", "", "", "<span></span>", ""
+      expect(result.dynamics.length).toBe(2);
+      expect(result.dynamics[0].type).toBe('text'); // InnerComp
+      expect(result.dynamics[0].node.type).toBe('CallExpression');
+      expect(result.dynamics[1].type).toBe('text'); // someValue
+      expect(result.dynamics[1].node.type).toBe('Identifier');
+    });
   });
 
-  it('transforms JSX element with attributes', () => {
-    const inputCode = `
-      const element = <div id="myId" class="myClass">Hello, World!</div>;
-    `;
+  describe('handleComponentForSSG', () => {
+    it('should generate empty template fragment for components and collect createComponent calls', () => {
+      const node = createDefaultTree();
+      node.type = NODE_TYPE.COMPONENT;
+      node.tag = 'MyComponent';
+      node.index = 0;
+      node.props = { propA: t.stringLiteral('test') };
+      node.children = [{ type: NODE_TYPE.TEXT, children: ['child'], index: 1 }] as any;
 
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const result: any = { templates: [], dynamics: [] };
+      handleComponentForSSG(node, result);
 
-  it('transforms JSX element with dynamic expressions', () => {
-    const inputCode = `
-      const name = 'John';
-      const element = <div>Hello, {name}!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with boolean attribute', () => {
-    const inputCode = `
-      const element = <input disabled />;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with spread attributes', () => {
-    const inputCode = `
-      const props = { id: 'myId', class: 'myClass' };
-      const element = <div {...props}>Hello, World!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with conditional attributes', () => {
-    const inputCode = `
-      const hasClass = true;
-      const element = <div class={hasClass ? 'myClass' : 'otherClass'}>Hello, World!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with style attribute', () => {
-    const inputCode = `
-      const style = { color: 'red', fontSize: '16px' };
-      const element = <div style={style}>Hello, World!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with class and style attributes', () => {
-    const inputCode = `
-      const hasClass = true;
-      const style = { color: 'red', fontSize: '16px' };
-      const element = <div class={hasClass ? 'myClass' : ''} style={style}>Hello, World!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with children', () => {
-    const inputCode = `
-      const element = (
-        <div>
-          <p>Paragraph 1</p>
-          <p>Paragraph 2</p>
-        </div>
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0]).toBe('');
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].type).toBe('text');
+      expect(result.dynamics[0].node.type).toBe('CallExpression');
+      expect(((result.dynamics[0].node as t.CallExpression).callee as t.Identifier).name).toBe(
+        '_createComponent$',
       );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
+      expect(
+        ((result.dynamics[0].node as t.CallExpression).arguments[0] as t.Identifier).name,
+      ).toBe('MyComponent');
+      expect(importedSets.has('createComponent')).toBe(true);
+    });
   });
 
-  it('transforms JSX element with nested expressions and children', () => {
-    const inputCode = `
-      const name = 'John';
-      const element = (
-        <div>
-          <p>{name}'s Profile</p>
-          <ul>
-            {Array.from({ length: 3 }, (_, i) => (
-              <li key={i}>Item {i + 1}</li>
-            ))}
-          </ul>
-        </div>
-      );
-    `;
+  describe('handleExpressionForSSG', () => {
+    it('should generate empty template fragment for primitive value expressions and collect escaped values', () => {
+      const node = createDefaultTree();
+      node.type = NODE_TYPE.EXPRESSION;
+      node.children = [t.stringLiteral('Hello')];
+      const result: any = { templates: [], dynamics: [] };
+      handleExpressionForSSG(node, result);
 
-    expect(transformCode(inputCode)).toMatchSnapshot();
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0]).toBe('');
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].type).toBe('text');
+      expect(result.dynamics[0].node.type).toBe('CallExpression'); // escapeHTML call
+      expect(importedSets.has('escapeHTML')).toBe(true);
+    });
+
+    it('should generate empty template fragment for AST expressions and collect the expression itself', () => {
+      const node = createDefaultTree();
+      node.type = NODE_TYPE.EXPRESSION;
+      node.children = [t.identifier('someVar')];
+      const result: any = { templates: [], dynamics: [] };
+      handleExpressionForSSG(node, result);
+
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0]).toBe('');
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].type).toBe('text');
+      expect(result.dynamics[0].node.type).toBe('Identifier'); // someVar
+    });
+
+    it('should handle cases where map function returns JSX elements', () => {
+      const code = `
+        const List = () => (
+          <div>
+            {items.map(item => <p>{item.name}</p>)}
+          </div>
+        );
+      `;
+      const jsxElementPath = getPath(
+        code,
+        'JSXElement',
+        {},
+        'ssg',
+      ) as unknown as NodePath<t.JSXElement>; // Get JSX for the entire List component
+      const listTree = createDefaultTree(); // Mock List tree
+      listTree.tag = 'div';
+      listTree.index = 0;
+      listTree.children = [
+        {
+          type: NODE_TYPE.EXPRESSION,
+          children: [(jsxElementPath!.node as any).children[0].expression],
+          index: 1,
+        }, // Mock map expression
+      ] as any;
+
+      const result: any = { templates: [], dynamics: [] };
+      handleExpressionForSSG(listTree.children[0] as any, result);
+
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].node.type).toBe('CallExpression'); // Should be a map call
+      // Verify JSX in map callback is transformed
+      const mapCall = result.dynamics[0].node as t.CallExpression;
+      const mapCallback = mapCall.arguments[0] as t.ArrowFunctionExpression;
+      expect(mapCallback.body.type).toBe('CallExpression'); // render call
+      expect(importedSets.has('render')).toBe(true);
+      expect(importedSets.has('escapeHTML')).toBe(true);
+    });
   });
 
-  it('transforms JSX element with null and undefined attributes', () => {
-    const inputCode = `
-      const element = <div id={null} class={undefined}>Hello, World!</div>;
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with null and undefined children', () => {
-    const inputCode = `
-      const element = (
-        <div>
-          {null}
-          <p>Paragraph 1</p>
-          {undefined}
-          {false}
-          <p>Paragraph 2</p>
-        </div>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with null and undefined in expressions', () => {
-    const inputCode = `
-      const name = null;
-      const element = (
-        <div>
-          <p>{name}'s Profile</p>
-          {undefined}
-          <p>Paragraph 2</p>
-        </div>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with JSX fragment', () => {
-    const inputCode = `
-      const element = (
-        <>
-          <p>Paragraph 1</p>
-          <p>Paragraph 2</p>
-        </>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with JSX fragment as children', () => {
-    const inputCode = `
-      const element = (
-        <div>
-          <>
-            <p>Paragraph 1</p>
-            <p>Paragraph 2</p>
-          </>
-        </div>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-  it('transforms JSX element with function components', () => {
-    const inputCode = `
-      const element = (
-        <div>
-          <MyComponent text="Component 1" />
-          <MyComponent text="Component 2" />
-        </div>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with self-closing tags', () => {
-    const inputCode = `
-      const element = (
-        <div>
-          <img src="image.jpg" alt="Image 1" />
-          <input type="text" />
-          <br/>
-        </div>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('transforms JSX element with SVG tags', () => {
-    const inputCode = `
-      const element = (
-        <svg>
-          <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
-        </svg>
-      );
-    `;
-
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with bind api', () => {
-    const inputCode = `
-    const value = 1;
-    <div>
-    <p bind:value={value}>Paragraph 1</p>
-    <p>Paragraph 2</p>
-  </div>`;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with comment in JSX', () => {
-    const inputCode = `
-    const value = 1;
-    <div>
-      {/* comment */}
-      <p bind:value={value}>Paragraph 1</p>
-      <p>Paragraph 2</p>
-    </div>`;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with event handlers in SSR', () => {
-    const inputCode = `
-      const handleClick = () => console.log('clicked');
-      const element = <button onClick={handleClick}>Click me</button>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with hydration attributes', () => {
-    const inputCode = `
-      const element = <div data-hydrate="true">Hydration Content</div>;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with conditional rendering in SSR', () => {
-    const inputCode = `
-      const isVisible = true;
-      const element = (
-        <div>
-          {isVisible && <p>Visible Content</p>}
-          {isVisible ? <span>True</span> : <span>False</span>}
-        </div>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with list rendering in SSR', () => {
-    const inputCode = `
-      const items = ['Item 1', 'Item 2', 'Item 3'];
-      const element = (
-        <ul>
-          {items.map((item, index) => (
-            <li key={index}>{item}</li>
-          ))}
-        </ul>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with nested components and props in SSR', () => {
-    const inputCode = `
-      const Child = ({ name, age }) => <div>Name: {name}, Age: {age}</div>;
-      const Parent = () => (
-        <div>
-          <Child name="John" age={25} />
-          <Child name="Jane" age={23} />
-        </div>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with async data in SSR', () => {
-    const inputCode = `
-      const AsyncComponent = async ({ data }) => {
-        const result = await data;
-        return <div>{result}</div>;
+  describe('handleElementForSSG', () => {
+    it('should generate static HTML string and dynamic attributes for normal HTML elements', () => {
+      const node = createDefaultTree();
+      node.tag = 'div';
+      node.index = 0;
+      node.props = {
+        id: 'static',
+        class: t.identifier('dynamicClass'),
+        onClick: t.arrowFunctionExpression([], t.blockStatement([])), // Events should be skipped
       };
-      const element = <AsyncComponent data={Promise.resolve('async content')} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+
+      const result: any = { templates: [], dynamics: [] };
+      handleElementForSSG(node, result);
+
+      expect(result.templates.length).toBe(2);
+      expect(result.templates[0]).toBe('<div data-idx="0-0" id="static"');
+      expect(result.templates[1]).toBe('></div>'); // Closing tag
+      expect(result.dynamics.length).toBe(1);
+      expect(result.dynamics[0].type).toBe('attr');
+      expect(result.dynamics[0].attrName).toBe('class');
+      expect(result.dynamics[0].node.type).toBe('CallExpression'); // setAttr call
+      expect(importedSets.has('setAttr')).toBe(true);
+    });
+
+    it('should handle self-closing tags', () => {
+      const node = createDefaultTree();
+      node.tag = 'img';
+      node.index = 0;
+      node.isSelfClosing = true;
+      node.props = { src: 'pic.jpg' };
+
+      const result: any = { templates: [], dynamics: [] };
+      handleElementForSSG(node, result);
+
+      expect(result.templates.length).toBe(1);
+      expect(result.templates[0]).toBe('<img data-idx="0-0" src="pic.jpg"/>');
+      expect(result.dynamics.length).toBe(0);
+    });
   });
 
-  it('should work with streaming SSR', () => {
-    const inputCode = `
-      const StreamingComponent = ({ chunks }) => (
-        <div>
-          {chunks.map((chunk, index) => (
-            <div key={index} data-chunk={index}>{chunk}</div>
-          ))}
-        </div>
-      );
-      const element = <StreamingComponent chunks={['chunk1', 'chunk2']} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with head management in SSR', () => {
-    const inputCode = `
-      const Head = ({ children }) => <head data-ssr>{children}</head>;
-      const element = (
-        <Head>
-          <title>Page Title</title>
-          <meta name="description" content="Page description" />
-        </Head>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with error handling in SSR', () => {
-    const inputCode = `
-      const ErrorBoundary = ({ fallback, children }) => {
-        try {
-          return children;
-        } catch (error) {
-          return fallback;
-        }
+  describe('processAttributesForSSG', () => {
+    it('should separate static and dynamic attributes', () => {
+      const props = {
+        id: 'static-id',
+        class: t.identifier('dynamicClass'),
+        style: { color: 'red' }, // Static object style
+        'data-test': true,
+        onClick: t.arrowFunctionExpression([], t.blockStatement([])), // Event
+        children: [], // Should be skipped
       };
-      const element = (
-        <ErrorBoundary fallback={<div>Error Page</div>}>
-          <div>Protected Content</div>
-        </ErrorBoundary>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+
+      const { staticAttrs, dynamicAttrs } = processAttributesForSSG(props);
+      expect(staticAttrs).toContain('id="static-id"');
+      expect(staticAttrs).toContain('data-test'); // Boolean attribute
+      expect(staticAttrs).toContain('style="color:red;"'); // Static style
+
+      expect(dynamicAttrs.length).toBe(1);
+      expect(dynamicAttrs[0].name).toBe('class');
+      expect(dynamicAttrs[0].value.type).toBe('Identifier'); // dynamicClass
+    });
+
+    it('should skip event handlers and update-prefixed properties', () => {
+      const props = {
+        onClick: t.arrowFunctionExpression([], t.blockStatement([])),
+        onInput: t.arrowFunctionExpression([], t.blockStatement([])),
+        updateValue: t.arrowFunctionExpression([], t.blockStatement([])),
+      };
+      const { staticAttrs, dynamicAttrs } = processAttributesForSSG(props);
+      expect(staticAttrs).toBe('');
+      expect(dynamicAttrs.length).toBe(0);
+    });
   });
 
-  it('should work with context in SSR', () => {
-    const inputCode = `
-      const ThemeContext = { Provider: ({ value, children }) => children };
-      const element = (
-        <ThemeContext.Provider value="dark">
-          <div data-theme="dark">Themed Content</div>
-        </ThemeContext.Provider>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+  describe('createPropsObjectExpression (SSG version)', () => {
+    it('should convert props object to AST ObjectExpression', () => {
+      // Mock transformJSXHandler (as SSG version of createPropsObjectExpression requires it)
+      const mockTransformJSXHandler = (treeNode: any) => {
+        return t.stringLiteral(`NESTED_JSX_OUTPUT:${treeNode.tag || 'Fragment'}`);
+      };
+
+      const propsData = {
+        prop1: t.stringLiteral('value1'),
+        prop2: 123,
+        prop3: true,
+        nestedJSX: createDefaultTree(), // Mock a TreeNode
+        _$spread$: t.identifier('spreadProps'),
+      };
+      (propsData.nestedJSX as any).type = NODE_TYPE.NORMAL; // Ensure it's a TreeNode
+      (propsData.nestedJSX as any).tag = 'p';
+      (propsData.nestedJSX as any).children = [];
+      (propsData.nestedJSX as any).index = 1;
+
+      const expr = createPropsObjectExpression(propsData, mockTransformJSXHandler);
+      expect(expr.type).toBe('ObjectExpression');
+      expect(expr.properties.length).toBe(5); // prop1, prop2, prop3, nestedJSX, spread
+
+      const prop1 = expr.properties[0] as t.ObjectProperty;
+      expect((prop1.key as t.StringLiteral).value).toBe('prop1');
+      expect((prop1.value as t.StringLiteral).value).toBe('value1');
+
+      const nestedJSXProp = expr.properties[3] as t.ObjectProperty;
+      expect((nestedJSXProp.key as t.StringLiteral).value).toBe('nestedJSX');
+      expect((nestedJSXProp.value as t.StringLiteral).value).toBe('NESTED_JSX_OUTPUT:p'); // Verify transformation via handler
+
+      const spreadProp = expr.properties[4] as t.SpreadElement;
+      expect((spreadProp.argument as t.Identifier).name).toBe('spreadProps');
+    });
+
+    it('should skip empty children property', () => {
+      const mockTransformJSXHandler = (treeNode: any) => {
+        return t.stringLiteral(`NESTED_JSX_OUTPUT:${treeNode.tag || 'Fragment'}`);
+      };
+      const propsData = {
+        prop1: 'value',
+        children: [], // Empty array
+      };
+      const expr = createPropsObjectExpression(propsData, mockTransformJSXHandler);
+      expect(expr.properties.length).toBe(1);
+      expect(((expr.properties[0] as t.ObjectProperty).key as t.StringLiteral).value).toBe('prop1');
+    });
   });
 
-  it('should work with CSS-in-JS in SSR', () => {
-    const inputCode = `
-      const StyledComponent = ({ className, children }) => (
-        <div class={className} data-styled>
-          {children}
-        </div>
-      );
-      const element = (
-        <StyledComponent className="generated-class">
-          Styled Content
-        </StyledComponent>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+  describe('convertValueToASTNode (SSG version)', () => {
+    // Note: This function heavily relies on the transformJSXHandler provided.
+    // We will test various input types and ensure the handler is called for TreeNodes.
+
+    const mockTransformJSXHandler = (treeNode: any) => {
+      if (isTreeNode(treeNode)) {
+        return t.stringLiteral(`TransformedTree:${treeNode.tag}`);
+      }
+      return t.identifier('UNKNOWN_TRANSFORM');
+    };
+
+    it('should directly return AST expression values', () => {
+      const expr = t.identifier('existingExpr');
+      expect(convertValueToASTNode(expr, mockTransformJSXHandler)).toBe(expr);
+    });
+
+    it('should convert TreeNode to AST node processed by transformJSXHandler', () => {
+      const treeNode = createDefaultTree();
+      treeNode.tag = 'p';
+      const result = convertValueToASTNode(treeNode, mockTransformJSXHandler);
+      expect(result.type).toBe('StringLiteral');
+      expect((result as t.StringLiteral).value).toBe('TransformedTree:p');
+    });
+
+    it('should convert string to StringLiteral', () => {
+      const result = convertValueToASTNode('hello', mockTransformJSXHandler);
+      expect(result.type).toBe('StringLiteral');
+      expect((result as t.StringLiteral).value).toBe('hello');
+    });
+
+    it('should convert number to NumericLiteral', () => {
+      const result = convertValueToASTNode(123, mockTransformJSXHandler);
+      expect(result.type).toBe('NumericLiteral');
+      expect((result as t.NumericLiteral).value).toBe(123);
+    });
+
+    it('should convert boolean to BooleanLiteral', () => {
+      const result = convertValueToASTNode(true, mockTransformJSXHandler);
+      expect(result.type).toBe('BooleanLiteral');
+      expect((result as t.BooleanLiteral).value).toBe(true);
+    });
+
+    it('should convert null to NullLiteral', () => {
+      const result = convertValueToASTNode(null, mockTransformJSXHandler);
+      expect(result.type).toBe('NullLiteral');
+    });
+
+    it('should convert undefined to Identifier (undefined)', () => {
+      const result = convertValueToASTNode(undefined, mockTransformJSXHandler);
+      expect(result.type).toBe('Identifier');
+      expect((result as t.Identifier).name).toBe('undefined');
+    });
+
+    it('should convert object (non-AST node, non-TreeNode) to ObjectExpression', () => {
+      const obj = { a: 1, b: 'test' };
+      const result = convertValueToASTNode(obj, mockTransformJSXHandler) as t.ObjectExpression;
+      expect(result.type).toBe('ObjectExpression');
+      expect(result.properties.length).toBe(2);
+      expect(((result.properties[0] as t.ObjectProperty).key as t.Identifier).name).toBe('a');
+      expect(((result.properties[0] as t.ObjectProperty).value as t.NumericLiteral).value).toBe(1);
+    });
+
+    it('should convert array to ArrayExpression', () => {
+      const arr = [1, 'test', true];
+      const result = convertValueToASTNode(arr, mockTransformJSXHandler) as t.ArrayExpression;
+      expect(result.type).toBe('ArrayExpression');
+      expect(result.elements.length).toBe(3);
+      expect((result.elements[0] as t.NumericLiteral).value).toBe(1);
+    });
+
+    it('should handle nested TreeNode in array', () => {
+      const nestedTreeNode = createDefaultTree();
+      nestedTreeNode.tag = 'div';
+      const arr = [1, nestedTreeNode];
+      const result = convertValueToASTNode(arr, mockTransformJSXHandler) as t.ArrayExpression;
+      expect(result.type).toBe('ArrayExpression');
+      expect(result.elements.length).toBe(2);
+      expect((result.elements[1] as t.StringLiteral).value).toBe('TransformedTree:div');
+    });
   });
 
-  it('should work with data fetching in SSR', () => {
-    const inputCode = `
-      const DataComponent = ({ data }) => (
-        <div data-ssr-data>
-          {JSON.stringify(data)}
-        </div>
-      );
-      const element = <DataComponent data={{ key: 'value' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+  describe('generateSSGRenderFunction', () => {
+    it('should generate a function expression that returns an HTML string for a component', () => {
+      const tree = createDefaultTree();
+      tree.type = NODE_TYPE.COMPONENT;
+      tree.tag = 'MyComponent';
+      tree.props = {
+        prop1: t.stringLiteral('value1'),
+      };
+      tree.index = 0;
+      tree.children = [{ type: NODE_TYPE.TEXT, children: ['child'], index: 1 }] as any;
 
-  it('should work with static data fetching in SSG', () => {
-    const inputCode = `
-      const StaticDataComponent = ({ data }) => (
-        <div data-static>
-          {JSON.stringify(data)}
-        </div>
-      );
-      const element = <StaticDataComponent data={{ key: 'value' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // Process the tree to get templates and dynamics as generateSSGRenderFunction expects them
+      const { templates, dynamics } = processSSGTemplate(tree);
 
-  it('should work with static paths generation', () => {
-    const inputCode = `
-      const StaticPathsComponent = ({ paths }) => (
-        <div data-paths>
-          {paths.map(path => (
-            <div key={path} data-path={path} />
-          ))}
-        </div>
-      );
-      const element = <StaticPathsComponent paths={['/page1', '/page2']} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const renderFn = generateSSGRenderFunction(tree, templates, dynamics);
 
-  it('should work with static props generation', () => {
-    const inputCode = `
-      const StaticPropsComponent = ({ props }) => (
-        <div data-props>
-          {Object.entries(props).map(([key, value]) => (
-            <div key={key} data-prop-key={key} data-prop-value={value} />
-          ))}
-        </div>
-      );
-      const element = <StaticPropsComponent props={{ title: 'Page Title' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      expect(renderFn.type).toBe('CallExpression'); // Changed from ArrowFunctionExpression
+      expect(((renderFn as t.CallExpression).callee as t.Identifier).name).toBe('_render$');
 
-  it('should work with static image optimization', () => {
-    const inputCode = `
-      const StaticImage = ({ src, alt }) => (
-        <img src={src} alt={alt} data-static-image />
-      );
-      const element = <StaticImage src="/static/image.jpg" alt="Static Image" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // Verify arguments of the render function
+      const renderArgs = (renderFn as t.CallExpression).arguments; // No .body
+      expect(renderArgs.length).toBe(3); // templates array, dynamics array, hydrationKey
 
-  it('should work with static metadata', () => {
-    const inputCode = `
-      const StaticMetadata = ({ metadata }) => (
-        <head data-static-metadata>
-          <title>{metadata.title}</title>
-          <meta name="description" content={metadata.description} />
-        </head>
-      );
-      const element = (
-        <StaticMetadata
-          metadata={{
-            title: 'Static Page',
-            description: 'Static page description'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // templates array
+      const templatesArg = renderArgs[0] as t.ArrayExpression;
+      expect(templatesArg.elements.length).toBe(1);
+      expect((templatesArg.elements[0] as t.StringLiteral).value).toBe(''); // Component template is empty
 
-  it('should work with static redirects', () => {
-    const inputCode = `
-      const StaticRedirect = ({ from, to }) => (
-        <div data-redirect data-from={from} data-to={to} />
-      );
-      const element = <StaticRedirect from="/old" to="/new" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // dynamics array
+      const dynamicsArg = renderArgs[1] as t.ArrayExpression;
+      expect(dynamicsArg.elements.length).toBe(2); // Should have two elements: text dynamics and attr dynamics arrays
 
-  it('should work with static rewrites', () => {
-    const inputCode = `
-      const StaticRewrite = ({ source, destination }) => (
-        <div data-rewrite data-source={source} data-destination={destination} />
-      );
-      const element = <StaticRewrite source="/api" destination="/api/v1" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const textDynamics = dynamicsArg.elements[0];
+      if (textDynamics && t.isArrayExpression(textDynamics)) {
+        expect(textDynamics.elements.length).toBe(1); // One text dynamic
+        expect(textDynamics.elements[0]!.type).toBe('CallExpression');
+        expect(((textDynamics.elements[0]! as t.CallExpression).callee as t.Identifier).name).toBe(
+          '_createComponent$',
+        );
+      } else {
+        throw new Error('Expected text dynamics to be an ArrayExpression');
+      }
 
-  it('should work with static headers', () => {
-    const inputCode = `
-      const StaticHeaders = ({ headers }) => (
-        <div data-headers>
-          {Object.entries(headers).map(([key, value]) => (
-            <div key={key} data-header-key={key} data-header-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticHeaders
-          headers={{
-            'Cache-Control': 'public, max-age=31536000',
-            'X-Frame-Options': 'DENY'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const attrDynamics = dynamicsArg.elements[1];
+      if (attrDynamics && t.isArrayExpression(attrDynamics)) {
+        expect(attrDynamics.elements.length).toBe(0); // No attr dynamics
+      }
 
-  it('should work with static environment variables', () => {
-    const inputCode = `
-      const StaticEnv = ({ env }) => (
-        <div data-env>
-          {Object.entries(env).map(([key, value]) => (
-            <div key={key} data-env-key={key} data-env-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticEnv
-          env={{
-            NEXT_PUBLIC_API_URL: 'https://api.example.com',
-            NEXT_PUBLIC_CDN_URL: 'https://cdn.example.com'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // Hydration Key
+      const hydrationKey = renderArgs[2] as t.CallExpression;
+      expect(hydrationKey.callee.type).toBe('Identifier');
+      expect((hydrationKey.callee as t.Identifier).name).toBe('_getHydrationKey$');
 
-  it('should work with static locales', () => {
-    const inputCode = `
-      const StaticLocale = ({ locale, messages }) => (
-        <div data-locale={locale}>
-          {Object.entries(messages).map(([key, value]) => (
-            <div key={key} data-message-key={key} data-message-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticLocale
-          locale="en"
-          messages={{
-            hello: 'Hello',
-            welcome: 'Welcome to our site'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      expect(importedSets.has('render')).toBe(true);
+      expect(importedSets.has('createComponent')).toBe(true);
+      expect(importedSets.has('getHydrationKey')).toBe(true);
+    });
 
-  it('should work with static robots.txt', () => {
-    const inputCode = `
-      const StaticRobots = ({ rules }) => (
-        <div data-robots>
-          {rules.map((rule, index) => (
-            <div key={index} data-rule={rule} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticRobots
-          rules={[
-            'User-agent: *',
-            'Allow: /',
-            'Disallow: /private/'
-          ]}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+    it('should generate a function expression that returns an HTML string for a normal element', () => {
+      const tree = createDefaultTree();
+      tree.type = NODE_TYPE.NORMAL;
+      tree.tag = 'div';
+      tree.children = [
+        { type: NODE_TYPE.TEXT, children: ['Hello'], index: 1 },
+        {
+          type: NODE_TYPE.EXPRESSION,
+          children: [t.identifier('world')],
+          index: 2,
+        },
+      ] as any;
+      tree.index = 0;
 
-  it('should work with static sitemap.xml', () => {
-    const inputCode = `
-      const StaticSitemap = ({ urls }) => (
-        <div data-sitemap>
-          {urls.map((url, index) => (
-            <div key={index} data-url={url} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticSitemap
-          urls={[
-            'https://example.com/',
-            'https://example.com/about',
-            'https://example.com/contact'
-          ]}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // Process the tree to get templates and dynamics
+      const { templates, dynamics } = processSSGTemplate(tree);
 
-  it('should work with static manifest.json', () => {
-    const inputCode = `
-      const StaticManifest = ({ manifest }) => (
-        <div data-manifest>
-          {Object.entries(manifest).map(([key, value]) => (
-            <div key={key} data-manifest-key={key} data-manifest-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticManifest
-          manifest={{
-            name: 'My Static App',
-            short_name: 'App',
-            start_url: '/',
-            display: 'standalone',
-            background_color: '#ffffff',
-            theme_color: '#000000'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const renderFn = generateSSGRenderFunction(tree, templates, dynamics);
 
-  it('should work with static security headers', () => {
-    const inputCode = `
-      const StaticSecurity = ({ headers }) => (
-        <div data-security>
-          {Object.entries(headers).map(([key, value]) => (
-            <div key={key} data-security-key={key} data-security-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticSecurity
-          headers={{
-            'Content-Security-Policy': "default-src 'self'",
-            'X-Content-Type-Options': 'nosniff',
-            'X-XSS-Protection': '1; mode=block'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      expect(renderFn.type).toBe('CallExpression'); // Changed from ArrowFunctionExpression
+      expect(((renderFn as t.CallExpression).callee as t.Identifier).name).toBe('_render$');
 
-  it('should work with static error pages', () => {
-    const inputCode = `
-      const StaticError = ({ code, message }) => (
-        <div data-error data-code={code}>
-          <h1>{code}</h1>
-          <p>{message}</p>
-        </div>
-      );
-      const element = (
-        <StaticError
-          code="404"
-          message="Page not found"
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      const renderArgs = (renderFn as t.CallExpression).arguments; // No .body
+      expect(renderArgs.length).toBe(3); // templates array, dynamics array, hydrationKey
 
-  it('should work with static API routes', () => {
-    const inputCode = `
-      const StaticApi = ({ endpoint, handler }) => (
-        <div data-api data-endpoint={endpoint}>
-          {handler}
-        </div>
-      );
-      const element = (
-        <StaticApi
-          endpoint="/api/static"
-          handler="export default function handler(req, res) { res.json({ data: 'static' }) }"
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
+      // templates array
+      const templatesArg = renderArgs[0] as t.ArrayExpression;
+      expect(templatesArg.elements.length).toBe(2);
+      expect((templatesArg.elements[0] as t.StringLiteral).value).toBe('<div data-idx="0-0">Hello');
+      expect((templatesArg.elements[1] as t.StringLiteral).value).toBe('</div>');
 
-  it('should work with static middleware', () => {
-    const inputCode = `
-      const StaticMiddleware = ({ middleware }) => (
-        <div data-middleware>
-          {middleware}
-        </div>
-      );
-      const element = (
-        <StaticMiddleware
-          middleware="export function middleware(request) { return NextResponse.next() }"
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+      // dynamics array
+      const dynamicsArg = renderArgs[1] as t.ArrayExpression;
+      expect(dynamicsArg.elements.length).toBe(2); // Should have two elements: text dynamics and attr dynamics arrays
+
+      const textDynamics = dynamicsArg.elements[0];
+      if (textDynamics && t.isArrayExpression(textDynamics)) {
+        expect(textDynamics.elements.length).toBe(1); // One text dynamic
+        expect(textDynamics.elements[0]!.type).toBe('Identifier'); // world
+      } else {
+        throw new Error('Expected text dynamics to be an ArrayExpression');
+      }
+
+      const attrDynamics = dynamicsArg.elements[1];
+      if (attrDynamics && t.isArrayExpression(attrDynamics)) {
+        expect(attrDynamics.elements.length).toBe(0); // No attr dynamics
+      }
+    });
   });
 });

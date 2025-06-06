@@ -214,7 +214,7 @@ describe('signal', () => {
     );
     const effectFn = vitest.fn(() => {
       const map = testSignal.value;
-      // 追踪 WeakMap 的操作
+      // Track WeakMap operations
       map?.has(key1);
     });
 
@@ -535,7 +535,7 @@ describe('branch Switching', () => {
 
     expect(renderCount).toBe(1);
 
-    // 不相关的更新不应触发effect
+    // Unrelated updates should not trigger the effect
     count.value++;
 
     expect(renderCount).toBe(2);
@@ -544,7 +544,7 @@ describe('branch Switching', () => {
 
     expect(renderCount).toBe(3);
 
-    // count 更新不应该触发 effect,因为分支已关闭
+    // Count updates should not trigger the effect since the branch is closed
     count.value++;
 
     expect(renderCount).toBe(3);
@@ -573,7 +573,7 @@ describe('branch Switching', () => {
 
     expect(renderCount).toBe(3);
 
-    // c 的更新不应触发 effect
+    // Updates to c should not trigger the effect
     c.value++;
 
     expect(renderCount).toBe(3);

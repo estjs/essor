@@ -4,7 +4,7 @@ import type { estNode } from './node';
  * Based on JSX types for Surplus and Inferno and adapted for `dom-expressions`.
  *
  * https://github.com/adamhaile/surplus/blob/master/index.d.ts
- * https://github.com/infernojs/inferno/blob/master/packages/inferno/src/est/types.ts
+ * https://github.com/infernojs/inferno/blob/master/packages/inferno/src/core/types.ts
  */
 type DOMElement = Element;
 declare const SERIALIZABLE: unique symbol;
