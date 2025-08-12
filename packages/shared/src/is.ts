@@ -191,3 +191,6 @@ export function isUndefined(val: unknown): val is undefined {
 export function isBoolean(val: unknown): val is boolean {
   return typeof val === 'boolean';
 }
+
+export const isIntegerKey = (key: unknown): boolean =>
+  isString(key) && key !== 'NaN' && key[0] !== '-' && `${Number.parseInt(key, 10)}` === key;

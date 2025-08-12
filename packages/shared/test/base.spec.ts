@@ -1,42 +1,45 @@
+import { _toString } from '../src/base';
 import {
+  EMPTY_ARR,
+  EMPTY_OBJ,
   type ExcludeType,
   cacheStringFunction,
   coerceArray,
+  extend,
   generateUniqueId,
+  getGlobalThis,
   hasChanged,
   hasOwn,
   isBrowser,
   isExclude,
   isOn,
+  noop,
   startsWith,
 } from '../src';
 
 describe('base Utils', () => {
   describe('coerceArray', () => {
-    it('should return array as is', () => {
-      expect(coerceArray([1, 2, 3])).toEqual([1, 2, 3]);
-      expect(coerceArray(['a', 'b'])).toEqual(['a', 'b']);
-    });
+    const testCases = [
+      { input: [1, 2, 3], expected: [1, 2, 3] },
+      { input: ['a', 'b'], expected: ['a', 'b'] },
+      { input: 1, expected: [1] },
+      { input: 'test', expected: ['test'] },
+      { input: null, expected: [null] },
+      { input: undefined, expected: [undefined] },
+    ];
 
-    it('should wrap non-array value in array', () => {
-      expect(coerceArray(1)).toEqual([1]);
-      expect(coerceArray('test')).toEqual(['test']);
-      expect(coerceArray(null)).toEqual([null]);
-      expect(coerceArray(undefined)).toEqual([undefined]);
+    testCases.forEach(({ input, expected }) => {
+      it(`should coerce ${JSON.stringify(input)} to ${JSON.stringify(expected)}`, () => {
+        expect(coerceArray(input)).toEqual(expected);
+      });
     });
   });
 
   describe('cacheStringFunction', () => {
     it('should cache function results', () => {
       const fn = cacheStringFunction((str: string) => str.toUpperCase());
-
-      // First call should compute the result
       expect(fn('hello')).toBe('HELLO');
-
-      // Second call should return cached result
-      expect(fn('hello')).toBe('HELLO');
-
-      // Different input should compute new result
+      expect(fn('hello')).toBe('HELLO'); // Should return cached result
       expect(fn('world')).toBe('WORLD');
     });
 
@@ -47,171 +50,233 @@ describe('base Utils', () => {
   });
 
   describe('isExclude', () => {
-    it('should handle array excludes', () => {
-      const exclude: ExcludeType = ['a', 'b'];
-      expect(isExclude('a', exclude)).toBe(true);
-      expect(isExclude('c', exclude)).toBe(false);
-    });
+    const testCases = [
+      { key: 'a', exclude: ['a', 'b'], expected: true },
+      { key: 'c', exclude: ['a', 'b'], expected: false },
+      { key: 'test', exclude: (key: string | symbol) => key === 'test', expected: true },
+      { key: 'other', exclude: (key: string | symbol) => key === 'test', expected: false },
+      { key: 'test', exclude: undefined, expected: false },
+      { key: 'test', exclude: [], expected: false },
+    ];
 
-    it('should handle function excludes', () => {
-      const excludeFn: ExcludeType = (key: string | symbol) => key === 'test';
-      expect(isExclude('test', excludeFn)).toBe(true);
-      expect(isExclude('other', excludeFn)).toBe(false);
-    });
-
-    it('should handle falsy excludes', () => {
-      expect(isExclude('test', undefined)).toBe(false);
-    });
-
-    it('should handle empty array excludes', () => {
-      const exclude: ExcludeType = [];
-      expect(isExclude('test', exclude)).toBe(false);
-      expect(isExclude('other', exclude)).toBe(false);
+    testCases.forEach(({ key, exclude, expected }) => {
+      it(`should return ${expected} for key '${String(key)}' with exclude ${JSON.stringify(exclude)}`, () => {
+        expect(isExclude(key, exclude as ExcludeType)).toBe(expected);
+      });
     });
   });
-});
 
-describe('hasChanged function', () => {
-  it('should return true if the value has changed from the oldValue', () => {
-    expect(hasChanged(5, 10)).toBe(true);
-    expect(hasChanged('old', 'new')).toBe(true);
-    expect(hasChanged({ prop: 'old' }, { prop: 'new' })).toBe(true);
+  describe('hasChanged', () => {
+    const testCases = [
+      { value: 5, oldValue: 10, expected: true },
+      { value: 'old', oldValue: 'new', expected: true },
+      { value: { prop: 'old' }, oldValue: { prop: 'new' }, expected: true },
+      { value: 5, oldValue: 5, expected: false },
+      { value: 'same', oldValue: 'same', expected: false },
+      { value: { prop: 'same' }, oldValue: { prop: 'same' }, expected: true },
+      { value: Number.NaN, oldValue: Number.NaN, expected: false },
+      { value: Number.NaN, oldValue: 5, expected: true },
+    ];
+
+    testCases.forEach(({ value, oldValue, expected }) => {
+      it(`should return ${expected} for value ${JSON.stringify(value)} and oldValue ${JSON.stringify(oldValue)}`, () => {
+        expect(hasChanged(value, oldValue)).toBe(expected);
+      });
+    });
   });
 
-  it('should return false if the value has not changed from the oldValue', () => {
-    expect(hasChanged(5, 5)).toBe(false);
-    expect(hasChanged('same', 'same')).toBe(false);
-    expect(hasChanged({ prop: 'same' }, { prop: 'same' })).toBe(true);
+  describe('startsWith', () => {
+    const testCases = [
+      { str: 'Hello, World!', searchString: 'Hello', expected: true },
+      { str: 'Hello, World!', searchString: 'world', expected: false },
+      { str: null, searchString: 'hello', expected: false },
+      { str: 123, searchString: 'hello', expected: false },
+      { str: {}, searchString: 'hello', expected: false },
+      { str: '', searchString: '', expected: true },
+      { str: 'hello', searchString: '', expected: true },
+      { str: 'hi', searchString: 'hello', expected: false },
+    ];
+
+    testCases.forEach(({ str, searchString, expected }) => {
+      it(`should return ${expected} for startsWith('${str}', '${searchString}')`, () => {
+        // @ts-ignore
+        expect(startsWith(str, searchString)).toBe(expected);
+      });
+    });
   });
 
-  it('should handle special cases like NaN', () => {
-    expect(hasChanged(Number.NaN, Number.NaN)).toBe(false);
-    expect(hasChanged(Number.NaN, 5)).toBe(true);
-  });
-});
+  describe('hasOwn', () => {
+    const sym = Symbol('symKey'); // Define the symbol once
+    const objWithSymbol = { key: 'value', [sym]: 'symbolValue' }; // Use the defined symbol
 
-describe('startsWith', () => {
-  it('should return true if the string starts with the specified substring', () => {
-    expect(startsWith('Hello, World!', 'Hello')).toBe(true);
-  });
-
-  it('should return false if the string does not start with the specified substring', () => {
-    expect(startsWith('Hello, World!', 'world')).toBe(false);
-  });
-
-  it('should return false if the first argument is not a string', () => {
-    //@ts-ignore
-    expect(startsWith(null, 'hello')).toBe(false);
-    // @ts-ignore
-    expect(startsWith(123, 'hello')).toBe(false);
-    // @ts-ignore
-    expect(startsWith({}, 'hello')).toBe(false);
-  });
-
-  it('should handle empty strings correctly', () => {
-    expect(startsWith('', '')).toBe(true); // An empty string starts with an empty string
-    expect(startsWith('hello', '')).toBe(true); // Any string starts with an empty string
-  });
-
-  it('should return false if the search string is longer than the input string', () => {
-    expect(startsWith('hi', 'hello')).toBe(false);
-  });
-});
-
-describe('hasOwn', () => {
-  it('should return true if the object has the specified own property', () => {
-    const obj = { key: 'value' };
-    expect(hasOwn(obj, 'key')).toBe(true);
-  });
-
-  it('should return false if the object does not have the specified own property', () => {
-    const obj = { key: 'value' };
-    expect(hasOwn(obj, 'nonExistentKey')).toBe(false);
-  });
-
-  it('should return false if the property is inherited, not own', () => {
     const parent = { inheritedKey: 'value' };
     const child = Object.create(parent);
     child.ownKey = 'ownValue';
-    expect(hasOwn(child, 'inheritedKey')).toBe(false);
-    expect(hasOwn(child, 'ownKey')).toBe(true);
+
+    const testCases = [
+      { obj: { key: 'value' }, key: 'key', expected: true },
+      { obj: { key: 'value' }, key: 'nonExistentKey', expected: false },
+      { obj: child, key: 'inheritedKey', expected: false },
+      { obj: child, key: 'ownKey', expected: true },
+      { obj: objWithSymbol, key: sym, expected: true }, // Use the defined symbol
+      { obj: {}, key: 'key', expected: false },
+      { obj: () => {}, key: 'key', expected: false },
+      { obj: new Set(), key: 'key', expected: false },
+    ];
+
+    testCases.forEach(({ obj, key, expected }) => {
+      it(`should return ${expected} for hasOwn(${JSON.stringify(obj)}, '${String(key)}')`, () => {
+        expect(hasOwn(obj, key)).toBe(expected);
+      });
+    });
   });
 
-  it('should return true for symbol properties', () => {
-    const sym = Symbol('symKey');
-    const obj = { [sym]: 'symbolValue' };
-    expect(hasOwn(obj, sym)).toBe(true);
-  });
-
-  it('should return false for not own values', () => {
-    expect(hasOwn({}, 'key')).toBe(false);
-    expect(hasOwn(() => {}, 'key')).toBe(false);
-    expect(hasOwn(new Set(), 'key')).toBe(false);
-  });
-});
-describe('generateUniqueId', () => {
-  it('should generate a string of length 8', () => {
-    const id = generateUniqueId();
-    expect(id).toHaveLength(8);
-  });
-
-  it('should generate a string containing only allowed characters', () => {
-    const id = generateUniqueId();
-    const validCharacters = /^[\da-z]+$/i;
-    expect(id).toMatch(validCharacters);
-  });
-
-  it('should generate unique IDs for multiple calls', () => {
-    const ids = new Set();
-    for (let i = 0; i < 1000; i++) {
+  describe('generateUniqueId', () => {
+    it('should generate a string of length 8', () => {
       const id = generateUniqueId();
-      expect(ids.has(id)).toBe(false); // Ensure no duplicates
-      ids.add(id);
-    }
+      expect(id).toHaveLength(8);
+    });
+
+    it('should generate a string containing only allowed characters', () => {
+      const id = generateUniqueId();
+      const validCharacters = /^[\da-z]+$/i;
+      expect(id).toMatch(validCharacters);
+    });
+
+    it('should generate unique IDs for multiple calls', () => {
+      const ids = new Set();
+      for (let i = 0; i < 1000; i++) {
+        const id = generateUniqueId();
+        expect(ids.has(id)).toBe(false);
+        ids.add(id);
+      }
+    });
+
+    it('should generate different IDs in subsequent calls', () => {
+      const id1 = generateUniqueId();
+      const id2 = generateUniqueId();
+      expect(id1).not.toBe(id2);
+    });
   });
 
-  it('should generate different IDs in subsequent calls', () => {
-    const id1 = generateUniqueId();
-    const id2 = generateUniqueId();
-    expect(id1).not.toBe(id2);
-  });
-});
-
-describe('isBrowser', () => {
-  it('should return true if the current environment is a browser', () => {
-    expect(isBrowser()).toBe(true);
-  });
-});
-describe('isOn', () => {
-  it('should return true for "on" followed by an uppercase letter', () => {
-    expect(isOn('onA')).toBe(true);
-    expect(isOn('onZ')).toBe(true);
+  describe('isBrowser', () => {
+    it('should return true if the current environment is a browser', () => {
+      expect(isBrowser()).toBe(true);
+    });
   });
 
-  it('should return false if third character is not an uppercase letter', () => {
-    expect(isOn('on1')).toBe(false);
-    expect(isOn('onb')).toBe(false);
-    expect(isOn('on ')).toBe(false);
+  describe('isOn', () => {
+    const testCases = [
+      { key: 'onA', expected: true },
+      { key: 'onZ', expected: true },
+      { key: 'on1', expected: false },
+      { key: 'onb', expected: false },
+      { key: 'on ', expected: false },
+      { key: 'off', expected: false },
+      { key: 'oN', expected: false },
+      { key: '', expected: false },
+      { key: 'o', expected: false },
+      { key: 'on!', expected: false },
+    ];
+
+    testCases.forEach(({ key, expected }) => {
+      it(`should return ${expected} for isOn('${key}')`, () => {
+        expect(isOn(key)).toBe(expected);
+      });
+    });
   });
 
-  it('should return false if the string is not "on" at the beginning', () => {
-    expect(isOn('off')).toBe(false);
-    expect(isOn('oN')).toBe(false);
+  describe('_toString', () => {
+    it('should return the correct string tag', () => {
+      expect(_toString.call({})).toBe('[object Object]');
+      expect(_toString.call([])).toBe('[object Array]');
+      expect(_toString.call('')).toBe('[object String]');
+      expect(_toString.call(1)).toBe('[object Number]');
+      expect(_toString.call(true)).toBe('[object Boolean]');
+      expect(_toString.call(null)).toBe('[object Null]');
+      expect(_toString.call(undefined)).toBe('[object Undefined]');
+      expect(_toString.call(new Date())).toBe('[object Date]');
+      expect(_toString.call(/a/)).toBe('[object RegExp]');
+      expect(_toString.call(new Map())).toBe('[object Map]');
+      expect(_toString.call(new Set())).toBe('[object Set]');
+    });
   });
 
-  it('should return false for an empty string', () => {
-    expect(isOn('')).toBe(false);
+  describe('extend', () => {
+    it('should extend an object with properties from other objects', () => {
+      const a = { x: 1, y: 2 };
+      const b = { y: 3, z: 4 };
+      const c = { a: 5 };
+      extend(a, b, c);
+      expect(a).toEqual({ x: 1, y: 3, z: 4, a: 5 });
+    });
+
+    it('should return the target object', () => {
+      const a = {};
+      const b = { x: 1 };
+      const result = extend(a, b);
+      expect(result).toBe(a);
+    });
+
+    it('should handle empty objects', () => {
+      const a = {};
+      extend(a, {});
+      expect(a).toEqual({});
+    });
+
+    it('should overwrite existing properties', () => {
+      const a = { x: 1 };
+      const b = { x: 2 };
+      extend(a, b);
+      expect(a.x).toBe(2);
+    });
   });
 
-  it('should return false for "o" without the third character', () => {
-    expect(isOn('o')).toBe(false);
+  describe('noop', () => {
+    it('should be an empty function', () => {
+      expect(noop()).toBeUndefined();
+      expect(typeof noop).toBe('function');
+    });
   });
 
-  it('should return false for a string that starts with "on" but third character is not uppercase', () => {
-    expect(isOn('onb')).toBe(false);
+  describe('EMPTY_OBJ', () => {
+    it('should be a frozen empty object', () => {
+      expect(EMPTY_OBJ).toEqual({});
+      expect(Object.isFrozen(EMPTY_OBJ)).toBe(true);
+      expect(() => {
+        // @ts-ignore
+        EMPTY_OBJ.foo = 'bar';
+      }).toThrow();
+      expect(EMPTY_OBJ).toEqual({});
+    });
   });
 
-  it('should handle strings that start with "on" and then non-alphabet characters', () => {
-    expect(isOn('on!')).toBe(false);
+  describe('EMPTY_ARR', () => {
+    it('should be a frozen empty array', () => {
+      expect(EMPTY_ARR).toEqual([]);
+      expect(Object.isFrozen(EMPTY_ARR)).toBe(true);
+      expect(() => {
+        // @ts-ignore
+        EMPTY_ARR.push(1);
+      }).toThrow();
+      expect(EMPTY_ARR).toEqual([]);
+    });
+  });
+
+  describe('getGlobalThis', () => {
+    it('should return the global object', () => {
+      const globalObject = getGlobalThis();
+      // In a browser environment, globalThis should be window
+      expect(globalObject).toBeDefined();
+      // Depending on the test environment, this might be `window`, `self`, or `global`
+      // For browser tests, it should be window
+      if (typeof window !== 'undefined') {
+        expect(globalObject).toBe(window);
+      } else if (typeof self !== 'undefined') {
+        expect(globalObject).toBe(self);
+      } else if (typeof global !== 'undefined') {
+        expect(globalObject).toBe(global);
+      }
+    });
   });
 });

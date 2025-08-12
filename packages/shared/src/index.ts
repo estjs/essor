@@ -39,6 +39,7 @@ export {
   isNumber,
   isUndefined,
   isBoolean,
+  isIntegerKey,
   type StringNumber,
 } from './is';
 

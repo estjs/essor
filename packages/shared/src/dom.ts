@@ -7,6 +7,9 @@
  */
 
 /*! #__NO_SIDE_EFFECTS__ */
+
+import { hasOwn } from './base';
+
 export function makeMap(str: string): (key: string) => boolean {
   const map = Object.create(null);
   for (const key of str.split(',')) {
@@ -50,7 +53,7 @@ const unsafeAttrCharRE = /[\t\n\f "'/=>]/;
 const attrValidationCache: Record<string, boolean> = {};
 
 export function isSSRSafeAttrName(name: string): boolean {
-  if (attrValidationCache.hasOwnProperty(name)) {
+  if (hasOwn(attrValidationCache, name)) {
     return attrValidationCache[name];
   }
   const isUnsafe = unsafeAttrCharRE.test(name);
