@@ -72,7 +72,7 @@ export class Component {
     }
 
     // context
-    const parentContext = findContext(this.component);
+    const parentContext = findContext(this.component as any);
     this.componentContext = createContext(parentContext);
     pushContextStack(this.componentContext);
 

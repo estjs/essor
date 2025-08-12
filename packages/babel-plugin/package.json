@@ -10,7 +10,9 @@
     "url": "git+https://github.com/estjs/essor.git"
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,7 +25,9 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["./dist/index.d.ts"]
+      "*": [
+        "./dist/index.d.ts"
+      ]
     }
   },
   "sideEffects": false,
@@ -32,13 +36,13 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.27.1",
-    "@babel/types": "^7.27.1",
+    "@babel/core": "^7.28.0",
+    "@babel/types": "^7.28.2",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/babel__core": "^7.20.5",
-    "babel-plugin-tester": "^11.0.0",
-    "typescript": "^5.8.3"
+    "babel-plugin-tester": "^11.0.4",
+    "typescript": "^5.9.2"
   }
 }

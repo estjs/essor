@@ -3,13 +3,23 @@
   "version": "0.0.14",
   "description": "",
   "type": "module",
-  "keywords": ["unplugin", "vite", "essor", "estjs", "webpack", "rollup", "transform"],
+  "keywords": [
+    "unplugin",
+    "vite",
+    "essor",
+    "estjs",
+    "webpack",
+    "rollup",
+    "transform"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/estjs/essor.git"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "dist/index.cjs",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -58,7 +68,10 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["./dist/*", "./*"]
+      "*": [
+        "./dist/*",
+        "./*"
+      ]
     }
   },
   "scripts": {
@@ -87,18 +100,18 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.27.1",
+    "@babel/core": "^7.28.0",
     "@estjs/babel-plugin": "workspace:*",
-    "unplugin": "^2.3.4"
+    "unplugin": "^2.3.5"
   },
   "devDependencies": {
-    "@types/node": "^22.15.18",
-    "chalk": "^5.4.1",
+    "@types/node": "^22.17.1",
+    "chalk": "^5.5.0",
     "fast-glob": "^3.3.3",
-    "rollup": "^4.40.2",
-    "tsup": "^8.4.0",
-    "typescript": "^5.8.3",
-    "vite": "^6.3.5",
-    "webpack": "^5.99.8"
+    "rollup": "^4.46.2",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vite": "^7.1.2",
+    "webpack": "^5.101.0"
   }
 }

@@ -3,3 +3,12 @@ packages:
   - examples/*
   - docs
   - benchmark
+
+ignoredBuiltDependencies:
+  - core-js
+  - esbuild
+
+onlyBuiltDependencies:
+  - '@biomejs/biome'
+  - simple-git-hooks
+  - unrs-resolver

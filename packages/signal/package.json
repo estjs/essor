@@ -13,7 +13,9 @@
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "main": "./dist/signal.esm.js",
   "module": "./dist/signal.esm.js",
   "types": "./dist/signal.d.ts",
@@ -41,7 +43,9 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["./dist/signal.d.ts"]
+      "*": [
+        "./dist/signal.d.ts"
+      ]
     }
   },
   "sideEffects": false,

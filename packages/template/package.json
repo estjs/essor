@@ -13,7 +13,10 @@
   },
   "author": "jiangxd <jiangxd2016@gmail.com>",
   "funding": "https://github.com/sponsors/estjs",
-  "files": ["dist", "types"],
+  "files": [
+    "dist",
+    "types"
+  ],
   "main": "./dist/template.esm.js",
   "module": "./dist/template.esm.js",
   "types": "./dist/template.d.ts",
@@ -41,7 +44,9 @@
   },
   "typesVersions": {
     "*": {
-      "*": ["./dist/template.d.ts"]
+      "*": [
+        "./dist/template.d.ts"
+      ]
     }
   },
   "sideEffects": false,
