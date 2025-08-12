@@ -15,5 +15,5 @@ export default estjs(
       'no-prototype-builtins': 'off',
     },
   },
-  { unocss: false, biome: true },
+  { unocss: false, biome: true ,node:false},
 );
