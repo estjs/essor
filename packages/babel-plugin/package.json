@@ -36,7 +36,7 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.28.0",
+    "@babel/core": "^7.28.3",
     "@babel/types": "^7.28.2",
     "@estjs/shared": "workspace:*"
   },

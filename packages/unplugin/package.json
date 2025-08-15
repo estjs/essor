@@ -100,7 +100,7 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.28.0",
+    "@babel/core": "^7.28.3",
     "@estjs/babel-plugin": "workspace:*",
     "unplugin": "^2.3.5"
   },
@@ -112,6 +112,6 @@
     "tsup": "^8.5.0",
     "typescript": "^5.9.2",
     "vite": "^7.1.2",
-    "webpack": "^5.101.0"
+    "webpack": "^5.101.2"
   }
 }
