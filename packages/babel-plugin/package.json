@@ -36,13 +36,13 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.28.3",
-    "@babel/types": "^7.28.2",
+    "@babel/core": "catalog:",
+    "@babel/types": "catalog:",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
-    "@types/babel__core": "^7.20.5",
-    "babel-plugin-tester": "^11.0.4",
-    "typescript": "^5.9.2"
+    "@types/babel__core": "catalog:",
+    "babel-plugin-tester": "catalog:",
+    "typescript": "catalog:"
   }
 }

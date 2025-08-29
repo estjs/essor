@@ -4,7 +4,7 @@ import { isHydrating } from './server/shared';
 import type { AnyNode } from './types';
 
 // Correctly import process
-const process = require('process');
+const process = require('node:process');
 
 // Use more meaningful prefixes and naming
 const AUTO_KEY_PREFIX = '$$_auto_';

@@ -1,7 +1,7 @@
 import { effect, signal } from '@estjs/signal';
-import { type ComponentProps } from '../component';
 import { insert } from '../binding';
 import { onDestroyed, onMounted } from '../lifecycle';
+import type { ComponentProps } from '../component';
 
 export interface PortalProps extends ComponentProps {
   container?: Element | string;

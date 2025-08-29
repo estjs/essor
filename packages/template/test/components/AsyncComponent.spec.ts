@@ -21,10 +21,7 @@ describe('asyncComponent组件', () => {
     vi.restoreAllMocks();
     vi.useRealTimers();
     document.body.removeChild(container);
-
   });
-
-
 
   it('应正确处理组件加载状态', async () => {
     // 模拟一个异步组件加载器

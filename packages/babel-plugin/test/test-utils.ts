@@ -1,5 +1,5 @@
-import path from 'path';
-import { NodePath, types as t, transformSync } from '@babel/core';
+import path from 'node:path';
+import { type NodePath, type types as t, transformSync } from '@babel/core';
 import pluginTester from 'babel-plugin-tester';
 import essorPlugin from '../src/index';
 import { clearImport, createImportIdentifiers, importedSets } from '../src/import';

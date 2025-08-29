@@ -100,18 +100,18 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.28.3",
+    "@babel/core": "catalog:",
     "@estjs/babel-plugin": "workspace:*",
-    "unplugin": "^2.3.5"
+    "unplugin": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.17.1",
-    "chalk": "^5.5.0",
-    "fast-glob": "^3.3.3",
-    "rollup": "^4.46.2",
-    "tsup": "^8.5.0",
-    "typescript": "^5.9.2",
-    "vite": "^7.1.2",
-    "webpack": "^5.101.2"
+    "@types/node": "catalog:",
+    "chalk": "catalog:",
+    "fast-glob": "catalog:",
+    "rollup": "catalog:",
+    "tsup": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "webpack": "catalog:"
   }
 }

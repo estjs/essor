@@ -1,6 +1,6 @@
 import { effect, signal } from '@estjs/signal';
-import { type ComponentProps } from '../component';
 import { onMounted } from '../lifecycle';
+import type { ComponentProps } from '../component';
 
 export interface AsyncComponentOptions {
   loader: () => Promise<any>;

@@ -239,7 +239,7 @@ describe('base Utils', () => {
     });
   });
 
-  describe('EMPTY_OBJ', () => {
+  describe('eMPTY_OBJ', () => {
     it('should be a frozen empty object', () => {
       expect(EMPTY_OBJ).toEqual({});
       expect(Object.isFrozen(EMPTY_OBJ)).toBe(true);
@@ -251,7 +251,7 @@ describe('base Utils', () => {
     });
   });
 
-  describe('EMPTY_ARR', () => {
+  describe('eMPTY_ARR', () => {
     it('should be a frozen empty array', () => {
       expect(EMPTY_ARR).toEqual([]);
       expect(Object.isFrozen(EMPTY_ARR)).toBe(true);

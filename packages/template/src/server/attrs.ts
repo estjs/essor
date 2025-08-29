@@ -48,9 +48,9 @@ export function normalizeStyle(styleValue: unknown): NormalizedStyle | string | 
 /** Semicolon separator regex, excludes semicolons within parentheses */
 const styleSeparatorRegex = /;(?![^(]*\))/g;
 /** Property value separator regex */
-const propertyValueSeparatorRegex = /:([\S\s]+)/;
+const propertyValueSeparatorRegex = /:([\s\S]+)/;
 /** Style comment regex */
-const styleCommentRegex = /\/\*[\S\s]*?\*\//g;
+const styleCommentRegex = /\/\*[\s\S]*?\*\//g;
 
 /**
  * Parse CSS style string into object format

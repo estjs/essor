@@ -1,67 +1,47 @@
-/**
- * Internal flags used to mark and identify different types of reactive objects.
- * These flags are symbols that are attached to objects to indicate their reactive nature.
- *
- * @internal
- */
 export enum SignalFlags {
   /** Marks an object as reactive */
-  IS_REACTIVE = '__s_isReactive',
+  IS_REACTIVE = '__e_isReactive',
 
   /** Marks an object as readonly */
-  IS_READONLY = '__s_isReadonly',
+  IS_READONLY = '__e_isReadonly',
 
   /** Marks an object as shallow reactive (only top-level properties are reactive) */
-  IS_SHALLOW = '__s_isShallow',
+  IS_SHALLOW = '__e_isShallow',
 
   /** Used to access the raw (non-reactive) version of an object */
-  RAW = '__s_raw',
+  RAW = '__e_raw',
 
   /** Marks an object as a signal */
-  IS_SIGNAL = '__s_isSignal',
+  IS_SIGNAL = '__e_isSignal',
 
   /** Marks an object as a computed value */
-  IS_COMPUTED = '__s_isComputed',
+  IS_COMPUTED = '__e_isComputed',
 
   /** Marks an object as a ref */
-  IS_REF = '__s_isRef',
+  IS_REF = '__e_isRef',
 }
 
-/**
- * Symbol keys used for dependency tracking.
- * These symbols are used as unique identifiers for different types of reactive operations.
- * They help the system distinguish between different types of dependencies and track them appropriately.
- *
- * @internal
- */
-
 /** Used to track changes to signal values */
-export const SignalKey = Symbol(__DEV__ ? 'SignalKey' : '');
+export const SignalKey = Symbol(__DEV__ ? 'SIGNAL_KEY' : '');
 
 /** Used to track changes to array operations */
-export const ArrayKey = Symbol(__DEV__ ? 'ArrayKey' : '');
+export const ArrayKey = Symbol(__DEV__ ? 'ARRAY_KEY' : '');
 
 /** Used to track changes to regular collection operations (Map/Set) */
-export const CollectionKey = Symbol(__DEV__ ? 'CollectionKey' : '');
+export const CollectionKey = Symbol(__DEV__ ? 'COLLECTION_KEY' : '');
 
 /** Used to track changes to weak collection operations (WeakMap/WeakSet) */
-export const WeakCollectionKey = Symbol(__DEV__ ? 'WeakCollectionKey' : '');
+export const WeakCollectionKey = Symbol(__DEV__ ? 'WEAK_COLLECTION_KEY' : '');
 
 /** Used to track iteration operations */
-export const IterateKey = Symbol(__DEV__ ? 'IterateKey' : '');
+export const IterateKey = Symbol(__DEV__ ? 'ITERATE_KEY' : '');
 
 /** Used to track Map key iteration operations */
-export const MapKeyIterateKey = Symbol(__DEV__ ? 'MapKeyIterateKey' : '');
+export const MapKeyIterateKey = Symbol(__DEV__ ? 'MAP_KEY_ITERATE_KEY' : '');
 
 /** Used to track computed value dependencies */
-export const ComputedKey = Symbol(__DEV__ ? 'ComputedKey' : '');
+export const ComputedKey = Symbol(__DEV__ ? 'COMPUTED_KEY' : '');
 
-/**
- * Type representing any tracking key used in the reactivity system.
- * This is a union of all possible symbol keys that can be used for tracking.
- *
- * @internal
- */
 export type TrackingKey =
   | typeof SignalKey
   | typeof ArrayKey
@@ -71,10 +51,4 @@ export type TrackingKey =
   | typeof MapKeyIterateKey
   | typeof ComputedKey;
 
-/**
- * Type representing the possible values of reactive flags.
- * These are the string literals used as property keys to mark reactive objects.
- *
- * @internal
- */
 export type ReactiveFlags = keyof typeof SignalFlags;

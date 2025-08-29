@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Component } from '../../src/types';
 import { endHydration, startHydration } from '../../src/server/shared';
 import { createSSGComponent, render, renderToString } from '../../src';
+import type { Component } from '../../src/types';
 import type { MockInstance } from 'vitest';
 
 describe('server/renderToString module', () => {

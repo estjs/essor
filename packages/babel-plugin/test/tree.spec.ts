@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { types as t } from '@babel/core';
 import { createDefaultTree } from '../src/jsx/tree';
 import {
   findBeforeIndex,
@@ -12,6 +11,7 @@ import {
 import { NODE_TYPE } from '../src/jsx/constants';
 import { resetContext } from '../src/jsx/context';
 import { findNodePath, setupTestEnvironment, withTestContext } from './test-utils';
+import type { types as t } from '@babel/core';
 
 describe('jSX Tree Building and Utility Functions', () => {
   beforeEach(() => {

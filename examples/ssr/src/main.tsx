@@ -52,13 +52,7 @@ function App2() {
           4<Com4 />
         </div>
       </div>
-      <input
-        bind:value={$value}
-        type='text'
-        val={$value}
-        placeholder='test'
-        val2={$value}
-      />
+      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
     </div>
   );
 }
@@ -73,13 +67,7 @@ function App3() {
           6<Com4 />
         </div>
       </div>
-      <input
-        bind:value={$value}
-        type='text'
-        val={$value}
-        placeholder='test'
-        val2={$value}
-      />
+      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
     </div>
   );
 }
@@ -94,13 +82,7 @@ function App() {
           <App3 />7<Com4 />
         </div>
       </div>
-      <input
-        bind:value={$value}
-        type='text'
-        val={$value}
-        placeholder='test'
-        val2={$value}
-      />
+      <input bind:value={$value} type="text" val={$value} placeholder="test" val2={$value} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { error, isNil } from '@estjs/shared';
 import { type Context, getActiveContext } from './context';
 
-// eslint-disable-next-line unused-imports/no-unused-vars, @typescript-eslint/no-wrapper-object-types
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
 export interface InjectionKey<T> extends Symbol {}
 
 /**

@@ -24,19 +24,13 @@ function App() {
   };
   return (
     <div>
-      <input
-        type='text'
-        bind:value={$val}
-      />
+      <input type="text" bind:value={$val} />
       <button onClick={addTodo}>Add</button>
 
       <ul>
         {$list.map((item, index) => (
           <li>
-            <input
-              type='checkbox'
-              onChange={e => itemChecked(e, item)}
-            />
+            <input type="checkbox" onChange={e => itemChecked(e, item)} />
             <span>{item}</span>
             <button onClick={() => deleteTodo(index)}>{`del-${index}`}</button>
           </li>

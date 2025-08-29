@@ -76,9 +76,9 @@ describe('server/attrs module', () => {
       const result = parseStyleString(css);
 
       expect(result).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '16px',
-        margin: '8px',
+        'margin': '8px',
       });
     });
 
@@ -87,7 +87,7 @@ describe('server/attrs module', () => {
       const result = parseStyleString(css);
 
       expect(result).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '16px',
       });
     });
@@ -117,7 +117,7 @@ describe('server/attrs module', () => {
       const result = parseStyleString(css);
 
       expect(result).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '16px',
       });
     });
@@ -132,7 +132,7 @@ describe('server/attrs module', () => {
       const result = parseStyleString(css);
 
       expect(result).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '16px',
       });
     });
@@ -142,7 +142,7 @@ describe('server/attrs module', () => {
       const result = parseStyleString(css);
 
       expect(result).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '16px',
       });
     });
@@ -176,7 +176,7 @@ describe('server/attrs module', () => {
     it('should handle CSS variables correctly', () => {
       const style = {
         '--custom-color': 'blue',
-        color: 'var(--custom-color)',
+        'color': 'var(--custom-color)',
       };
 
       const result = styleObjectToString(style);
@@ -240,11 +240,11 @@ describe('server/attrs module', () => {
 
     it('should handle object class names', () => {
       const classes = {
-        btn: true,
+        'btn': true,
         'btn-primary': true,
-        active: false,
-        disabled: null,
-        large: 'yes', // truthy value
+        'active': false,
+        'disabled': null,
+        'large': 'yes', // truthy value
       };
 
       const result = normalizeClassName(classes);
@@ -393,7 +393,7 @@ describe('server/attrs module', () => {
     });
 
     it('should handle class attributes with object values', () => {
-      const classes = { btn: true, 'btn-primary': true, active: false };
+      const classes = { 'btn': true, 'btn-primary': true, 'active': false };
       expect(setSSGAttr('class', classes, 'hk1')).toBe(' class="btn btn-primary"');
     });
 

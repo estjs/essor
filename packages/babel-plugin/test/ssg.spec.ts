@@ -180,12 +180,12 @@ describe('sSG JSX Transformation Internal Functions', () => {
   describe('processAttributesForSSG', () => {
     it('should separate static and dynamic attributes', () => {
       const props = {
-        id: 'static-id',
-        class: t.identifier('dynamicClass'),
-        style: { color: 'red' }, // Static object style
+        'id': 'static-id',
+        'class': t.identifier('dynamicClass'),
+        'style': { color: 'red' }, // Static object style
         'data-test': true,
-        onClick: t.arrowFunctionExpression([], t.blockStatement([])), // Event
-        children: [], // Should be skipped
+        'onClick': t.arrowFunctionExpression([], t.blockStatement([])), // Event
+        'children': [], // Should be skipped
       };
 
       const { staticAttrs, dynamicAttrs } = processAttributesForSSG(props);
