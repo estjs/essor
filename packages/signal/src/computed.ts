@@ -1,7 +1,7 @@
 import { isFunction, isObject, warn } from '@estjs/shared';
 import { effect, track, trigger } from './effect';
 import { ComputedKey, ReactiveFlags, SignalFlags } from './constants';
-import type { Link, ReactiveNode } from './effect';
+import type { Link, ReactiveNode } from './link';
 
 /**
  * Interface representing a computed property that is read-only and tracks its dependencies.

@@ -1,10 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createScheduler, flushJobs, nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
 
-// Define __DEV__ for test environment
-// @ts-expect-error defining global __DEV__ for testing
-globalThis.__DEV__ = true;
-
 // Reset modules between tests to ensure a clean state
 beforeEach(() => {
   vi.resetModules();

@@ -64,7 +64,7 @@ const INITIAL_WATCHER_VALUE = undefined;
 let watcher: Function | null;
 let flushing = false;
 
-// it synchronous code，work nextTick code
+// it synchronous code, work nextTick code
 function queueWatcher(fn: Function) {
   watcher = fn;
   if (!flushing) {

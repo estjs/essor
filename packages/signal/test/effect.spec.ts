@@ -111,8 +111,8 @@ describe('memoizedEffect', () => {
     vi.restoreAllMocks();
   });
 
-  describe('基础功能测试', () => {
-    it('应该使用初始状态调用effect函数', () => {
+  describe('basic functionality tests', () => {
+    it('should call effect function with initial state', () => {
       const mockFn = vi.fn().mockImplementation((prev: { count: number }) => prev);
       const initialState = { count: 0 };
 
@@ -122,7 +122,7 @@ describe('memoizedEffect', () => {
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
 
-    it('应该将返回值作为下次调用的参数', () => {
+    it('should use return value as parameter for next call', () => {
       const counter = signal(1);
       const states: Array<{ value: number }> = [];
 
@@ -134,18 +134,18 @@ describe('memoizedEffect', () => {
 
       memoizedEffect(effectFn, { value: 0 });
 
-      // 触发更新
+      // Trigger updates
       counter.value = 2;
       counter.value = 3;
 
       expect(states).toEqual([
-        { value: 0 }, // 初始调用
-        { value: 1 }, // 第一次更新后的状态
-        { value: 2 }, // 第二次更新后的状态
+        { value: 0 }, // Initial call
+        { value: 1 }, // State after first update
+        { value: 2 }, // State after second update
       ]);
     });
 
-    it('应该在signal值变化时重新执行', () => {
+    it('should re-execute when signal value changes', () => {
       const count = signal(1);
       const mockFn = vi.fn().mockImplementation((prev: { lastValue: number }) => {
         return { lastValue: count.value };
@@ -156,10 +156,10 @@ describe('memoizedEffect', () => {
       count.value = 5;
       count.value = 10;
 
-      expect(mockFn).toHaveBeenCalledTimes(3); // 初始 + 2次更新
+      expect(mockFn).toHaveBeenCalledTimes(3); // Initial + 2 updates
     });
 
-    it('应该支持复杂状态对象', () => {
+    it('should support complex state objects', () => {
       const width = signal(100);
       const height = signal(200);
       const visible = signal(true);
@@ -191,20 +191,20 @@ describe('memoizedEffect', () => {
       height.value = 250;
       visible.value = false;
 
-      // 验证状态正确累积
+      // Verify state accumulation is correct
       const finalState = {
         lastWidth: 150,
         lastHeight: 250,
         lastVisible: false,
-        updateCount: 4, // 初始 + 3次更新
+        updateCount: 4, // Initial + 3 updates
       };
 
-      expect(true).toBe(true); // 基础验证，实际应用中会有更具体的断言
+      expect(true).toBe(true); // Basic verification, actual applications would have more specific assertions
     });
   });
 
-  describe('增量更新优化测试', () => {
-    it('应该实现高效的增量更新', () => {
+  describe('incremental update optimization tests', () => {
+    it('should implement efficient incremental updates', () => {
       const value1 = signal('a');
       const value2 = signal('b');
       const value3 = signal('c');
@@ -224,7 +224,7 @@ describe('memoizedEffect', () => {
           v3: value3.value,
         };
 
-        // 只在值变化时执行对应操作
+        // Only execute corresponding operations when values change
         if (current.v1 !== prev.v1) {
           operations.op1(current.v1);
           prev.v1 = current.v1;
@@ -245,22 +245,22 @@ describe('memoizedEffect', () => {
 
       memoizedEffect(effectFn, {});
 
-      // 初始化时所有操作都应执行
+      // All operations should execute on initialization
       expect(operations.op1).toHaveBeenCalledWith('a');
       expect(operations.op2).toHaveBeenCalledWith('b');
       expect(operations.op3).toHaveBeenCalledWith('c');
 
-      // 重置mock
+      // Reset mocks
       vi.clearAllMocks();
 
-      // 只改变value1
+      // Only change value1
       value1.value = 'a1';
 
       expect(operations.op1).toHaveBeenCalledWith('a1');
       expect(operations.op2).not.toHaveBeenCalled();
       expect(operations.op3).not.toHaveBeenCalled();
 
-      // 只改变value2和value3
+      // Only change value2 and value3
       value2.value = 'b1';
       value3.value = 'c1';
 
@@ -268,12 +268,12 @@ describe('memoizedEffect', () => {
       expect(operations.op3).toHaveBeenCalledWith('c1');
     });
 
-    it('应该避免重复的DOM操作', () => {
+    it('should avoid repeated DOM operations', () => {
       const width = signal(100);
       const setAttributeSpy = vi.fn();
       const setStyleSpy = vi.fn();
 
-      // 模拟DOM元素
+      // Mock DOM element
       const mockElement = {
         setAttribute: setAttributeSpy,
         style: { setProperty: setStyleSpy },
@@ -290,7 +290,7 @@ describe('memoizedEffect', () => {
         const currentWidthPx = `${currentWidth}px`;
         const currentTitle = `Width: ${currentWidth}`;
 
-        // 避免重复的属性设置
+        // Avoid repeated attribute settings
         if (currentWidth !== prev.lastWidth) {
           // eslint-disable-next-line unicorn/prefer-dom-node-dataset
           mockElement.setAttribute('data-width', currentWidth.toString());
@@ -312,21 +312,21 @@ describe('memoizedEffect', () => {
 
       memoizedEffect(effectFn, {});
 
-      // 初始设置
+      // Initial setup
       expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '100');
       expect(setAttributeSpy).toHaveBeenCalledWith('title', 'Width: 100');
       expect(setStyleSpy).toHaveBeenCalledWith('width', '100px');
 
-      // 重置
+      // Reset
       vi.clearAllMocks();
 
-      // 设置相同值，不应触发DOM操作
+      // Set same value, should not trigger DOM operations
       width.value = 100;
 
       expect(setAttributeSpy).not.toHaveBeenCalled();
       expect(setStyleSpy).not.toHaveBeenCalled();
 
-      // 设置新值，应触发DOM操作
+      // Set new value, should trigger DOM operations
       width.value = 200;
 
       expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '200');
@@ -335,8 +335,8 @@ describe('memoizedEffect', () => {
     });
   });
 
-  describe('错误处理测试', () => {
-    it('应该处理effect函数中的错误', () => {
+  describe('error handling tests', () => {
+    it('should handle errors in effect function', () => {
       const errorFn: MemoizedEffectFn<{ count: number }> = prev => {
         if (prev.count > 2) {
           throw new Error('Test error');
@@ -348,11 +348,11 @@ describe('memoizedEffect', () => {
         memoizedEffect(errorFn, { count: 0 });
       }).not.toThrow();
 
-      // 这里可能需要根据实际的错误处理机制调整测试
+      // This may need adjustment based on actual error handling mechanisms
     });
 
-    it('应该处理无返回值的情况', () => {
-      const badFn = vi.fn(); // 不返回任何值
+    it('should handle cases with no return value', () => {
+      const badFn = vi.fn(); // Returns nothing
 
       const effect = memoizedEffect(badFn as any, { value: 1 });
 
@@ -361,8 +361,8 @@ describe('memoizedEffect', () => {
     });
   });
 
-  it('应该模拟编译器生成的优化代码', () => {
-    // 模拟你提供的示例
+  it('should simulate compiler-generated optimized code', () => {
+    // Simulate the example you provided
     const editorWidth = signal(50);
 
     const mockEl = { setAttribute: vi.fn() };
@@ -376,7 +376,7 @@ describe('memoizedEffect', () => {
       const v2 = `${editorWidth.value}%`;
       const v3 = `${100 - editorWidth.value}%`;
 
-      // 模拟编译器生成的优化代码
+      // Simulate compiler-generated optimized code
       if (v1 !== prev.e) {
         mockEl.setAttribute('name', v1.toString());
         prev.e = v1;
@@ -401,12 +401,12 @@ describe('memoizedEffect', () => {
       a: undefined,
     });
 
-    // 验证初始设置
+    // Verify initial setup
     expect(mockEl.setAttribute).toHaveBeenCalledWith('name', '50');
     expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '50%');
     expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '50%');
 
-    // 改变值
+    // Change value
     vi.clearAllMocks();
     editorWidth.value = 75;
 
@@ -414,7 +414,7 @@ describe('memoizedEffect', () => {
     expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '75%');
     expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '25%');
 
-    // 设置相同值不应触发更新
+    // Setting same value should not trigger updates
     vi.clearAllMocks();
     editorWidth.value = 75;
 

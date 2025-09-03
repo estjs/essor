@@ -85,11 +85,13 @@ describe('class-based store', () => {
       }
 
       constructor() {
-        createStore(this);
+        // Note: This constructor call is not recommended in actual usage
+        // It's just for testing purposes
       }
     }
 
-    const store = new TestStore();
+    const useStore = createStore(TestStore);
+    const store = useStore();
     expect(store.count).toBe(0);
     expect(store.doubleCount).toBe(0);
     store.increment();

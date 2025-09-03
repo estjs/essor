@@ -2,7 +2,7 @@ import { hasChanged, isObject, warn } from '@estjs/shared';
 import { SignalFlags, SignalKey } from './constants';
 import { track, trigger } from './effect';
 import { reactiveImpl } from './reactive';
-import type { Link } from './link';
+import type { Link, ReactiveNode } from './link';
 
 /**
  * A Signal is a reactive primitive that holds a value and notifies subscribers when the value changes.

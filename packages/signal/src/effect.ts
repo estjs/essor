@@ -328,28 +328,28 @@ export function unTrack(fn: () => void): void {
   }
 }
 /**
- * 记忆化Effect函数类型
+ * Memoized Effect function type
  *
- * @template T - 状态数据的类型
- * @param prevState - 前一次执行的返回值（首次执行时为初始值）
- * @returns 新的状态值，将作为下次执行时的参数
+ * @template T - Type of state data
+ * @param prevState - Return value from previous execution (initial value on first execution)
+ * @returns New state value, which will be used as parameter for next execution
  */
 export type MemoizedEffectFn<T> = (prevState: T) => T;
 
 /**
- * 创建一个记忆化的Effect
+ * Creates a memoized Effect
  *
- * 这个函数创建一个特殊的effect，它会记住上一次执行的返回值，
- * 并在下次执行时将其作为参数传递给效果函数。这样可以实现：
+ * This function creates a special effect that remembers the return value from the previous execution,
+ * and passes it as a parameter to the effect function on the next execution. This enables:
  *
- * 1. **增量更新**: 只在值真正变化时执行DOM操作
- * 2. **状态持久化**: 在effect执行之间保持状态
- * 3. **性能优化**: 避免重复设置相同的属性值
- * 4. **差异检测**: 轻松比较当前值与前一次的值
+ * 1. **Incremental updates**: Only execute DOM operations when values truly change
+ * 2. **State persistence**: Maintain state between effect executions
+ * 3. **Performance optimization**: Avoid setting the same property values repeatedly
+ * 4. **Difference detection**: Easily compare current values with previous values
  *
  * @example
  * ```typescript
- * // 基础用法：跟踪单个值
+ * // Basic usage: Track a single value
  * const width = signal(50);
  *
  * memoizedEffect(prev => {
@@ -361,7 +361,7 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  *   return prev;
  * }, { width: 0 });
  *
- * // 高级用法：跟踪多个值
+ * // Advanced usage: Track multiple values
  * const position = signal({ x: 0, y: 0 });
  * const size = signal({ width: 100, height: 100 });
  *
@@ -369,14 +369,14 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  *   const pos = position.value;
  *   const sz = size.value;
  *
- *   // 只在位置变化时更新
+ *   // Only update when position changes
  *   if (pos.x !== prev.x || pos.y !== prev.y) {
  *     element.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
  *     prev.x = pos.x;
  *     prev.y = pos.y;
  *   }
  *
- *   // 只在尺寸变化时更新
+ *   // Only update when size changes
  *   if (sz.width !== prev.width || sz.height !== prev.height) {
  *     element.style.width = `${sz.width}px`;
  *     element.style.height = `${sz.height}px`;
@@ -388,26 +388,26 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  * }, { x: 0, y: 0, width: 0, height: 0 });
  * ```
  *
- * @template T - 状态数据的类型
- * @param fn - 记忆化effect函数，接收前一次的状态，返回新状态
- * @param initialState - 初始状态值
- * @param options - 配置选项
- * @returns ReactiveEffect实例，可用于停止监听
+ * @template T - Type of state data
+ * @param fn - Memoized effect function that receives previous state and returns new state
+ * @param initialState - Initial state value
+ * @param options - Configuration options
+ * @returns ReactiveEffect instance that can be used to stop listening
  */
 export function memoizedEffect<T>(
   fn: MemoizedEffectFn<T>,
   initialState: T,
   options?: EffectOptions,
 ) {
-  // 用于存储状态的容器，使用对象确保引用稳定性
+  // Container for storing state, using object to ensure reference stability
   let currentState = initialState;
 
-  // 创建底层effect
+  // Create underlying effect
   return effect(() => {
-    // 执行用户函数，传入当前状态
+    // Execute user function, passing in current state
     const newState = fn(currentState);
 
-    // 更新状态以供下次使用
+    // Update state for next use
     currentState = newState;
   }, options);
 }

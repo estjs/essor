@@ -501,7 +501,7 @@ export function shallowReactive<T extends object>(target: T): T {
  *
  * @template T - The target object type.
  * @param target - The object to check.
- * @returns True if the object is shallow reactive; false otherwise.
+ * @returns True if the object is shallow reactive.
  */
 export function isShallow<T extends object>(target: T): boolean {
   return target[SignalFlags.IS_SHALLOW];

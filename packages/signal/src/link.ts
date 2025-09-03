@@ -36,17 +36,17 @@ export interface Link {
   nextDepLink?: Link;
 }
 
-// 被观察的副作用（effects）的数组。
+// Array of watched effects (effects)
 const watchedEffects: (EffectFn | undefined)[] = [];
 
-// 当前批处理的嵌套深度。
+// Current batch processing nesting depth
 export let batchDepth = 0;
-// 当前正在执行的订阅者（副作用）。
+// Currently executing subscriber (effect)
 export let activeSub: ReactiveNode | undefined = undefined;
 
-// 数组的当前索引，用于遍历。
+// Current index of the array, for iteration
 let watchedEffectsIndex = 0;
-// 数组的当前长度。
+// Current length of the array
 let watchedEffectsLength = 0;
 
 /**
@@ -130,35 +130,35 @@ export function unlinkReactiveNode(linkNode: Link, subNode: ReactiveNode = linkN
   const prevDepLink = linkNode.prevDepLink;
   const nextDepLink = linkNode.nextDepLink;
 
-  // update the 'nextDep' 'prevDep' pointer.
+  // update the 'nextDep' 'prevDep' pointer
   if (nextDepLink) {
     nextDepLink.prevDepLink = prevDepLink;
   } else {
-    // if there is no next, update the subscriber's dependency tail pointer.
+    // if there is no next, update the subscriber's dependency tail pointer
     subNode.depLinkTail = prevDepLink;
   }
 
-  // update the 'prevDep' 'nextDep' pointer.
+  // update the 'prevDep' 'nextDep' pointer
   if (prevDepLink) {
     prevDepLink.nextDepLink = nextDepLink;
   } else {
-    // if there is no previous, update the subscriber's dependency head pointer.
+    // if there is no previous, update the subscriber's dependency head pointer
     subNode.depLink = nextDepLink;
   }
 
-  // update the 'nextSub' 'prevSub' pointer.
+  // update the 'nextSub' 'prevSub' pointer
   if (nextSubLink) {
     nextSubLink.prevSubLink = prevSubLink;
   } else {
-    // if there is no next, update the dependency's subscriber tail pointer.
+    // if there is no next, update the dependency's subscriber tail pointer
     depNode.subLinkTail = prevSubLink;
   }
 
-  // update the 'prevSub' 'nextSub' pointer.
+  // update the 'prevSub' 'nextSub' pointer
   if (prevSubLink) {
     prevSubLink.nextSubLink = nextSubLink;
   } else if ((depNode.subLink = nextSubLink)) {
-    // if the dependency's subscriber list becomes empty, clean up all dependencies of the dependency.
+    // if the dependency's subscriber list becomes empty, clean up all dependencies of the dependency
     let toRemove = depNode.depLink;
     if (toRemove) {
       // Clean up all dependencies of the dependency node
@@ -166,12 +166,12 @@ export function unlinkReactiveNode(linkNode: Link, subNode: ReactiveNode = linkN
       while (toRemove) {
         toRemove = unlinkReactiveNode(toRemove, depNode);
       }
-      // mark the dependency as "dirty", need to be re-evaluated.
+      // mark the dependency as "dirty", need to be re-evaluated
       depNode.flag |= ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
     }
   }
 
-  // return the next dependency link, for iteration deletion.
+  // return the next dependency link, for iteration deletion
   return nextDepLink;
 }
 
@@ -190,7 +190,7 @@ function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
     // Iterate through the dependency list to check if the link is valid
     // We need to check each dependency link until we find a match or reach the end
     while (link) {
-      // if the link is found in the dependency list, it is valid.
+      // if the link is found in the dependency list, it is valid
       if (link === checkLink) {
         return true;
       }
@@ -222,26 +222,26 @@ export function propagate(linkNode: Link) {
       const subNode = currentLinkNode.subNode;
       let flag = subNode.flag;
 
-      // 如果子节点是正在观察或可变节点
+      // If the child node is watching or mutable
       if (flag & (ReactiveFlags.WATCHING | ReactiveFlags.MUTABLE)) {
         // ReactiveFlags.WATCHING | ReactiveFlags.MUTABLE
-        // 如果子节点是正在递归检查或递归节点
+        // If the child node is in recursive check or recursive state
         const hasRecursedFlags = flag & (ReactiveFlags.RECURSED_CHECK | ReactiveFlags.RECURSED); // ReactiveFlags.RECURSED_CHECK | ReactiveFlags.RECURSED
-        // 如果子节点是脏或挂起节点
+        // If the child node is dirty or pending
         const hasDirtyFlags = flag & (ReactiveFlags.DIRTY | ReactiveFlags.PENDING); // ReactiveFlags.DIRTY | ReactiveFlags.PENDING
 
-        // 如果子节点不是正在递归检查或递归节点，且不是脏或挂起节点，则标记为挂起
+        // If the child node is not in recursive check or recursive state, and not dirty or pending, mark as pending
         if (!hasRecursedFlags && !hasDirtyFlags) {
           subNode.flag = flag | ReactiveFlags.PENDING; // ReactiveFlags.PENDING
-          // 如果子节点不是正在递归检查或递归节点，则标记为无
+          // If the child node is not in recursive check or recursive state, mark as none
         } else if (!hasRecursedFlags) {
           subNode.flag = ReactiveFlags.NONE; // ReactiveFlags.NONE
-          // 如果子节点不是正在递归检查或递归节点，则标记为挂起
+          // If the child node is not in recursive check or recursive state, mark as pending
         } else if (!(flag & ReactiveFlags.RECURSED_CHECK)) {
           // ReactiveFlags.RECURSED_CHECK
           subNode.flag = (flag & ~ReactiveFlags.RECURSED) | ReactiveFlags.PENDING; // (flag & ~ReactiveFlags.RECURSED) | ReactiveFlags.PENDING
           flag &= ReactiveFlags.MUTABLE; // ReactiveFlags.MUTABLE
-          // 如果子节点不是正在递归检查或递归节点，且不是脏或挂起节点，且链接有效，则标记为递归和挂起
+          // If the child node is not in recursive check or recursive state, and not dirty or pending, and link is valid, mark as recursive and pending
         } else if (!hasDirtyFlags && isValidLink(currentLinkNode, subNode)) {
           subNode.flag = flag | ReactiveFlags.RECURSED | ReactiveFlags.PENDING; // ReactiveFlags.RECURSED | ReactiveFlags.PENDING
           flag &= ReactiveFlags.MUTABLE; // ReactiveFlags.MUTABLE
@@ -249,13 +249,13 @@ export function propagate(linkNode: Link) {
           subNode.flag = ReactiveFlags.NONE; // ReactiveFlags.NONE
         }
 
-        // 批量处理watching effects，减少数组操作开销
+        // Batch process watching effects, reduce array operation overhead
         if (flag & ReactiveFlags.WATCHING) {
           // ReactiveFlags.WATCHING
           watchedEffects[watchedEffectsLength++] = subNode as unknown as EffectFn;
         }
 
-        // 当订阅者是可变时，需要递归深入
+        // When the subscriber is mutable, need to recurse deeper
         if (flag & ReactiveFlags.MUTABLE) {
           // ReactiveFlags.MUTABLE
           const subSubs = subNode.subLink;
@@ -277,10 +277,10 @@ export function propagate(linkNode: Link) {
  */
 export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
   try {
-    // 返回之前的 activeSub。
+    // Return the previous activeSub
     return activeSub;
   } finally {
-    // 设置新的 activeSub。
+    // Set the new activeSub
     activeSub = sub;
   }
 }
@@ -290,17 +290,17 @@ export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
  * This executes all pending effects that were queued during propagation.
  */
 export function flushWatchedEffects(): void {
-  // 遍历并执行所有待处理的副作用。
+  // Iterate and execute all pending effects
   while (watchedEffectsIndex < watchedEffectsLength) {
     const effect = watchedEffects[watchedEffectsIndex]!;
-    watchedEffects[watchedEffectsIndex++] = undefined; // 清理数组项
+    watchedEffects[watchedEffectsIndex++] = undefined; // Clean up array items
     if (effect.notify) {
-      effect.notify(); // 通知副作用执行
+      effect.notify(); // Notify effect to execute
     } else {
-      effect(); // 直接执行
+      effect(); // Execute directly
     }
   }
-  // 重置索引和长度。
+  // Reset index and length
   watchedEffectsIndex = 0;
   watchedEffectsLength = 0;
 }
@@ -315,26 +315,26 @@ export function flushWatchedEffects(): void {
  */
 export function checkDirty(link: Link, sub: ReactiveNode): boolean {
   /**
-   * 递归检查以 link 为起点的整条依赖链。
-   * 遇到需要深入下一层时，递归调用自身。
+   * Recursively check the entire dependency chain starting from link.
+   * When encountering a need to go deeper to the next level, recursively call itself.
    */
   function checkDown(link: Link, sub: ReactiveNode): boolean {
-    let curLink: Link | undefined = link; // 当前正在检查的 Link
+    let curLink: Link | undefined = link; // Current Link being checked
     while (curLink) {
       const dep = curLink.depNode;
       const depFlags = dep.flag;
 
-      /* -------- 1. 先看自己或依赖是否已脏 -------- */
+      /* -------- 1. First check if self or dependency is dirty -------- */
       if (sub.flag & ReactiveFlags.DIRTY) {
         // ReactiveFlags.DIRTY
         return true;
       }
-      // 当依赖是可变或脏时，需要更新
+      // When dependency is mutable or dirty, need to update
       if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY)) ===
         (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY) // ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY
       ) {
-        // 依赖本身脏了，需要更新
+        // Dependency itself is dirty, need to update
         // Check if the dependency has a shouldUpdate method (computed)
         if ('shouldUpdate' in dep && typeof (dep as any).shouldUpdate === 'function') {
           if ((dep as any).shouldUpdate()) {
@@ -354,15 +354,15 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
         }
       }
 
-      // 当依赖是可变或挂起时，需要递归深入
+      // When dependency is mutable or pending, need to recurse deeper
       if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING)) ===
         (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING) // ReactiveFlags.MUTABLE | ReactiveFlags.PENDING
       ) {
-        // 深入检查依赖的依赖
+        // Go deeper to check dependency's dependencies
         const innerDirty = checkDown(dep.depLink!, dep);
 
-        // 返回后根据结果做与原逻辑一致的处理
+        // After returning, handle the result consistently with the original logic
         if (innerDirty) {
           if ('shouldUpdate' in dep && typeof (dep as any).shouldUpdate === 'function') {
             if ((dep as any).shouldUpdate()) {
@@ -370,8 +370,8 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
               if (subs.nextSubLink) {
                 shallowPropagate(subs);
               }
-              // 继续用 dep 的上一层 sub（即外层 sub）继续遍历
-              // 这里无需额外处理，因为外层 while 会继续检查 curLink.nextDep
+              // Continue using dep's upper level sub (i.e., outer sub) to continue iteration
+              // No additional handling needed here, as the outer while will continue checking curLink.nextDep
               return true;
             }
           } else {
@@ -383,15 +383,15 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
             return true;
           }
         } else {
-          dep.flag &= ~ReactiveFlags.PENDING; // 清除待定 ReactiveFlags.PENDING
+          dep.flag &= ~ReactiveFlags.PENDING; // Clear pending ReactiveFlags.PENDING
         }
       }
 
-      /* -------- 3. 继续下一个兄弟依赖 -------- */
+      /* -------- 3. Continue to the next sibling dependency -------- */
       curLink = curLink.nextDepLink;
     }
 
-    // 整条链检查完都没发现脏
+    // The entire chain has been checked and no dirty found
     return false;
   }
 
@@ -410,13 +410,13 @@ export function shallowPropagate(link: Link | undefined): void {
   const sub = link.subNode;
   const subFlags = sub.flag;
 
-  // 当订阅者是挂起或脏时，标记为脏
+  // When the subscriber is pending or dirty, mark as dirty
   if ((subFlags & (ReactiveFlags.PENDING | ReactiveFlags.DIRTY)) === ReactiveFlags.PENDING) {
     // ReactiveFlags.PENDING | ReactiveFlags.DIRTY
     sub.flag = subFlags | ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
   }
 
-  // 递归处理下一个订阅者，取代原来的 do/while
+  // Recursively process the next subscriber, replacing the original do/while
   shallowPropagate(link.nextSubLink);
 }
 
@@ -427,16 +427,16 @@ export function shallowPropagate(link: Link | undefined): void {
  * @param fn - Function containing reactive updates to batch
  */
 export function batch(fn: () => void) {
-  // 增加批处理深度。
+  // Increase batch processing depth
   ++batchDepth;
   try {
-    // 执行函数。
+    // Execute the function
     fn();
   } catch (error_) {
-    // 捕获并打印错误。
+    // Catch and print errors
     console.error(`Error during batch: ${error_}`);
   } finally {
-    // 当最外层批处理结束时，刷新所有待处理的副作用。
+    // When the outermost batch ends, flush all pending effects
     if (!--batchDepth && watchedEffectsLength) {
       flushWatchedEffects();
     }
@@ -465,7 +465,7 @@ export function startBatch(): void {
  * If this is the outermost batch and there are pending effects, they are flushed.
  */
 export function endBatch(): void {
-  // 如果深度为0且有待处理的副作用，则刷新它们。
+  // If depth is 0 and there are pending effects, flush them
   if (!--batchDepth && watchedEffectsLength) {
     flushWatchedEffects();
   }
@@ -479,13 +479,13 @@ export function endBatch(): void {
  * @returns The previously active subscriber
  */
 export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
-  // 重置订阅者的依赖尾指针
+  // Reset the subscriber's dependency tail pointer
   sub.depLinkTail = undefined;
-  // 设置标志为递归检查状态，并清除脏和挂起状态
+  // Set flag to recursive check state, and clear dirty and pending state
   sub.flag =
     (sub.flag & ~(ReactiveFlags.RECURSED | ReactiveFlags.DIRTY | ReactiveFlags.PENDING)) |
     ReactiveFlags.RECURSED_CHECK; // (sub.flag & ~(ReactiveFlags.RECURSED | ReactiveFlags.DIRTY | ReactiveFlags.PENDING)) | ReactiveFlags.RECURSED_CHECK
-  // 设置当前订阅者并返回上一个
+  // Set current subscriber and return the previous one
   return setActiveSub(sub);
 }
 
@@ -497,15 +497,15 @@ export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
  * @param prevSub - The previously active subscriber
  */
 export function endTracking(sub: ReactiveNode, prevSub: ReactiveNode | undefined): void {
-  // 恢复上一个activeSub
+  // Restore the previous activeSub
   activeSub = prevSub;
 
-  // 清理掉在本次追踪中不再需要的依赖
+  // Clean up dependencies that are no longer needed in this tracking session
   const depsTail = sub.depLinkTail;
   let toRemove = depsTail !== undefined ? depsTail.nextDepLink : sub.depLink;
   while (toRemove !== undefined) {
     toRemove = unlinkReactiveNode(toRemove, sub);
   }
-  // 清除递归检查标志
+  // Clear recursive check flag
   sub.flag &= ~ReactiveFlags.RECURSED_CHECK; // ReactiveFlags.RECURSED_CHECK
 }
