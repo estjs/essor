@@ -1,6 +1,7 @@
 import { createScheduler } from './scheduler';
+import { ReactiveFlags, type TrackingKey } from './constants';
+import type { ReactiveNode } from './link';
 import type { FlushTiming } from './scheduler';
-import type { TrackingKey } from './constants';
 
 /**
  * Configuration options for creating an effect.
@@ -37,7 +38,7 @@ export interface EffectOptions {
  * An effect function with additional metadata.
  * Effects are the core primitive of the reactivity system.
  */
-export interface EffectFn {
+export interface EffectFn extends ReactiveNode {
   (): void;
   /** Whether the effect is currently active */
   active?: boolean;
@@ -45,6 +46,8 @@ export interface EffectFn {
   deps?: Set<Set<EffectFn>>;
   /** Optional scheduler for controlling when the effect runs */
   scheduler?: () => void;
+  /** Notify method for triggering the effect */
+  notify?: () => void;
 }
 
 /** Currently active effect during tracking */
@@ -216,7 +219,7 @@ export function effect(fn: () => void, options: EffectOptions = {}): () => void 
       throw error;
     } finally {
       effectStack.pop();
-      activeEffect = effectStack[effectStack.length - 1] || null;
+      activeEffect = effectStack[effectStack.length - 1] || (null as EffectFn | null);
     }
   };
 
@@ -224,6 +227,14 @@ export function effect(fn: () => void, options: EffectOptions = {}): () => void 
   effectFn.active = true;
   effectFn.deps = new Set();
   effectFn.scheduler = scheduler || createScheduler(effectFn, flush);
+  effectFn.flag = ReactiveFlags.NONE;
+
+  // Add notify method for the new link system
+  effectFn.notify = () => {
+    if (effectFn.active && effectFn.scheduler) {
+      effectFn.scheduler();
+    }
+  };
 
   // Run the effect once to collect initial dependencies
   effectFn();
@@ -315,4 +326,88 @@ export function unTrack(fn: () => void): void {
   } finally {
     inUnTrack = prevUnTrack;
   }
+}
+/**
+ * 记忆化Effect函数类型
+ *
+ * @template T - 状态数据的类型
+ * @param prevState - 前一次执行的返回值（首次执行时为初始值）
+ * @returns 新的状态值，将作为下次执行时的参数
+ */
+export type MemoizedEffectFn<T> = (prevState: T) => T;
+
+/**
+ * 创建一个记忆化的Effect
+ *
+ * 这个函数创建一个特殊的effect，它会记住上一次执行的返回值，
+ * 并在下次执行时将其作为参数传递给效果函数。这样可以实现：
+ *
+ * 1. **增量更新**: 只在值真正变化时执行DOM操作
+ * 2. **状态持久化**: 在effect执行之间保持状态
+ * 3. **性能优化**: 避免重复设置相同的属性值
+ * 4. **差异检测**: 轻松比较当前值与前一次的值
+ *
+ * @example
+ * ```typescript
+ * // 基础用法：跟踪单个值
+ * const width = signal(50);
+ *
+ * memoizedEffect(prev => {
+ *   const current = width.value;
+ *   if (current !== prev.width) {
+ *     element.style.width = `${current}px`;
+ *     prev.width = current;
+ *   }
+ *   return prev;
+ * }, { width: 0 });
+ *
+ * // 高级用法：跟踪多个值
+ * const position = signal({ x: 0, y: 0 });
+ * const size = signal({ width: 100, height: 100 });
+ *
+ * memoizedEffect(prev => {
+ *   const pos = position.value;
+ *   const sz = size.value;
+ *
+ *   // 只在位置变化时更新
+ *   if (pos.x !== prev.x || pos.y !== prev.y) {
+ *     element.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+ *     prev.x = pos.x;
+ *     prev.y = pos.y;
+ *   }
+ *
+ *   // 只在尺寸变化时更新
+ *   if (sz.width !== prev.width || sz.height !== prev.height) {
+ *     element.style.width = `${sz.width}px`;
+ *     element.style.height = `${sz.height}px`;
+ *     prev.width = sz.width;
+ *     prev.height = sz.height;
+ *   }
+ *
+ *   return prev;
+ * }, { x: 0, y: 0, width: 0, height: 0 });
+ * ```
+ *
+ * @template T - 状态数据的类型
+ * @param fn - 记忆化effect函数，接收前一次的状态，返回新状态
+ * @param initialState - 初始状态值
+ * @param options - 配置选项
+ * @returns ReactiveEffect实例，可用于停止监听
+ */
+export function memoizedEffect<T>(
+  fn: MemoizedEffectFn<T>,
+  initialState: T,
+  options?: EffectOptions,
+) {
+  // 用于存储状态的容器，使用对象确保引用稳定性
+  let currentState = initialState;
+
+  // 创建底层effect
+  return effect(() => {
+    // 执行用户函数，传入当前状态
+    const newState = fn(currentState);
+
+    // 更新状态以供下次使用
+    currentState = newState;
+  }, options);
 }

@@ -2,6 +2,7 @@ import { hasChanged, isObject, warn } from '@estjs/shared';
 import { SignalFlags, SignalKey } from './constants';
 import { track, trigger } from './effect';
 import { reactiveImpl } from './reactive';
+import type { Link } from './link';
 
 /**
  * A Signal is a reactive primitive that holds a value and notifies subscribers when the value changes.
@@ -9,7 +10,7 @@ import { reactiveImpl } from './reactive';
  *
  * @template T - The type of value held by the signal
  */
-export interface Signal<T> {
+export interface Signal<T> extends ReactiveNode {
   /**
    * The current value of the signal. Reading this property will track dependencies,
    * and writing to it will notify subscribers of changes.
@@ -53,6 +54,13 @@ export class SignalImpl<T> implements Signal<T> {
   private readonly [SignalFlags.IS_SHALLOW]: boolean;
   // @ts-ignore
   private readonly [SignalFlags.IS_SIGNAL] = true;
+
+  // ReactiveNode implementation
+  depLink?: Link;
+  subLink?: Link;
+  depLinkTail?: Link;
+  subLinkTail?: Link;
+  flag: number = 0; // ReactiveFlags.NONE
 
   /**
    * Creates a new signal with the given initial value.

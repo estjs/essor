@@ -1,6 +1,7 @@
 import { isFunction, isObject, warn } from '@estjs/shared';
 import { effect, track, trigger } from './effect';
-import { ComputedKey, SignalFlags } from './constants';
+import { ComputedKey, ReactiveFlags, SignalFlags } from './constants';
+import type { Link, ReactiveNode } from './effect';
 
 /**
  * Interface representing a computed property that is read-only and tracks its dependencies.
@@ -8,7 +9,7 @@ import { ComputedKey, SignalFlags } from './constants';
  *
  * @template T - The type of the computed value.
  */
-export interface Computed<T> {
+export interface Computed<T> extends ReactiveNode {
   /**
    * The computed value. Reading this property will automatically track dependencies.
    * The value is lazily evaluated and cached until dependencies change.
@@ -22,6 +23,14 @@ export interface Computed<T> {
    * @returns The current computed value.
    */
   peek(): T;
+
+  /**
+   * Checks if the computed value should be updated.
+   * This is used internally by the dependency system.
+   *
+   * @returns True if the computed value needs updating
+   */
+  shouldUpdate(): boolean;
 }
 
 /**
@@ -54,6 +63,14 @@ export class ComputedImpl<T> implements Computed<T> {
   private _value!: T;
   //@ts-ignore
   private readonly [SignalFlags.IS_COMPUTED] = true;
+
+  // ReactiveNode implementation
+  depLink?: Link;
+  subLink?: Link;
+  depLinkTail?: Link;
+  subLinkTail?: Link;
+  flag: number = ReactiveFlags.MUTABLE;
+
   // We store stop function in case we want to stop the effect later
   constructor(
     private readonly _getter: () => T,
@@ -98,6 +115,18 @@ export class ComputedImpl<T> implements Computed<T> {
       warn('Write operation failed: computed value is readonly');
     }
     this._setter?.(v);
+  }
+
+  /**
+   * Checks if the computed value should be updated.
+   * This is used internally by the dependency system.
+   *
+   * @returns True if the computed value needs updating
+   */
+  shouldUpdate(): boolean {
+    // For now, always return true to trigger updates
+    // This can be optimized later with more sophisticated dirty checking
+    return true;
   }
 }
 

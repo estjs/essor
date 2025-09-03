@@ -71,6 +71,31 @@ describe('class-based store', () => {
     expect(store.count).toBe(1);
     expect(store.doubleCount).toBe(2);
   });
+
+  it('should create store from a class with constructor', () => {
+    class TestStore {
+      count = 0;
+
+      get doubleCount() {
+        return this.count * 2;
+      }
+
+      increment() {
+        this.count++;
+      }
+
+      constructor() {
+        createStore(this);
+      }
+    }
+
+    const store = new TestStore();
+    expect(store.count).toBe(0);
+    expect(store.doubleCount).toBe(0);
+    store.increment();
+    expect(store.count).toBe(1);
+    expect(store.doubleCount).toBe(2);
+  });
 });
 
 describe('store Methods', () => {

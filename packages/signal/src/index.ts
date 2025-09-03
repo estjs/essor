@@ -4,7 +4,7 @@ export { signal, shallowSignal, isSignal, Signal } from './signal';
 export { ref, isRef, Ref } from './ref';
 
 // Effect APIs
-export { effect, useBatch, unTrack } from './effect';
+export { effect, useBatch, unTrack, MemoizedEffectFn, memoizedEffect } from './effect';
 
 // Reactive APIs
 export { reactive, shallowReactive, isReactive, toRaw, Reactive, isShallow } from './reactive';
