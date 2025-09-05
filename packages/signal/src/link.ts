@@ -218,6 +218,7 @@ function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
  * @param linkNode - The starting link node for propagation
  */
 export function propagate(link: Link): void {
+  if (isUntracking) return;
   const stack: Link[] = [link];
   let stackIndex = 0;
 
@@ -488,4 +489,39 @@ export function endTracking(sub: ReactiveNode, prevSub: ReactiveNode | undefined
   }
   // Clear recursive check flag.
   sub.flag &= ~ReactiveFlags.RECURSED_CHECK;
+}
+
+export let isUntracking = false;
+
+/**
+ * Runs a function without tracking its dependencies.
+ * This is useful when you want to access reactive values without creating dependencies.
+ *
+ * @param fn - Function to run without tracking
+ *
+ * @example
+ * ```ts
+ * const count = signal(0);
+ *
+ * effect(() => {
+ *   // This creates a dependency on count
+ *   console.log('Normal access:', count.value);
+ *
+ *   untrack(() => {
+ *     // This does not create a dependency
+ *     console.log('Untracked access:', count.value);
+ *   });
+ * });
+ * ```
+ */
+export function untrack<T>(fn: () => T): T {
+  const prevSub = setActiveSub(undefined);
+  const prevUntracking = isUntracking;
+  isUntracking = true;
+  try {
+    return fn();
+  } finally {
+    isUntracking = prevUntracking;
+    setActiveSub(prevSub);
+  }
 }

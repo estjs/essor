@@ -1,33 +1,28 @@
-// Import shared utility functions such as extend, isArray, isIntegerKey, isMap, isSymbol, warn.
 import { extend, isArray, isIntegerKey, isMap, isSymbol, warn } from '@estjs/shared';
-// Import core functionality for managing reactive links (dependencies).
 import {
-  type Link, // Link type definition
-  type ReactiveNode, // Reactive node type definition
-  activeSub, // Currently active subscriber
-  checkDirty, // Check if dependency is "dirty"
-  endBatch, // End batch processing
-  endTracking, // End dependency tracking
-  linkReactiveNode as link, // Create dependency link
-  propagate, // Propagate change notifications
-  setActiveSub, // Set currently active subscriber
-  shallowPropagate, // Shallow propagate changes
-  startBatch, // Start batch processing
-  startTracking, // Start dependency tracking
-  unlinkReactiveNode as unlink, // Unlink dependency
+  type Link,
+  type ReactiveNode,
+  activeSub,
+  checkDirty,
+  endBatch,
+  endTracking,
+  linkReactiveNode as link,
+  propagate,
+  setActiveSub,
+  shallowPropagate,
+  startBatch,
+  startTracking,
+  unlinkReactiveNode as unlink,
 } from './link';
-// Import constants such as operation types and reactive flags.
 import {
   ARRAY_ITERATE_KEY,
   ITERATE_KEY,
-  MAP_KEY_ITERATE_KEY, // Key for Map key iteration
+  MAP_KEY_ITERATE_KEY,
   ReactiveFlags,
-  TriggerOpTypes, // Reactive flags
+  TriggerOpTypes,
 } from './constants';
-// Import scheduler related functionality for controlling when side effects are executed.
 import { type FlushTiming, createScheduler } from './scheduler';
 
-// Define the type for effect scheduler, which is a function that can accept any arguments.
 export type EffectScheduler = (...args: any[]) => any;
 
 // Define the type for debugger events, containing effect node and extra information.
@@ -71,7 +66,6 @@ export interface ReactiveEffectRunner<T = any> {
 
 // Define specific flags for effects.
 export enum EffectFlags {
-  // Effect flags
   /**
    * Only used by ReactiveEffect
    */
@@ -626,35 +620,4 @@ export function memoizedEffect<T>(
     // Update state for next use
     currentState = newState;
   }, options);
-}
-
-/**
- * Runs a function without tracking its dependencies.
- * This is useful when you want to access reactive values without creating dependencies.
- *
- * @param fn - Function to run without tracking
- *
- * @example
- * ```ts
- * const count = signal(0);
- *
- * effect(() => {
- *   // This creates a dependency on count
- *   console.log('Normal access:', count.value);
- *
- *   untrack(() => {
- *     // This does not create a dependency
- *     console.log('Untracked access:', count.value);
- *   });
- * });
- * ```
- */
-export function untrack(fn: () => void): void {
-  const prevSub = activeSub;
-  setActiveSub(undefined);
-  try {
-    fn();
-  } finally {
-    setActiveSub(prevSub);
-  }
 }

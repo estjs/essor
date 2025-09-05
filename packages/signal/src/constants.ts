@@ -1,12 +1,4 @@
 /**
- * Reactive state flags enumeration (ReactiveFlags).
- * Used to represent various states of reactive nodes.
- * Performance optimization design:
- * 1. Use bitwise operations to implement multi-state combinations, saving more memory than multiple boolean values.
- * 2. Bitwise operations are usually faster than logical operations.
- * 3. Allow storing and efficiently operating multiple states through a single numeric value.
- */
-/**
  * Reactive flags
  */
 export enum ReactiveFlags {

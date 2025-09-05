@@ -1,5 +1,5 @@
-import { hasChanged, info, isObject } from '@estjs/shared';
-import { SignalFlags, SignalKey } from './constants';
+import { hasChanged, info } from '@estjs/shared';
+import { SIGNAL_KEY, SignalFlags } from './constants';
 import { track, trigger } from './effect';
 import { type Signal, SignalImpl, isSignal } from './signal';
 import { shallowPropagate } from './link';
@@ -40,7 +40,7 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
   }
 
   get value(): T {
-    track(this, SignalKey);
+    track(this, SIGNAL_KEY);
     // ref just proxy the value without reactive wrapping
     return this._value;
   }
@@ -64,7 +64,7 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
       }
 
       // Keep the old system for backward compatibility
-      trigger(this, 'SET', SignalKey);
+      trigger(this, 'SET', SIGNAL_KEY);
     }
   }
 }
@@ -109,5 +109,5 @@ export function ref<T>(value: T = undefined as unknown as T): Ref<T> {
  * @returns True if the value is a Ref instance
  */
 export function isRef<T>(value: unknown): value is Ref<T> {
-  return !!value && isObject(value) && !!value[SignalFlags.IS_REF];
+  return !!value && !!value[SignalFlags.IS_REF];
 }

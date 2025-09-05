@@ -1,19 +1,15 @@
-// Import shared utility functions for checking value changes, object types, and sending warnings in development mode.
 import { hasChanged, isObject, warn } from '@estjs/shared';
-// Import reactive flags and signal flags for identifying and managing object states.
 import { ReactiveFlags, SignalFlags } from './constants';
-// Import core functionality for managing reactive links (dependencies).
 import {
-  type Link, // Link type definition
-  type ReactiveNode, // Reactive node type definition
-  activeSub, // Currently active subscriber
-  batchDepth, // Current batch depth
-  flushWatchedEffects, // Flush watched effects
-  linkReactiveNode as link, // Create dependency link
+  type Link,
+  type ReactiveNode,
+  activeSub,
+  batchDepth,
+  flushWatchedEffects,
+  linkReactiveNode as link,
   propagate,
-  shallowPropagate, // Shallow propagate changes
+  shallowPropagate,
 } from './link';
-// Import toRaw and toReactive for handling conversion between raw values and reactive objects.
 import { shallowReactive, toRaw, toReactive } from './reactive';
 
 /**

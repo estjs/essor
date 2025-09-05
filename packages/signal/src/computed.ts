@@ -1,17 +1,14 @@
-// Import shared utility functions for checking value changes, function and object types, and sending warnings in development mode.
 import { hasChanged, isFunction, isObject, warn } from '@estjs/shared';
-// Import core functionality for managing reactive links (dependencies).
 import {
-  type Link, // Link type definition
-  type ReactiveNode, // Reactive node type definition
-  activeSub, // Currently active subscriber
-  checkDirty, // Check if dependency is "dirty"
-  endTracking, // End dependency tracking
-  linkReactiveNode as link, // Create dependency link
-  shallowPropagate, // Shallow propagate changes
-  startTracking, // Start dependency tracking
+  type Link,
+  type ReactiveNode,
+  activeSub,
+  checkDirty,
+  endTracking,
+  linkReactiveNode as link,
+  shallowPropagate,
+  startTracking,
 } from './link';
-// Import reactive flags and signal flags for identifying and managing object states.
 import { ReactiveFlags, SignalFlags } from './constants';
 import type { DebuggerEvent, DebuggerOptions } from './effect';
 
