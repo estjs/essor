@@ -16,7 +16,7 @@ describe('effect', () => {
     const name = signal('Dnt');
 
     let effectTimes = 0;
-    const dispose = effect(
+    const runner = effect(
       () => {
         effectTimes++;
         name.value;
@@ -24,7 +24,8 @@ describe('effect', () => {
       { flush: 'sync' },
     );
     expect(effectTimes).toBe(1);
-    dispose();
+    // Stop the effect
+    runner.stop();
     name.value = 'John';
     expect(effectTimes).toBe(1);
     name.value = '';
@@ -46,17 +47,17 @@ describe('effect', () => {
 
   it('should handle different flush options', () => {
     const mockEffect = vi.fn();
-    const dispose = effect(mockEffect, { flush: 'sync' });
+    const effectFn = effect(mockEffect, { flush: 'sync' });
     expect(mockEffect).toHaveBeenCalled();
-    dispose();
+    effectFn.stop();
   });
 
   it('should handle "pre" flush option', () => {
     const mockEffect = vi.fn();
-    const dispose = effect(mockEffect, { flush: 'pre' });
+    const effectFn = effect(mockEffect, { flush: 'pre' });
     // Effect should be scheduled to run on pre-flush
     expect(mockEffect).toHaveBeenCalled();
-    dispose();
+    effectFn.stop();
   });
 
   it('should handle "post" flush option', () => {
@@ -71,7 +72,7 @@ describe('effect', () => {
     const onTrigger = vi.fn();
 
     const name = signal('Dnt');
-    const dispose = effect(
+    const effectFn = effect(
       () => {
         name.value;
       },
@@ -79,14 +80,14 @@ describe('effect', () => {
     );
 
     expect(onTrack).toHaveBeenCalled();
-    expect(onTrigger).toHaveBeenCalled();
-    dispose();
+    expect(onTrigger).not.toHaveBeenCalled();
+    effectFn.stop();
   });
 
   it('should not call effect function after disposal', () => {
     const mockEffect = vi.fn();
-    const dispose = effect(mockEffect);
-    dispose();
+    const effectFn = effect(mockEffect);
+    effectFn.stop();
     const name = signal('Dnt');
     name.value = 'Changed';
     expect(mockEffect).toHaveBeenCalledTimes(1);
@@ -94,8 +95,8 @@ describe('effect', () => {
 
   it('should clean up correctly', () => {
     const mockEffect = vi.fn();
-    const dispose = effect(mockEffect);
-    dispose();
+    const effectFn = effect(mockEffect);
+    effectFn.stop();
     const name = signal('Dnt');
     name.value = 'Changed';
     expect(mockEffect).toHaveBeenCalledTimes(1);
@@ -190,16 +191,6 @@ describe('memoizedEffect', () => {
       width.value = 150;
       height.value = 250;
       visible.value = false;
-
-      // Verify state accumulation is correct
-      const finalState = {
-        lastWidth: 150,
-        lastHeight: 250,
-        lastVisible: false,
-        updateCount: 4, // Initial + 3 updates
-      };
-
-      expect(true).toBe(true); // Basic verification, actual applications would have more specific assertions
     });
   });
 

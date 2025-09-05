@@ -1,4 +1,5 @@
 import { warn } from '@estjs/shared';
+import { batch } from './link';
 import { computed, reactive } from './';
 
 /**
@@ -130,7 +131,12 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
         return;
       }
 
-      Object.assign(reactiveState, payload);
+      // Use batch for better performance
+      batch(() => {
+        Object.assign(reactiveState, payload);
+      });
+
+      // Notify subscribers
       subscriptions.forEach(callback => callback(reactiveState));
       actionCallbacks.forEach(callback => callback(reactiveState));
     },
@@ -156,7 +162,12 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     },
 
     reset$() {
-      Object.assign(reactiveState, initState);
+      // Use batch for better performance
+      batch(() => {
+        Object.assign(reactiveState, initState);
+      });
+
+      // Notify subscribers
       subscriptions.forEach(callback => callback(reactiveState));
       actionCallbacks.forEach(callback => callback(reactiveState));
     },

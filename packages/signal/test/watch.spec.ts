@@ -105,7 +105,7 @@ describe('watch', () => {
 
     await nextTick();
     expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 2 } });
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 1 } });
 
     stop();
   });

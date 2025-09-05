@@ -2,6 +2,7 @@ import { hasChanged, info, isObject } from '@estjs/shared';
 import { SignalFlags, SignalKey } from './constants';
 import { track, trigger } from './effect';
 import { type Signal, SignalImpl, isSignal } from './signal';
+import { shallowPropagate } from './link';
 
 /**
  * A Ref is a special type of Signal used primarily for DOM element references.
@@ -56,7 +57,14 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
     // Only trigger updates if the value has actually changed
     if (hasChanged(this._value, newValue)) {
       this._value = newValue;
-      trigger(this, SignalKey);
+
+      // Use the new link system for better performance
+      if (this.subLink) {
+        shallowPropagate(this.subLink);
+      }
+
+      // Keep the old system for backward compatibility
+      trigger(this, 'SET', SignalKey);
     }
   }
 }

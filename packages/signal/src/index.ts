@@ -4,13 +4,13 @@ export { signal, shallowSignal, isSignal, Signal } from './signal';
 export { ref, isRef, Ref } from './ref';
 
 // Effect APIs
-export { effect, useBatch, unTrack, MemoizedEffectFn, memoizedEffect } from './effect';
+export { effect, useBatch, untrack, MemoizedEffectFn, memoizedEffect } from './effect';
 
 // Reactive APIs
 export { reactive, shallowReactive, isReactive, toRaw, Reactive, isShallow } from './reactive';
 
 // Computed API
-export { computed, isComputed, Computed } from './computed';
+export { computed, isComputed, ComputedValue } from './computed';
 
 // Watch API
 export { watch } from './watch';

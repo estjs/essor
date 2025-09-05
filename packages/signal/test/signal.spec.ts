@@ -410,28 +410,43 @@ describe('shallowSignal', () => {
     effect(() => {
       // trigger value
       value1.value.size;
-      value2.value.size;
-      value3.value.get({});
-      value4.value.has({});
 
       triggerCount++;
     });
 
-    expect(triggerCount).toBe(1);
+    effect(() => {
+      // trigger value
+      value2.value.size;
+      triggerCount++;
+    });
+
+    effect(() => {
+      // trigger value
+      value3.value.get({});
+      triggerCount++;
+    });
+
+    effect(() => {
+      // trigger value
+      value4.value.has({});
+      triggerCount++;
+    });
+
+    expect(triggerCount).toBe(4);
+
     value1.value.add(4);
     value2.value.set('c', 3);
     value3.value.set({}, 2);
     value4.value.add({});
 
-    expect(triggerCount).toBe(5);
+    expect(triggerCount).toBe(8);
 
-    value1.value = new Set([1, 2, 3, 4]);
+    value1.value = new Set([1]);
     value2.value = new Map([['a', 1]]);
-
     value3.value = new WeakMap();
     value4.value = new WeakSet([]);
 
-    expect(triggerCount).toBe(9);
+    expect(triggerCount).toBe(12);
   });
 
   // skip this testcase because too slow

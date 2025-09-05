@@ -8,15 +8,12 @@ describe('branch Tracking', () => {
     const value = signal(0);
     let renderCount = 0;
 
-    effect(
-      () => {
-        if (a.value && b.value && c.value) {
-          value.value;
-        }
-        renderCount++;
-      },
-      { flush: 'sync' },
-    );
+    effect(() => {
+      if (a.value && b.value && c.value) {
+        value.value;
+      }
+      renderCount++;
+    });
 
     expect(renderCount).toBe(1);
 
@@ -83,7 +80,7 @@ describe('branch Tracking', () => {
     const c = signal(3);
 
     let runCount = 0;
-    computed(() => {
+    const computedValue = computed(() => {
       if (a.value) {
         b.value;
       }
@@ -92,6 +89,9 @@ describe('branch Tracking', () => {
       return 1;
     });
 
+    effect(() => {
+      computedValue.value;
+    });
     // Default run once to collect dependencies
     expect(runCount).toBe(1);
 

@@ -53,9 +53,19 @@
   "jsdelivr": "dist/signal.esm.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "bench": "node --expose-gc benchmark/benchmark.js && node benchmark/score.js"
   },
   "dependencies": {
     "@estjs/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@angular/core": "catalog:",
+    "@maverick-js/signals": "catalog:",
+    "@preact/signals-core": "catalog:",
+    "alien-signals": "catalog:",
+    "csv-parse": "catalog:",
+    "solid-js": "catalog:",
+    "vue": "catalog:"
   }
 }

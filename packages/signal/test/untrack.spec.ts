@@ -1,7 +1,7 @@
-import { effect, signal, unTrack } from '../src';
+import { effect, signal, untrack } from '../src';
 
-describe('unTrack', () => {
-  it('should work basic unTrack', () => {
+describe('untrack', () => {
+  it('should work basic untrack', () => {
     const count = signal(0);
     const effectFn = vi.fn();
 
@@ -9,7 +9,7 @@ describe('unTrack', () => {
       effectFn(count.value);
     });
 
-    unTrack(() => {
+    untrack(() => {
       count.value++;
       count.value++;
       count.value++;
@@ -19,13 +19,13 @@ describe('unTrack', () => {
     expect(count.value).toBe(3);
   });
 
-  it('should work in effect unTrack', () => {
+  it('should work in effect untrack', () => {
     const count = signal(0);
     const effectFn = vi.fn();
 
     effect(() => {
       effectFn(count.value);
-      unTrack(() => {
+      untrack(() => {
         count.value++;
         count.value++;
         count.value++;

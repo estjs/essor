@@ -1,5 +1,5 @@
 import { warn } from '@estjs/shared';
-import type { EffectFn } from './effect';
+
 /**
  * Represents a job that can be scheduled for execution.
  */
@@ -29,6 +29,9 @@ const p = Promise.resolve();
 
 // Flag to prevent multiple flush operations from being scheduled
 let isFlushPending = false;
+
+// Performance optimization: Use a more efficient queue implementation
+const jobSet = new Set<Job>();
 
 /**
  * Schedules a function to be executed in the next microtask.
@@ -65,7 +68,8 @@ export function nextTick(fn?: () => void): Promise<void> {
  * ```
  */
 export function queueJob(job: Job): void {
-  if (!queue.includes(job)) {
+  if (!jobSet.has(job)) {
+    jobSet.add(job);
     queue.push(job);
     queueFlush();
   }
@@ -131,6 +135,7 @@ export function flushJobs(): void {
   let job: Job | undefined;
   while ((job = queue.shift())) {
     try {
+      jobSet.delete(job);
       job();
     } catch (error) {
       if (__DEV__) {
@@ -159,24 +164,37 @@ function flushPreFlushCbs(): void {
  * Creates a scheduler function for an effect based on the specified flush timing.
  * This is used internally by the effect system to control when effects are executed.
  *
- * @param {EffectFn} effect - The effect function to schedule
+ * @param {ReactiveEffect} effect - The effect function to schedule
  * @param {FlushTiming} flush - When to execute the effect
  * @returns A scheduler function that will run the effect at the appropriate time
  *
  * @internal
  */
-export function createScheduler(effect: EffectFn, flush: FlushTiming): () => void {
+export function createScheduler(fn: () => void, flush: FlushTiming): () => void {
   switch (flush) {
     case 'sync':
-      return () => effect();
+      return () => fn();
     case 'pre':
-      return () => queuePreFlushCb(effect);
+      return () => queuePreFlushCb(fn);
     case 'post':
-      return () => queueJob(effect);
+      return () => queueJob(fn);
     default:
       if (__DEV__) {
         warn(`Invalid flush timing: ${flush}. Defaulting to 'post'.`);
       }
-      return () => queueJob(effect);
+      return () => queueJob(fn);
   }
+}
+
+/**
+ * Clears all queued jobs and callbacks.
+ * Useful for testing or cleanup purposes.
+ *
+ * @internal
+ */
+export function clearQueue(): void {
+  queue.length = 0;
+  activePreFlushCbs.length = 0;
+  isFlushPending = false;
+  jobSet.clear();
 }

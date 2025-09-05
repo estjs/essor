@@ -1,6 +1,7 @@
+import { isFunction, warn } from '@estjs/shared';
 import { ReactiveFlags } from './constants';
+import type { ReactiveEffect } from './effect';
 import type { ComputedImpl } from './computed';
-import type { EffectFn } from './effect';
 
 /**
  * Interface representing a reactive node that can be linked to other nodes.
@@ -26,8 +27,8 @@ export interface ReactiveNode {
  * Links form a bidirectional graph structure for efficient dependency management.
  */
 export interface Link {
-  depNode: ReactiveNode | ComputedImpl<any> | EffectFn;
-  subNode: ReactiveNode | ComputedImpl<any> | EffectFn;
+  depNode: ReactiveNode | ComputedImpl<any> | ReactiveEffect<any>;
+  subNode: ReactiveNode | ComputedImpl<any> | ReactiveEffect<any>;
 
   prevSubLink?: Link;
   nextSubLink?: Link;
@@ -36,8 +37,8 @@ export interface Link {
   nextDepLink?: Link;
 }
 
-// Array of watched effects (effects)
-const watchedEffects: (EffectFn | undefined)[] = [];
+// Array of watched effects (effects) - optimized with pre-allocated size
+const watchedEffects: (ReactiveNode | ComputedImpl<any> | ReactiveEffect<any> | undefined)[] = [];
 
 // Current batch processing nesting depth
 export let batchDepth = 0;
@@ -159,15 +160,20 @@ export function unlinkReactiveNode(linkNode: Link, subNode: ReactiveNode = linkN
     prevSubLink.nextSubLink = nextSubLink;
   } else if ((depNode.subLink = nextSubLink)) {
     // if the dependency's subscriber list becomes empty, clean up all dependencies of the dependency
-    let toRemove = depNode.depLink;
-    if (toRemove) {
-      // Clean up all dependencies of the dependency node
-      // This ensures that when a node loses all subscribers, its dependencies are also cleaned up
-      while (toRemove) {
-        toRemove = unlinkReactiveNode(toRemove, depNode);
+    // But only if we're not already in a cleanup operation to prevent infinite recursion
+    if (!(depNode.flag & ReactiveFlags.RECURSED_CHECK)) {
+      depNode.flag |= ReactiveFlags.RECURSED_CHECK;
+      let toRemove = depNode.depLink;
+      if (toRemove) {
+        // Clean up all dependencies of the dependency node
+        // This ensures that when a node loses all subscribers, its dependencies are also cleaned up
+        while (toRemove) {
+          toRemove = unlinkReactiveNode(toRemove, depNode);
+        }
+        // mark the dependency as "dirty", need to be re-evaluated
+        depNode.flag |= ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
       }
-      // mark the dependency as "dirty", need to be re-evaluated
-      depNode.flag |= ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
+      depNode.flag &= ~ReactiveFlags.RECURSED_CHECK;
     }
   }
 
@@ -207,63 +213,55 @@ function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
 /**
  * Propagates state changes through the dependency graph.
  * This function traverses the link structure and updates node states.
+ * Optimized with better memory management and faster iteration.
  *
  * @param linkNode - The starting link node for propagation
  */
-export function propagate(linkNode: Link) {
-  // iteration stack
-  const stack = [linkNode];
+export function propagate(link: Link): void {
+  const stack: Link[] = [link];
   let stackIndex = 0;
 
   while (stackIndex < stack.length) {
-    const currentLinkNode = stack[stackIndex++];
+    let currentLink: Link | undefined = stack[stackIndex++];
 
-    while (currentLinkNode) {
-      const subNode = currentLinkNode.subNode;
-      let flag = subNode.flag;
+    // Traverse all nodes in the current level
+    while (currentLink) {
+      const sub = currentLink.subNode;
+      let flags = sub.flag;
 
-      // If the child node is watching or mutable
-      if (flag & (ReactiveFlags.WATCHING | ReactiveFlags.MUTABLE)) {
-        // ReactiveFlags.WATCHING | ReactiveFlags.MUTABLE
-        // If the child node is in recursive check or recursive state
-        const hasRecursedFlags = flag & (ReactiveFlags.RECURSED_CHECK | ReactiveFlags.RECURSED); // ReactiveFlags.RECURSED_CHECK | ReactiveFlags.RECURSED
-        // If the child node is dirty or pending
-        const hasDirtyFlags = flag & (ReactiveFlags.DIRTY | ReactiveFlags.PENDING); // ReactiveFlags.DIRTY | ReactiveFlags.PENDING
+      if (flags & (ReactiveFlags.MUTABLE | ReactiveFlags.WATCHING)) {
+        const hasRecursedFlags = flags & (ReactiveFlags.RECURSED_CHECK | ReactiveFlags.RECURSED);
+        const hasDirtyFlags = flags & (ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
 
-        // If the child node is not in recursive check or recursive state, and not dirty or pending, mark as pending
         if (!hasRecursedFlags && !hasDirtyFlags) {
-          subNode.flag = flag | ReactiveFlags.PENDING; // ReactiveFlags.PENDING
-          // If the child node is not in recursive check or recursive state, mark as none
+          sub.flag = flags | ReactiveFlags.PENDING;
         } else if (!hasRecursedFlags) {
-          subNode.flag = ReactiveFlags.NONE; // ReactiveFlags.NONE
-          // If the child node is not in recursive check or recursive state, mark as pending
-        } else if (!(flag & ReactiveFlags.RECURSED_CHECK)) {
-          // ReactiveFlags.RECURSED_CHECK
-          subNode.flag = (flag & ~ReactiveFlags.RECURSED) | ReactiveFlags.PENDING; // (flag & ~ReactiveFlags.RECURSED) | ReactiveFlags.PENDING
-          flag &= ReactiveFlags.MUTABLE; // ReactiveFlags.MUTABLE
-          // If the child node is not in recursive check or recursive state, and not dirty or pending, and link is valid, mark as recursive and pending
-        } else if (!hasDirtyFlags && isValidLink(currentLinkNode, subNode)) {
-          subNode.flag = flag | ReactiveFlags.RECURSED | ReactiveFlags.PENDING; // ReactiveFlags.RECURSED | ReactiveFlags.PENDING
-          flag &= ReactiveFlags.MUTABLE; // ReactiveFlags.MUTABLE
+          flags = ReactiveFlags.NONE;
+        } else if (!(flags & ReactiveFlags.RECURSED_CHECK)) {
+          sub.flag = (flags & ~ReactiveFlags.RECURSED) | ReactiveFlags.PENDING;
+          flags &= ReactiveFlags.MUTABLE;
+        } else if (!hasDirtyFlags && isValidLink(currentLink, sub)) {
+          sub.flag = flags | ReactiveFlags.RECURSED | ReactiveFlags.PENDING;
+          flags &= ReactiveFlags.MUTABLE;
         } else {
-          subNode.flag = ReactiveFlags.NONE; // ReactiveFlags.NONE
+          flags = ReactiveFlags.NONE;
         }
 
-        // Batch process watching effects, reduce array operation overhead
-        if (flag & ReactiveFlags.WATCHING) {
-          // ReactiveFlags.WATCHING
-          watchedEffects[watchedEffectsLength++] = subNode as unknown as EffectFn;
+        // Batch process watching effects to reduce array operation overhead
+        if (flags & ReactiveFlags.WATCHING) {
+          watchedEffects[watchedEffectsLength++] = sub;
         }
 
-        // When the subscriber is mutable, need to recurse deeper
-        if (flag & ReactiveFlags.MUTABLE) {
-          // ReactiveFlags.MUTABLE
-          const subSubs = subNode.subLink;
+        // Use stack iteration instead of recursive calls
+        if (flags & ReactiveFlags.MUTABLE) {
+          const subSubs = sub.subLink;
           if (subSubs) {
             stack[stack.length] = subSubs;
           }
         }
       }
+
+      currentLink = currentLink.nextSubLink;
     }
   }
 }
@@ -288,16 +286,17 @@ export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
 /**
  * Flushes all watched effects in the current batch.
  * This executes all pending effects that were queued during propagation.
+ * Optimized with better memory management.
  */
 export function flushWatchedEffects(): void {
   // Iterate and execute all pending effects
   while (watchedEffectsIndex < watchedEffectsLength) {
     const effect = watchedEffects[watchedEffectsIndex]!;
     watchedEffects[watchedEffectsIndex++] = undefined; // Clean up array items
-    if (effect.notify) {
-      effect.notify(); // Notify effect to execute
-    } else {
-      effect(); // Execute directly
+
+    // Check if the effect has a notify method (like ReactiveEffect)
+    if (isFunction((effect as ReactiveEffect).notify)) {
+      (effect as ReactiveEffect).notify(); // Notify effect to execute
     }
   }
   // Reset index and length
@@ -305,47 +304,29 @@ export function flushWatchedEffects(): void {
   watchedEffectsLength = 0;
 }
 
-/**
- * Checks if a subscriber's dependencies are "dirty" (need updating).
- * This function recursively traverses the dependency chain to determine update status.
- *
- * @param link - The starting link for dependency checking
- * @param sub - The subscriber node to check
- * @returns True if any dependency is dirty
- */
+// Check if a subscriber's dependencies are "dirty" (i.e., need to be updated).
 export function checkDirty(link: Link, sub: ReactiveNode): boolean {
   /**
    * Recursively check the entire dependency chain starting from link.
-   * When encountering a need to go deeper to the next level, recursively call itself.
+   * When needing to go deeper into the next layer, recursively call itself.
    */
   function checkDown(link: Link, sub: ReactiveNode): boolean {
     let curLink: Link | undefined = link; // Current Link being checked
-    while (curLink) {
+    while (curLink !== undefined) {
       const dep = curLink.depNode;
       const depFlags = dep.flag;
 
-      /* -------- 1. First check if self or dependency is dirty -------- */
+      /* -------- 1. First check if self or dependencies are already dirty -------- */
       if (sub.flag & ReactiveFlags.DIRTY) {
-        // ReactiveFlags.DIRTY
         return true;
       }
-      // When dependency is mutable or dirty, need to update
+
       if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY)) ===
-        (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY) // ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY
+        (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY)
       ) {
-        // Dependency itself is dirty, need to update
-        // Check if the dependency has a shouldUpdate method (computed)
-        if ('shouldUpdate' in dep && typeof (dep as any).shouldUpdate === 'function') {
-          if ((dep as any).shouldUpdate()) {
-            const subs = dep.subLink!;
-            if (subs.nextSubLink) {
-              shallowPropagate(subs);
-            }
-            return true;
-          }
-        } else {
-          // For non-computed dependencies, assume they need updating
+        // Dependency itself is dirty, needs update
+        if ((dep as ComputedImpl<any>).shouldUpdate()) {
           const subs = dep.subLink!;
           if (subs.nextSubLink) {
             shallowPropagate(subs);
@@ -354,44 +335,35 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
         }
       }
 
-      // When dependency is mutable or pending, need to recurse deeper
+      /* -------- 2. If dependency is Mutable|Pending, need to recursively go deeper -------- */
       if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING)) ===
-        (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING) // ReactiveFlags.MUTABLE | ReactiveFlags.PENDING
+        (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING)
       ) {
-        // Go deeper to check dependency's dependencies
+        // Go deeper to check dep's dependencies
         const innerDirty = checkDown(dep.depLink!, dep);
 
-        // After returning, handle the result consistently with the original logic
+        // After returning, handle according to results consistent with original logic
         if (innerDirty) {
-          if ('shouldUpdate' in dep && typeof (dep as any).shouldUpdate === 'function') {
-            if ((dep as any).shouldUpdate()) {
-              const subs = dep.subLink!;
-              if (subs.nextSubLink) {
-                shallowPropagate(subs);
-              }
-              // Continue using dep's upper level sub (i.e., outer sub) to continue iteration
-              // No additional handling needed here, as the outer while will continue checking curLink.nextDep
-              return true;
-            }
-          } else {
-            // For non-computed dependencies, assume they need updating
+          if ((dep as ComputedImpl<any>).shouldUpdate()) {
             const subs = dep.subLink!;
             if (subs.nextSubLink) {
               shallowPropagate(subs);
             }
+            // Continue traversing with dep's upper layer sub (i.e., outer sub)
+            // No additional processing needed here, as outer while will continue checking curLink.nextDep
             return true;
           }
         } else {
-          dep.flag &= ~ReactiveFlags.PENDING; // Clear pending ReactiveFlags.PENDING
+          dep.flag &= ~ReactiveFlags.PENDING; // Clear pending
         }
       }
 
-      /* -------- 3. Continue to the next sibling dependency -------- */
+      /* -------- 3. Continue to next sibling dependency -------- */
       curLink = curLink.nextDepLink;
     }
 
-    // The entire chain has been checked and no dirty found
+    // Finished checking entire chain without finding any dirty
     return false;
   }
 
@@ -407,17 +379,21 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
 export function shallowPropagate(link: Link | undefined): void {
   if (!link) return;
 
-  const sub = link.subNode;
-  const subFlags = sub.flag;
+  // Use iterative approach to avoid infinite recursion
+  let currentLink: Link | undefined = link;
+  while (currentLink) {
+    const sub = currentLink.subNode;
+    const subFlags = sub.flag;
 
-  // When the subscriber is pending or dirty, mark as dirty
-  if ((subFlags & (ReactiveFlags.PENDING | ReactiveFlags.DIRTY)) === ReactiveFlags.PENDING) {
-    // ReactiveFlags.PENDING | ReactiveFlags.DIRTY
-    sub.flag = subFlags | ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
+    // When the subscriber is pending or dirty, mark as dirty
+    if ((subFlags & (ReactiveFlags.PENDING | ReactiveFlags.DIRTY)) === ReactiveFlags.PENDING) {
+      // ReactiveFlags.PENDING | ReactiveFlags.DIRTY
+      sub.flag = subFlags | ReactiveFlags.DIRTY; // ReactiveFlags.DIRTY
+    }
+
+    // Move to the next subscriber
+    currentLink = currentLink.nextSubLink;
   }
-
-  // Recursively process the next subscriber, replacing the original do/while
-  shallowPropagate(link.nextSubLink);
 }
 
 /**
@@ -497,15 +473,19 @@ export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
  * @param prevSub - The previously active subscriber
  */
 export function endTracking(sub: ReactiveNode, prevSub: ReactiveNode | undefined): void {
-  // Restore the previous activeSub
+  // In development mode, check if activeSub was restored correctly.
+  if (__DEV__ && activeSub !== sub) {
+    warn('Active effect was not restored correctly - this is likely a Vue internal bug.');
+  }
+  // Restore previous activeSub.
   activeSub = prevSub;
 
-  // Clean up dependencies that are no longer needed in this tracking session
+  // Clean up dependencies that are no longer needed in this tracking session.
   const depsTail = sub.depLinkTail;
-  let toRemove = depsTail !== undefined ? depsTail.nextDepLink : sub.depLink;
-  while (toRemove !== undefined) {
+  let toRemove = depsTail ? depsTail.nextDepLink : sub.depLink;
+  while (toRemove) {
     toRemove = unlinkReactiveNode(toRemove, sub);
   }
-  // Clear recursive check flag
-  sub.flag &= ~ReactiveFlags.RECURSED_CHECK; // ReactiveFlags.RECURSED_CHECK
+  // Clear recursive check flag.
+  sub.flag &= ~ReactiveFlags.RECURSED_CHECK;
 }

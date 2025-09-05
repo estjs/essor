@@ -1,8 +1,4 @@
 /**
- * @file This file defines constants used throughout the reactive system, including state flags, operation types, and internal identifiers.
- */
-
-/**
  * Reactive state flags enumeration (ReactiveFlags).
  * Used to represent various states of reactive nodes.
  * Performance optimization design:
@@ -29,63 +25,73 @@ export enum EffectFlags {
   PAUSED = 1 << 8, // Paused
   STOP = 1 << 10, // Stopped
 }
+// Define operation type constants
+export const TriggerOpTypes = {
+  SET: 'SET',
+  ADD: 'ADD',
+  DELETE: 'DELETE',
+  CLEAR: 'CLEAR',
+} as const;
 
 /**
  * Internal flags used to mark and identify different types of reactive objects.
- * These flags are attached to objects as properties to indicate their reactive characteristics.
+ * These flags are attached as properties to objects to indicate their reactive characteristics.
  */
 export enum SignalFlags {
   /** Mark an object as reactive */
-  IS_REACTIVE = '_isReactive',
+  IS_REACTIVE = '_IS_REACTIVE',
 
-  /** Mark an object as read-only */
-  IS_READONLY = '_isReadonly',
+  /** Mark an object as readonly */
+  IS_READONLY = '_IS_READONLY',
 
   /** Mark an object as shallow reactive (only top-level properties are reactive) */
-  IS_SHALLOW = '_isShallow',
+  IS_SHALLOW = '_IS_SHALLOW',
 
   /** Used to access the raw (non-reactive) version of an object */
-  RAW = '_raw',
+  RAW = '_RAW',
 
   /** Mark an object as a signal */
-  IS_SIGNAL = '_isSignal',
+  IS_SIGNAL = '_IS_SIGNAL',
 
   /** Mark an object as a computed property */
-  IS_COMPUTED = '_isComputed',
+  IS_COMPUTED = '_IS_COMPUTED',
 
   /** Mark an object as a ref */
-  IS_REF = '_isRef',
+  IS_REF = '_IS_REF',
+
+  /** Mark an object as an effect */
+  IS_EFFECT = '_IS_EFFECT',
 }
 
 /** Symbol used to track signal value changes */
-export const SignalKey = Symbol(__DEV__ ? 'SignalKey' : '');
+export const SIGNAL_KEY: unique symbol = Symbol(__DEV__ ? 'Signal_Key' : '');
 
 /** Symbol used to track array operation changes */
-export const ArrayKey = Symbol(__DEV__ ? 'ArrayKey' : '');
+export const ARRAY_KEY: unique symbol = Symbol(__DEV__ ? 'Array_Key' : '');
 
 /** Symbol used to track regular collection (Map/Set) operation changes */
-export const CollectionKey = Symbol(__DEV__ ? 'CollectionKey' : '');
+export const COLLECTION_KEY: unique symbol = Symbol(__DEV__ ? 'Collection_Key' : '');
 
 /** Symbol used to track weak collection (WeakMap/WeakSet) operation changes */
-export const WeakCollectionKey = Symbol(__DEV__ ? 'WeakCollectionKey' : '');
+export const WEAK_COLLECTION_KEY: unique symbol = Symbol(__DEV__ ? 'WeakCollection_Key' : '');
 
 /** Symbol used to track iteration operations */
-export const IterateKey = Symbol(__DEV__ ? 'IterateKey' : '');
+export const ITERATE_KEY: unique symbol = Symbol(__DEV__ ? 'Iterate_Key' : '');
 
 /** Symbol used to track Map key iteration operations */
-export const MapKeyIterateKey = Symbol(__DEV__ ? 'MapKeyIterateKey' : '');
+export const MAP_KEY_ITERATE_KEY: unique symbol = Symbol(__DEV__ ? 'MapKeyIterate_Key' : '');
 
 /** Symbol used to track computed property dependencies */
-export const ComputedKey = Symbol(__DEV__ ? 'ComputedKey' : '');
+export const COMPUTED_KEY: unique symbol = Symbol(__DEV__ ? 'Computed_Key' : '');
 
 /** Unique symbol used to track array iteration */
-export const ARRAY_ITERATE_KEY: unique symbol = Symbol(__DEV__ ? 'Array iterate' : '');
+export const ARRAY_ITERATE_KEY: unique symbol = Symbol(__DEV__ ? 'Array_Iterate_Key' : '');
 
-export type TrackingKey =
-  | typeof SignalKey
-  | typeof ArrayKey
-  | typeof CollectionKey
-  | typeof WeakCollectionKey
-  | typeof IterateKey
-  | typeof MapKeyIterateKey
-  | typeof ComputedKey;
+export type TRACKING_KEY =
+  | typeof SIGNAL_KEY
+  | typeof ARRAY_KEY
+  | typeof COLLECTION_KEY
+  | typeof WEAK_COLLECTION_KEY
+  | typeof ITERATE_KEY
+  | typeof MAP_KEY_ITERATE_KEY
+  | typeof COMPUTED_KEY;
