@@ -8,27 +8,27 @@ export interface AsyncComponentOptions {
 }
 
 /**
- * AsyncComponent - 懒加载组件
- * @param {AsyncComponentOptions} options - 组件配置，包含loader和errorComponent
- * @returns {Function} 返回一个组件函数
+ * AsyncComponent - Lazy loading component
+ * @param {AsyncComponentOptions} options - Component configuration containing loader and errorComponent
+ * @returns {Function} Returns a component function
  */
 export function AsyncComponent(options: AsyncComponentOptions) {
-  // 返回一个函数组件
+  // Return a functional component
   return function (props: ComponentProps): Node {
-    // 创建占位节点
+    // Create placeholder node
     const placeholder = document.createComment('async-component');
 
-    // 组件状态
+    // Component state
     const loadedComponent = signal<any>(null);
     const isLoading = signal(true);
     const error = signal<Error | null>(null);
 
-    // 加载组件
+    // Load component
     const loadComponent = async () => {
       try {
         isLoading.value = true;
 
-        // 获取Suspense上下文，注册异步加载
+        // Get Suspense context and register async loading
         const suspenseContext = (window as any).__SUSPENSE_CONTEXT__;
         const loadPromise = options.loader();
 
@@ -36,7 +36,7 @@ export function AsyncComponent(options: AsyncComponentOptions) {
           suspenseContext.registerPromise(loadPromise);
         }
 
-        // 等待组件加载完成
+        // Wait for component to load
         const component = await loadPromise;
         loadedComponent.value = component?.default || component;
       } catch (error_) {
@@ -47,29 +47,29 @@ export function AsyncComponent(options: AsyncComponentOptions) {
       }
     };
 
-    // 组件挂载时加载
+    // Load component when mounted
     onMounted(() => {
       loadComponent();
 
-      // 监听组件加载状态，渲染组件
+      // Listen to component loading state and render component
       effect(() => {
         if (!placeholder.parentNode) return;
 
         if (error.value && options.errorComponent) {
-          // 渲染错误组件
+          // Render error component
           const errorNode = options.errorComponent(error.value);
 
           if (errorNode && placeholder.parentNode) {
-            // 替换占位符
+            // Replace placeholder
             placeholder.parentNode.replaceChild(errorNode, placeholder);
           }
         } else if (loadedComponent.value) {
-          // 渲染加载的组件
+          // Render loaded component
           try {
             const loadedNode = loadedComponent.value(props);
 
             if (loadedNode && placeholder.parentNode) {
-              // 替换占位符
+              // Replace placeholder
               placeholder.parentNode.replaceChild(loadedNode, placeholder);
             }
           } catch (error_) {

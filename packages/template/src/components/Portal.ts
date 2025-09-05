@@ -5,46 +5,46 @@ import type { ComponentProps } from '../component';
 
 export interface PortalProps extends ComponentProps {
   container?: Element | string;
-  // 是否在Portal组件卸载时保留内容
+  // Whether to keep content when Portal component unmounts
   keepAlive?: boolean;
 }
 
 /**
- * Portal组件 - 将内容渲染到DOM树的其他位置
- * @param {PortalProps} props - 组件属性，包含container和children
- * @returns {Node} 一个注释节点作为占位符
+ * Portal component - Renders content to other locations in the DOM tree
+ * @param {PortalProps} props - Component props containing container and children
+ * @returns {Node} A comment node as placeholder
  */
 export function Portal(props: PortalProps): Node {
-  // 创建一个注释节点作为占位符
+  // Create a comment node as placeholder
   const portalNode = document.createComment('portal');
 
-  // 容器信号量，允许动态更改
+  // Container signal, allows dynamic changes
   const containerSignal = signal<Element | null>(null);
 
-  // 创建DOM容器来包装子元素，便于跟踪和清理
+  // Create DOM container to wrap child elements for easier tracking and cleanup
   const wrapper = document.createElement('div');
-  wrapper.style.display = 'contents'; // 不影响DOM布局
+  wrapper.style.display = 'contents'; // Doesn't affect DOM layout
   wrapper.dataset.portalId = `portal-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
-  // 获取目标容器
+  // Get target container
   const getContainer = (): Element | null => {
     if (!props.container) {
-      // 默认使用document.body
+      // Default to document.body
       return document.body;
     }
 
     if (typeof props.container === 'string') {
-      // 如果是字符串，视为选择器
+      // If string, treat as selector
       return document.querySelector(props.container);
     }
 
-    // 直接返回Element对象
+    // Return Element object directly
     return props.container;
   };
 
-  // 清理函数
+  // Cleanup function
   const cleanup = () => {
-    // 如果设置了keepAlive，则不清理节点
+    // If keepAlive is set, don't clean up nodes
     if (props.keepAlive) return;
 
     const container = containerSignal.value;
@@ -53,9 +53,9 @@ export function Portal(props: PortalProps): Node {
     }
   };
 
-  // 更新目标容器和内容
+  // Update target container and content
   const updatePortal = () => {
-    cleanup(); // 先清理旧的，避免多次添加
+    cleanup(); // Clean up old first to avoid multiple additions
 
     const container = getContainer();
     if (!container) {
@@ -65,35 +65,35 @@ export function Portal(props: PortalProps): Node {
 
     containerSignal.value = container;
 
-    // 将包装器添加到目标容器
+    // Add wrapper to target container
     container.appendChild(wrapper);
 
-    // 在包装器中渲染内容
+    // Render content in wrapper
     if (props.children) {
-      // 渲染子内容
-      wrapper.innerHTML = ''; // 清空旧内容
+      // Render child content
+      wrapper.innerHTML = ''; // Clear old content
       insert(wrapper, () => props.children);
     }
   };
 
-  // 组件挂载时，将子节点渲染到目标容器
+  // When component mounts, render child nodes to target container
   onMounted(() => {
     updatePortal();
 
-    // 动态监听子内容和容器变化
+    // Dynamically listen to child content and container changes
     effect(() => {
-      // 触发依赖收集，当props.children或props.container改变时更新
+      // Trigger dependency collection, update when props.children or props.container changes
       props.children;
       props.container;
       updatePortal();
     });
   });
 
-  // 组件销毁时清理
+  // Clean up when component is destroyed
   onDestroyed(() => {
     cleanup();
   });
 
-  // 返回占位符
+  // Return placeholder
   return portalNode;
 }

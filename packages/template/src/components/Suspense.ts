@@ -8,31 +8,31 @@ export interface SuspenseProps extends ComponentProps {
 }
 
 /**
- * Suspense组件 - 处理异步组件加载，显示fallback内容
- * @param {SuspenseProps} props - 组件属性，包含fallback和children
- * @returns {Node} 一个容器节点
+ * Suspense component - handles async component loading, displays fallback content
+ * @param {SuspenseProps} props - Component props containing fallback and children
+ * @returns {Node} A container node
  */
 export function Suspense(props: SuspenseProps): Node {
-  // 创建一个容器节点
+  // Create a container node
   const container = document.createElement('div');
-  container.style.display = 'contents'; // 不影响DOM结构
+  container.style.display = 'contents'; // Doesn't affect DOM structure
 
-  // 创建加载状态信号
+  // Create loading state signal
   const isLoading = signal(true);
-  // 创建Promise收集器
+  // Create Promise collector
   const pendingPromises: Set<Promise<any>> = new Set();
 
-  // 设置全局上下文，让后代组件可以注册promise
+  // Set global context to allow descendant components to register promises
   const suspenseContext = {
     registerPromise: (promise: Promise<any>) => {
-      // 注册promise
+      // Register promise
       pendingPromises.add(promise);
       isLoading.value = true;
 
-      // 处理promise完成
+      // Handle promise completion
       promise.finally(() => {
         pendingPromises.delete(promise);
-        // 如果没有待处理的promise，显示内容
+        // If no pending promises, display content
         if (pendingPromises.size === 0) {
           isLoading.value = false;
         }
@@ -42,34 +42,34 @@ export function Suspense(props: SuspenseProps): Node {
 
   (window as any).__SUSPENSE_CONTEXT__ = suspenseContext;
 
-  // 监听加载状态，切换显示内容
+  // Listen to loading state, switch display content
   onMounted(() => {
     const renderContent = () => {
-      // 清空容器
+      // Clear container
       container.innerHTML = '';
 
       if (isLoading.value && props.fallback) {
-        // 显示加载中状态
+        // Display loading state
         insert(container, () => props.fallback);
       } else if (props.children) {
-        // 显示子内容
+        // Display child content
         insert(container, () => props.children);
       }
     };
 
-    // 创建效果监听isLoading信号
+    // Create effect to listen to isLoading signal
     effect(() => {
-      isLoading.value; // 订阅信号变化
+      isLoading.value; // Subscribe to signal changes
       renderContent();
     });
 
-    // 如果没有注册promise，立即显示内容
+    // If no promises registered, display content immediately
     if (pendingPromises.size === 0) {
       isLoading.value = false;
     }
   });
 
-  // 组件销毁时清理
+  // Clean up when component is destroyed
   onDestroyed(() => {
     delete (window as any).__SUSPENSE_CONTEXT__;
   });

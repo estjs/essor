@@ -1,15 +1,15 @@
 import { insert } from '../binding';
 import { createContext, withContext } from '../context';
 /**
- * Fragment 组件的类型定义
+ * Type definition for Fragment component
  */
 export interface FragmentProps {
   children: JSX.Element | JSX.Element[] | (() => JSX.Element | JSX.Element[]) | null;
 }
 
 /**
- * Fragment 组件 - 用于包裹多个子元素而不创建额外的 DOM 节点
- * 优化性能，支持响应式更新
+ * Fragment component - Used to wrap multiple child elements without creating extra DOM nodes
+ * Optimized performance, supports reactive updates
  */
 export function Fragment(props: FragmentProps): DocumentFragment {
   const fragment = document.createDocumentFragment();
@@ -23,7 +23,7 @@ export function Fragment(props: FragmentProps): DocumentFragment {
 }
 
 /**
- * 判断是否为 Fragment 节点
+ * Determine if it's a Fragment node
  */
 export function isFragment(node: unknown): boolean {
   return node instanceof DocumentFragment;
