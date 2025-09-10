@@ -15,5 +15,5 @@ export default estjs(
       'no-prototype-builtins': 'off',
     },
   },
-  { unocss: false, node: false, pnpm: true },
+  { unocss: false, node: false },
 );

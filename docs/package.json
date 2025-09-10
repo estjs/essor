@@ -12,6 +12,6 @@
     "build": "athen build ./"
   },
   "dependencies": {
-    "athen": "catalog:"
+    "athen": "^0.0.1"
   }
 }

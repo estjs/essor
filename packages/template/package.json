@@ -1,6 +1,6 @@
 {
   "name": "@estjs/template",
-  "version": "0.0.14",
+  "version": "^0.0.14",
   "description": "",
   "type": "module",
   "keywords": [],
@@ -59,6 +59,6 @@
   "dependencies": {
     "@estjs/shared": "workspace:*",
     "@estjs/signal": "workspace:*",
-    "csstype": "catalog:"
+    "csstype": "^3.1.3"
   }
 }

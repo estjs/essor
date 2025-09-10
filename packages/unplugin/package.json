@@ -1,6 +1,6 @@
 {
   "name": "@estjs/unplugin",
-  "version": "0.0.14",
+  "version": "^0.0.14",
   "description": "",
   "type": "module",
   "keywords": [
@@ -100,18 +100,18 @@
     }
   },
   "dependencies": {
-    "@babel/core": "catalog:",
+    "@babel/core": "^7.28.4",
     "@estjs/babel-plugin": "workspace:*",
-    "unplugin": "catalog:"
+    "unplugin": "^2.3.10"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "chalk": "catalog:",
-    "fast-glob": "catalog:",
-    "rollup": "catalog:",
-    "tsup": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "webpack": "catalog:"
+    "@types/node": "^18.19.124",
+    "chalk": "^5.6.2",
+    "fast-glob": "^3.3.3",
+    "rollup": "^4.50.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.20",
+    "webpack": "^5.101.3"
   }
 }

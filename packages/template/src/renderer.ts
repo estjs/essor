@@ -44,7 +44,7 @@ export function createApp(component: (props: ComponentProps) => Node, target: st
     container.innerHTML = '';
   }
 
-  const rootComponent = createComponent(component);
+  const rootComponent = createComponent(component as any);
   const rootNode = rootComponent.mount(container);
 
   if (rootNode) {

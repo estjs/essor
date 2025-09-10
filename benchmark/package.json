@@ -13,14 +13,14 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "catalog:",
+    "@estjs/eslint-config": "^2.1.4",
     "@estjs/unplugin": "workspace:*",
-    "@types/node": "catalog:",
-    "eslint": "catalog:",
-    "jsdom": "catalog:",
-    "typescript": "catalog:",
-    "vite": "catalog:",
-    "vite-plugin-inspect": "catalog:",
-    "vitest": "catalog:"
+    "@types/node": "^18.19.124",
+    "eslint": "^9.35.0",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.2",
+    "vite": "^5.4.20",
+    "vite-plugin-inspect": "^11.3.3",
+    "vitest": "^3.2.4"
   }
 }
