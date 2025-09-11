@@ -7,9 +7,7 @@
   "type": "module",
   "keywords": [
     "signal",
-    "template",
-    "jsx",
-    "tsx",
+    "essor",
     "framework"
   ],
   "license": "MIT",
