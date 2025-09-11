@@ -3,9 +3,6 @@ import { isComponent } from './component';
 import { isHydrating } from './server/shared';
 import type { AnyNode } from './types';
 
-// Correctly import process
-const process = require('node:process');
-
 // Use more meaningful prefixes and naming
 const AUTO_KEY_PREFIX = '$$_auto_';
 let KEY_COUNTER = 0;
