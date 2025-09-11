@@ -8,7 +8,8 @@
     "estjs",
     "jiangxd",
     "tsup",
-    "typecheck"
+    "typecheck",
+    "tmpl"
   ],
   "prettier.enable": false,
   "editor.codeActionsOnSave": {
