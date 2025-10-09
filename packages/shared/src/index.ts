@@ -64,5 +64,3 @@ export {
   isDelegatedEvent,
   isBooleanAttr,
 } from './dom';
-
-export { queueJob, createScheduler, nextTick } from './scheduler';

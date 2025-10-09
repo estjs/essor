@@ -194,17 +194,3 @@ export const isIntegerKey = (key: unknown): boolean =>
 export function isHTMLNode(val: unknown): val is HTMLElement {
   return val instanceof HTMLElement;
 }
-
-export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
-  return val instanceof HTMLInputElement;
-}
-export function isHtmlSelectElement(val: unknown): val is HTMLSelectElement {
-  return val instanceof HTMLSelectElement;
-}
-export function isHtmlTextAreaElement(val: unknown): val is HTMLTextAreaElement {
-  return val instanceof HTMLTextAreaElement;
-}
-
-export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
-  return val instanceof HTMLFormElement;
-}
