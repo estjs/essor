@@ -40,10 +40,6 @@ export {
   isUndefined,
   isBoolean,
   isIntegerKey,
-  isHtmlFormElement,
-  isHtmlInputElement,
-  isHtmlTextAreaElement,
-  isHtmlSelectElement,
   type StringNumber,
 } from './is';
 
