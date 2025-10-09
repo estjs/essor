@@ -1,6 +1,5 @@
 import { createApp, shallowSignal, signal } from 'essor';
 import './style.css';
-
 const A = [
   'pretty',
   'large',
@@ -147,7 +146,7 @@ function Jumbotron() {
     <div class="jumbotron">
       <div class="row">
         <div class="col-md-6">
-          <h1>Essor keyed</h1>
+          <h1>Essor Benchmark Keyed</h1>
         </div>
         <div class="col-md-6">
           <div class="row">
@@ -185,10 +184,6 @@ function Main() {
           {data.value.map(item => (
             <Row key={item.id} item={item} />
           ))}
-
-          {/* <For each={data} >
-            {item => <Row key={item.id} item={item} />}
-          </For> */}
         </tbody>
       </table>
       <span class="preloadicon glyphicon glyphicon-remove" aria-hidden="true" />
