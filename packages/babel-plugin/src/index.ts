@@ -11,7 +11,7 @@ import type { PluginObj } from '@babel/core';
 
 export default function (): PluginObj {
   return {
-    name: '@estjs/babel-plugin',
+    name: 'babel-plugin-essor',
     manipulateOptions({ filename }, parserOpts) {
       if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
         parserOpts.plugins.push('typescript');

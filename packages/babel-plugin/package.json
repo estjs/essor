@@ -1,6 +1,6 @@
 {
-  "name": "@estjs/babel-plugin",
-  "version": "^0.0.14",
+  "name": "babel-plugin-essor",
+  "version": "0.0.14",
   "description": "",
   "type": "module",
   "keywords": [],
@@ -37,12 +37,11 @@
   },
   "dependencies": {
     "@babel/core": "^7.28.4",
-    "@babel/types": "^7.28.4",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
+    "@babel/types": "^7.28.4",
     "@types/babel__core": "^7.20.5",
-    "babel-plugin-tester": "^12.0.0",
-    "typescript": "^5.9.2"
+    "babel-plugin-tester": "^12.0.0"
   }
 }

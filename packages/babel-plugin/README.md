@@ -3,13 +3,13 @@
 ## Install
 
 ```bash
-npm install @estjs/babel-plugin --save-dev
+npm install babel-plugin-essor --save-dev
 ```
 
 ## Usage
 
 ```js
-import BabelPlugin from '@estjs/babel-plugin';
+import BabelPlugin from 'babel-plugin-essor';
 {
   "plugins": [[BabelPlugin,pluginOptions]]
 }

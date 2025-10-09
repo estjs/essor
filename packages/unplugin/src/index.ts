@@ -1,6 +1,6 @@
 import { createUnplugin } from 'unplugin';
 import * as babel from '@babel/core';
-import essorBabelPlugin from '@estjs/babel-plugin';
+import essorBabelPlugin from 'babel-plugin-essor';
 import { createFilter } from 'vite';
 import type { UnpluginFactory } from 'unplugin';
 import type { Options } from './types';
@@ -19,7 +19,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (options: O
   const filter = createFilter(options.include, options.exclude);
 
   return {
-    name: '@estjs/unplugin',
+    name: 'unplugin-essor',
     config() {
       return {
         esbuild: {
