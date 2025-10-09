@@ -166,15 +166,6 @@ export function isStringNumber(val: unknown): val is StringNumber {
 }
 
 /**
- * Checks if a value is a HTML node
- * @param {unknown} val - The value to check
- * @returns {boolean} - Returns true if the value is a HTML node, false otherwise
- */
-export function isHTMLNode(val: unknown): val is HTMLElement {
-  return val instanceof HTMLElement;
-}
-
-/**
  * Checks if a value is undefined
  * @param {unknown} val - The value to check
  * @returns {boolean} - Returns true if the value is undefined, false otherwise
@@ -194,3 +185,26 @@ export function isBoolean(val: unknown): val is boolean {
 
 export const isIntegerKey = (key: unknown): boolean =>
   isString(key) && key !== 'NaN' && key[0] !== '-' && `${Number.parseInt(key, 10)}` === key;
+
+/**
+ * Checks if a value is a HTML node
+ * @param {unknown} val - The value to check
+ * @returns {boolean} - Returns true if the value is a HTML node, false otherwise
+ */
+export function isHTMLNode(val: unknown): val is HTMLElement {
+  return val instanceof HTMLElement;
+}
+
+export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
+  return val instanceof HTMLInputElement;
+}
+export function isHtmlSelectElement(val: unknown): val is HTMLSelectElement {
+  return val instanceof HTMLSelectElement;
+}
+export function isHtmlTextAreaElement(val: unknown): val is HTMLTextAreaElement {
+  return val instanceof HTMLTextAreaElement;
+}
+
+export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
+  return val instanceof HTMLFormElement;
+}

@@ -40,6 +40,10 @@ export {
   isUndefined,
   isBoolean,
   isIntegerKey,
+  isHtmlFormElement,
+  isHtmlInputElement,
+  isHtmlTextAreaElement,
+  isHtmlSelectElement,
   type StringNumber,
 } from './is';
 
@@ -57,5 +61,8 @@ export {
   includeBooleanAttr,
   propsToAttrMap,
   isSpecialBooleanAttr,
+  isDelegatedEvent,
   isBooleanAttr,
 } from './dom';
+
+export { queueJob, createScheduler, nextTick } from './scheduler';

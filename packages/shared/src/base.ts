@@ -20,7 +20,7 @@ export const extend = Object.assign;
  * @returns {key is keyof T} - Returns true if the object has the property, false otherwise
  */
 export const hasOwn = (val: object, key: string | symbol): key is keyof typeof val =>
-  Object.prototype.hasOwnProperty.call(val, key);
+  Object.hasOwn(val, key);
 
 /**
  * Forces a value to be an array
@@ -49,10 +49,9 @@ export const noop = Function.prototype as () => void;
 
 /**
  * Checks if a string starts with a specified substring
- *
- * indexOf faster under normal circumstances
+ * 
+ * Uses indexOf for better performance in most cases
  * @see https://www.measurethat.net/Benchmarks/Show/12350/0/startswith-vs-test-vs-match-vs-indexof#latest_results_block
-
  * @param {string} str - The string to check
  * @param {string} searchString - The substring to search for
  * @returns {boolean} - Returns true if the string starts with the substring, false otherwise
@@ -66,6 +65,9 @@ export function startsWith(str: string, searchString: string): boolean {
 
 /**
  * Generates an 8-character random string as a unique identifier
+ * 
+ * Note: Uses Math.random() which is not cryptographically secure.
+ * For security-sensitive use cases, consider using crypto.getRandomValues()
  * @returns {string} - The generated unique identifier
  */
 export function generateUniqueId(): string {
@@ -113,25 +115,28 @@ export const EMPTY_OBJ: { readonly [key: string]: unknown } = Object.freeze({});
 export const EMPTY_ARR: readonly never[] = Object.freeze([]);
 
 /**
- * Checks if a property name is an event handler (starts with 'on')
+ * Checks if a property name is an event handler (starts with 'on' followed by uppercase letter)
+ * 
+ * Matches patterns like: onClick, onChange, onKeyDown (but not 'onclick' or 'on123')
  * @param {string} key - The property name to check
  * @returns {boolean} - Returns true if the property is an event handler, false otherwise
  */
 export const isOn = (key: string): boolean =>
   key.charCodeAt(0) === 111 /* o */ &&
   key.charCodeAt(1) === 110 /* n */ &&
-  // uppercase letter(A-Z)
-  key.charCodeAt(2) >= 65 &&
+  key.charCodeAt(2) >= 65 && // uppercase letter A-Z
   key.charCodeAt(2) <= 90;
 
 declare let global: {};
 
 let _globalThis: unknown;
 /**
- * Gets the global object (globalThis, self, window, or global)
+ * Gets the global object for the current environment
+ * 
+ * Supports multiple environments: browser (globalThis/window/self) and Node.js (global)
+ * The result is cached after first call for better performance
  * @returns {unknown } - The global object for the current environment
  */
-// for typeof global checks without @types/node
 export const getGlobalThis = (): unknown => {
   return (
     _globalThis ||

@@ -9,7 +9,7 @@ export default defineConfig({
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
-  target: 'es2015',
+  target: 'es2017',
   dts: true,
   shims: true,
   clean: true,
@@ -17,4 +17,9 @@ export default defineConfig({
   cjsInterop: true,
   minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
+  outExtension({ format }) {
+    return {
+      js: `${env !== 'production' ? '.dev' : ''}.${format}.js`,
+    };
+  },
 });

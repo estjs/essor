@@ -23,6 +23,30 @@ describe('escape Utils', () => {
         expect(escapeHTML(input)).toBe(expected);
       });
     });
+
+    it('should escape all HTML special characters', () => {
+      const input = '<>&"\'test';
+      const expected = '&lt;&gt;&amp;&quot;&#39;test';
+      expect(escapeHTML(input)).toBe(expected);
+    });
+
+    it('should handle text without special characters efficiently', () => {
+      const input = 'Hello World 123';
+      expect(escapeHTML(input)).toBe(input);
+    });
+
+    it('should handle consecutive special characters', () => {
+      const input = '<<<>>>&&&"""\'\'\'';
+      const expected = '&lt;&lt;&lt;&gt;&gt;&gt;&amp;&amp;&amp;&quot;&quot;&quot;&#39;&#39;&#39;';
+      expect(escapeHTML(input)).toBe(expected);
+    });
+
+    it('should convert non-string values to strings before escaping', () => {
+      expect(escapeHTML(true)).toBe('true');
+      expect(escapeHTML(false)).toBe('false');
+      expect(escapeHTML(0)).toBe('0');
+      expect(escapeHTML({})).toContain('[object Object]');
+    });
   });
 
   describe('escapeHTMLComment', () => {
@@ -33,7 +57,7 @@ describe('escape Utils', () => {
       { input: '', expected: '' },
       { input: 'normal text', expected: 'normal text' },
       { input: '--!> comment', expected: ' comment' },
-      { input: '<!- comment', expected: '<!- comment' }, // Changed expected value
+      { input: '<!- comment', expected: '<!- comment' },
       { input: '-> comment', expected: ' comment' },
     ];
 
@@ -41,6 +65,26 @@ describe('escape Utils', () => {
       it(`should escapeHTML comment '${input}' to '${expected}'`, () => {
         expect(escapeHTMLComment(input)).toBe(expected);
       });
+    });
+
+    it('should strip all comment markers', () => {
+      const input = '<!--->test<!---->more-->text';
+      const result = escapeHTMLComment(input);
+      expect(result).not.toContain('<!--');
+      expect(result).not.toContain('-->');
+    });
+
+    it('should handle multiple comment markers in sequence', () => {
+      const input = '<!--<!----!>text-->';
+      expect(escapeHTMLComment(input)).not.toContain('<!--');
+    });
+
+    it('should preserve text between comment markers', () => {
+      const input = 'start<!-- middle -->end';
+      const result = escapeHTMLComment(input);
+      expect(result).toContain('start');
+      expect(result).toContain('middle');
+      expect(result).toContain('end');
     });
   });
 
@@ -59,8 +103,40 @@ describe('escape Utils', () => {
 
     testCases.forEach(({ key, doubleEscape, expected }) => {
       it(`should escapeHTML CSS var name '${key}' (doubleEscape: ${doubleEscape}) to '${expected}'`, () => {
-        expect(getEscapedCssVarName(key, doubleEscape)).toEqual(expected); // Changed toBe to toEqual
+        expect(getEscapedCssVarName(key, doubleEscape)).toEqual(expected);
       });
+    });
+
+    it('should escape all special CSS characters', () => {
+      const specialChars = ' !"#$%&\'()*+,./:;<=>?@[\\]^`{|}~';
+      const result = getEscapedCssVarName(specialChars, false);
+      expect(result).toContain('\\');
+    });
+
+    it('should handle double quotes specifically', () => {
+      const input = 'foo"bar';
+      const single = getEscapedCssVarName(input, false);
+      const double = getEscapedCssVarName(input, true);
+      expect(double.length).toBeGreaterThan(single.length);
+    });
+
+    it('should not escape hyphens', () => {
+      const input = 'foo-bar-baz';
+      expect(getEscapedCssVarName(input, false)).toBe('foo-bar-baz');
+    });
+
+    it('should not escape alphanumeric characters', () => {
+      const input = 'abc123XYZ';
+      expect(getEscapedCssVarName(input, false)).toBe('abc123XYZ');
+    });
+
+    it('should handle mixed content', () => {
+      const input = 'my var:value';
+      const result = getEscapedCssVarName(input, false);
+      expect(result).toContain('\\');
+      expect(result).toContain('my');
+      expect(result).toContain('var');
+      expect(result).toContain('value');
     });
   });
 });

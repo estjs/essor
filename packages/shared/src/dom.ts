@@ -7,9 +7,6 @@
  */
 
 /*! #__NO_SIDE_EFFECTS__ */
-
-import { hasOwn } from './base';
-
 export function makeMap(str: string): (key: string) => boolean {
   const map = Object.create(null);
   for (const key of str.split(',')) {
@@ -53,12 +50,14 @@ const unsafeAttrCharRE = /[\t\n\f "'/=>]/;
 const attrValidationCache: Record<string, boolean> = {};
 
 export function isSSRSafeAttrName(name: string): boolean {
-  if (hasOwn(attrValidationCache, name)) {
+  if (Object.hasOwn(attrValidationCache, name)) {
     return attrValidationCache[name];
   }
   const isUnsafe = unsafeAttrCharRE.test(name);
   if (isUnsafe) {
-    console.error(`unsafe attribute name: ${name}`);
+    if (__DEV__) {
+      console.error(`unsafe attribute name: ${name}`);
+    }
   }
   return (attrValidationCache[name] = !isUnsafe);
 }
@@ -183,6 +182,11 @@ const MATH_TAGS =
   'mscarries,mscarry,msgroup,msline,mspace,msqrt,msrow,mstack,mstyle,msub,' +
   'msubsup,msup,mtable,mtd,mtext,mtr,munder,munderover,none,semantics';
 
+const DELEGATED_EVENTS =
+  'beforeinput,click,dblclick,contextmenu,focusin,focusout,input,keydown,' +
+  'keyup,mousedown,mousemove,mouseout,mouseover,mouseup,pointerdown,' +
+  'pointermove,pointerout,pointerover,pointerup,touchend,touchmove,touchstart';
+
 const VOID_TAGS = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
 
 const SELFCLOSING_TAGS = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
@@ -196,3 +200,5 @@ export const isMathMLTag: (key: string) => boolean = /*@__PURE__*/ makeMap(MATH_
 export const isVoidTag: (key: string) => boolean = /*@__PURE__*/ makeMap(VOID_TAGS);
 
 export const isSelfClosingTag: (key: string) => boolean = /*@__PURE__*/ makeMap(SELFCLOSING_TAGS);
+
+export const isDelegatedEvent: (key: string) => boolean = /*@__PURE__*/ makeMap(DELEGATED_EVENTS);
