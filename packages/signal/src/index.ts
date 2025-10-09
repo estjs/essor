@@ -2,7 +2,7 @@ export { signal, shallowSignal, isSignal, Signal } from './signal';
 
 export { ref, isRef, Ref } from './ref';
 
-export { effect, useBatch, MemoizedEffectFn, memoizedEffect } from './effect';
+export { effect, useBatch, memoEffectFn, memoEffect } from './effect';
 
 export { untrack } from './link';
 export { reactive, shallowReactive, isReactive, toRaw, Reactive, isShallow } from './reactive';

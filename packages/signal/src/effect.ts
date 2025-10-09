@@ -544,7 +544,7 @@ export const useBatch = (fn: () => void) => {
  * @param prevState - Return value from previous execution (initial value on first execution)
  * @returns New state value, which will be used as parameter for next execution
  */
-export type MemoizedEffectFn<T> = (prevState: T) => T;
+export type memoEffectFn<T> = (prevState: T) => T;
 
 /**
  * Creates a memoized Effect
@@ -562,7 +562,7 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  * // Basic usage: Track a single value
  * const width = signal(50);
  *
- * memoizedEffect(prev => {
+ * memoEffect(prev => {
  *   const current = width.value;
  *   if (current !== prev.width) {
  *     element.style.width = `${current}px`;
@@ -575,7 +575,7 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  * const position = signal(50);
  * const size = signal({ width: 100, height: 100 });
  *
- * memoizedEffect(prev => {
+ * memoEffect(prev => {
  *   const pos = position.value;
  *   const sz = size.value;
  *
@@ -604,8 +604,8 @@ export type MemoizedEffectFn<T> = (prevState: T) => T;
  * @param options - Configuration options
  * @returns ReactiveEffect instance that can be used to stop listening
  */
-export function memoizedEffect<T>(
-  fn: MemoizedEffectFn<T>,
+export function memoEffect<T>(
+  fn: memoEffectFn<T>,
   initialState: T,
   options?: ReactiveEffectOptions,
 ) {

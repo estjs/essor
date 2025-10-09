@@ -1,4 +1,4 @@
-import { type MemoizedEffectFn, effect, memoizedEffect, signal } from '../src';
+import { type memoEffectFn, effect, memoEffect, signal } from '../src';
 
 describe('effect', () => {
   it('should run the effect function', () => {
@@ -103,7 +103,7 @@ describe('effect', () => {
   });
 });
 
-describe('memoizedEffect', () => {
+describe('memoEffect', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -117,7 +117,7 @@ describe('memoizedEffect', () => {
       const mockFn = vi.fn().mockImplementation((prev: { count: number }) => prev);
       const initialState = { count: 0 };
 
-      memoizedEffect(mockFn, initialState);
+      memoEffect(mockFn, initialState);
 
       expect(mockFn).toHaveBeenCalledWith(initialState);
       expect(mockFn).toHaveBeenCalledTimes(1);
@@ -127,13 +127,13 @@ describe('memoizedEffect', () => {
       const counter = signal(1);
       const states: Array<{ value: number }> = [];
 
-      const effectFn: MemoizedEffectFn<{ value: number }> = prev => {
+      const effectFn: memoEffectFn<{ value: number }> = prev => {
         states.push({ ...prev });
         const current = counter.value;
         return { value: current };
       };
 
-      memoizedEffect(effectFn, { value: 0 });
+      memoEffect(effectFn, { value: 0 });
 
       // Trigger updates
       counter.value = 2;
@@ -152,7 +152,7 @@ describe('memoizedEffect', () => {
         return { lastValue: count.value };
       });
 
-      memoizedEffect(mockFn, { lastValue: 0 });
+      memoEffect(mockFn, { lastValue: 0 });
 
       count.value = 5;
       count.value = 10;
@@ -172,7 +172,7 @@ describe('memoizedEffect', () => {
         updateCount: number;
       };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: memoEffectFn<State> = prev => {
         return {
           lastWidth: width.value,
           lastHeight: height.value,
@@ -181,7 +181,7 @@ describe('memoizedEffect', () => {
         };
       };
 
-      memoizedEffect(effectFn, {
+      memoEffect(effectFn, {
         lastWidth: 0,
         lastHeight: 0,
         lastVisible: false,
@@ -208,7 +208,7 @@ describe('memoizedEffect', () => {
 
       type State = { v1?: string; v2?: string; v3?: string };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: memoEffectFn<State> = prev => {
         const current = {
           v1: value1.value,
           v2: value2.value,
@@ -234,7 +234,7 @@ describe('memoizedEffect', () => {
         return prev;
       };
 
-      memoizedEffect(effectFn, {});
+      memoEffect(effectFn, {});
 
       // All operations should execute on initialization
       expect(operations.op1).toHaveBeenCalledWith('a');
@@ -276,7 +276,7 @@ describe('memoizedEffect', () => {
         lastTitle?: string;
       };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: memoEffectFn<State> = prev => {
         const currentWidth = width.value;
         const currentWidthPx = `${currentWidth}px`;
         const currentTitle = `Width: ${currentWidth}`;
@@ -301,7 +301,7 @@ describe('memoizedEffect', () => {
         return prev;
       };
 
-      memoizedEffect(effectFn, {});
+      memoEffect(effectFn, {});
 
       // Initial setup
       expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '100');
@@ -328,7 +328,7 @@ describe('memoizedEffect', () => {
 
   describe('error handling tests', () => {
     it('should handle errors in effect function', () => {
-      const errorFn: MemoizedEffectFn<{ count: number }> = prev => {
+      const errorFn: memoEffectFn<{ count: number }> = prev => {
         if (prev.count > 2) {
           throw new Error('Test error');
         }
@@ -336,7 +336,7 @@ describe('memoizedEffect', () => {
       };
 
       expect(() => {
-        memoizedEffect(errorFn, { count: 0 });
+        memoEffect(errorFn, { count: 0 });
       }).not.toThrow();
 
       // This may need adjustment based on actual error handling mechanisms
@@ -345,7 +345,7 @@ describe('memoizedEffect', () => {
     it('should handle cases with no return value', () => {
       const badFn = vi.fn(); // Returns nothing
 
-      const effect = memoizedEffect(badFn as any, { value: 1 });
+      const effect = memoEffect(badFn as any, { value: 1 });
 
       expect(effect).toBeDefined();
       expect(badFn).toHaveBeenCalled();
@@ -362,7 +362,7 @@ describe('memoizedEffect', () => {
 
     type State = { e?: number; t?: string; a?: string };
 
-    const effectFn: MemoizedEffectFn<State> = prev => {
+    const effectFn: memoEffectFn<State> = prev => {
       const v1 = editorWidth.value;
       const v2 = `${editorWidth.value}%`;
       const v3 = `${100 - editorWidth.value}%`;
@@ -386,7 +386,7 @@ describe('memoizedEffect', () => {
       return prev;
     };
 
-    memoizedEffect(effectFn, {
+    memoEffect(effectFn, {
       e: undefined,
       t: undefined,
       a: undefined,
