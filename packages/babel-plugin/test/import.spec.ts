@@ -1,137 +1,122 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { types as t } from '@babel/core';
+import { parse } from '@babel/parser';
+import traverse from '@babel/traverse';
 import {
   addImport,
   clearImport,
   createImport,
   createImportIdentifiers,
+  importMap,
   importedSets,
 } from '../src/import';
-import { addTemplateMaps, hasTemplateMaps, templateMaps } from '../src/jsx/context';
-import { setupTestEnvironment, withTestContext } from './test-utils';
+import type * as t from '@babel/types';
+import type { PluginState } from '../src/types';
 
-beforeEach(() => {
-  setupTestEnvironment();
-  templateMaps.length = 0; // Clear template maps
-});
-
-describe('import and Program Transformation', () => {
-  describe('createImportIdentifiers', () => {
-    it('should create unique identifiers for all USED_IMPORTS', () => {
-      withTestContext('', 'client', {}, ({ path }) => {
-        const identifiers = createImportIdentifiers(path);
-        expect(Object.keys(identifiers).length).toBeGreaterThan(0);
-        for (const key in identifiers) {
-          expect(identifiers[key].type).toBe('Identifier');
-          expect(identifiers[key].name).toMatch(/^_.*$/); // Verify naming convention
-        }
-      });
-    });
+function getProgramPath(code: string) {
+  const ast = parse(code, {
+    sourceType: 'module',
+    plugins: ['jsx', 'typescript'],
   });
 
-  describe('addImport / clearImport / importedSets', () => {
-    it('should correctly add and clear import names', () => {
-      expect(importedSets.size).toBe(0);
-      addImport('signal');
-      expect(importedSets.has('signal')).toBe(true);
-      addImport('computed');
-      expect(importedSets.has('computed')).toBe(true);
-      expect(importedSets.size).toBe(2);
-      clearImport();
-      expect(importedSets.size).toBe(0);
-    });
+  let programPath: any;
+  traverse(ast, {
+    Program(path) {
+      programPath = path;
+      path.stop();
+    },
   });
 
-  describe('createImport', () => {
-    it('should insert import declaration at the beginning of the Program', () => {
-      withTestContext('const a = 1;', 'client', {}, ({ path }) => {
-        // Setup for test
-        const identifiers = createImportIdentifiers(path);
-        addImport('signal');
-        addImport('computed');
+  if (!programPath) {
+    throw new Error('Failed to locate Program path');
+  }
 
-        // Create import
-        createImport(path, identifiers, 'essor');
+  return programPath as any;
+}
 
-        // Verify import was added
-        const body = path.node.body;
-        expect(body.length).toBeGreaterThan(0);
-        const firstNode = body[0];
+function createState(mode: PluginState['opts']['mode'] = 'client') {
+  return {
+    opts: { mode, hmr: false, props: true, styled: true, symbol: '$' },
+    imports: {} as Record<string, t.Identifier>,
+    declarations: [] as t.VariableDeclarator[],
+    events: new Set<string>(),
+    filename: 'test.tsx',
+  } satisfies PluginState;
+}
 
-        expect(firstNode.type).toBe('ImportDeclaration');
-        if (t.isImportDeclaration(firstNode)) {
-          expect(firstNode.source.value).toBe('essor');
-          expect(firstNode.specifiers.length).toBe(2); // signal, computed
-
-          // Check specifiers
-          const signalSpecifier = firstNode.specifiers.find(
-            s => t.isImportSpecifier(s) && s.local.name.includes('signal'),
-          );
-          expect(signalSpecifier).not.toBeUndefined();
-        }
-      });
-    });
-
-    it('should correctly map import names in SSG mode', () => {
-      withTestContext('const a = 1;', 'ssg', {}, ({ path }) => {
-        // Setup for test
-        const identifiers = createImportIdentifiers(path);
-        addImport('createComponent'); // Has mapping in SSG_IMPORTS_MAPS
-        addImport('signal'); // No mapping
-
-        // Create import
-        createImport(path, identifiers, 'essor');
-
-        // Verify import was added
-        const body = path.node.body;
-        expect(body.length).toBeGreaterThan(0);
-        const firstNode = body[0];
-
-        expect(firstNode.type).toBe('ImportDeclaration');
-        if (t.isImportDeclaration(firstNode)) {
-          expect(firstNode.source.value).toBe('essor');
-          expect(firstNode.specifiers.length).toBe(2);
-
-          // Verify createComponent is mapped to createSSGComponent
-          const componentSpecifier = firstNode.specifiers.find(
-            s =>
-              t.isImportSpecifier(s) &&
-              s.local.name.includes('createComponent') &&
-              t.isIdentifier(s.imported) &&
-              s.imported.name === 'createSSGComponent',
-          );
-          expect(componentSpecifier).not.toBeUndefined();
-
-          // Verify signal is not mapped
-          const signalSpecifier = firstNode.specifiers.find(
-            s =>
-              t.isImportSpecifier(s) &&
-              s.local.name.includes('signal') &&
-              t.isIdentifier(s.imported) &&
-              s.imported.name === 'signal',
-          );
-          expect(signalSpecifier).not.toBeUndefined();
-        }
-      });
-    });
+describe('import utilities', () => {
+  beforeEach(() => {
+    clearImport();
   });
 
-  describe('templateMaps and related functions', () => {
-    it('addTemplateMaps should add template information', () => {
-      addTemplateMaps({ id: t.identifier('_tmpl$1'), template: '<div></div>' });
-      expect(templateMaps.length).toBe(1);
-      expect(templateMaps[0].template).toBe('<div></div>');
-    });
-    it('hasTemplateMaps should find existing templates', () => {
-      const tmpl1 = { id: t.identifier('_tmpl$1'), template: '<div></div>' };
-      const tmpl2 = { id: t.identifier('_tmpl$2'), template: '<span></span>' };
+  it('creates unique identifiers for every import mapping', () => {
+    const program = getProgramPath('const value = 1;');
+    const identifiers = createImportIdentifiers(program);
 
-      addTemplateMaps(tmpl1);
-      addTemplateMaps(tmpl2);
+    expect(Object.keys(identifiers)).toHaveLength(Object.keys(importMap).length);
+    const uniqueNames = new Set(Object.values(identifiers).map(identifier => identifier.name));
+    expect(uniqueNames.size).toBe(Object.keys(identifiers).length);
+  });
 
-      expect(hasTemplateMaps('<div></div>')).toBe(tmpl1);
-      expect(hasTemplateMaps('<span></span>')).toBe(tmpl2);
-      expect(hasTemplateMaps('<p></p>')).toBe(undefined);
+  it('registers imports and injects declaration for client mode', () => {
+    const program = getProgramPath('const message = "hello";');
+    const state = createState('client');
+    state.imports = createImportIdentifiers(program);
+    program.state = state;
+
+    addImport(importMap.template);
+    addImport(importMap.insert);
+    createImport(program, state.imports, 'essor');
+
+    expect(program.node.body[0]).toMatchObject({
+      type: 'ImportDeclaration',
+      source: { value: 'essor' },
     });
+    expect(program.node.body[0].specifiers).toHaveLength(2);
+    expect(importedSets.size).toBe(2);
+  });
+
+  it('maps identifiers for SSG aliases', () => {
+    const program = getProgramPath('const app = 1;');
+    const state = createState('ssg');
+    state.imports = createImportIdentifiers(program);
+    program.state = state;
+
+    addImport(importMap.createComponent);
+    addImport(importMap.setAttr);
+    createImport(program, state.imports, 'essor');
+
+    const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
+    const importedNames = specifiers.map(spec => (spec as t.ImportSpecifier).imported.name);
+    expect(importedNames).toContain('createSSGComponent');
+    expect(importedNames).toContain('setSSGAttr');
+  });
+
+  it('maps identifiers for SSR aliases', () => {
+    const program = getProgramPath('const title = "ssr";');
+    const state = createState('ssr');
+    state.imports = createImportIdentifiers(program);
+    program.state = state;
+
+    addImport(importMap.mapNodes);
+    addImport(importMap.template);
+    createImport(program, state.imports, 'essor');
+
+    const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
+    const imported = specifiers.map(spec => (spec as t.ImportSpecifier).imported.name);
+    expect(imported).toContain('mapSSRNodes');
+    expect(imported).toContain('getElement');
+  });
+
+  it('throws informative error when identifier is missing', () => {
+    const program = getProgramPath('const demo = true;');
+    const state = createState('client');
+    state.imports = createImportIdentifiers(program);
+    delete state.imports.insert; // simulate missing identifier
+    program.state = state;
+
+    addImport(importMap.insert);
+    expect(() => createImport(program, state.imports, 'essor')).toThrowError(
+      /Import identifier not found/,
+    );
   });
 });

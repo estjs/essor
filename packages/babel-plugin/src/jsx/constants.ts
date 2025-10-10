@@ -17,6 +17,8 @@ export enum NODE_TYPE {
   SVG = 5,
   // comment
   COMMENT = 6,
+  // spread
+  SPREAD = 7,
 }
 
 /**
@@ -45,18 +47,37 @@ export const STYLE_NAME = 'style';
  */
 export const EVENT_ATTR_NAME = 'on';
 
-export const UPDATE_NAME = 'update';
+/**
+ * Prefix for update attributes
+ */
+export const UPDATE_PREFIX = 'update';
 
 /**
  * Tag name for Fragment components
  */
 export const FRAGMENT_NAME = 'Fragment';
 
+/**
+ * Key name for the Children attribute
+ */
 export const CHILDREN_NAME = 'children';
 
+/**
+ * Key name for the Spread attribute
+ */
 export const SPREAD_NAME = '_$spread$';
+
+/**
+ * Key name for the Create Component attribute
+ */
+export const CREATE_COMPONENT_NAME = 'createComponent';
 
 /**
  * data-idx regex for hydration
  */
 export const DATA_IDX_REGEX = /^\d+-\d+$/;
+
+/**
+ * Bind regex for bind attributes
+ */
+export const BIND_REG = /^bind:.+/;

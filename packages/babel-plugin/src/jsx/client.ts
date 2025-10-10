@@ -1,576 +1,237 @@
-import { types as t } from '@babel/core';
 import {
+  coerceArray,
   isArray,
-  isBoolean,
+  isDelegatedEvent,
   isNil,
-  isNull,
-  isNumber,
   isObject,
   isString,
-  isUndefined,
+  startsWith,
   warn,
 } from '@estjs/shared';
+import { types as t } from '@babel/core';
 import { addImport, importMap } from '../import';
-import { addTemplateMaps, getContext, hasTemplateMaps, setContext } from './context';
-import { createTree } from './tree';
-import { findBeforeIndex, findIndexPosition, serializeAttributes } from './utils';
-import { CHILDREN_NAME, CLASS_NAME, NODE_TYPE, SPREAD_NAME, STYLE_NAME } from './constants';
-import type { ObjectProperty, SpreadElement } from '@babel/types';
+import {
+  CLASS_NAME,
+  CREATE_COMPONENT_NAME,
+  EVENT_ATTR_NAME,
+  FRAGMENT_NAME,
+  NODE_TYPE,
+  SPREAD_NAME,
+  STYLE_NAME,
+  UPDATE_PREFIX,
+} from './constants';
+import {
+  createPropsObjectExpression,
+  findBeforeIndex,
+  findIndexPosition,
+  getSetFunctionForAttribute,
+  isDynamicExpression,
+  serializeAttributes,
+} from './shared';
+import { getContext, setContext } from './context';
+import type { TreeNode } from './tree';
 import type { NodePath } from '@babel/core';
-import type { State } from '../types';
-import type { DynamicCollection, DynamicContent, JSXElement, TreeNode } from './types';
-/**
- * Process JSX tree node and generate HTML template
- * @param {TreeNode} tree - JSX tree node
- * @returns {string | null} Template information object, returns null if generation fails
- */
-export function processTemplate(tree: TreeNode): string | null {
-  const templateString = buildTemplateString(tree);
+import type { JSXElement, PluginState } from '../types';
 
-  if (!templateString) {
-    return null;
+export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode) {
+  const state = path.state;
+
+  // Handle component or fragment
+  if (node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
+    const props = { ...node.props, children: node.children };
+    return createComponentExpression(node, props);
   }
+  // Generate static template
+  const staticTemplate = generateStaticTemplate(node);
 
-  return templateString;
-}
+  // Collect dynamic props and children (static ones are already in template)
+  const dynamicCollection = generateDynamic(node);
 
-/**
- * Build template string for a node
- * @param {TreeNode} node - Current node
- * @returns {string} Built template string
- */
-function buildTemplateString(node: TreeNode): string {
-  if (!node || node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
-    return '';
+  // Generate index mapping for DOM node references
+  const indexMap = generateIndexMap(dynamicCollection);
+
+  // Create identifiers for root element and node mapping
+  const elementId = path.scope.generateUidIdentifier('_el');
+  const nodesId = path.scope.generateUidIdentifier('_nodes');
+
+  // Initialize statements array for function body
+  const statements: t.Statement[] = [];
+
+  if (staticTemplate) {
+    addImport(importMap.template);
+    const tmplId = path.scope.generateUidIdentifier('_tmpl$');
+
+    state.declarations.push(
+      t.variableDeclarator(
+        tmplId,
+        t.callExpression(state.imports.template, coerceArray(staticTemplate).map(t.stringLiteral)),
+      ),
+    );
+    statements.push(
+      t.variableDeclaration('const', [
+        t.variableDeclarator(elementId, t.callExpression(tmplId, [])),
+      ]),
+    );
   }
+  if (dynamicCollection.children.length || dynamicCollection.props.length) {
+    // Import mapNodes
+    addImport(importMap.mapNodes);
 
-  let templateHtml = '';
-
-  if (node.type === NODE_TYPE.TEXT) {
-    templateHtml = node.children.join('');
-  } else if (node.type === NODE_TYPE.COMMENT) {
-    templateHtml = '<!>';
-  } else if (node.isSelfClosing) {
-    templateHtml = `<${node.tag}${serializeAttributes(node.props)}/>`;
-  } else if (node.tag) {
-    templateHtml = `<${node.tag}${serializeAttributes(node.props)}>`;
-
-    // Add templates for all child nodes
-    if (node.children && node.children.length > 0) {
-      node.children.forEach((child: any) => {
-        templateHtml += buildTemplateString(child);
-      });
+    statements.push(
+      t.variableDeclaration('const', [
+        t.variableDeclarator(
+          nodesId,
+          t.callExpression(state.imports.mapNodes, [
+            elementId,
+            t.arrayExpression(indexMap.map(idx => t.numericLiteral(idx))),
+          ]),
+        ),
+      ]),
+    );
+    // Process dynamic child nodes if any exist
+    if (dynamicCollection.children.length) {
+      generateDynamicChildrenCode(dynamicCollection.children, statements, state, nodesId, indexMap);
     }
 
-    templateHtml += `</${node.tag}>`;
-  } else if (node.children) {
-    // Container node, process its children
-    node.children.forEach((child: any) => {
-      templateHtml += buildTemplateString(child);
-    });
+    // Process dynamic properties if any exist
+    if (dynamicCollection.props.length) {
+      generateDynamicPropsCode(dynamicCollection.props, statements, state, nodesId, indexMap);
+    }
+
+    // Process reactive operations if any exist
+    if (dynamicCollection.operations.length) {
+      generateUnifiedMemoizedEffect(
+        dynamicCollection.operations,
+        statements,
+        state,
+        nodesId,
+        indexMap,
+      );
+    }
   }
 
-  return templateHtml;
+  // Add return statement
+  statements.push(t.returnStatement(elementId));
+
+  // Create and return IIFE expression
+  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(statements)), []);
 }
 
 /**
- * Collect dynamic content
- * @param {TreeNode} node - JSX tree structure
- * @return {DynamicCollection} Dynamic content collection
+ * Generate property key name (for state objects)
+ *
+ * Creates unique property keys for DOM attributes in the state object,
+ * ensuring proper batching and tracking of dynamic attribute updates.
+ *
+ * @param attrName - The attribute name to generate a key for
+ * @returns A unique property key string
  */
-export function processDynamic(node: TreeNode): DynamicCollection {
-  // Collection container
-  const result: DynamicCollection = {
-    children: [],
-    props: [],
+function generatePropKey(attrName: string): string {
+  const { operationIndex } = getContext();
+  const keyMap: Record<string, string> = {
+    [CLASS_NAME]: 'c',
+    [STYLE_NAME]: 's',
+    name: 'n',
   };
 
-  // Execute the actual collection logic
-  collectDynamicRecursive(node, null, result);
-
-  return result;
+  const baseKey = keyMap[attrName] || attrName.charAt(0);
+  setContext({ ...getContext(), operationIndex: operationIndex + 1 });
+  return `${baseKey}${operationIndex}`;
 }
-/**
- * Recursively collect dynamic content
- * @param {TreeNode} node - Current node
- * @param {TreeNode | null} parentNode - Parent node
- * @param {DynamicCollection} result - Result collection
- */
-function collectDynamicRecursive(
-  node: TreeNode,
-  parentNode: TreeNode | null,
-  result: DynamicCollection,
-): void {
-  // Process based on node type
-  processDynamicNode(node, parentNode, result);
 
-  // Recursively process child nodes
-  if (node.children && node.children.length > 0) {
-    node.children.forEach((child: any) => {
-      collectDynamicRecursive(child, node, result);
-    });
+/**
+ * Transform JSX element to client rendering code
+ * @param path - The path of the JSX element being transformed
+ * @param treeNode - The tree node representation of the JSX element
+ * @returns The transformed client rendering code
+ */
+function transformJSXClientChildren(path: NodePath<JSXElement>, treeNode: TreeNode) {
+  return transformJSXToClient(path, treeNode);
+}
+
+/**
+ * Creates a component expression for client rendering
+ * @param node - The tree node representation of the component or fragment
+ * @param componentProps - The props object for the component or fragment
+ * @returns The transformed component expression
+ */
+function createComponentExpression(node: TreeNode, componentProps: Record<string, unknown>) {
+  const { state } = getContext();
+
+  // Determine component function name
+  const componentName = node.type === NODE_TYPE.FRAGMENT ? FRAGMENT_NAME : CREATE_COMPONENT_NAME;
+
+  addImport(importMap.createComponent);
+  addImport(importMap[componentName]);
+
+  // Create props object expression
+  const propsObj = createPropsObjectExpression(componentProps, transformJSXClientChildren);
+
+  if (node.type === NODE_TYPE.FRAGMENT) {
+    // Fragment： Fragment(props)
+    return t.callExpression(state.imports[componentName], [propsObj]);
   }
-}
-/**
- * Process single node dynamic content
- * @param {TreeNode} node - Current node
- * @param {TreeNode | null} parent - Parent node
- * @param {DynamicCollection} result - Result collection
- */
-function processDynamicNode(
-  node: TreeNode,
-  parent: TreeNode | null,
-  result: DynamicCollection,
-): void {
-  const { children, props } = result;
 
-  switch (node.type) {
-    case NODE_TYPE.COMPONENT:
-    case NODE_TYPE.FRAGMENT: {
-      // Prepare component attributes
-      const componentProps = { ...node.props, children: node.children };
+  const args: t.Expression[] = [t.identifier(node.tag!), propsObj];
 
-      // Create component call expression
-      const componentExpr = createComponentExpression(node, componentProps);
-
-      // Add to dynamic content list
-      children.push({
-        index: node.index,
-        node: componentExpr,
-        before: findBeforeIndex(node, parent as TreeNode),
-        parentIndex: parent?.index ?? null,
-      });
-      break;
-    }
-
-    case NODE_TYPE.EXPRESSION:
-      // Ensure children array is not empty and the first element is expression
-      if (node.children && node.children.length > 0) {
-        const firstChild = node.children[0];
-        // Process expression node
-        if (isObject(firstChild) && t.isExpression(firstChild as t.Node)) {
-          children.push({
-            index: node.index,
-            node: firstChild as t.Expression,
-            before: findBeforeIndex(node, parent as TreeNode),
-            parentIndex: parent?.index ?? null,
-          });
-        } else if (
-          isObject(firstChild) &&
-          (t.isJSXElement(firstChild as t.Node) || t.isJSXFragment(firstChild as t.Node))
-        ) {
-          // If it's a JSX element/fragment directly within an expression container, process it as a component
-          children.push({
-            index: node.index,
-            node: createComponentExpression(node, { children: [firstChild] }), // Treat as a component with the JSX as children
-            before: findBeforeIndex(node, parent as TreeNode),
-            parentIndex: parent?.index ?? null,
-          });
-        }
-      }
-      break;
-
-    // Text node does not process
-    case NODE_TYPE.TEXT:
-      break;
-
-    default:
-      // Process dynamic attributes
-      if (Object.keys(node.props || {}).length > 0) {
-        props.push({
-          props: node.props as Record<string, any>,
-          parentIndex: node?.index ?? null,
-        });
-      }
-      break;
-  }
+  return t.callExpression(state.imports[componentName], args);
 }
 
 /**
- * Collect node index mapping
- * @param dynamicChildren - Dynamic child node collection
- * @param dynamicProps - Dynamic attribute collection
- * @returns Index mapping array
+ * Generates an index map for dynamic child nodes and dynamic attributes.
+ * The index map is a de-duplicated and sorted array of indices, representing the DOM nodes that need to be mapped.
+ * @param {{ props: Array<{ props: Record<string, unknown>; parentIndex: number | null }>, children: Array<{ parentIndex: number | null; before: number | null }>} } - An object containing dynamic props and dynamic children
+ * @returns {number[]} The generated index map
  */
-export function collectNodeIndexMap(
-  dynamicChildren: DynamicContent[],
-  dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
-): number[] {
-  // Create set to remove duplicates
+function generateIndexMap({ props, children }) {
   const indexSet = new Set<number>();
 
-  // Collect dynamic child node indices
-  dynamicChildren.forEach(item => {
+  // collect indices related to dynamic child nodes
+  for (const item of children) {
+    // add parent node index
     if (!isNil(item.parentIndex)) {
       indexSet.add(item.parentIndex);
     }
+    // add reference node index
     if (!isNil(item.before)) {
       indexSet.add(item.before);
     }
-  });
+  }
 
-  // Collect dynamic attribute parent node indices
-  dynamicProps.forEach(item => {
+  // collect parent node indices related to dynamic attributes
+  for (const item of props) {
     if (!isNil(item.parentIndex)) {
       indexSet.add(item.parentIndex);
     }
-  });
+  }
 
-  // Convert to array and sort
   return Array.from(indexSet).sort((a, b) => a - b);
 }
 
 /**
- * Recursive JSX conversion function
- * @description Internal used JSX conversion function for nested JSX processing
- * @param {TreeNode} jsxTree - JSX tree node
- * @returns {t.Expression | undefined} Converted expression
- */
-export function transformJSXChildren(jsxTree: TreeNode): t.Expression | undefined {
-  // Process template
-  const templates = processTemplate(jsxTree);
-
-  // Collect dynamic content
-  const { children, props } = processDynamic(jsxTree);
-
-  // Collect index mapping
-  const nodeIndexMap = collectNodeIndexMap(children, props);
-
-  // Generate rendering function
-  const result = generateRenderFunction(jsxTree, templates, children, props, nodeIndexMap);
-
-  return result;
-}
-
-/**
- * Create component expression
- * @description Create corresponding function call expression for component or Fragment, and process nested JSX elements in props
- * @param {TreeNode} node - Node
- * @param {Record<string, any>} props - Component attributes
- * @return {t.CallExpression} Component function call expression
- */
-function createComponentExpression(node: TreeNode, props: Record<string, any>): t.CallExpression {
-  const { state } = getContext();
-  // Determine if it's a Fragment component
-  const fnName = node.isFragment ? 'Fragment' : 'createComponent';
-
-  // Add necessary imports
-  addImport(importMap.createComponent);
-  addImport(importMap[fnName]);
-
-  // Create attribute object expression, pass conversion function and context
-  const propsObj = createPropsObjectExpression(props, transformJSXChildren);
-
-  // Create different call expressions based on component type
-  if (node.isFragment) {
-    return t.callExpression(state.imports[fnName], [propsObj]);
-  }
-  return t.callExpression(state.imports[fnName], [t.identifier(node.tag as string), propsObj]);
-}
-
-/**
- * Create props object expression
- * @description Convert attribute record to AST object expression
- * @param {Record<string, any>} propsData - Attribute data
- * @param {Function} transformJSX2 - JSX conversion function
- * @return {t.ObjectExpression} Generated object expression
- */
-export function createPropsObjectExpression(
-  propsData: Record<string, any>,
-  transformJSX2: Function,
-): t.ObjectExpression {
-  const objectProperties: (ObjectProperty | SpreadElement)[] = [];
-
-  for (const propName in propsData) {
-    let propValue = propsData[propName];
-    // Skip empty children
-    if (propName === CHILDREN_NAME && !propValue.length) {
-      continue;
-    }
-    propValue = convertValueToASTNode(propValue, transformJSX2);
-
-    // Process spread attribute
-    if (propName === SPREAD_NAME) {
-      objectProperties.push(t.spreadElement(propValue));
-    } else {
-      objectProperties.push(t.objectProperty(t.stringLiteral(propName), propValue));
-    }
-  }
-
-  return t.objectExpression(objectProperties);
-}
-
-/**
- * Convert JavaScript value to corresponding AST node
- * @description Convert value to corresponding AST expression node based on value type
- * @param {any} value - Value to convert
- * @param {Function} transformJSX2 - JSX conversion function
- * @return {t.Expression} Corresponding AST node
- */
-function convertValueToASTNode(value: any, transformJSX2: Function): t.Expression {
-  // If it's already an AST node, return directly
-  if (t.isExpression(value)) {
-    return value;
-  }
-  if (isArray(value)) {
-    return t.arrayExpression(value.map(item => convertValueToASTNode(item, transformJSX2)));
-  }
-  if (isObject(value)) {
-    if (
-      value.type === NODE_TYPE.FRAGMENT ||
-      value.type === NODE_TYPE.COMPONENT ||
-      value.type === NODE_TYPE.NORMAL ||
-      value.type === NODE_TYPE.TEXT ||
-      value.type === NODE_TYPE.SVG
-    ) {
-      return transformJSX2(value);
-    }
-
-    // Fix type error: Ensure children exist and are arrays
-    if (
-      value.type === NODE_TYPE.EXPRESSION &&
-      value.children &&
-      isArray(value.children) &&
-      value.children.length > 0
-    ) {
-      return convertValueToASTNode(value.children[0], transformJSX2);
-    }
-
-    return createPropsObjectExpression(value, transformJSX2);
-  }
-  if (isString(value)) {
-    return t.stringLiteral(value);
-  }
-  if (isNumber(value)) {
-    return t.numericLiteral(value);
-  }
-  if (isBoolean(value)) {
-    return t.booleanLiteral(value);
-  }
-  if (isUndefined(value)) {
-    return t.identifier('undefined');
-  }
-  if (isNull(value)) {
-    return t.nullLiteral();
-  }
-
-  return value;
-}
-
-/**
- * Add node mapping statement
- * @param statements - Statement array
- * @param elementId - Element ID
- * @param nodesId - Node mapping ID
- * @param indexMap - Index mapping
- * @param state - Plugin state
- */
-function addNodesMapping(
-  statements: t.Statement[],
-  elementId: t.Identifier,
-  nodesId: t.Identifier,
-  indexMap: number[],
-  state: State,
-): void {
-  addImport(importMap.mapNodes);
-
-  statements.push(
-    t.variableDeclaration('const', [
-      t.variableDeclarator(
-        nodesId,
-        t.callExpression(state.imports.mapNodes, [
-          elementId,
-          t.arrayExpression(indexMap.map(idx => t.numericLiteral(idx))),
-        ]),
-      ),
-    ]),
-  );
-}
-
-/**
- * Generate dynamic child node insertion code
- * @param dynamicChildren - Dynamic child node collection
- * @param statements - Statement collection
- * @param state - Plugin state
- * @param nodesId - Node mapping identifier
- * @param indexMap - Index mapping
- */
-function generateDynamicChildrenCode(
-  dynamicChildren: DynamicContent[],
-  statements: t.Statement[],
-  state: State,
-  nodesId: t.Identifier,
-  indexMap: number[],
-): void {
-  addImport(importMap.insert);
-
-  // Create insertion statement for each dynamic content
-  dynamicChildren.forEach(dynamicContent => {
-    // Special processing for IIFE expression
-    const processedNode = processIIFEExpression(dynamicContent.node);
-
-    // Create insertion parameters
-    const insertArgs = createInsertArguments(
-      { ...dynamicContent, node: processedNode },
-      nodesId,
-      indexMap,
-    );
-
-    statements.push(t.expressionStatement(t.callExpression(state.imports.insert, insertArgs)));
-  });
-}
-
-/**
- * Process IIFE expression
- * @param node - Expression node
- * @returns Processed expression
- */
-export function processIIFEExpression(node: t.Expression): t.Expression {
-  // Check if it's an IIFE (Immediately Invoked Function Expression)
-  if (
-    t.isCallExpression(node) &&
-    (t.isArrowFunctionExpression(node.callee) || t.isFunctionExpression(node.callee))
-  ) {
-    // For IIFE, extract return statement from function body
-    const body = node.callee.body;
-
-    if (t.isBlockStatement(body) && body.body.length > 0) {
-      const lastStatement = body.body[body.body.length - 1];
-
-      if (t.isReturnStatement(lastStatement) && lastStatement.argument) {
-        // Use return value instead of entire IIFE
-        return lastStatement.argument;
-      }
-    } else if (!t.isBlockStatement(body)) {
-      // For arrow function shorthand, return expression body directly
-      return body;
-    }
-  }
-
-  // Not an IIFE or unable to extract return value, keep original
-  return node;
-}
-
-export function createInsertArguments(
-  dynamicContent: DynamicContent,
-  nodesIdentifier: t.Identifier,
-  indexMap: number[],
-): t.Expression[] {
-  // Get parent node position in mapping array
-  const parentPosition = findIndexPosition(dynamicContent.parentIndex!, indexMap);
-
-  // Build basic parameter list
-  const argExpressions: t.Expression[] = [
-    // Target node reference: nodes[parentPosition]
-    t.memberExpression(nodesIdentifier, t.numericLiteral(parentPosition), true),
-    // Content function: () => dynamicContent
-    t.arrowFunctionExpression([], dynamicContent.node),
-  ];
-  // Process preceding node (for insertion position)
-  if (dynamicContent.before !== null) {
-    const beforePosition = findIndexPosition(dynamicContent.before, indexMap);
-    argExpressions.push(
-      t.memberExpression(nodesIdentifier, t.numericLiteral(beforePosition), true),
-    );
-  }
-
-  return argExpressions;
-}
-
-/**
- * Generate dynamic attribute setting code
- * @param dynamicProps - Dynamic attribute collection
- * @param statements - Statement collection
- * @param state - Plugin state
- * @param nodesId - Node mapping identifier
- * @param indexMap - Index mapping
- */
-function generateDynamicPropsCode(
-  dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
-  statements: t.Statement[],
-  state: State,
-  nodesId: t.Identifier,
-  indexMap: number[],
-): void {
-  // Process each dynamic attribute item
-  dynamicProps.forEach(propItem => {
-    const { parentIndex, props } = propItem;
-    if (parentIndex === null) {
-      return;
-    }
-
-    // Find parent node index position
-    const parentIndexPosition = indexMap.indexOf(parentIndex);
-    if (parentIndexPosition === -1) {
-      warn(`Unable to find parent node index: ${parentIndex}`);
-      return;
-    }
-
-    // Process each attribute
-    Object.entries(props).forEach(([attrName, attrValue]) => {
-      if (attrName.startsWith('on')) {
-        // Process event
-        addEventListenerStatement(
-          attrName,
-          attrValue as t.Expression,
-          nodesId,
-          parentIndexPosition,
-          statements,
-          state,
-        );
-      } else {
-        // Process other attribute types
-        generateSpecificAttributeCode(
-          attrName,
-          attrValue as t.Expression,
-          nodesId,
-          parentIndexPosition,
-          statements,
-          state,
-        );
-      }
-    });
-  });
-}
-
-/**
- * Add event listener statement
- * @param attrName - Attribute name
- * @param attrValue - Attribute value
- * @param nodesId - Node mapping identifier
- * @param nodeIndex - Node index position
- * @param statements - Statement collection
- * @param state - Plugin state
- */
-function addEventListenerStatement(
-  attrName: string,
-  attrValue: t.Expression,
-  nodesId: t.Identifier,
-  nodeIndex: number,
-  statements: t.Statement[],
-  state: State,
-): void {
-  addImport(importMap.addEventListener);
-
-  statements.push(
-    createAttributeStatement(
-      state.imports.addEventListener,
-      nodesId,
-      nodeIndex,
-      attrValue,
-      t.stringLiteral(attrName.slice(2).toLowerCase()),
-    ),
-  );
-}
-
-/**
  * Create attribute setting statement
- * @param functionIdentifier - Function identifier
- * @param nodesId - Node mapping identifier
- * @param nodeIndex - Node index position
- * @param value - Value expression
- * @param key - Optional key expression
- * @returns Created statement
+ *
+ * This is a universal attribute setting statement generator that creates function calls
+ * for various DOM attribute operations. It supports multiple function call patterns
+ * and serves as the foundation tool for the attribute processing system.
+ *
+ * Supported function call patterns:
+ * 1. **Single parameter mode**: func(element)
+ * 2. **Key-value mode**: func(element, key, value)
+ * 3. **Multi-value mode**: func(element, value1, value2, ...)
+ * 4. **Mixed mode**: func(element, key, value1, value2, ...)
+ *
+ * Parameter construction logic:
+ * - element: Always the first parameter, referenced via nodes[index]
+ * - key: Optional attribute key (such as attribute name, event name, etc.)
+ * - value: Attribute value, supports single value or array values
+ *
+ * @param {t.Identifier} functionIdentifier - Function identifier to call (e.g., setAttr, setClass)
+ * @param {t.Identifier} nodesId - Node mapping array identifier
+ * @param {number} nodeIndex - Target node index in the mapping array
+ * @param {t.Expression} value - Attribute value expression (supports array spreading)
+ * @param {t.Expression} [key] - Optional attribute key expression
+ * @returns {t.ExpressionStatement} Created function call statement
  */
 export function createAttributeStatement(
   functionIdentifier: t.Identifier,
@@ -579,22 +240,106 @@ export function createAttributeStatement(
   value: t.Expression,
   key?: t.Expression,
 ): t.ExpressionStatement {
-  // Prepare parameter array
+  // Prepare parameter array, first parameter is always the target DOM element
   const args: t.Expression[] = [t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true)];
 
-  // If there's a key, add it
+  // Add optional key parameter (such as attribute name, event name, etc.)
   if (key) {
     args.push(key);
   }
 
+  // Add value parameter, supports array spreading
   if (value) {
-    args.push(value);
+    if (isArray(value)) {
+      // Array value: spread all elements as independent parameters
+      args.push(...value);
+    } else {
+      // Single value: add directly
+      args.push(value);
+    }
   }
 
   // Create function call expression statement
-  return t.expressionStatement(t.callExpression(functionIdentifier, args));
+  const functionCall = t.callExpression(functionIdentifier, args);
+  return t.expressionStatement(functionCall);
 }
 
+/**
+ * Add event listener handling statement
+ *
+ * This function is responsible for adding event handling logic to DOM elements,
+ * supporting two event handling modes:
+ *
+ * **Delegated Event Mode** (Performance Optimization):
+ * - For common event types (click, input, change, etc.), uses event delegation
+ * - Attaches event handlers directly to element's $eventName property
+ * - Managed uniformly by global event system, reducing event listener count
+ * - Format: element.$click = handler
+ *
+ * **Direct Event Mode** (Compatibility Guarantee):
+ * - For event types that don't support delegation, directly adds event listeners
+ * - Uses addEventListener function for binding
+ * - Format: addEventListener(element, 'eventName', handler)
+ *
+ * Event name processing:
+ * - Automatically removes 'on' prefix: onClick -> click
+ * - Converts to lowercase: onMouseOver -> mouseover
+ * - Supports all standard DOM events
+ *
+ * @param {string} attrName - Event attribute name (e.g., 'onClick', 'onMouseOver')
+ * @param {t.Expression} attrValue - Event handler function expression
+ * @param {t.Identifier} nodesId - Node mapping array identifier
+ * @param {number} nodeIndex - Target node index position in mapping array
+ * @param {t.Statement[]} statements - Statement collection (for adding generated code)
+ * @param {State} state - Plugin state (contains event registration info)
+ */
+function addEventListenerStatement(
+  attrName: string,
+  attrValue: t.Expression,
+  nodesId: t.Identifier,
+  nodeIndex: number,
+  statements: t.Statement[],
+  state: PluginState,
+): void {
+  // Extract event name: remove 'on' prefix and convert to lowercase
+  const eventName = attrName.slice(2).toLowerCase();
+
+  // Delegated event handling (performance optimization path)
+  if (isDelegatedEvent(eventName)) {
+    const activeContext = getContext();
+    if (!activeContext) {
+      warn('Missing active context, unable to handle delegated events');
+      return;
+    }
+
+    // Generate delegated event code: element.$eventName = handler
+    const elementRef = t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true);
+    const eventProperty = t.memberExpression(elementRef, t.stringLiteral(`$${eventName}`), true);
+
+    // Create assignment statement: nodes[index].$eventName = handler
+    const assignmentStmt = t.expressionStatement(
+      t.assignmentExpression('=', eventProperty, attrValue),
+    );
+    statements.push(assignmentStmt);
+
+    // Register event to global event system
+    state.events?.add(eventName);
+    return;
+  }
+
+  // Direct event handling (compatibility path)
+  addImport(importMap.addEventListener);
+
+  // Generate direct event listener code: addEventListener(element, 'eventName', handler)
+  const eventListenerStmt = createAttributeStatement(
+    state.imports.addEventListener,
+    nodesId,
+    nodeIndex,
+    attrValue,
+    t.stringLiteral(eventName),
+  );
+  statements.push(eventListenerStmt);
+}
 /**
  * Generate specific attribute setting code based on attribute name
  * @param attributeName - Attribute name
@@ -610,9 +355,11 @@ function generateSpecificAttributeCode(
   nodesId: t.Identifier,
   nodeIndex: number,
   statements: t.Statement[],
-  state: State,
+  state: PluginState,
 ): void {
-  // Select appropriate processing method for different attribute types
+  // Note: Reactive attributes are already handled uniformly in generateDynamicPropsCode
+  // This only handles non-reactive static attributes
+
   switch (attributeName) {
     case CLASS_NAME:
       addImport(importMap.setClass);
@@ -636,6 +383,20 @@ function generateSpecificAttributeCode(
       break;
 
     default:
+      if (startsWith(attributeName, `${UPDATE_PREFIX}:`)) {
+        addImport(importMap.bindAttr);
+        const attrName = attributeName.split(':')[1];
+        statements.push(
+          createAttributeStatement(
+            state.imports.bindAttr,
+            nodesId,
+            nodeIndex,
+            attributeValue,
+            t.stringLiteral(attrName),
+          ),
+        );
+        return;
+      }
       // Process normal attributes
       addImport(importMap.setAttr);
       statements.push(
@@ -650,104 +411,499 @@ function generateSpecificAttributeCode(
       break;
   }
 }
+
 /**
- * Generate client-side rendering code
- * @param {TreeNode} jsxTree - JSX tree structure
- * @param {TemplateInfo} template - Template information
- * @param {DynamicContent[]} dynamicChildren - Dynamic child node collection
- * @param {Array<{ props: Record<string, any>; parentIndex: number | null }>} dynamicProps - Dynamic attribute collection
- * @param {number[]} indexMap - Index mapping
- * @return {t.Expression} Generated rendering function expression
+ * Process Immediately Invoked Function Expression (IIFE) optimization
+ *
+ * @param {t.Expression} node - Expression node to be processed
+ * @returns {t.Expression} Optimized expression
  */
-export function generateRenderFunction(
-  jsxTree: TreeNode,
-  template: string | null,
-  dynamicChildren: DynamicContent[],
-  dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
-  indexMap: number[],
-): t.Expression {
-  const { path, state } = getContext();
+export function processIIFEExpression(node: t.Expression): t.Expression {
+  // Check if it's an IIFE (Immediately Invoked Function Expression)
+  if (
+    t.isCallExpression(node) &&
+    (t.isArrowFunctionExpression(node.callee) || t.isFunctionExpression(node.callee)) &&
+    node.arguments.length === 0 // Ensure no parameters are passed for safe optimization
+  ) {
+    const callee = node.callee;
+    const body = callee.body;
 
-  // If it's the root component, return component call expression directly
-  if (jsxTree.type === NODE_TYPE.COMPONENT) {
-    // Process component props
-    const componentProps = { ...jsxTree.props, children: jsxTree.children };
-    return createComponentExpression(jsxTree, componentProps);
-  }
-
-  // Create identifier for root component
-  const elementId = path.scope.generateUidIdentifier('_el');
-  const nodesId = path.scope.generateUidIdentifier('_nodes');
-
-  // Create function body statement array
-  const statements: t.Statement[] = [];
-
-  if (template) {
-    let id: any = null;
-    const hasedTemplate = hasTemplateMaps(template);
-    if (hasedTemplate) {
-      id = hasedTemplate.id;
-    } else {
-      // Add necessary imports
-      addImport(importMap.template);
-      id = path.scope.generateUidIdentifier('_tmpl$');
-      addTemplateMaps({
-        id,
-        template,
-      });
+    // Handle block-level function body { return value; }
+    if (t.isBlockStatement(body)) {
+      // Only handle simple cases with single return statement
+      if (body.body.length === 1) {
+        const statement = body.body[0];
+        if (t.isReturnStatement(statement) && statement.argument) {
+          // Directly return the return value, remove IIFE wrapper
+          return statement.argument;
+        }
+      }
     }
-
-    // Add root element declaration statement
-    statements.push(
-      t.variableDeclaration('const', [t.variableDeclarator(elementId, t.callExpression(id, []))]),
-    );
-  }
-
-  // Process dynamic content
-  if (dynamicChildren.length > 0 || dynamicProps.length > 0) {
-    // Add node mapping
-    addNodesMapping(statements, elementId, nodesId, indexMap, state);
-
-    // Process dynamic child nodes
-    if (dynamicChildren.length) {
-      generateDynamicChildrenCode(dynamicChildren, statements, state, nodesId, indexMap);
-    }
-
-    // Process dynamic attributes
-    if (dynamicProps.length) {
-      generateDynamicPropsCode(dynamicProps, statements, state, nodesId, indexMap);
+    // Handle arrow function shorthand form (() => expression)
+    else if (t.isExpression(body)) {
+      // Directly return expression body, remove function wrapper
+      return body;
     }
   }
 
-  // Add return statement
-  statements.push(t.returnStatement(elementId));
-
-  // Create and return IIFE expression
-  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(statements)), []);
+  // Not IIFE or cannot be safely optimized, keep original expression
+  return node;
 }
 
 /**
- * Convert JSX to internal implementation of client-side rendering code.
- * @description Responsible for AST conversion process for JSX elements in client mode, including node tree construction, template processing, dynamic content collection, and rendering function generation.
- * @param {NodePath<JSXElement>} path - AST path of current JSX element.
- * @returns {t.Expression} Converted client-side rendering expression.
+ * Create parameter array for DOM insertion operations
+ *
+ * @param {DynamicContent} dynamicContent - Dynamic content object (contains node and position info)
+ * @param {t.Identifier} nodesIdentifier - Node mapping array identifier
+ * @param {number[]} indexMap - Pre-calculated index mapping array
+ * @returns {t.Expression[]} Parameter array for insert function call
  */
-export function transformJSX(path: NodePath<JSXElement>): t.Expression {
-  const state = path.state as State;
+export function createInsertArguments(
+  dynamicContent: any,
+  nodesIdentifier: t.Identifier,
+  indexMap: number[] | Map<number, number>,
+): t.Expression[] {
+  // Validate required parent node index
+  if (isNil(dynamicContent.parentIndex)) {
+    throw new Error('Dynamic content missing valid parent node index');
+  }
 
-  setContext({ path, state });
+  // Get parent node position in mapping array
+  const parentPosition = findIndexPosition(dynamicContent.parentIndex, indexMap);
+  if (parentPosition === -1) {
+    throw new Error(
+      `Cannot find parent node index in index mapping: ${dynamicContent.parentIndex}`,
+    );
+  }
 
-  // Create JSX node tree
-  const tree = createTree(path, state);
+  // Build basic parameter list
+  const argExpressions: t.Expression[] = [
+    // Target parent node reference: nodes[parentPosition]
+    t.memberExpression(nodesIdentifier, t.numericLiteral(parentPosition), true),
+    // Content lazy function: () => dynamicContent (implements on-demand calculation)
+    t.arrowFunctionExpression([], dynamicContent.node),
+  ];
 
-  // Process static template, extract static HTML fragment, and pass to state
-  const template = processTemplate(tree);
+  // Handle insert position node (for insertBefore operation)
+  if (dynamicContent.before !== null) {
+    const beforePosition = findIndexPosition(dynamicContent.before, indexMap);
+    if (beforePosition === -1) {
+      throw new Error(`Cannot find before node index in index mapping: ${dynamicContent.before}`);
+    }
 
-  // Collect dynamic content, including dynamic child nodes and attributes, and pass to state
-  const { children, props } = processDynamic(tree);
-  // Collect index mapping
-  const nodeIndexMap = collectNodeIndexMap(children, props);
+    // Add before node reference: nodes[beforePosition]
+    argExpressions.push(
+      t.memberExpression(nodesIdentifier, t.numericLiteral(beforePosition), true),
+    );
+  }
 
-  // Generate rendering function
-  return generateRenderFunction(tree, template, children, props, nodeIndexMap);
+  return argExpressions;
+}
+
+/**
+ * Generate dynamic child node insertion code
+ *
+ * @param {DynamicContent[]} dynamicChildren - Dynamic child node collection
+ * @param {t.Statement[]} statements - Statement collection (for adding generated code)
+ * @param {State} state - Plugin state (contains import mapping)
+ * @param {t.Identifier} nodesId - Node mapping array identifier
+ * @param {number[]} indexMap - Index mapping array
+ */
+function generateDynamicChildrenCode(
+  dynamicChildren: any[],
+  statements: t.Statement[],
+  state: PluginState,
+  nodesId: t.Identifier,
+  indexMap: number[],
+): void {
+  // Ensure insert function is imported
+  addImport(importMap.insert);
+
+  // Create insertion statement for each dynamic content
+  for (const dynamicContent of dynamicChildren) {
+    // Special handling for IIFE expressions, optimize performance
+    const processedNode = processIIFEExpression(dynamicContent.node);
+
+    // Create insertion parameters
+    const insertArgs = createInsertArguments(
+      { ...dynamicContent, node: processedNode },
+      nodesId,
+      indexMap,
+    );
+
+    // Add insertion statement to code
+    const insertCall = t.callExpression(state.imports.insert, insertArgs);
+    statements.push(t.expressionStatement(insertCall));
+  }
+}
+
+/**
+ * Generate dynamic attribute setting code
+ *
+ * Redesigned as unified memoizedEffect architecture:
+ * 1. Collect all reactive attributes
+ * 2. Generate a unified memoizedEffect to handle all updates
+ * 3. Set non-reactive attributes directly
+ *
+ * @param {Array<{ props: Record<string, unknown>; parentIndex: number | null }>} dynamicProps - Dynamic attribute collection
+ * @param {t.Statement[]} statements - Statement collection (for adding generated code)
+ * @param {State} state - Plugin state (contains import mapping and configuration)
+ * @param {t.Identifier} nodesId - Node mapping array identifier
+ * @param {number[]} indexMap - Index mapping array
+ */
+function generateDynamicPropsCode(
+  dynamicProps: Array<{ props: Record<string, unknown>; parentIndex: number | null }>,
+  statements: t.Statement[],
+  state: PluginState,
+  nodesId: t.Identifier,
+  indexMap: number[],
+): void {
+  // Process each dynamic attribute item
+  for (const propItem of dynamicProps) {
+    const { parentIndex, props } = propItem;
+
+    // Skip invalid parent node indices
+    if (parentIndex === null) {
+      continue;
+    }
+
+    // Find parent node position in index mapping
+    const parentIndexPosition = indexMap.indexOf(parentIndex);
+    if (parentIndexPosition === -1) {
+      warn(`Cannot find parent node index: ${parentIndex}`);
+      continue;
+    }
+
+    // Process each dynamic attribute of the node
+    for (const [attrName, attrValue] of Object.entries(props)) {
+      try {
+        // Process by attribute name classification
+        if (attrName.startsWith('on')) {
+          // Handle event attributes (onClick, onMouseOver, etc.)
+          addEventListenerStatement(
+            attrName,
+            attrValue as t.Expression,
+            nodesId,
+            parentIndexPosition,
+            statements,
+            state,
+          );
+        } else {
+          // Non-reactive attributes, set directly
+          generateSpecificAttributeCode(
+            attrName,
+            attrValue as t.Expression,
+            nodesId,
+            parentIndexPosition,
+            statements,
+            state,
+          );
+        }
+      } catch (error) {
+        // When single attribute processing fails, log error but continue processing other attributes
+        warn(`Attribute processing failed (${attrName}): ${error}`);
+      }
+    }
+  }
+
+  // Reactive operations have been added to global collector, not processed here
+}
+
+/**
+ * Generates a unified memoized effect to handle all reactive operations.
+ * This function takes in an array of reactive operations, and a statement array
+ * to which the generated code will be appended.
+ * The generated code will create a memoized effect that will be called with the initial state
+ * object, and will return the final state object.
+ *
+ * @param reactiveOperations An array of reactive operations to be processed.
+ * @param statements The statement array to which the generated code will be appended.
+ * @param state The plugin state.
+ * @param nodesId The identifier of the nodes mapping.
+ */
+function generateUnifiedMemoizedEffect(
+  reactiveOperations: any[],
+  statements: t.Statement[],
+  state: PluginState,
+  nodesId: t.Identifier,
+  indexMap: number[],
+): void {
+  addImport(importMap.memoEffect);
+
+  // Create variable declarations
+  const variableDeclarations = reactiveOperations.map((op, index) => {
+    return t.variableDeclarator(t.identifier(`_v$${index}`), op.attrValue);
+  });
+
+  // Create update statements
+  const updateStatements = reactiveOperations.map((op, index) => {
+    // Get parent node position in mapping array
+    const parentPosition = findIndexPosition(op.nodeIndex, indexMap);
+    if (parentPosition === -1) {
+      throw new Error(`Cannot find parent node index in index mapping: ${op.nodeIndex}`);
+    }
+
+    const varName = t.identifier(`_v$${index}`);
+    const elementRef = t.memberExpression(nodesId, t.numericLiteral(parentPosition), true);
+
+    let domOperationCall: t.CallExpression;
+
+    // Handle attribute operations
+    if (op.setFunction.name === 'setAttr') {
+      domOperationCall = t.callExpression(op.setFunction.value, [
+        elementRef,
+        t.stringLiteral(op.attrName),
+        t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
+        t.assignmentExpression(
+          '=',
+          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
+          varName,
+        ),
+      ]);
+    } else {
+      domOperationCall = t.callExpression(op.setFunction.value, [
+        elementRef,
+        t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
+        t.assignmentExpression(
+          '=',
+          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
+          varName,
+        ),
+      ]);
+    }
+
+    // _v$0 !== _p$.c0 && (_p$.c0 = _v$0, _$setClass(_el$, _v$0));
+    return t.expressionStatement(
+      t.logicalExpression(
+        '&&',
+        t.binaryExpression(
+          '!==',
+          varName,
+          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
+        ),
+        domOperationCall,
+      ),
+    );
+  });
+
+  // Create effect function body
+  const effectBody = t.blockStatement([
+    // var _v$0 = expr1, _v$1 = expr2, ...;
+    t.variableDeclaration('var', variableDeclarations),
+    // All update statements
+    ...updateStatements,
+    // return _p$;
+    t.returnStatement(t.identifier('_p$')),
+  ]);
+
+  // Create effect function
+  const effectFunction = t.arrowFunctionExpression([t.identifier('_p$')], effectBody);
+
+  // Create initial state object
+  const initialStateProperties = reactiveOperations.map(op =>
+    t.objectProperty(t.identifier(op.propKey), t.identifier('undefined')),
+  );
+  const initialState = t.objectExpression(initialStateProperties);
+
+  // Create memoizedEffect call
+  const memoizedEffectCall = t.callExpression(state.imports.memoEffect, [
+    effectFunction,
+    initialState,
+  ]);
+
+  statements.push(t.expressionStatement(memoizedEffectCall));
+}
+
+/**
+ * Recursively generates a static HTML template from a given TreeNode.
+ *
+ * @param {TreeNode} node - The TreeNode to generate the template from.
+ * @returns {string} The generated static HTML template.
+ */
+function generateStaticTemplate(node: TreeNode) {
+  if (!node || node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
+    return '';
+  }
+  switch (node.type) {
+    case NODE_TYPE.TEXT:
+      // Text node: directly concatenate all child content
+      return Array.isArray(node.children) ? node.children.join('') : '';
+
+    case NODE_TYPE.COMMENT:
+      // Comment node: generate HTML comment placeholder
+      return '<!>';
+
+    case NODE_TYPE.NORMAL:
+    case NODE_TYPE.SVG:
+      return gstForNormal(node);
+    default:
+      return gstForChildren(node);
+  }
+}
+
+/**
+ * Generates a static HTML template for a given TreeNode representing a normal HTML element.
+ * @param {TreeNode} node - The TreeNode to generate the template from.
+ * @returns {string} The generated static HTML template.
+ */
+function gstForNormal(node: TreeNode) {
+  if (!node.tag) {
+    return gstForChildren(node);
+  }
+  const attributes = serializeAttributes(node.props);
+
+  const startTag = `<${node.tag}${attributes ? ` ${attributes}` : ''}`;
+  if (node.selfClosing) {
+    return `${startTag}/>`;
+  }
+
+  return `${startTag}>${gstForChildren(node)}</${node.tag}>`;
+}
+/**
+ * Generates a static HTML template for the given TreeNode's children.
+ * The template is generated by recursively calling generateStaticTemplate on each child node.
+ * @param {TreeNode} node - The TreeNode to generate the template from.
+ * @returns {string} The generated static HTML template.
+ */
+function gstForChildren(node: TreeNode) {
+  if (!node.children || !node.children.length) {
+    return '';
+  }
+  const childTemplates: string[] = [];
+
+  for (const child of node.children) {
+    if (isObject(child)) {
+      const childTemplate = generateStaticTemplate(child as TreeNode);
+      childTemplates.push(childTemplate);
+    } else if (isString(child)) {
+      childTemplates.push(child);
+    }
+  }
+
+  return childTemplates.join('');
+}
+
+/**
+ *  Get dynamic props and children (static ones are already in template)
+ * @param {TreeNode} node - The TreeNode to start walking from.
+ * @returns {DynamicCollection} The collected dynamic content.
+ */
+function generateDynamic(node: TreeNode) {
+  const dynamicCollection = {
+    props: [],
+    children: [],
+    operations: [],
+  };
+
+  function walk(node: TreeNode, parentNode?: TreeNode) {
+    processNodeDynamic(dynamicCollection, node, parentNode);
+    if (node.children && node.children.length) {
+      node.children.forEach(child => {
+        walk(child as TreeNode, node);
+      });
+    }
+  }
+
+  walk(node);
+
+  return dynamicCollection;
+}
+
+/**
+ * Process single node dynamic content
+ * @param {DynamicCollection} dynamicCollection - Collected dynamic content
+ * @param {TreeNode} node - Current node
+ * @param {TreeNode | null} parent - Parent node
+ * @returns {void} No return value
+ */
+function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: TreeNode) {
+  const { children, props, operations } = dynamicCollection;
+  switch (node.type) {
+    case NODE_TYPE.COMPONENT:
+    case NODE_TYPE.FRAGMENT: {
+      // Prepare component attributes
+      const componentProps = { ...node.props, children: node.children };
+
+      // Create component call expression
+      const componentExpr = createComponentExpression(node, componentProps);
+
+      // Add to dynamic content list
+      children.push({
+        index: node.index,
+        node: componentExpr,
+        before: findBeforeIndex(node, parentNode as TreeNode),
+        parentIndex: parentNode?.index ?? null,
+      });
+      break;
+    }
+
+    case NODE_TYPE.EXPRESSION:
+      // Ensure child node array is not empty and first element is an expression
+      if (node.children && node.children.length > 0) {
+        const firstChild = node.children[0];
+
+        // Handle JavaScript expression nodes
+        if (isObject(firstChild) && t.isExpression(firstChild as t.Node)) {
+          children.push({
+            index: node.index,
+            node: firstChild as t.Expression,
+            before: findBeforeIndex(node, parentNode as TreeNode),
+            parentIndex: parentNode?.index ?? null,
+          });
+        }
+        // Handle JSX elements/fragments in expression containers
+        else if (
+          isObject(firstChild) &&
+          (t.isJSXElement(firstChild as t.Node) || t.isJSXFragment(firstChild as t.Node))
+        ) {
+          // Treat JSX elements in expression containers as components
+          // This usually occurs in: {<SomeComponent />} or {<></>}
+          children.push({
+            index: node.index,
+            node: createComponentExpression(node, { children: [firstChild] }),
+            before: findBeforeIndex(node, parentNode as TreeNode),
+            parentIndex: parentNode?.index ?? null,
+          });
+        }
+      }
+      break;
+
+    // Text nodes don't need dynamic processing (already handled in template stage)
+    case NODE_TYPE.TEXT:
+      break;
+
+    default:
+      // Handle regular HTML nodes with dynamic attributes
+      // Dynamic attributes include: event handlers, conditional rendering attributes, dynamic styles, etc.
+      if (node.props && Object.keys(node.props).length > 0) {
+        const currentProps = {};
+        for (const [attrName, attrValue] of Object.entries(node.props)) {
+          const isReactive =
+            isDynamicExpression(attrValue as t.Node) &&
+            !startsWith(attrName, `${UPDATE_PREFIX}:`) &&
+            !startsWith(attrName, EVENT_ATTR_NAME);
+
+          if (isReactive) {
+            // Collect reactive attributes for unified processing later
+            const setFunction = getSetFunctionForAttribute(attrName);
+            addImport(importMap[setFunction.name as keyof typeof importMap]);
+
+            operations.push({
+              nodeIndex: node?.index,
+              attrName,
+              attrValue: attrValue as t.Expression,
+              setFunction,
+              propKey: generatePropKey(attrName),
+            });
+          } else {
+            currentProps[attrName] = attrValue;
+          }
+        }
+        props.push({
+          props: currentProps,
+          parentIndex: node?.index ?? null,
+        });
+        break;
+      }
+  }
 }

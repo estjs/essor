@@ -1,57 +1,48 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`transform custom symbol > should work with basic types 1`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(false);
-__a.value = 1;"
+"const __a = false;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 2`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(true);
-__a.value = 1;"
+"const __a = true;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 3`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(0);
-__a.value = 1;"
+"const __a = 0;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 4`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(1);
-__a.value = 1;"
+"const __a = 1;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 5`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(1);
-__a.value = 1;"
+"const __a = 1;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 6`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(123);
-__a.value = 1;"
+"const __a = 123;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 7`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(null);
-__a.value = 1;"
+"const __a = null;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 8`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(undefined);
-__a.value = 1;"
+"const __a = undefined;
+__a = 1;"
 `;
 
 exports[`transform custom symbol > should work with basic types 9`] = `
-"import { signal as _signal$ } from "essor";
-const __a = _signal$(NaN);
-__a.value = 1;"
+"const __a = NaN;
+__a = 1;"
 `;
 
 exports[`transform symbol > should not work with add value symbol 1`] = `
@@ -225,7 +216,7 @@ const $a = _signal$({
 
 exports[`transform symbol > should work with object pattern 1`] = `
 "const {
-  $a,
+  $a: $a.value,
   b
 } = {
   $a: 1,
@@ -233,7 +224,7 @@ exports[`transform symbol > should work with object pattern 1`] = `
 };
 const [$c, d] = [1, 2];
 const [{
-  $d,
+  $d: $d.value,
   e
 }] = [{
   $d: 1,
@@ -246,14 +237,14 @@ console.log($d.value, e);"
 
 exports[`transform symbol > should work with object pattern alias 1`] = `
 "const {
-  a: $a,
+  a: $a.value,
   b
 } = {
   a: 1,
   b: 2
 };
 const [{
-  d: $d
+  d: $d.value
 }] = [{
   d: 1,
   e: 2

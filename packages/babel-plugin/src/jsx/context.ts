@@ -1,26 +1,29 @@
-import type { JSXElement, TemplateInfo } from './types';
 import type { NodePath } from '@babel/core';
-import type { State } from '../types';
+import type { JSXElement, PluginState } from '../types';
 
 /**
  * Transform Context Interface
  * @description Describes shared context data during the transformation process
  */
 export interface TransformContext {
-  /** State object */
-  state: State;
-  /** Node path */
+  /// State object
+  state: PluginState;
+  // Node path
   path: NodePath<JSXElement>;
+  // Index to track operations
+  operationIndex: number;
 }
 
-let activeContext: TransformContext | null = null;
-
+const contextStack: TransformContext[] = [];
 /**
  * Get current transform context
  * @returns {TransformContext} Current context object
  */
 export function getContext(): TransformContext {
-  return activeContext!;
+  if (!contextStack.length) {
+    throw new Error('No active context found. Ensure setContext has been called.');
+  }
+  return contextStack[contextStack.length - 1];
 }
 
 /**
@@ -28,7 +31,7 @@ export function getContext(): TransformContext {
  * @param {Partial<TransformContext>} context - The context to update
  */
 export function setContext(context: TransformContext): void {
-  activeContext = context;
+  contextStack.push(context);
 }
 
 /**
@@ -36,24 +39,5 @@ export function setContext(context: TransformContext): void {
  * @description Resets the context to its initial state
  */
 export function resetContext(): void {
-  activeContext = null;
-}
-
-// template maps
-export let templateMaps: TemplateInfo[] = [];
-
-export function hasTemplateMaps(str: string | Array<string>) {
-  return templateMaps.find(item => item.template === str);
-}
-
-export function addTemplateMaps(str: TemplateInfo) {
-  templateMaps.push(str);
-}
-
-export function clearTemplateMaps() {
-  templateMaps = [];
-}
-
-export function getTemplateMaps() {
-  return templateMaps;
+  contextStack.pop();
 }

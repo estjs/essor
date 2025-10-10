@@ -1,50 +1,46 @@
 import { type NodePath, types as t } from '@babel/core';
 import { error } from '@estjs/shared';
-import { RENDER_MODE, SSG_IMPORTS_MAPS, SSR_IMPORTS_MAPS, USED_IMPORTS } from './constants';
-import type { ImportsNames, State } from './types';
+import { IMPORTS_MAPS, RENDER_MODE, SSG_IMPORTS_MAPS, SSR_IMPORTS_MAPS } from './constants';
+import type { PluginState } from './types';
+
+export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 /**
  * Generates a set of unique import identifiers for a given program path.
- *
- * This function iterates over the list of used imports and creates a unique
- * identifier for each one. It ensures that each identifier is valid and throws
- * an error if any identifier generation fails.
- *
+
  * @param path - The program path used to generate unique identifiers.
  * @returns A record mapping import names to their corresponding unique identifiers.
  * @throws Will throw an error if identifier generation fails for any import.
  */
-
 export function createImportIdentifiers(path: NodePath<t.Program>) {
   // Initialize all required identifiers
-  const identifiers = USED_IMPORTS.reduce<Record<string, t.Identifier>>((acc, name) => {
+  const identifiers = IMPORTS_MAPS.reduce<Record<string, t.Identifier>>((acc, name) => {
     // Generate unique identifier
-    const identifier = path.scope.generateUidIdentifier(`${name}$`);
+    const identifier = path.scope?.generateUidIdentifier(`${name}$`) ?? t.identifier(`${name}$`);
 
     // Ensure identifier is valid
     if (!identifier) {
       throw new Error(`Failed to generate identifier for ${name}`);
     }
-
     acc[name] = identifier;
     return acc;
   }, {});
 
   return identifiers;
 }
-export const importMap = USED_IMPORTS.reduce(
+export const importMap = IMPORTS_MAPS.reduce(
   (acc, name) => ({ ...acc, [name]: name }),
   {},
-) as Record<ImportsNames, ImportsNames>;
+) as Record<IMPORT_MAP_NAMES, IMPORT_MAP_NAMES>;
 
 // imported sets
-export const importedSets = new Set<ImportsNames>();
+export const importedSets = new Set<IMPORT_MAP_NAMES>();
 
 /**
  * Adds the given import name to the set of imported names.
  *
  * @param name The name of the import to add.
  */
-export function addImport(name: ImportsNames): void {
+export function addImport(name: IMPORT_MAP_NAMES): void {
   importedSets.add(name);
 }
 
@@ -70,7 +66,7 @@ export function createImport(
   imports: Record<string, t.Identifier>,
   from: string,
 ): void {
-  const state = path.state as State;
+  const state = path.state as PluginState;
 
   const mode = state.opts.mode;
 
@@ -81,7 +77,11 @@ export function createImport(
   try {
     // Create import specifiers
     const importSpecifiers = Array.from(importedSets).map(name => {
-      const local = t.identifier(imports[name].name);
+      const importIdentifier = imports[name];
+      if (!importIdentifier) {
+        throw new Error(`Import identifier not found for: ${name}`);
+      }
+      const local = t.identifier(importIdentifier.name);
       if (mode === RENDER_MODE.SSG) {
         name = SSG_IMPORTS_MAPS[name] || name;
       }

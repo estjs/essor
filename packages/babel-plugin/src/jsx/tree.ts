@@ -1,407 +1,471 @@
 import { type NodePath, types as t } from '@babel/core';
-import { capitalize, error, isSVGTag, warn } from '@estjs/shared';
-import { addImport, importMap } from '../import';
-import { FRAGMENT_NAME, NODE_TYPE, UPDATE_NAME } from './constants';
-import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './utils';
-import type { JSXChild, JSXElement, TreeNode } from './types';
-import type { State } from '../types';
+import { isSVGTag, isSelfClosingTag, warn } from '@estjs/shared';
+import { BIND_REG, FRAGMENT_NAME, NODE_TYPE, SPREAD_NAME, UPDATE_PREFIX } from './constants';
+import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './shared';
+import type { JSXChild, JSXElement } from '../types';
 
-/**
- * Node index counter
- * @description Used to generate a unique index for each JSX element or text node. The index of the root node starts from 1.
- */
-let treeIndex = 1;
+export interface TreeNode {
+  // is root node
+  root?: boolean;
+  // node type
+  type: NODE_TYPE;
+  // node name
+  tag?: string;
+  // node attributes
+  props?: Record<string, unknown>;
+  // node children
+  children: (TreeNode | JSXChild | string | t.Expression)[];
+  // index, default start from 1
+  index: number;
+  // parent index
+  parentIndex?: number | null;
 
+  // is last child
+  isLastChild?: boolean;
+  // is self closing
+  selfClosing?: boolean;
+  // internal use only
+  _isTreeNode?: true;
+}
 /**
- * Creates a default TreeNode structure
- * @description Provides a standardized initial TreeNode object with all necessary default properties.
- * @returns {TreeNode} The default tree node object.
+ * Create default tree node structure
+ *
+ * This function creates a tree node object with default configuration,
+ * serving as the base template for all tree nodes. This ensures all nodes
+ * have consistent base structure and default values.
+ *
+ * Default configuration description:
+ * - Root node (root: true)
+ * - Normal type HTML node (NODE_TYPE.NORMAL)
+ * - Empty tag name and attributes
+ * - Empty child node array
+ * - Non-special states (not last child, not self-closing, not Fragment)
  */
 export function createDefaultTree(): TreeNode {
   return {
-    root: false,
+    root: true,
     type: NODE_TYPE.NORMAL,
     tag: '',
     props: {},
     children: [],
     index: 1,
+    parentIndex: null,
     isLastChild: false,
-    isSelfClosing: false,
-    isFragment: false,
-    _isTreeNode: true,
+    selfClosing: false,
+    _isTreeNode: true, // internal use only
   };
 }
 
+export function isTreeNode(node: unknown): node is TreeNode {
+  return !!(node && (node as TreeNode)._isTreeNode);
+}
 /**
- * Converts Babel's JSX AST node to a custom TreeNode structure
- * @description Recursively processes JSXElement, JSXFragment, JSXText, and JSXExpressionContainer nodes,
- * converting them into an internal unified TreeNode structure for subsequent transformation logic.
- * @param {NodePath<JSXElement | t.JSXText>} path - The AST path of the current JSX node.
- * @param {State} state - The current state object of the Babel plugin.
- * @param {TreeNode} [parentNode] - The TreeNode object of the parent node (optional, used for child node recursion).
- * @returns {TreeNode} The converted tree node object.
+ * Global tree node index counter
+ *
+ * Used to assign unique index identifiers to each tree node. This index is very important
+ * in subsequent DOM operations for efficiently locating and manipulating specific DOM elements.
+ * Can be understood as nextSibling, incrementing sequentially.
+ *
+ * Index assignment rules:
+ * - Root node starts from 1
+ * - Each non-component node gets an incremental index
+ * - Component nodes don't get indices (because they don't directly correspond to DOM elements)
+ *
+ * @internal
  */
-export function createTree(
-  path: NodePath<JSXElement | t.JSXText>,
-  state: State,
-  parentNode?: TreeNode,
-): TreeNode {
-  const treeNode = createDefaultTree();
-  const isJSXElement = path.isJSXElement();
-  const isJSXFragment = path.isJSXFragment();
+let treeIndex = 1;
 
-  // Reset root node index or set index based on parent node
+export function createTree(path: NodePath<JSXElement>, parentNode?: TreeNode): TreeNode {
+  const treeNode = createDefaultTree();
+
   if (parentNode) {
-    // For component or expression nodes, the childIndex of the parent node is not incremented,
-    // as they are not mapped to fixed positions in the DOM tree.
-    // isComponentName(getTagName(path.node as JSXElement)) here is to handle the case where Fragment is used as a component name.
-    if (!(isComponentName(getTagName(path.node as JSXElement)) || isJSXFragment)) {
+    // Child node processing: only non-component nodes get indices
+    const nodeInfo = path.node as JSXElement;
+    const isComponentOrFragment = isComponentName(getTagName(nodeInfo)) || path.isJSXFragment();
+
+    if (!isComponentOrFragment) {
       treeNode.index = ++treeIndex;
     }
+    treeNode.parentIndex = treeIndex;
   } else {
+    // Root node processing: mark as root node and reset counter
     treeNode.root = true;
-    treeIndex = 1; // Reset index each time a new root JSX element is processed
+    treeIndex = 1;
   }
 
-  // Process text nodes
-  if (path.isJSXText()) {
-    treeNode.type = NODE_TYPE.TEXT;
-    const textValue = textTrim(path.node);
-    treeNode.children = textValue ? [textValue] : [];
-    return treeNode;
+  // Handle text node
+  if (t.isJSXText(path.node)) {
+    return processJSXText(path as unknown as NodePath<t.JSXText>, treeNode);
   }
 
-  // Process JSXElement and JSXFragment
-  const jsxElementPath = path as NodePath<JSXElement>;
-  const tagName = getTagName(jsxElementPath.node);
-  const isComponent = isComponentName(tagName);
-  const isFragment = isJSXFragment || (isComponent && tagName === FRAGMENT_NAME);
-
-  treeNode.tag = tagName;
-  treeNode.type = determineNodeType(isComponent, isFragment, tagName);
-  treeNode.isFragment = isFragment;
-  treeNode.isSelfClosing =
-    t.isJSXClosingElement(jsxElementPath.node) || t.isJSXClosingFragment(jsxElementPath.node); // Check if it is a self-closing tag
-
-  // Process attributes (JSXElement nodes only)
-  if (isJSXElement) {
-    treeNode.props = processJSXAttributes(jsxElementPath);
-  }
-
-  // Process children
-  treeNode.children = [];
-  if (!treeNode.isSelfClosing) {
-    processJSXChildren(jsxElementPath, treeNode, state);
+  // Handle JSX (including fragment)
+  if (t.isJSXElement(path.node)) {
+    return processJSXElement(path as NodePath<JSXElement>, treeNode);
   }
 
   return treeNode;
 }
 
-/**
- * Processes the children of a JSX element
- * @description Optimizes the child node list (merging adjacent text nodes) and recursively processes each child node.
- * @param {NodePath<JSXElement>} path - The AST path of the current JSX element.
- * @param {TreeNode} parentNode - The TreeNode object of the parent node.
- * @param {State} state - The current state object of the Babel plugin.
- */
-function processJSXChildren(path: NodePath<JSXElement>, parentNode: TreeNode, state: State): void {
-  if (!path.node.children || path.node.children.length === 0) {
-    return;
+function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): TreeNode {
+  const tagName = getTagName(path.node);
+
+  treeNode.tag = tagName;
+  treeNode.type = determineNodeType(path, tagName);
+  treeNode.selfClosing = isSelfClosingTag(tagName);
+
+  // Process JSX attributes and properties
+  treeNode.props = processProps(path);
+
+  // Self-closing tags don't need to process children
+  if (!treeNode.selfClosing) {
+    // Process child elements recursively
+
+    processChildren(path, treeNode);
   }
 
-  // Merge adjacent text nodes for optimization
-  const optimizedChildren = optimizeChildNodes(path.get('children'));
-
-  // Iterate and process each child node
-  optimizedChildren.forEach((childPath, idx) => {
-    const isLastChild = idx === optimizedChildren.length - 1;
-    processSingleJSXChild(childPath, parentNode, isLastChild, state);
-  });
+  return treeNode;
 }
 
-/**
- * Processes a single JSX child node
- * @description Recursively converts based on the child node's type (JSXElement, JSXFragment, JSXExpressionContainer, JSXText)
- * to TreeNode and adds it to the parent node's children list.
- * @param {NodePath<JSXChild>} childPath - The AST path of the single child node.
- * @param {TreeNode} parentNode - The TreeNode object of the parent node.
- * @param {boolean} isLastChild - Whether it is the last child of the parent node.
- * @param {State} state - The current state object of the Babel plugin.
- */
-function processSingleJSXChild(
-  childPath: NodePath<JSXChild>,
-  parentNode: TreeNode,
-  isLastChild: boolean,
-  state: State,
-): void {
-  try {
-    if (childPath.isJSXElement() || childPath.isJSXFragment()) {
-      // Recursively process JSX elements or fragments
-      const childNode = createTree(childPath as NodePath<JSXElement>, state, parentNode);
-      childNode.isLastChild = isLastChild;
-      parentNode.children.push(childNode);
-    } else if (childPath.isJSXExpressionContainer()) {
-      // Process expression containers (e.g., {foo}, {'bar'})
-      processJSXExpressionContainer(childPath, parentNode, isLastChild);
-    } else if (childPath.isJSXText()) {
-      // Process JSX text nodes
-      processJSXTextNode(childPath, parentNode, isLastChild);
-    } else if (childPath.isJSXSpreadChild()) {
-      // Process JSX spread children (e.g., { ...items }), temporarily ignore or convert to expression as needed
-      warn(
-        `Unsupported JSX spread child type, will be treated as an expression: ${childPath.type}`,
-      );
-      const exprNode: TreeNode = {
-        type: NODE_TYPE.EXPRESSION,
-        index: treeIndex, // Still assign an index, but do not increment
-        isLastChild,
-        children: [childPath.node.expression],
-      };
-      parentNode.children.push(exprNode);
-    } else {
-      warn(`Encountered unsupported JSX child type: ${childPath.type}`);
-    }
-  } catch (error_) {
-    error('Error processing child node:', error_);
-  }
-}
+function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
+  const props = {};
+  const attributes = path.get('openingElement.attributes') as NodePath<
+    t.JSXAttribute | t.JSXSpreadAttribute
+  >[];
 
-/**
- * Processes JSX expression containers
- * @description Converts expressions within JSXExpressionContainer to TreeNode, handling string/numeric literals
- * and other general expressions.
- * @param {NodePath<t.JSXExpressionContainer>} childPath - The AST path of the expression container.
- * @param {TreeNode} parentNode - The TreeNode object of the parent node.
- * @param {boolean} isLastChild - Whether it is the last child of the parent node.
- */
-function processJSXExpressionContainer(
-  childPath: NodePath<t.JSXExpressionContainer>,
-  parentNode: TreeNode,
-  isLastChild: boolean,
-): void {
-  const expression = childPath.get('expression');
-
-  if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-    // If it is a string or numeric literal, treat it as a text node
-    const textNode: TreeNode = {
-      type: NODE_TYPE.TEXT,
-      index: ++treeIndex,
-      children: [String(expression.node.value)],
-      isLastChild,
-    };
-    parentNode.children.push(textNode);
-  } else if (t.isExpression(expression.node)) {
-    // Other expression types, create an expression node
-    const exprNode: TreeNode = {
-      type: NODE_TYPE.EXPRESSION,
-      // Expression nodes do not occupy fixed DOM index positions, so treeNodeIndex is not incremented here
-      index: treeIndex, // Maintain the same index as the previous static node or the previous dynamic node
-      isLastChild,
-      children: [expression.node],
-    };
-    parentNode.children.push(exprNode);
-  } else if (t.isJSXEmptyExpression(expression.node)) {
-    // Ignore empty JSX expressions (e.g., {}), do not generate nodes
-  } else {
-    warn(`Encountered unsupported expression type: ${expression.type}`);
-  }
-}
-
-/**
- * Processes JSX text nodes
- * @description Converts JSXText nodes to TreeNode and handles special cases:
- * If dynamic content (expression/component/fragment) exists between two text nodes, insert a comment node `<!>` as a marker between them.
- * @param {NodePath<t.JSXText>} childPath - The AST path of the text node.
- * @param {TreeNode} parentNode - The TreeNode object of the parent node.
- * @param {boolean} isLastChild - Whether it is the last child of the parent node.
- */
-function processJSXTextNode(
-  childPath: NodePath<t.JSXText>,
-  parentNode: TreeNode,
-  isLastChild: boolean,
-): void {
-  const text = textTrim(childPath.node);
-  if (text) {
-    // Check if a comment node needs to be inserted between text nodes as a dynamic content marker
-    const childrenLength = parentNode.children.length;
-    const preNode = parentNode.children[childrenLength - 1] as TreeNode | undefined;
-
-    // Conditions:
-    // 1. At least one child node exists in the parent node (preNode exists)
-    // 2. The previous node is not a comment node (to avoid duplicate insertions)
-    // 3. The previous node is an expression, Fragment, or component (indicating the previous node is dynamic content)
-    if (
-      childrenLength >= 2 &&
-      preNode &&
-      preNode.type !== NODE_TYPE.COMMENT &&
-      (preNode.type === NODE_TYPE.EXPRESSION ||
-        preNode.type === NODE_TYPE.FRAGMENT ||
-        preNode.type === NODE_TYPE.COMPONENT)
-    ) {
-      // Insert a comment node as a marker, its index is set to -1 (not a real DOM node)
-      const commentNode: TreeNode = {
-        type: NODE_TYPE.COMMENT,
-        children: [],
-        index: ++treeIndex,
-      };
-      parentNode.children.push(commentNode);
-    }
-
-    // Create a new text node
-    const newNode: TreeNode = {
-      type: NODE_TYPE.TEXT,
-      children: [text],
-      index: ++treeIndex,
-      isLastChild,
-    };
-    parentNode.children.push(newNode);
-  }
-}
-
-/**
- * Determines the type of a node
- * @description Determines the final type of a node based on its characteristics (whether it is a component, a Fragment, or an SVG tag).
- * @param {boolean} isComponent - Whether the tag is recognized as a component.
- * @param {boolean} isFragment - Whether the tag is a Fragment.
- * @param {string} tagName - The name of the tag.
- * @returns {NODE_TYPE} The determined node type enum value.
- */
-function determineNodeType(isComponent: boolean, isFragment: boolean, tagName: string): NODE_TYPE {
-  if (isComponent) {
-    return NODE_TYPE.COMPONENT;
-  }
-  if (isFragment) {
-    return NODE_TYPE.FRAGMENT;
-  }
-  if (isSVGTag(tagName)) {
-    return NODE_TYPE.SVG;
-  }
-  return NODE_TYPE.NORMAL;
-}
-
-function processJSXAttributes(path: NodePath<JSXElement>) {
-  const props: Record<string, unknown> = {};
-
-  // get path attr
-  const attributes = path.get('openingElement.attributes');
-  if (!Array.isArray(attributes)) {
+  if (!attributes.length) {
     return props;
   }
+
   attributes.forEach(attribute => {
-    if (attribute.isJSXAttribute()) {
+    if (t.isJSXAttribute(attribute.node)) {
       const name = getAttrName(attribute.node);
       const value = attribute.get('value');
 
-      // Process based on different types of attribute values
+      // <div a>
       if (!value.node) {
-        // Boolean attributes (e.g., <button disabled></button>)
         props[name] = true;
-      } else if (value.isStringLiteral()) {
-        // String literals
-        props[name] = value.node.value;
-      } else if (value.isJSXExpressionContainer()) {
-        // Expression containers
-        const expression = value.get('expression');
-        if (expression.isStringLiteral() || expression.isNumericLiteral()) {
-          // String or numeric literals
-          props[name] = expression.node.value;
-        } else if (expression.isJSXElement() || expression.isJSXFragment()) {
-          // props[name] = createTreeNode(expression as NodePath<JSXElement>, node);
-          props[name] = expression.node;
-        } else if (expression.isExpression()) {
-          // Handle different types of expressions
-          processExpressionByType(expression, name, props, path);
+      } else if (value) {
+        // <div a={1} >
+        if (value.isJSXExpressionContainer()) {
+          const expression = value.get('expression');
+          // <div a={1} >
+          if (expression.isStringLiteral() || expression.isNumericLiteral()) {
+            props[name] = expression.node.value;
+            // <div a={<div />} >
+          } else if (expression.isJSXElement() || expression.isJSXFragment()) {
+            props[name] = expression.node;
+          } else if (expression.isExpression()) {
+            // <div a={a} >
+            processPropsExpression(expression, name, props, path);
+          }
+        } else if (value.isStringLiteral() || value.isNumericLiteral()) {
+          props[name] = value.node.value;
+        } else if (value.isJSXElement() || value.isJSXFragment()) {
+          props[name] = value.node;
+        } else if (value.isExpression()) {
+          // <div a={a} >
+          processPropsExpression(value, name, props, path);
         }
-      } else if (value.isJSXElement() || value.isJSXFragment()) {
-        // props[name] = createTreeNode(value as NodePath<JSXElement>, node);
-        props[name] = value.node;
       }
-    } else if (attribute.isJSXSpreadAttribute()) {
-      // spread attr {...props}
-      props._$spread$ = attribute.get('argument').node;
+    } else if (t.isJSXSpreadAttribute(attribute.node)) {
+      props[SPREAD_NAME] = attribute.get('argument').node;
     }
   });
 
   return props;
 }
-/**
- * Handles different expression cases based on expression and attribute name type
- *
- * @param {NodePath<t.Expression>} expression - Expression node
- * @param {string} name - Attribute name
- * @param {Record<string, any>} props - Props object
- * @param {NodePath<t.JSXElement>} path - JSX element path
- */
-function processExpressionByType(
+
+function processPropsExpression(
   expression: NodePath<t.Expression>,
   name: string,
-  props: Record<string, any>,
+  props: Record<string, unknown>,
   path: NodePath<JSXElement>,
 ): void {
-  if (/^key|ref|on.+$/.test(name)) {
-    // Special attributes: key, ref, event handlers (onClick, etc.)
-    props[name] = expression.node;
-  } else if (/^bind:.+/.test(name)) {
-    // Two-way binding attributes
-    processBind(name, expression, props, path);
-  } else if (expression.isConditionalExpression()) {
-    // Conditional expressions
-    processConditionalExpression(expression, name, props, path);
+  if (BIND_REG.test(name)) {
+    processPropsBind(name, expression, props, path);
   } else {
-    // Other expressions
+    // normal attribute & key/ref/on
     props[name] = expression.node;
   }
 }
-/**
- * Processes bind attributes
- * Processes two-way binding attributes, such as bind:value
- *
- * @param {string} name - Attribute name
- * @param {NodePath} expression - Expression path
- * @param {Record<string, any>} props - Props object
- * @param {NodePath<t.JSXElement>} path - JSX element path
- */
-function processBind(
+
+function processPropsBind(
   name: string,
-  expression: NodePath,
+  expression: NodePath<t.Expression>,
   props: Record<string, any>,
   path: NodePath<JSXElement>,
 ): void {
   const value = path.scope.generateUidIdentifier('value');
   const bindName = name.slice(5).toLowerCase();
 
-  // Set original value
-  props[bindName] = expression.node;
+  // Register update:value
+  props[`${UPDATE_PREFIX}:${bindName}`] = [
+    expression.node,
+    t.arrowFunctionExpression(
+      [value],
+      t.assignmentExpression('=', expression.node as t.LVal, value),
+    ),
+  ];
+}
 
-  // Set update function
-  props[`${UPDATE_NAME}${capitalize(bindName)}`] = t.arrowFunctionExpression(
-    [value],
-    t.assignmentExpression('=', expression.node as t.LVal, value),
-  );
+/**
+ * Process all child nodes of JSX element
+ *
+ * This function is responsible for traversing and processing all child nodes of JSX elements,
+ * converting them to tree node structures. It first optimizes child nodes, then converts
+ * each child node individually.
+ *
+ * Processing flow:
+ * 1. **Boundary check**: Check if child nodes exist
+ * 2. **Child node optimization**: Use optimizeChildNodes for performance optimization
+ * 3. **Individual processing**: Call specific processing functions for each child node
+ * 4. **Position marking**: Mark the last child node for layout optimization
+ *
+ * Child node optimization features:
+ * - Merge adjacent text nodes
+ * - Remove empty text nodes
+ * - Optimize expression containers
+ *
+ * @param {NodePath<JSXElement>} path - AST path of JSX element node
+ * @param {TreeNode} parentNode - Tree node object of parent node
+ * @param {State} state - Current state of Babel plugin
+ *
+ * @example
+ * ```typescript
+ * // Before processing: <div>  text1  {expr}  text2  </div>
+ * // After optimization: <div>text1{expr}text2</div>
+ * // Result: parentNode.children = [textNode1, exprNode, textNode2]
+ * ```
+ */
+function processChildren(path: NodePath<JSXElement>, treeNode: TreeNode): void {
+  // Boundary check: check if child nodes exist
+  if (!path.node.children || path.node.children.length === 0) {
+    return;
+  }
+  const children = optimizeChildNodes(path.get('children'));
+
+  children.forEach(child => {
+    processChild(child, treeNode, children.length === 1);
+  });
+}
+
+function processChild(child: NodePath<JSXChild>, treeNode: TreeNode, isLastChild: boolean): void {
+  // jsx
+  if (t.isJSXElement(child.node)) {
+    const childNode = createTree(child as NodePath<JSXElement>, treeNode);
+    childNode.isLastChild = isLastChild;
+    treeNode.children.push(childNode);
+    return;
+  }
+  // expression
+  if (t.isJSXExpressionContainer(child.node)) {
+    processChildExpressionContainer(
+      child as NodePath<t.JSXExpressionContainer>,
+      treeNode,
+      isLastChild,
+    );
+    return;
+  }
+  // text
+  if (t.isJSXText(child.node)) {
+    processJSXChildText(child as NodePath<t.JSXText>, treeNode, isLastChild);
+    return;
+  }
+  // spread
+  if (t.isJSXSpreadChild(child.node)) {
+    processChildSpread(child as NodePath<t.JSXSpreadChild>, treeNode, isLastChild);
+    return;
+  }
+}
+
+function processChildExpressionContainer(
+  child: NodePath<t.JSXExpressionContainer>,
+  treeNode: TreeNode,
+  isLastChild: boolean,
+): void {
+  const expression = child.get('expression');
+  // string literal or numeric literal
+  if (expression.isStringLiteral() || expression.isNumericLiteral()) {
+    treeNode.children.push({
+      type: NODE_TYPE.TEXT,
+      children: [String(expression.node.value)],
+      index: ++treeIndex, // Static text increments index
+      parentIndex: treeNode.index,
+      isLastChild,
+      _isTreeNode: true,
+    });
+  }
+  // jsx element or jsx fragment
+  else if (expression.isJSXElement() || expression.isJSXFragment()) {
+    const childNode = createTree(child as unknown as NodePath<JSXElement>, treeNode);
+    childNode.isLastChild = isLastChild;
+    treeNode.children.push(childNode);
+  }
+  // expression
+  else if (expression.isExpression()) {
+    treeNode.children.push({
+      type: NODE_TYPE.EXPRESSION,
+      index: treeIndex, // Expression doesn't update index because it's dynamic content
+      isLastChild,
+      children: [expression.node as t.Expression],
+      parentIndex: treeNode.index,
+      _isTreeNode: true,
+    });
+  }
 }
 /**
- * Processes conditional expressions
+ * Determine whether to insert comment separator
  *
- * @param {NodePath<t.Expression>} expression - Expression node
- * @param {string} name - Attribute name
- * @param {Record<string, any>} props - Props object
- * @param {NodePath<t.JSXElement>} path - JSX element path
+ * @param {number} childrenLength - Current number of child nodes
+ * @param {TreeNode | undefined} previousNode - Previous child node
+ * @returns {boolean} Whether to insert comment separator
  */
-function processConditionalExpression(
-  expression: NodePath<t.Expression>,
-  name: string,
-  props: Record<string, any>,
-  path: NodePath<JSXElement>,
+function shouldInsertComment(childrenLength: number, previousNode: TreeNode | undefined): boolean {
+  return !!(
+    childrenLength >= 2 && // At least two child nodes
+    previousNode && // Previous node exists
+    previousNode.type !== NODE_TYPE.COMMENT && // Previous node is not a comment
+    // Previous node is dynamic content
+    (previousNode.type === NODE_TYPE.EXPRESSION ||
+      previousNode.type === NODE_TYPE.FRAGMENT ||
+      previousNode.type === NODE_TYPE.COMPONENT)
+  );
+}
+
+function processJSXChildText(
+  child: NodePath<t.JSXText>,
+  treeNode: TreeNode,
+  isLastChild: boolean,
 ): void {
-  // Safely access imports
-  try {
-    addImport(importMap.computed);
-    props[name] = t.callExpression(path.state.imports.computed, [
-      t.arrowFunctionExpression([], expression.node),
-    ]);
-  } catch (error_) {
-    // If an error occurs, use the expression directly
-    error('Error creating computed expression:', error_);
-    props[name] = expression.node;
+  const text = textTrim(child.node);
+
+  // Ignore empty text nodes
+  if (!text) {
+    return;
   }
+
+  const childrenLength = treeNode.children.length;
+  const previousNode = treeNode.children[childrenLength - 1] as TreeNode | undefined;
+
+  // Check if comment node needs to be inserted as separator
+  if (shouldInsertComment(childrenLength, previousNode)) {
+    const commentNode: TreeNode = {
+      type: NODE_TYPE.COMMENT,
+      children: [],
+      index: ++treeIndex,
+      _isTreeNode: true,
+    };
+    treeNode.children.push(commentNode);
+  }
+
+  // Create text node
+  const textNode: TreeNode = {
+    type: NODE_TYPE.TEXT,
+    children: [text],
+    index: ++treeIndex,
+    isLastChild,
+    _isTreeNode: true,
+  };
+  treeNode.children.push(textNode);
+}
+/**
+ * Handle as array children
+ * @param child
+ * @param treeNode
+ * @param isLastChild
+ */
+function processChildSpread(
+  child: NodePath<JSXChild>,
+  treeNode: TreeNode,
+  isLastChild: boolean,
+): void {
+  const spreadExpression = child.get('expression');
+
+  treeNode.children.push({
+    type: NODE_TYPE.SPREAD,
+    children: [spreadExpression.node as t.Expression],
+    index: treeIndex, // Note: doesn't increment here because this is dynamic content
+    parentIndex: treeNode.index,
+    isLastChild,
+    _isTreeNode: true,
+  });
+}
+
+/**
+ * Determine JSX node type
+ *
+ * Type judgment priority (high to low):
+ * 1. **COMPONENT**: React component (first letter capitalized or contains dot)
+ * 2. **FRAGMENT**: Fragment component (<></> or <Fragment></Fragment>)
+ * 3. **SVG**: SVG-related tags (svg, path, circle, etc.)
+ * 4. **NORMAL**: Regular HTML elements (div, span, p, etc.)
+ *
+ * @param {boolean} isComponent - Whether it's a React component
+ * @param {boolean} isFragment - Whether it's a Fragment component
+ * @param {string} tagName - Tag name
+ * @returns {NODE_TYPE} Node type enum value
+ */
+function determineNodeType(path: NodePath<JSXElement>, tagName: string): NODE_TYPE {
+  const isComponent = isComponentName(tagName);
+  const isFragment = path.isJSXFragment() || (isComponent && tagName === FRAGMENT_NAME);
+
+  // Highest priority: component
+  if (isComponent) {
+    return NODE_TYPE.COMPONENT;
+  }
+
+  // Second priority: Fragment component
+  if (isFragment) {
+    return NODE_TYPE.FRAGMENT;
+  }
+
+  // Third priority: SVG tags
+  if (isSVGTag(tagName)) {
+    return NODE_TYPE.SVG;
+  }
+
+  // Default: regular HTML elements
+  return NODE_TYPE.NORMAL;
+}
+
+/**
+ * Process JSX text node and populate tree node information
+ *
+ * This function converts text content in JSX to tree node structure. It handles
+ * text cleaning and normalization, ensuring the final generated HTML has no
+ * excess whitespace and line breaks.
+ *
+ * Text processing logic:
+ * 1. **Whitespace handling**: Use textTrim function to clean excess whitespace
+ * 2. **Empty content check**: Empty text won't create child nodes
+ * 3. **Type marking**: Set node type to TEXT
+ * 4. **Content storage**: Store cleaned text in children array
+ *
+ * @param {NodePath<t.JSXText>} path - AST path of JSX text node
+ * @param {TreeNode} treeNode - Tree node object to be populated
+ * @returns {TreeNode} Completed tree node object
+ *
+ * @example
+ * ```typescript
+ * // JSX: <div>  Hello World  </div>
+ * // After processing: node.children = ['Hello World']
+ *
+ * // JSX: <div>   </div>
+ * // After processing: node.children = [] (empty array)
+ * ```
+ */
+function processJSXText(path: NodePath<t.JSXText>, treeNode: TreeNode): TreeNode {
+  treeNode.type = NODE_TYPE.TEXT;
+
+  try {
+    const textValue = textTrim(path.node);
+    // Only create child nodes when valid text exists
+    treeNode.children = textValue ? [textValue] : [];
+  } catch (error) {
+    // Error handling when text processing fails
+    warn(`Text node processing failed: ${error}`);
+    treeNode.children = [];
+  }
+
+  return treeNode;
 }

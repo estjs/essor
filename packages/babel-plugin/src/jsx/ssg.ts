@@ -1,135 +1,173 @@
-import { types as t } from '@babel/core';
-import { isArray, isObject, isPrimitive, isString, isSymbol } from '@estjs/shared';
+import { type NodePath, types as t } from '@babel/core';
+import { isObject, isPrimitive, isString, isSymbol } from '@estjs/shared';
 import { addImport, importMap } from '../import';
-import { addTemplateMaps, getContext, hasTemplateMaps, setContext } from './context';
-import { createTree } from './tree';
-import {
-  CHILDREN_NAME,
-  EVENT_ATTR_NAME,
-  FRAGMENT_NAME,
-  NODE_TYPE,
-  SPREAD_NAME,
-  UPDATE_NAME,
-} from './constants';
-import { isTreeNode } from './utils';
-import type { State } from '../types';
-import type { JSXElement, SSGProcessResult, TreeNode } from './types';
-import type { NodePath } from '@babel/core';
+import { EVENT_ATTR_NAME, FRAGMENT_NAME, NODE_TYPE, UPDATE_PREFIX } from './constants';
+import { getContext } from './context';
+import { createPropsObjectExpression } from './shared';
+import { type TreeNode, isTreeNode } from './tree';
+import type { JSXElement } from '../types';
+
 /**
- * Transform JSX to static site generation code
- * @param {NodePath<JSXElement>} path - JSX node path
- * @returns {t.Expression | undefined} Transformed expression
+ * SSG Processing Result Interface
+ * @description Stores template and dynamic content information in SSG mode
  */
-export function transformJSX(path: NodePath<JSXElement>): t.Expression | undefined {
-  const state = path.state as State;
-
-  setContext({ path, state });
-
-  // Create JSX node tree
-  const tree = createTree(path, state);
-
-  // Process SSG specific templates and dynamic content
-  const { templates, dynamics } = processSSGTemplate(tree);
-  // Generate SSG render function
-  return generateSSGRenderFunction(tree, templates, dynamics);
+export interface transformResult {
+  /** Template string array */
+  templates: string[];
+  /** Dynamic content array */
+  dynamics: Array<{
+    /** Content type: text or attribute */
+    type: 'text' | 'attr';
+    /** Expression node */
+    node: t.Expression;
+    /** Attribute name (only for attr type) */
+    attrName?: string;
+  }>;
 }
-/**
- * Add content to template
- */
-export function addTemplate(currentResult, content: string, join = false): void {
-  if (currentResult.templates.length === 0) {
-    currentResult.templates.push(content);
-  } else {
-    if (join) {
-      currentResult.templates[currentResult.templates.length - 1] += content;
-    } else {
-      currentResult.templates.push(content);
-    }
+
+export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode) {
+  const { state } = getContext();
+
+  const result = transformTemplate(treeNode);
+  const { templates, dynamics } = result;
+
+  // Handle root component case
+  if (treeNode.type === NODE_TYPE.COMPONENT || treeNode.type === NODE_TYPE.FRAGMENT) {
+    const componentProps = { ...treeNode.props, children: treeNode.children };
+
+    addImport(importMap.createComponent);
+    return t.callExpression(state.imports.createComponent, [
+      t.identifier(treeNode.tag as string),
+      createPropsObjectExpression(componentProps, transformJSXToSSG),
+    ]);
   }
+
+  // Create render arguments
+  const args: t.Expression[] = [];
+
+  // Add template if exists
+  if (templates && templates.length > 0) {
+    addImport(importMap.template);
+    const tmplId = path.scope.generateUidIdentifier('_tmpl$');
+
+    // create template string array expression
+    const templateNode = t.arrayExpression(templates.map(str => t.stringLiteral(str)));
+    state.declarations.push(t.variableDeclarator(tmplId, templateNode));
+
+    args.push(tmplId);
+  }
+
+  // Create render call parameters
+  args.push(t.callExpression(state.imports.getHydrationKey, []));
+  // Add necessary imports
+  addImport(importMap.render);
+  addImport(importMap.getHydrationKey);
+
+  // Attributes should be placed before text content
+  const textDynamics = dynamics.filter(d => d.type === 'text');
+  const attrDynamics = dynamics.filter(d => d.type === 'attr');
+
+  // Add attribute dynamic content
+  attrDynamics.forEach(dynamic => {
+    args.push(dynamic.node);
+  });
+
+  // Add text dynamic content
+  textDynamics.forEach(dynamic => {
+    args.push(dynamic.node);
+  });
+
+  // Create render call
+  return t.callExpression(state.imports.render, args);
 }
 
-/**
- * Process SSG templates and dynamic content
- */
-export function processSSGTemplate(tree: TreeNode): SSGProcessResult {
-  const result: SSGProcessResult = {
+function transformTemplate(treeNode: TreeNode) {
+  const result: transformResult = {
     templates: [],
     dynamics: [],
-    root: tree,
   };
 
   // Recursively process nodes
-  processNodeForSSG(tree, result);
+  walkTreeNode(treeNode, result);
 
   return result;
 }
 
-/**
- * Recursively process nodes, generate SSG templates and collect dynamic content
- */
-export function processNodeForSSG(node: TreeNode, result: SSGProcessResult): void {
-  if (!node) {
+function walkTreeNode(treeNode: TreeNode, result: transformResult) {
+  if (!treeNode) {
     return;
   }
 
-  switch (node.type) {
+  switch (treeNode.type) {
     case NODE_TYPE.COMPONENT:
     case NODE_TYPE.FRAGMENT:
-      // Handle components and Fragments as dynamic content
-      handleComponentForSSG(node, result);
+      handleComponent(treeNode, result);
       break;
 
     case NODE_TYPE.EXPRESSION:
-      // Handle expressions as dynamic content
-      handleExpressionForSSG(node, result);
+      handleExpression(treeNode, result);
       break;
 
     case NODE_TYPE.TEXT:
-      // Text directly added to template
-      if (node.children && node.children.length > 0) {
-        addTemplate(result, node.children.join(''), true);
-      }
+      handleText(treeNode, result);
       break;
 
     case NODE_TYPE.NORMAL:
     case NODE_TYPE.SVG:
-      // Process regular HTML elements
-      handleElementForSSG(node, result);
+      handleElement(treeNode, result);
       break;
 
     case NODE_TYPE.COMMENT:
-      // Comment node
       addTemplate(result, '<!>', true);
+      break;
+
+    default:
+      // Handle unknown node types gracefully
+      if (treeNode.children && treeNode.children.length > 0) {
+        processChildren(treeNode.children as TreeNode[], result);
+      }
       break;
   }
 }
-
 /**
- * Handle component node
+ * Add content to template
  */
-export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult): void {
-  // Add placeholder
+export const addTemplate = (
+  result: transformResult,
+  content: string,
+  join: boolean = false,
+): void => {
+  if (result.templates.length === 0) {
+    result.templates.push(content);
+  } else {
+    if (join) {
+      result.templates[result.templates.length - 1] += content;
+    } else {
+      result.templates.push(content);
+    }
+  }
+};
+/**
+ * Handle component for SSG
+ */
+const handleComponent = (node: TreeNode, result: transformResult): void => {
+  // Add placeholder for component
   result.templates.push('');
 
-  // Create component expression
-  const componentProps = { ...node.props };
+  const { state } = getContext();
 
+  // Create component props
+  const componentProps = { ...node.props };
   if (node.children.length) {
     componentProps.children = node.children;
   }
-  const { state } = getContext();
 
-  // Add necessary imports
   addImport(importMap.createComponent);
 
-  // Create component call expression
+  // Create component expression
   const componentExpr = t.callExpression(state.imports.createComponent, [
     t.identifier(node.tag as string),
-    createPropsObjectExpression(componentProps, (treeNode: TreeNode) => {
-      // Recursively process nested TreeNode, ensuring the input is TreeNode type
-      const { templates, dynamics } = processSSGTemplate(treeNode);
-      return generateSSGRenderFunction(treeNode, templates, dynamics);
-    }),
+    createPropsObjectExpression(componentProps, transformJSXToSSG),
   ]);
 
   // Add to dynamic content
@@ -137,12 +175,12 @@ export function handleComponentForSSG(node: TreeNode, result: SSGProcessResult):
     type: 'text',
     node: componentExpr,
   });
-}
+};
 
 /**
- * Handle expression node
+ * Handle expression for SSG
  */
-export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult): void {
+const handleExpression = (node: TreeNode, result: transformResult): void => {
   if (!node.children || node.children.length === 0) {
     return;
   }
@@ -231,10 +269,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
             const newCallback = t.arrowFunctionExpression(
               mapCallback.params,
               t.callExpression(state.imports.Fragment, [
-                createPropsObjectExpression(props, (treeNode: TreeNode) => {
-                  const { templates, dynamics } = processSSGTemplate(treeNode);
-                  return generateSSGRenderFunction(treeNode, templates, dynamics);
-                }),
+                createPropsObjectExpression(props, transformJSXToSSG),
               ]),
             );
             exprNode.arguments[0] = newCallback;
@@ -244,10 +279,7 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
               mapCallback.params,
               t.callExpression(state.imports.createComponent, [
                 t.identifier(tagName),
-                createPropsObjectExpression(props, (treeNode: TreeNode) => {
-                  const { templates, dynamics } = processSSGTemplate(treeNode);
-                  return generateSSGRenderFunction(treeNode, templates, dynamics);
-                }),
+                createPropsObjectExpression(props, transformJSXToSSG),
               ]),
             );
             exprNode.arguments[0] = newCallback;
@@ -262,60 +294,61 @@ export function handleExpressionForSSG(node: TreeNode, result: SSGProcessResult)
       node: exprNode,
     });
   }
-}
+};
 
 /**
- * Handle HTML element node
+ * Handle text for SSG
  */
-export function handleElementForSSG(node: TreeNode, result: SSGProcessResult): void {
+const handleText = (node: TreeNode, result: transformResult): void => {
+  if (node.children && node.children.length > 0) {
+    addTemplate(result, node.children.join(''), true);
+  }
+};
+
+/**
+ * Handle element for SSG
+ */
+const handleElement = (node: TreeNode, result: transformResult): void => {
   // Build start tag
-  let openTag = `<${node.tag} data-idx="${node.index}" `;
+  let openTag = `<${node.tag} data-idx="${node.index}"`;
 
   // Process attributes
-  const { staticAttrs, dynamicAttrs } = processAttributesForSSG(node.props || {});
+  const { staticAttrs, dynamicAttrs } = processAttributes(node.props || {});
   openTag += staticAttrs;
+
   addTemplate(result, openTag, true);
+  addTemplate(result, node.selfClosing ? '/>' : '>', dynamicAttrs.length === 0);
 
-  addTemplate(result, node.isSelfClosing ? '/>' : '>', dynamicAttrs.length === 0);
-
-  // Process child nodes
-  if (node.children && node.children.length > 0) {
-    node.children.forEach(child => {
-      if (isTreeNode(child)) {
-        processNodeForSSG(child, result);
-      } else if (isString(child)) {
-        addTemplate(result, child, true);
-      }
-    });
+  // Process children
+  if (!node.selfClosing && node.children && node.children.length > 0) {
+    processChildren(node.children as TreeNode[], result);
   }
 
   // Add end tag
-  if (!node.isSelfClosing) {
+  if (!node.selfClosing) {
     addTemplate(result, `</${node.tag}>`, true);
   }
 
   // Process dynamic attributes
-  dynamicAttrs.forEach(attr => {
-    const { state } = getContext();
-    addImport(importMap.setAttr);
-    addImport(importMap.escapeHTML);
+  processDynamicAttributes(dynamicAttrs, result);
+};
 
-    result.dynamics.push({
-      type: 'attr',
-      node: t.callExpression(state.imports.setAttr, [
-        t.stringLiteral(attr.name),
-        t.callExpression(state.imports.escapeHTML, [attr.value]),
-        t.booleanLiteral(false),
-      ]),
-      attrName: attr.name,
-    });
+/**
+ * Process children for SSG
+ */
+const processChildren = (children: (TreeNode | string)[], result: transformResult): void => {
+  children.forEach(child => {
+    if (isTreeNode(child)) {
+      walkTreeNode(child, result);
+    } else if (isString(child)) {
+      addTemplate(result, child, true);
+    }
   });
-}
-
+};
 /**
  * Process SSG attributes
  */
-export function processAttributesForSSG(props: Record<string, any>): {
+export function processAttributes(props: Record<string, any>): {
   staticAttrs: string;
   dynamicAttrs: Array<{ name: string; value: t.Expression }>;
 } {
@@ -324,7 +357,7 @@ export function processAttributesForSSG(props: Record<string, any>): {
 
   for (const [prop, value] of Object.entries(props)) {
     // Skip event handlers and update functions
-    if (prop.startsWith(EVENT_ATTR_NAME) || prop.startsWith(UPDATE_NAME)) {
+    if (prop.startsWith(EVENT_ATTR_NAME) || prop.startsWith(UPDATE_PREFIX)) {
       continue;
     }
 
@@ -348,161 +381,25 @@ export function processAttributesForSSG(props: Record<string, any>): {
 }
 
 /**
- * Generate SSG render function
+ * Process dynamic attributes for SSG
  */
-export function generateSSGRenderFunction(
-  jsxTree: TreeNode,
-  templates: string[],
-  dynamics: Array<{ type: string; node: t.Expression; attrName?: string }>,
-): t.Expression {
-  const { path, state } = getContext();
+const processDynamicAttributes = (
+  dynamicAttrs: Array<{ name: string; value: t.Expression }>,
+  result: transformResult,
+): void => {
+  dynamicAttrs.forEach(attr => {
+    const { state } = getContext();
+    addImport(importMap.setAttr);
+    addImport(importMap.escapeHTML);
 
-  // If it's the root component, directly return component call expression
-  if (jsxTree.type === NODE_TYPE.COMPONENT) {
-    const componentProps = { ...jsxTree.props, children: jsxTree.children };
-
-    addImport(importMap.createComponent);
-
-    return t.callExpression(state.imports.createComponent, [
-      t.identifier(jsxTree.tag as string),
-      createPropsObjectExpression(componentProps, (treeNode: TreeNode) => {
-        const { templates, dynamics } = processSSGTemplate(treeNode);
-        return generateSSGRenderFunction(treeNode, templates, dynamics);
-      }),
-    ]);
-  }
-  // Create render call parameters
-  const renderArgs: t.Expression[] = [];
-
-  if (templates?.length) {
-    // Create identifier for template
-    let id: any = null;
-
-    const hasedTemplate = hasTemplateMaps(templates);
-    if (hasedTemplate) {
-      id = hasedTemplate.id;
-    } else {
-      // Add necessary imports
-      addImport(importMap.template);
-      id = path.scope.generateUidIdentifier('_tmpl$');
-      addTemplateMaps({
-        id,
-        template: templates,
-      });
-    }
-
-    renderArgs.push(id);
-  }
-
-  // Create render call parameters
-  renderArgs.push(t.callExpression(state.imports.getHydrationKey, []));
-  // Add necessary imports
-  addImport(importMap.render);
-  addImport(importMap.getHydrationKey);
-
-  // Attributes should be placed before text content
-  const textDynamics = dynamics.filter(d => d.type === 'text');
-  const attrDynamics = dynamics.filter(d => d.type === 'attr');
-
-  // Add attribute dynamic content
-  attrDynamics.forEach(dynamic => {
-    renderArgs.push(dynamic.node);
+    result.dynamics.push({
+      type: 'attr',
+      node: t.callExpression(state.imports.setAttr, [
+        t.stringLiteral(attr.name),
+        t.callExpression(state.imports.escapeHTML, [attr.value]),
+        t.booleanLiteral(false),
+      ]),
+      attrName: attr.name,
+    });
   });
-
-  // Add text dynamic content
-  textDynamics.forEach(dynamic => {
-    renderArgs.push(dynamic.node);
-  });
-
-  // Create render call
-  return t.callExpression(state.imports.render, renderArgs);
-}
-
-/**
- * Create props object expression
- */
-export function createPropsObjectExpression(
-  propsData: Record<string, any>,
-  transformJSXHandler: (tree: TreeNode) => t.Expression,
-): t.ObjectExpression {
-  const objectProperties: (t.ObjectProperty | t.SpreadElement)[] = [];
-
-  for (const propName in propsData) {
-    let propValue = propsData[propName];
-    // Skip empty children
-    if (propName === CHILDREN_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
-      continue;
-    }
-
-    propValue = convertValueToASTNode(propValue, transformJSXHandler);
-
-    // Process spread attributes
-    if (propName === SPREAD_NAME) {
-      objectProperties.push(t.spreadElement(propValue));
-    } else {
-      objectProperties.push(t.objectProperty(t.stringLiteral(propName), propValue));
-    }
-  }
-
-  return t.objectExpression(objectProperties);
-}
-
-/**
- * Convert JavaScript value to corresponding AST node
- */
-export function convertValueToASTNode(
-  value: any,
-  transformJSXHandler: (tree: TreeNode) => t.Expression,
-): t.Expression {
-  // If it's already AST node, directly return
-  if (t.isExpression(value)) {
-    return value;
-  }
-  if (isArray(value)) {
-    return t.arrayExpression(value.map(item => convertValueToASTNode(item, transformJSXHandler)));
-  }
-  if (isObject(value)) {
-    if (
-      value.type === NODE_TYPE.FRAGMENT ||
-      value.type === NODE_TYPE.COMPONENT ||
-      value.type === NODE_TYPE.NORMAL ||
-      value.type === NODE_TYPE.TEXT ||
-      value.type === NODE_TYPE.SVG
-    ) {
-      // Already TreeNode type, directly recursively process
-      return transformJSXHandler(value);
-    }
-
-    // If it's original JSX AST node (e.g. t.JSXElement, t.JSXFragment)
-    // And they are passed as attribute values, need to convert to TreeNode first
-    if (t.isJSXElement(value) || t.isJSXFragment(value)) {
-      const { path, state } = getContext();
-      const mockNodePath = {
-        node: value,
-        parentPath: path, // Keep parent path reference
-        scope: path.scope, // Keep scope reference
-      } as NodePath<t.JSXElement | t.JSXFragment> as any;
-      const tree = createTree(mockNodePath, state);
-      return transformJSXHandler(tree);
-    }
-
-    return createPropsObjectExpression(value, transformJSXHandler);
-  }
-  if (isString(value)) {
-    return t.stringLiteral(value);
-  }
-  if (typeof value === 'number') {
-    return t.numericLiteral(value);
-  }
-  if (typeof value === 'boolean') {
-    return t.booleanLiteral(value);
-  }
-  if (value === undefined) {
-    return t.identifier('undefined');
-  }
-  if (value === null) {
-    return t.nullLiteral();
-  }
-
-  return value;
-}
+};
