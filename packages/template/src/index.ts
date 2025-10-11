@@ -13,3 +13,4 @@ export { onDestroyed, onMounted, onUpdated } from './lifecycle';
 
 export * from './components';
 export * from './server';
+export { delegateEvents } from './events';
