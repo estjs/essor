@@ -14,11 +14,11 @@
   },
   "devDependencies": {
     "@estjs/eslint-config": "^2.1.5",
-    "unplugin-essor": "workspace:*",
-    "@types/node": "^24.7.0",
+    "@types/node": "^24.7.1",
     "eslint": "^9.37.0",
     "jsdom": "^27.0.0",
     "typescript": "^5.9.3",
+    "unplugin-essor": "workspace:*",
     "vite": "^7.1.9",
     "vite-plugin-inspect": "^11.3.3",
     "vitest": "^3.2.4"
