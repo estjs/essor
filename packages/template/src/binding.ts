@@ -1,8 +1,12 @@
-import { type Signal, computed, effect, isComputed, isSignal } from '@estjs/signal';
-import { coerceArray, hasChanged, isFalsy, isFunction, isPrimitive } from '@estjs/shared';
+import { effect } from '@estjs/signal';
+import { coerceArray, isFunction } from '@estjs/shared';
 import { getActiveContext } from './context';
-import { addEvent, patchAttr, patchClass, patchStyle } from './operations';
-import { REF_KEY } from './constants';
+import {
+  isHtmlInputElement,
+  isHtmlSelectElement,
+  isHtmlTextAreaElement,
+  normalizeNode,
+} from './utils';
 import { patchChildren } from './patch';
 import type { AnyNode } from './types';
 
@@ -13,179 +17,168 @@ import type { AnyNode } from './types';
  * @param {EventListener} listener - the listener to call when the event is triggered
  * @param {AddEventListenerOptions} listenerOptions - the options for the event listener
  */
+/**
+ * Adds an event listener to the given node.
+ *
+ * If an active context is available, a cleanup function will be added to the context's
+ * cleanup collection to remove the event listener when the context is destroyed.
+ *
+ * @param node - The node to add the event listener to.
+ * @param name - The name of the event to listen for.
+ * @param handler - The event handler function to call when the event occurs.
+ * @param options - Optional options for the event listener.
+ */
 export function addEventListener(
   node: Element,
-  eventName: string,
-  listener: EventListener,
-  listenerOptions?: AddEventListenerOptions,
+  name: string,
+  handler: EventListener,
+  options?: boolean | AddEventListenerOptions,
 ) {
   const activeContext = getActiveContext();
-  // add the event listener to the node
-  const cleanupFn = addEvent(node, eventName, listener, listenerOptions);
-  activeContext?.cleanup.add(cleanupFn);
-}
-
-/**
- * handle the signal,computed,function,
- * @param {unknown} value - the value to handle
- * @param {Function} updateFn - the function to update the value
- */
-export function trackSignal(
-  value: unknown,
-  updateFn: (newValue: unknown, prevValue?: unknown) => void,
-): void {
-  // check if the value is a signal or computed
-  if (isSignal(value) || isComputed(value)) {
-    // add the update function to the cleanup
-    trackDependency(value, updateFn);
-    return;
-  }
-
-  if (isFunction(value)) {
-    // add the update function to the cleanup
-    trackDependency(
-      computed(() => value()),
-      updateFn,
-    );
-
-    return;
-  }
-
-  //normal value, just update the value
-  updateFn(value);
-}
-
-/**
- * add the update function to the dependency
- * @param {unknown} dependency - the dependency to add the update function to
- * @param {Function} updateFn - the function to update the dependency
- */
-export function trackDependency(
-  dependency: unknown,
-  updateFn: (newValue: unknown, prevValue?: unknown) => void,
-): void {
-  const context = getActiveContext();
-  if (!context) {
-    return;
-  }
-
-  // Add directly to dependency collection
-  const dep = context.deps.get(dependency);
-  if (!dep) {
-    context.deps.set(dependency, new Set([updateFn]));
-  } else {
-    dep.add(updateFn);
-  }
-
-  // Immediately set up automatic cleanup
-  if (isSignal(dependency) || isComputed(dependency)) {
-    const cleanup = () => {
-      context.deps.delete(dependency);
-    };
-    context.cleanup.add(cleanup);
+  node.addEventListener(name, handler, options);
+  if (activeContext) {
+    const cleanup = () => node.removeEventListener(name, handler);
+    activeContext.cleanup.add(cleanup);
   }
 }
 /**
- * create a component effect
- * @returns {void}
+ * Bind an element to a setter function, allowing the element to update the setter value when its value changes.
+ *
+ * @param node The element to bind.
+ * @param setter The setter function to call when the element's value changes.
  */
-export function createComponentEffect() {
-  const context = getActiveContext();
-  if (!context) {
-    return;
-  }
+export function bindElement(node: Element, setter: (value: unknown) => void) {
+  if (isHtmlInputElement(node)) {
+    switch (node.type) {
+      case 'checkbox':
+        addEventListener(node, 'change', () => {
+          setter(Boolean(node.checked));
+        });
+        break;
 
-  const setupEffect = () => {
-    // Collect current values of all dependencies
-    const values = new Map();
+      case 'radio':
+        addEventListener(node, 'change', () => {
+          setter(node.checked ? node.value : '');
+        });
+        break;
 
-    // Create a single effect to monitor all dependencies
-    const cleanup = effect(() => {
-      // Check which values have changed and only update those
-      context.deps.forEach((updateFnSet, dep) => {
-        const newValue = isSignal(dep) || isComputed(dep) ? dep.value : dep;
-        const oldValue = values.get(dep);
-        if (hasChanged(newValue, oldValue)) {
-          values.set(dep, newValue);
-          updateFnSet.forEach(updateFn => updateFn(newValue, oldValue));
+      case 'file':
+        addEventListener(node, 'change', () => {
+          setter(node.files);
+        });
+        break;
 
-          context.componentEffect.forEach(effectFn => effectFn());
-        }
-      });
-    });
+      case 'number':
+      case 'range':
+        addEventListener(node, 'input', () => {
+          const numValue = Number.parseFloat(node.value);
+          const value = Number.isNaN(numValue) ? '' : String(numValue);
+          setter(value);
+        });
+        break;
 
-    context.cleanup.add(cleanup);
-  };
+      case 'date':
+      case 'datetime-local':
+      case 'month':
+      case 'time':
+      case 'week':
+        addEventListener(node, 'change', () => {
+          setter(node.value ? node.value : '');
+        });
+        break;
 
-  setupEffect();
-}
-/**
- * set the style of the element
- * @param {HTMLElement} element - the element to set the style
- * @param {unknown} style - the style to set
- */
-export function setStyle(element: HTMLElement, style: unknown) {
-  if (!element) {
-    return;
-  }
-
-  trackSignal(style, patchStyle(element));
-}
-
-/**
- * set the class of the element
- * @param {HTMLElement} element - the element to set the class
- * @param {unknown} value - the value to set the class
- * @param {boolean} isSVG - whether the element is an SVG element
- */
-export function setClass(
-  element: HTMLElement,
-  value: string | Signal<unknown> | Function | any,
-  isSVG?: boolean,
-) {
-  if (!element) {
-    return;
-  }
-  // Check if element is SVG if not explicitly provided
-  trackSignal(value, patchClass(element, isSVG));
-}
-
-/**
- * set the attribute of the element
- * @param {HTMLElement} el - the element to set the attribute
- * @param {string} key - the key of the attribute
- * @param {unknown} value - the value of the attribute
- * @param {boolean} isSVG - whether the element is an SVG element
- */
-export function setAttr(el: HTMLElement, key: string, value: unknown, isSVG?: boolean) {
-  // if the key is ref, set the value to the element
-  if (key === REF_KEY) {
-    if (isSignal(value)) {
-      value.value = el;
+      default:
+        // Text input types
+        addEventListener(node, 'input', () => {
+          setter(node.value ? node.value : '');
+        });
+        break;
     }
-    return;
   }
 
-  // Check if element is SVG if not explicitly provided
-  trackSignal(value, patchAttr(el, key, isSVG));
+  if (isHtmlSelectElement(node)) {
+    addEventListener(node, 'change', () => {
+      let value: string | string[];
+
+      if (node.multiple) {
+        // Multi-select dropdown
+        value = Array.from((node as unknown as HTMLSelectElement).selectedOptions).map(
+          option => option.value,
+        );
+      } else {
+        // Single-select dropdown
+        value = node.value;
+      }
+      setter(value);
+    });
+  }
+
+  if (isHtmlTextAreaElement(node)) {
+    addEventListener(node, 'input', () => {
+      setter(node.value ? node.value : '');
+    });
+  }
 }
 
+/**
+ * Reactive node insertion with binding support
+ *
+ * @param parent Parent node
+ * @param nodeFactory Node factory function or static node
+ * @param before Reference node for insertion position
+ * @param options Binding options
+ *
+ * @example
+ * ```typescript
+ * insert(container, () => createTextNode(message.value), null);
+ * insert(container, staticElement, referenceNode);
+ * ```
+ */
+export function insert(parent: Node, nodeFactory: Function | Node, before?: Node): void {
+  if (!parent) return;
+
+  const context = getActiveContext();
+  if (!context) return;
+
+  let renderedNodes;
+
+  const cleanup = effect(
+    () => {
+      const nodes = coerceArray(isFunction(nodeFactory) ? nodeFactory() : nodeFactory).map(
+        normalizeNode,
+      ) as AnyNode[];
+      renderedNodes = patchChildren(parent, renderedNodes, nodes, before);
+    },
+    { flush: 'post' },
+  );
+
+  // Register cleanup function
+  context.cleanup.add(() => {
+    if (renderedNodes.length) {
+      renderedNodes.length = 0;
+    }
+    cleanup();
+  });
+}
 /**
  * map the nodes
- * @param {Node} template - the template to map the nodes
- * @param {number[]} indexes - the indexes of the nodes to map
- * @returns {Node[]} the nodes
  */
-export function mapNodes(template, indexes: number[]) {
+export function mapNodes(template: Node, indexes: number[]): Node[] {
   let index = 1;
   const tree: Node[] = [];
+  const done: number[] = [];
 
   const walk = (node: Node) => {
     if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
       if (indexes.includes(index)) {
+        done.push(index);
         tree.push(node);
       }
+
       index++;
+    }
+    if (done.length === indexes.length) {
+      return;
     }
     let child = node.firstChild;
     while (child) {
@@ -196,48 +189,4 @@ export function mapNodes(template, indexes: number[]) {
   walk(template);
 
   return tree;
-}
-
-/**
- * coerce the node
- * @param {string | number | boolean | null | undefined | Node} data - the data to coerce
- * @returns {Node} the node
- */
-export function convertToNode(data: string | number | boolean | null | undefined | Node): Node {
-  if (data instanceof Node) {
-    return data;
-  }
-  if (isPrimitive(data)) {
-    const textContent = isFalsy(data) ? '' : String(data);
-    return document.createTextNode(textContent);
-  }
-  return data;
-}
-
-export function insert(parent: Node, node: Function | Node, before?: Node) {
-  if (!parent) {
-    return;
-  }
-
-  const context = getActiveContext();
-  if (!context) {
-    return;
-  }
-
-  let renderedNodes = new Map<string, AnyNode>();
-
-  const cleanup = effect(
-    () => {
-      const newNodes = coerceArray(isFunction(node) ? node() : node).map(convertToNode);
-      // update the nodes
-      renderedNodes = patchChildren(parent, renderedNodes, newNodes, before);
-    },
-    { flush: 'post' },
-  );
-
-  // cleanup
-  context.cleanup.add(() => {
-    renderedNodes.clear();
-    cleanup();
-  });
 }

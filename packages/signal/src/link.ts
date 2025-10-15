@@ -215,7 +215,7 @@ function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
  * This function traverses the link structure and updates node states.
  * Optimized with better memory management and faster iteration.
  *
- * @param linkNode - The starting link node for propagation
+ * @param link - The starting link node for propagation
  */
 export function propagate(link: Link): void {
   if (isUntracking) return;
