@@ -14,12 +14,12 @@
   },
   "devDependencies": {
     "@estjs/eslint-config": "^2.1.5",
-    "@types/node": "^24.7.1",
+    "@types/node": "^24.7.2",
     "eslint": "^9.37.0",
     "jsdom": "^27.0.0",
     "typescript": "^5.9.3",
     "unplugin-essor": "workspace:*",
-    "vite": "^7.1.9",
+    "vite": "^7.1.10",
     "vite-plugin-inspect": "^11.3.3",
     "vitest": "^3.2.4"
   }
