@@ -11,7 +11,43 @@ import {
 } from './link';
 import { ReactiveFlags, SignalFlags } from './constants';
 import type { DebuggerEvent, DebuggerOptions } from './effect';
+/**
+ * Public interface for computed values.
+ *
+ * Computed values are reactive expressions that derive their value from other
+ * reactive sources. They automatically track dependencies and update when
+ * those dependencies change.
+ *
+ * @template T - The type of value computed by this computed property
+ */
+export interface Computed<T = any> {
+  /**
+   * The current computed value.
+   *
+   * Reading this property:
+   * - Establishes a dependency relationship with the currently active effect
+   * - Triggers recomputation if the value is stale
+   * - Returns the cached value if dependencies haven't changed
+   *
+   * Writing to this property:
+   * - Only works if a setter function was provided during creation
+   * - Triggers the setter function with the new value
+   */
+  readonly value: T;
 
+  /**
+   * Reads the current value without establishing a dependency.
+   *
+   * This is useful when you need to read a computed value but don't want
+   * to create a dependency relationship, such as:
+   * - Inside effect cleanup functions
+   * - In debugging or logging code
+   * - When implementing custom reactive patterns
+   *
+   * @returns The current computed value without side effects
+   */
+  peek(): T;
+}
 // Define the getter function type for computed properties.
 export type ComputedGetter<T> = (oldValue?: T) => T;
 // Define the setter function type for computed properties.

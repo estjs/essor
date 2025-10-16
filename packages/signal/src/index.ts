@@ -7,7 +7,7 @@ export { effect, useBatch, memoEffectFn, memoEffect } from './effect';
 export { untrack } from './link';
 export { reactive, shallowReactive, isReactive, toRaw, Reactive, isShallow } from './reactive';
 
-export { computed, isComputed, ComputedValue } from './computed';
+export { computed, isComputed, ComputedValue, Computed } from './computed';
 
 export { watch } from './watch';
 
