@@ -5,6 +5,7 @@ import { isArray, isFunction, isString } from './is';
  * @type {Function}
  */
 export const _toString = Object.prototype.toString;
+const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 /**
  * Reference to Object.assign
@@ -20,8 +21,7 @@ export const extend = Object.assign;
  * @returns {key is keyof T} - Returns true if the object has the property, false otherwise
  */
 export const hasOwn = (val: object, key: string | symbol): key is keyof typeof val =>
-  Object.hasOwn(val, key);
-
+  hasOwnProperty.call(val, key);
 /**
  * Forces a value to be an array
  * @template T - The type of array elements
@@ -49,7 +49,7 @@ export const noop = Function.prototype as () => void;
 
 /**
  * Checks if a string starts with a specified substring
- * 
+ *
  * Uses indexOf for better performance in most cases
  * @see https://www.measurethat.net/Benchmarks/Show/12350/0/startswith-vs-test-vs-match-vs-indexof#latest_results_block
  * @param {string} str - The string to check
@@ -65,7 +65,7 @@ export function startsWith(str: string, searchString: string): boolean {
 
 /**
  * Generates an 8-character random string as a unique identifier
- * 
+ *
  * Note: Uses Math.random() which is not cryptographically secure.
  * For security-sensitive use cases, consider using crypto.getRandomValues()
  * @returns {string} - The generated unique identifier
@@ -116,7 +116,7 @@ export const EMPTY_ARR: readonly never[] = Object.freeze([]);
 
 /**
  * Checks if a property name is an event handler (starts with 'on' followed by uppercase letter)
- * 
+ *
  * Matches patterns like: onClick, onChange, onKeyDown (but not 'onclick' or 'on123')
  * @param {string} key - The property name to check
  * @returns {boolean} - Returns true if the property is an event handler, false otherwise
@@ -132,9 +132,6 @@ declare let global: {};
 let _globalThis: unknown;
 /**
  * Gets the global object for the current environment
- * 
- * Supports multiple environments: browser (globalThis/window/self) and Node.js (global)
- * The result is cached after first call for better performance
  * @returns {unknown } - The global object for the current environment
  */
 export const getGlobalThis = (): unknown => {

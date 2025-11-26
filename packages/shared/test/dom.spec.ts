@@ -111,7 +111,7 @@ describe('dom utilities', () => {
 
       unsafeAttrs.forEach(attr => {
         expect(isSSRSafeAttrName(attr)).toBe(false);
-        expect(consoleSpy).toHaveBeenCalledWith(`unsafe attribute name: ${attr}`);
+        expect(consoleSpy).toHaveBeenCalledWith(`[Essor error]: unsafe attribute name: ${attr}`);
       });
 
       consoleSpy.mockRestore();

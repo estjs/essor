@@ -2,9 +2,9 @@ import { vi } from 'vitest';
 import { error, info, warn } from '../src';
 
 describe('logger Utils', () => {
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
-  let consoleInfoSpy: ReturnType<typeof vi.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleWarnSpy: ReturnType<typeof vi.fn>;
+  let consoleInfoSpy: ReturnType<typeof vi.fn>;
+  let consoleErrorSpy: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

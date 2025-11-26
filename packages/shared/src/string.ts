@@ -13,7 +13,7 @@ const hyphenateRE = /\B([A-Z])/g;
  * @returns {string} - The kebab-case string
  */
 export const kebabCase: (str: string) => string = cacheStringFunction((str: string) =>
-  str.replaceAll(hyphenateRE, '-$1').toLowerCase(),
+  str.replace(hyphenateRE, '-$1').toLowerCase(),
 );
 
 /**
@@ -30,11 +30,11 @@ const camelizeRE = /[_-](\w)/g;
  */
 export const camelCase: (str: string) => string = cacheStringFunction((str: string): string => {
   // Remove leading and trailing hyphens or underscores
-  str = str.replaceAll(/^[_-]+|[_-]+$/g, '');
+  str = str.replace(/^[_-]+|[_-]+$/g, '');
   // Replace consecutive hyphens or underscores with a single hyphen
-  str = str.replaceAll(/[_-]+/g, '-');
+  str = str.replace(/[_-]+/g, '-');
   // Convert to camelCase
-  return str.replaceAll(camelizeRE, (_, c) => c.toUpperCase());
+  return str.replace(camelizeRE, (_, c) => c.toUpperCase());
 });
 
 /**

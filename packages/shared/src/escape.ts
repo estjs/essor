@@ -66,7 +66,7 @@ const commentStripRE = /^-?>|<!--|-->|--!>|<!-$/g;
  * @returns {string} - The cleaned string
  */
 export function escapeHTMLComment(src: string): string {
-  return src.replaceAll(commentStripRE, '');
+  return src.replace(commentStripRE, '');
 }
 
 /**
@@ -82,7 +82,7 @@ export const cssVarNameEscapeSymbolsRE = /[ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g;
  * @returns {string} - The escaped CSS variable name
  */
 export function getEscapedCssVarName(key: string, doubleEscape: boolean): string {
-  return key.replaceAll(cssVarNameEscapeSymbolsRE, s =>
+  return key.replace(cssVarNameEscapeSymbolsRE, s =>
     doubleEscape ? (s === '"' ? '\\\\\\"' : `\\\\${s}`) : `\\${s}`,
   );
 }
