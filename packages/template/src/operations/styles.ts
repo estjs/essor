@@ -21,63 +21,60 @@ export type Style = string | Record<string, string | string[]> | null | undefine
 
 /**
  * Patches the style of an element, optimized for different style formats
+ * Supports silent hydration (skips DOM updates during hydration phase)
  *
  * @param el - The element to patch styles on
  * @public
  */
-export function patchStyle(el: HTMLElement) {
-  return (prev: unknown, next: unknown) => {
-    const style = el.style;
-    const isCssString = isString(next);
+export function patchStyle(el: HTMLElement, prev: unknown, next: unknown) {
+  const style = el.style;
+  const isCssString = isString(next);
 
-    // Fast path: handle CSS strings directly
-    if (next && isCssString) {
-      if (prev !== next) {
-        style.cssText = next;
-      }
-      return;
+  if (next && isCssString) {
+    if (prev !== next) {
+      style.cssText = next;
     }
+    return;
+  }
 
-    // Fast path: remove all styles
-    if (!next) {
-      if (prev) {
-        el.removeAttribute('style');
-      }
-      return;
+  if (!next) {
+    if (prev) {
+      el.removeAttribute('style');
     }
+    return;
+  }
 
-    // Handle object-based styles
-    if (prev && !isString(prev)) {
-      // Remove styles that are no longer present
-      for (const key in prev) {
-        if (!next || next[key as keyof typeof next] == null) {
+  // Handle object-based styles
+  if (prev && !isString(prev)) {
+    // Remove styles that are no longer present
+    for (const key in prev) {
+      if (!next || next[key as keyof typeof next] == null) {
+        setStyle(style, key, '');
+      }
+    }
+  } else if (prev && isString(prev)) {
+    // Handle previous string-based styles
+    const prevStyles = prev.split(';');
+    for (const stylePart of prevStyles) {
+      const colonIndex = stylePart.indexOf(':');
+      if (colonIndex > 0) {
+        const key = stylePart.slice(0, colonIndex).trim();
+        if (next && isObject(next) && next[key] == null) {
           setStyle(style, key, '');
         }
       }
-    } else if (prev && isString(prev)) {
-      // Handle previous string-based styles
-      const prevStyles = prev.split(';');
-      for (const stylePart of prevStyles) {
-        const colonIndex = stylePart.indexOf(':');
-        if (colonIndex > 0) {
-          const key = stylePart.slice(0, colonIndex).trim();
-          if (next && isObject(next) && next[key] == null) {
-            setStyle(style, key, '');
-          }
-        }
-      }
     }
+  }
 
-    // Set new styles
-    if (next && !isString(next)) {
-      for (const key in next) {
-        const value = next[key];
-        if ((!prev || isString(prev) || prev[key] !== value) && value != null) {
-          setStyle(style, key, value);
-        }
+  // Set new styles
+  if (next && !isString(next)) {
+    for (const key in next) {
+      const value = next[key];
+      if ((!prev || isString(prev) || prev[key] !== value) && value != null) {
+        setStyle(style, key, value);
       }
     }
-  };
+  }
 }
 
 /**
@@ -97,7 +94,6 @@ export function setStyle(style: CSSStyleDeclaration, name: string, val: string |
     return;
   }
 
-  // Fast path: null/undefined/empty values
   if (val == null || val === '') {
     val = '';
   }
@@ -121,7 +117,6 @@ export function setStyle(style: CSSStyleDeclaration, name: string, val: string |
 
 /**
  * Adds vendor prefixes to style properties as needed
- * Optimized with caching for repeat calls
  *
  * @param style - The style object to check against
  * @param rawName - The raw property name

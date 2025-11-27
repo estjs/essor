@@ -261,12 +261,12 @@ describe('memoEffect', () => {
 
     it('should avoid repeated DOM operations', () => {
       const width = signal(100);
-      const setAttributeSpy = vi.fn();
+      const patchAttributeSpy = vi.fn();
       const patchStyleSpy = vi.fn();
 
       // Mock DOM element
       const mockElement = {
-        setAttribute: setAttributeSpy,
+        patchAttribute: patchAttributeSpy,
         style: { setProperty: patchStyleSpy },
       };
 
@@ -284,7 +284,7 @@ describe('memoEffect', () => {
         // Avoid repeated attribute settings
         if (currentWidth !== prev.lastWidth) {
           // eslint-disable-next-line unicorn/prefer-dom-node-dataset
-          mockElement.setAttribute('data-width', currentWidth.toString());
+          mockElement.patchAttribute('data-width', currentWidth.toString());
           prev.lastWidth = currentWidth;
         }
 
@@ -294,7 +294,7 @@ describe('memoEffect', () => {
         }
 
         if (currentTitle !== prev.lastTitle) {
-          mockElement.setAttribute('title', currentTitle);
+          mockElement.patchAttribute('title', currentTitle);
           prev.lastTitle = currentTitle;
         }
 
@@ -304,8 +304,8 @@ describe('memoEffect', () => {
       memoEffect(effectFn, {});
 
       // Initial setup
-      expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '100');
-      expect(setAttributeSpy).toHaveBeenCalledWith('title', 'Width: 100');
+      expect(patchAttributeSpy).toHaveBeenCalledWith('data-width', '100');
+      expect(patchAttributeSpy).toHaveBeenCalledWith('title', 'Width: 100');
       expect(patchStyleSpy).toHaveBeenCalledWith('width', '100px');
 
       // Reset
@@ -314,14 +314,14 @@ describe('memoEffect', () => {
       // Set same value, should not trigger DOM operations
       width.value = 100;
 
-      expect(setAttributeSpy).not.toHaveBeenCalled();
+      expect(patchAttributeSpy).not.toHaveBeenCalled();
       expect(patchStyleSpy).not.toHaveBeenCalled();
 
       // Set new value, should trigger DOM operations
       width.value = 200;
 
-      expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '200');
-      expect(setAttributeSpy).toHaveBeenCalledWith('title', 'Width: 200');
+      expect(patchAttributeSpy).toHaveBeenCalledWith('data-width', '200');
+      expect(patchAttributeSpy).toHaveBeenCalledWith('title', 'Width: 200');
       expect(patchStyleSpy).toHaveBeenCalledWith('width', '200px');
     });
   });
@@ -356,7 +356,7 @@ describe('memoEffect', () => {
     // Simulate the example you provided
     const editorWidth = signal(50);
 
-    const mockEl = { setAttribute: vi.fn() };
+    const mockEl = { patchAttribute: vi.fn() };
     const mockEl2 = { style: { setProperty: vi.fn() } };
     const mockEl3 = { style: { setProperty: vi.fn() } };
 
@@ -369,7 +369,7 @@ describe('memoEffect', () => {
 
       // Simulate compiler-generated optimized code
       if (v1 !== prev.e) {
-        mockEl.setAttribute('name', v1.toString());
+        mockEl.patchAttribute('name', v1.toString());
         prev.e = v1;
       }
 
@@ -393,7 +393,7 @@ describe('memoEffect', () => {
     });
 
     // Verify initial setup
-    expect(mockEl.setAttribute).toHaveBeenCalledWith('name', '50');
+    expect(mockEl.patchAttribute).toHaveBeenCalledWith('name', '50');
     expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '50%');
     expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '50%');
 
@@ -401,7 +401,7 @@ describe('memoEffect', () => {
     vi.clearAllMocks();
     editorWidth.value = 75;
 
-    expect(mockEl.setAttribute).toHaveBeenCalledWith('name', '75');
+    expect(mockEl.patchAttribute).toHaveBeenCalledWith('name', '75');
     expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '75%');
     expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '25%');
 
@@ -409,7 +409,7 @@ describe('memoEffect', () => {
     vi.clearAllMocks();
     editorWidth.value = 75;
 
-    expect(mockEl.setAttribute).not.toHaveBeenCalled();
+    expect(mockEl.patchAttribute).not.toHaveBeenCalled();
     expect(mockEl2.style.setProperty).not.toHaveBeenCalled();
     expect(mockEl3.style.setProperty).not.toHaveBeenCalled();
   });

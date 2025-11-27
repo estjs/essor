@@ -183,14 +183,6 @@ export function isBoolean(val: unknown): val is boolean {
   return typeof val === 'boolean';
 }
 
-export const isIntegerKey = (key: unknown): boolean =>
-  isString(key) && key !== 'NaN' && key[0] !== '-' && `${Number.parseInt(key, 10)}` === key;
-
-/**
- * Checks if a value is a HTML node
- * @param {unknown} val - The value to check
- * @returns {boolean} - Returns true if the value is a HTML node, false otherwise
- */
-export function isHTMLNode(val: unknown): val is HTMLElement {
-  return val instanceof HTMLElement;
+export function isNaN(val: unknown): val is number {
+  return Number.isNaN(val);
 }

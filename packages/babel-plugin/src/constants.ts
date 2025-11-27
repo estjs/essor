@@ -5,7 +5,7 @@ export const DEFAULT_OPTIONS: PluginOptions = {
   mode: 'client',
   symbol: '$',
   props: true,
-  hmr: true,
+  hmr: false,
   styled: true,
 };
 
@@ -22,25 +22,25 @@ export const IMPORTS_MAPS = [
   'computed',
   'reactive',
   'memoEffect',
-
-  // Template related
-  'mapNodes',
-  'Fragment',
-  'template',
-  'delegateEvents',
+  'omitProps',
 
   'createComponent',
-  'styled', // styled
-
+  'Fragment',
+  'For',
+  // Template related
+  'mapNodes',
+  'template',
+  'delegateEvents',
+  // styled
+  'styled',
   // binding related
   'insert',
-  'setStyle',
-  'setClass',
-  'setAttr',
-  'bindAttr',
+  'patchStyle',
+  'patchClass',
+  'patchAttr',
+  'bindElement',
   'setSpread',
   'addEventListener',
-
   // rendering related
   'render',
   'escapeHTML',
@@ -50,7 +50,7 @@ export const IMPORTS_MAPS = [
 // Static Site Generation API
 export const SSG_IMPORTS_MAPS = {
   createComponent: 'createSSGComponent',
-  setAttr: 'setSSGAttr',
+  patchAttr: 'setSSGAttr',
 } as const;
 
 // Server-side Rendering API
@@ -58,3 +58,6 @@ export const SSR_IMPORTS_MAPS = {
   mapNodes: 'mapSSRNodes',
   template: 'getElement',
 } as const;
+
+// transform property name
+export const TRANSFORM_PROPERTY_NAME = '__props';

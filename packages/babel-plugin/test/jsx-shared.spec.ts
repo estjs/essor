@@ -104,9 +104,9 @@ describe('jsx shared helpers', () => {
     })();
 
     setContext({ state, path: null as any, operationIndex: 0 });
-    expect(getSetFunctionForAttribute('class').name).toBe('setClass');
-    expect(getSetFunctionForAttribute('style').name).toBe('setStyle');
-    expect(getSetFunctionForAttribute('title').name).toBe('setAttr');
+    expect(getSetFunctionForAttribute('class').name).toBe('patchClass');
+    expect(getSetFunctionForAttribute('style').name).toBe('patchStyle');
+    expect(getSetFunctionForAttribute('title').name).toBe('patchAttr');
     resetContext();
   });
 

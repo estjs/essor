@@ -389,12 +389,12 @@ const processDynamicAttributes = (
 ): void => {
   dynamicAttrs.forEach(attr => {
     const { state } = getContext();
-    addImport(importMap.setAttr);
+    addImport(importMap.patchAttr);
     addImport(importMap.escapeHTML);
 
     result.dynamics.push({
       type: 'attr',
-      node: t.callExpression(state.imports.setAttr, [
+      node: t.callExpression(state.imports.patchAttr, [
         t.stringLiteral(attr.name),
         t.callExpression(state.imports.escapeHTML, [attr.value]),
         t.booleanLiteral(false),

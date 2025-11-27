@@ -531,7 +531,7 @@ declare global {
       'aria-labelledby'?: string;
       /** Defines the hierarchical level of an element within a structure. */
       'aria-level'?: number | string;
-      /** Indicates that an element will be updated, and describes the types of updates the user agents, assistive technologies, and user can expect from the live region. */
+      /** Indicates that an element will be update, and describes the types of updates the user agents, assistive technologies, and user can expect from the live region. */
       'aria-live'?: 'off' | 'assertive' | 'polite';
       /** Indicates whether an element is modal when displayed. */
       'aria-modal'?: boolean | 'false' | 'true';

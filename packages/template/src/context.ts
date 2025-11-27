@@ -5,21 +5,15 @@ import type { InjectionKey } from './provide';
  * context interface
  */
 export interface Context {
-  isMounted: boolean;
-  isDestroyed: boolean;
-
-  mounted: Set<() => void>;
-  updated: Set<() => void>;
-  destroyed: Set<() => void>;
-
-  provides: Map<InjectionKey<unknown> | string | number, unknown>;
-
-  cleanup: Set<() => void>;
-
-  deps: Map<unknown, Set<(newValue: unknown, prevValue?: unknown) => void>>;
-  componentEffect: Set<() => void>;
-
+  id: number;
   parent: Context | null;
+  provides: Map<InjectionKey<unknown> | number | string | symbol, any>;
+  cleanup: Set<() => void>;
+  mount: Set<() => void | Promise<void>>;
+  update: Set<() => void | Promise<void>>;
+  destroy: Set<() => void | Promise<void>>;
+  isMount: boolean;
+  isDestroy: boolean;
   children: Set<Context>;
 }
 
@@ -27,6 +21,7 @@ export interface Context {
 let activeContext: Context | null = null;
 // context stack
 const contextStack: Context[] = [];
+let contextId = 0;
 
 /**
  * create a new context
@@ -35,28 +30,16 @@ const contextStack: Context[] = [];
  */
 export function createContext(parent: Context | null = null) {
   const context: Context = {
-    // status
-    isMounted: false,
-    isDestroyed: false,
-
-    // lifecycle
-    mounted: new Set(),
-    updated: new Set(),
-    destroyed: new Set(),
-
-    // provide
-    provides: new Map(parent?.provides || []),
-
-    // clearup
-    cleanup: new Set(),
-
-    // parent
+    id: ++contextId,
     parent,
-    children: new Set<Context>(),
-
-    // deps
-    deps: new Map(),
-    componentEffect: new Set(),
+    provides: new Map(),
+    cleanup: new Set(),
+    mount: new Set(),
+    update: new Set(),
+    destroy: new Set(),
+    isMount: false,
+    isDestroy: false,
+    children: new Set(),
   };
 
   if (parent) {
@@ -116,10 +99,10 @@ export function findParentContext(): Context | null {
     return activeContext;
   }
 
-  // find the first not destroyed context from the top of the stack
+  // find the first not destroy context from the top of the stack
   for (let i = contextStack.length - 1; i >= 0; i--) {
     const contextItem = contextStack[i];
-    if (contextItem && !contextItem.isDestroyed) {
+    if (contextItem && !contextItem.isDestroy) {
       return contextItem;
     }
   }
@@ -131,8 +114,8 @@ export function findParentContext(): Context | null {
  * @param {Context} context - the context to destroy
  */
 export function destroyContext(context: Context): void {
-  // already destroyed
-  if (!context || context.isDestroyed) {
+  // already destroy
+  if (!context || context.isDestroy) {
     return;
   }
 
@@ -151,8 +134,8 @@ export function destroyContext(context: Context): void {
  * @param {Context} context - the context to cleanup
  */
 export function cleanupContext(context: Context) {
-  // already destroyed
-  if (!context || context.isDestroyed) {
+  // already destroy
+  if (!context || context.isDestroy) {
     return;
   }
 
@@ -168,15 +151,12 @@ export function cleanupContext(context: Context) {
     context.cleanup.clear();
 
     // lifecycle
-    context.mounted.clear();
-    context.updated.clear();
-    context.destroyed.clear();
+    context.mount.clear();
+    context.update.clear();
+    context.destroy.clear();
 
-    // deps
-    context.deps.clear();
-
-    // componentEffect
-    context.componentEffect.clear();
+    // provides
+    context.provides.clear();
 
     // Empty children set
     context.children.clear();
@@ -184,6 +164,6 @@ export function cleanupContext(context: Context) {
     error('Error during context cleanup:', error_);
   }
 
-  // mark as destroyed
-  context.isDestroyed = true;
+  // mark as destroy
+  context.isDestroy = true;
 }

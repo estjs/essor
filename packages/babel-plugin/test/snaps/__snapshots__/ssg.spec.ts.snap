@@ -1,14 +1,14 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx SSG transform > should work with CSS-in-JS in SSR 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-styled", ">", "</div>"],
   _tmpl$2 = ["Styled Content"],
   _tmpl$3 = ["Styled Content"];
 const StyledComponent = ({
   className,
   children
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("class", _escapeHTML$(className), false), children);
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("class", _escapeHTML$(className), false), children);
 const element = _createComponent$(StyledComponent, {
   "children": [_render$(_tmpl$3, _getHydrationKey$())],
   "class": "generated-class"
@@ -25,7 +25,9 @@ const AsyncComponent = async ({
   return _render$(_tmpl$, _getHydrationKey$(), result);
 };
 const element = _createComponent$(AsyncComponent, {
-  "data": Promise.resolve('async content')
+  get data() {
+    return Promise.resolve('async content');
+  }
 });"
 `;
 
@@ -98,7 +100,9 @@ const ErrorBoundary = ({
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  "fallback": _render$(_tmpl$3, _getHydrationKey$()),
+  get fallback() {
+    return _render$(_tmpl$3, _getHydrationKey$());
+  },
   "children": [_render$(_tmpl$2, _getHydrationKey$())]
 });"
 `;
@@ -132,11 +136,11 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > should work with list rendering in SSR 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$ } from "essor";
 const _tmpl$ = ["<ul data-idx=\\"1\\">", "</ul>"],
   _tmpl$2 = ["<li data-idx=\\"1\\"", ">", "</li>"];
 const items = ['Item 1', 'Item 2', 'Item 3'];
-const element = _render$(_tmpl$, _getHydrationKey$(), items.map((item, index) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(index), false), item)));"
+const element = _render$(_tmpl$, _getHydrationKey$(), items.map((item, index) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(index), false), item)));"
 `;
 
 exports[`jsx SSG transform > should work with nested components and props in SSR 1`] = `
@@ -157,12 +161,12 @@ const Parent = () => _render$(_tmpl$2, _getHydrationKey$(), _createComponent$(Ch
 `;
 
 exports[`jsx SSG transform > should work with static API routes 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-api", ">", "</div>"];
 const StaticApi = ({
   endpoint,
   handler
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("data-endpoint", _escapeHTML$(endpoint), false), handler);
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("data-endpoint", _escapeHTML$(endpoint), false), handler);
 const element = _createComponent$(StaticApi, {
   "endpoint": "/api/static",
   "handler": "export default function handler(req, res) { res.json({ data: 'static' }) }"
@@ -183,12 +187,12 @@ const element = _createComponent$(StaticDataComponent, {
 `;
 
 exports[`jsx SSG transform > should work with static environment variables 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-env>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticEnv = ({
   env
-}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(env).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-env-key", _escapeHTML$(key), false), _setAttr$("data-env-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(env).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-env-key", _escapeHTML$(key), false), _patchAttr$("data-env-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticEnv, {
   "env": {
     NEXT_PUBLIC_API_URL: 'https://api.example.com',
@@ -198,12 +202,12 @@ const element = _createComponent$(StaticEnv, {
 `;
 
 exports[`jsx SSG transform > should work with static error pages 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-error", "><h1 data-idx=\\"2\\">", "</h1><p data-idx=\\"3\\">", "</p></div>"];
 const StaticError = ({
   code,
   message
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("data-code", _escapeHTML$(code), false), code, message);
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("data-code", _escapeHTML$(code), false), code, message);
 const element = _createComponent$(StaticError, {
   "code": "404",
   "message": "Page not found"
@@ -211,12 +215,12 @@ const element = _createComponent$(StaticError, {
 `;
 
 exports[`jsx SSG transform > should work with static headers 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-headers>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticHeaders = ({
   headers
-}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(headers).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-header-key", _escapeHTML$(key), false), _setAttr$("data-header-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(headers).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-header-key", _escapeHTML$(key), false), _patchAttr$("data-header-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticHeaders, {
   "headers": {
     'Cache-Control': 'public, max-age=31536000',
@@ -226,12 +230,12 @@ const element = _createComponent$(StaticHeaders, {
 `;
 
 exports[`jsx SSG transform > should work with static image optimization 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<img data-idx=\\"1\\" data-static-image", "/>"];
 const StaticImage = ({
   src,
   alt
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("src", _escapeHTML$(src), false), _setAttr$("alt", _escapeHTML$(alt), false));
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("src", _escapeHTML$(src), false), _patchAttr$("alt", _escapeHTML$(alt), false));
 const element = _createComponent$(StaticImage, {
   "src": "/static/image.jpg",
   "alt": "Static Image"
@@ -239,13 +243,13 @@ const element = _createComponent$(StaticImage, {
 `;
 
 exports[`jsx SSG transform > should work with static locales 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticLocale = ({
   locale,
   messages
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("data-locale", _escapeHTML$(locale), false), Object.entries(messages).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-message-key", _escapeHTML$(key), false), _setAttr$("data-message-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("data-locale", _escapeHTML$(locale), false), Object.entries(messages).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-message-key", _escapeHTML$(key), false), _patchAttr$("data-message-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticLocale, {
   "locale": "en",
   "messages": {
@@ -256,12 +260,12 @@ const element = _createComponent$(StaticLocale, {
 `;
 
 exports[`jsx SSG transform > should work with static manifest.json 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-manifest>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticManifest = ({
   manifest
-}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(manifest).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-manifest-key", _escapeHTML$(key), false), _setAttr$("data-manifest-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(manifest).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-manifest-key", _escapeHTML$(key), false), _patchAttr$("data-manifest-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticManifest, {
   "manifest": {
     name: 'My Static App',
@@ -275,11 +279,11 @@ const element = _createComponent$(StaticManifest, {
 `;
 
 exports[`jsx SSG transform > should work with static metadata 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<head data-idx=\\"1\\" data-static-metadata><title data-idx=\\"2\\">", "</title><meta data-idx=\\"3\\" name=\\"description\\"", "/></head>"];
 const StaticMetadata = ({
   metadata
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("content", _escapeHTML$(metadata.description), false), metadata.title);
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("content", _escapeHTML$(metadata.description), false), metadata.title);
 const element = _createComponent$(StaticMetadata, {
   "metadata": {
     title: 'Static Page',
@@ -300,24 +304,24 @@ const element = _createComponent$(StaticMiddleware, {
 `;
 
 exports[`jsx SSG transform > should work with static paths generation 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-paths>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticPathsComponent = ({
   paths
-}) => _render$(_tmpl$, _getHydrationKey$(), paths.map(path => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(path), false), _setAttr$("data-path", _escapeHTML$(path), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), paths.map(path => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(path), false), _patchAttr$("data-path", _escapeHTML$(path), false))));
 const element = _createComponent$(StaticPathsComponent, {
   "paths": ['/page1', '/page2']
 });"
 `;
 
 exports[`jsx SSG transform > should work with static props generation 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-props>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticPropsComponent = ({
   props
-}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(props).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-prop-key", _escapeHTML$(key), false), _setAttr$("data-prop-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(props).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-prop-key", _escapeHTML$(key), false), _patchAttr$("data-prop-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticPropsComponent, {
   "props": {
     title: 'Page Title'
@@ -326,12 +330,12 @@ const element = _createComponent$(StaticPropsComponent, {
 `;
 
 exports[`jsx SSG transform > should work with static redirects 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-redirect", "></div>"];
 const StaticRedirect = ({
   from,
   to
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("data-from", _escapeHTML$(from), false), _setAttr$("data-to", _escapeHTML$(to), false));
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("data-from", _escapeHTML$(from), false), _patchAttr$("data-to", _escapeHTML$(to), false));
 const element = _createComponent$(StaticRedirect, {
   "from": "/old",
   "to": "/new"
@@ -339,12 +343,12 @@ const element = _createComponent$(StaticRedirect, {
 `;
 
 exports[`jsx SSG transform > should work with static rewrites 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-rewrite", "></div>"];
 const StaticRewrite = ({
   source,
   destination
-}) => _render$(_tmpl$, _getHydrationKey$(), _setAttr$("data-source", _escapeHTML$(source), false), _setAttr$("data-destination", _escapeHTML$(destination), false));
+}) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("data-source", _escapeHTML$(source), false), _patchAttr$("data-destination", _escapeHTML$(destination), false));
 const element = _createComponent$(StaticRewrite, {
   "source": "/api",
   "destination": "/api/v1"
@@ -352,24 +356,24 @@ const element = _createComponent$(StaticRewrite, {
 `;
 
 exports[`jsx SSG transform > should work with static robots.txt 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-robots>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticRobots = ({
   rules
-}) => _render$(_tmpl$, _getHydrationKey$(), rules.map((rule, index) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(index), false), _setAttr$("data-rule", _escapeHTML$(rule), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), rules.map((rule, index) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(index), false), _patchAttr$("data-rule", _escapeHTML$(rule), false))));
 const element = _createComponent$(StaticRobots, {
   "rules": ['User-agent: *', 'Allow: /', 'Disallow: /private/']
 });"
 `;
 
 exports[`jsx SSG transform > should work with static security headers 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-security>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticSecurity = ({
   headers
-}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(headers).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(key), false), _setAttr$("data-security-key", _escapeHTML$(key), false), _setAttr$("data-security-value", _escapeHTML$(value), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), Object.entries(headers).map(([key, value]) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(key), false), _patchAttr$("data-security-key", _escapeHTML$(key), false), _patchAttr$("data-security-value", _escapeHTML$(value), false))));
 const element = _createComponent$(StaticSecurity, {
   "headers": {
     'Content-Security-Policy': "default-src 'self'",
@@ -380,24 +384,24 @@ const element = _createComponent$(StaticSecurity, {
 `;
 
 exports[`jsx SSG transform > should work with static sitemap.xml 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" data-sitemap>", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", "></div>"];
 const StaticSitemap = ({
   urls
-}) => _render$(_tmpl$, _getHydrationKey$(), urls.map((url, index) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(index), false), _setAttr$("data-url", _escapeHTML$(url), false))));
+}) => _render$(_tmpl$, _getHydrationKey$(), urls.map((url, index) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(index), false), _patchAttr$("data-url", _escapeHTML$(url), false))));
 const element = _createComponent$(StaticSitemap, {
   "urls": ['https://example.com/', 'https://example.com/about', 'https://example.com/contact']
 });"
 `;
 
 exports[`jsx SSG transform > should work with streaming SSR 1`] = `
-"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
+"import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\">", "</div>"],
   _tmpl$2 = ["<div data-idx=\\"1\\"", ">", "</div>"];
 const StreamingComponent = ({
   chunks
-}) => _render$(_tmpl$, _getHydrationKey$(), chunks.map((chunk, index) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(index), false), _setAttr$("data-chunk", _escapeHTML$(index), false), chunk)));
+}) => _render$(_tmpl$, _getHydrationKey$(), chunks.map((chunk, index) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(index), false), _patchAttr$("data-chunk", _escapeHTML$(index), false), chunk)));
 const element = _createComponent$(StreamingComponent, {
   "chunks": ['chunk1', 'chunk2']
 });"
@@ -440,21 +444,21 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with class and style attributes 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">Hello, World!</div>"];
 const hasClass = true;
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("class", _escapeHTML$(hasClass ? 'myClass' : ''), false), _setAttr$("style", _escapeHTML$(style), false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("class", _escapeHTML$(hasClass ? 'myClass' : ''), false), _patchAttr$("style", _escapeHTML$(style), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with conditional attributes 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">Hello, World!</div>"];
 const hasClass = true;
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("class", _escapeHTML$(hasClass ? 'myClass' : 'otherClass'), false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("class", _escapeHTML$(hasClass ? 'myClass' : 'otherClass'), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with dynamic expressions 1`] = `
@@ -475,9 +479,9 @@ const element = _render$(_tmpl$, _getHydrationKey$(), _createComponent$(MyCompon
 `;
 
 exports[`jsx SSG transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">Hello, World!</div>"];
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("id", _escapeHTML$(null), false), _setAttr$("class", _escapeHTML$(undefined), false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("id", _escapeHTML$(null), false), _patchAttr$("class", _escapeHTML$(undefined), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with null and undefined children 1`] = `
@@ -500,23 +504,23 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with spread attributes 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">Hello, World!</div>"];
 const props = {
   id: 'myId',
   class: 'myClass'
 };
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("_$spread$", _escapeHTML$(props), false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("_$spread$", _escapeHTML$(props), false));"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with style attribute 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\"", ">Hello, World!</div>"];
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("style", _escapeHTML$(style), false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("style", _escapeHTML$(style), false));"
 `;
 
 exports[`jsx SSG transform > transforms simple JSX element 1`] = `
@@ -526,11 +530,11 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx SSG transform > transforms ssg JSX element with nested expressions and children 1`] = `
-"import { setSSGAttr as _setAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { setSSGAttr as _patchAttr$, escapeHTML as _escapeHTML$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
 const _tmpl$ = ["<div data-idx=\\"1\\" class=\\"root\\"><p data-idx=\\"2\\"", ">itis:", "<!>'s Profile</p><ul data-idx=\\"6\\">", "</ul></div>"],
   _tmpl$2 = ["<li data-idx=\\"1\\"", ">Item", "</li>"];
 const name = 'John';
-const element = _render$(_tmpl$, _getHydrationKey$(), _setAttr$("class", _escapeHTML$(name), false), name, Array.from({
+const element = _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("class", _escapeHTML$(name), false), name, Array.from({
   length: 3
-}, (_, i) => _render$(_tmpl$2, _getHydrationKey$(), _setAttr$("key", _escapeHTML$(i), false), i + 1)));"
+}, (_, i) => _render$(_tmpl$2, _getHydrationKey$(), _patchAttr$("key", _escapeHTML$(i), false), i + 1)));"
 `;

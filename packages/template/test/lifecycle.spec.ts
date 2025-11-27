@@ -1,286 +1,430 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  LIFECYCLE,
   cleanupLifecycle,
-  createLifecycleContext,
-  onDestroyed,
-  onMounted,
-  onUpdated,
+  onDestroy,
+  onMount,
+  onUpdate,
   registerLifecycleHook,
   triggerLifecycleHook,
 } from '../src/lifecycle';
-import { createContext, setActiveContext } from '../src/context';
+import { createContext, popContextStack, pushContextStack } from '../src/context';
+import { resetEnvironment } from './test-utils';
 
-describe('lifecycle System', () => {
-  // Reset active context before each test
+describe('lifecycle management', () => {
   beforeEach(() => {
-    // @ts-ignore - Setting to null is valid for tests but TypeScript doesn't like it
-    setActiveContext(null);
-  });
-
-  describe('createLifecycleContext', () => {
-    it('should create a lifecycle context with all required hooks', () => {
-      const lifecycleContext = createLifecycleContext();
-
-      expect(lifecycleContext).toBeDefined();
-      expect(lifecycleContext.mounted).toBeInstanceOf(Set);
-      expect(lifecycleContext.destroyed).toBeInstanceOf(Set);
-      expect(lifecycleContext.updated).toBeInstanceOf(Set);
-
-      expect(lifecycleContext.mounted.size).toBe(0);
-      expect(lifecycleContext.destroyed.size).toBe(0);
-      expect(lifecycleContext.updated.size).toBe(0);
-    });
+    resetEnvironment();
   });
 
   describe('registerLifecycleHook', () => {
-    it('should register a lifecycle hook in the active context', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('registers and triggers lifecycle hooks', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook = vi.fn();
-      registerLifecycleHook('mounted', mockHook);
+      const hook = vi.fn();
+      registerLifecycleHook('mount', hook);
+      await triggerLifecycleHook('mount');
 
-      expect(context.mounted.has(mockHook)).toBe(true);
-      expect(context.mounted.size).toBe(1);
+      expect(hook).toHaveBeenCalled();
+      popContextStack();
     });
 
-    it('should not register hook if no active context', () => {
-      // Ensure no active context
-      // @ts-ignore - Setting to null is valid for tests
-      setActiveContext(null);
+    it('registers mount hook', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Mock console.error to avoid polluting test output
-      const originalError = console.error;
-      console.error = vi.fn();
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
 
-      const mockHook = vi.fn();
-      registerLifecycleHook('mounted', mockHook);
-
-      // Verify error was output
-      expect(console.error).toHaveBeenCalled();
-
-      // Restore console.error
-      console.error = originalError;
+      expect(context.mount.has(hook)).toBe(true);
+      popContextStack();
     });
 
-    it('should not register hook if invalid lifecycle type', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('registers update hook', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Mock console.error to avoid polluting test output
-      const originalError = console.error;
-      console.error = vi.fn();
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.update, hook);
 
-      const mockHook = vi.fn();
-      // @ts-ignore - Intentionally passing invalid type
-      registerLifecycleHook('invalid', mockHook);
-
-      // Verify error was output
-      expect(console.error).toHaveBeenCalled();
-
-      // Restore console.error
-      console.error = originalError;
+      expect(context.update.has(hook)).toBe(true);
+      popContextStack();
     });
 
-    it('should immediately call hook if registering mounted hook in mounted component', () => {
-      const context = createContext();
-      context.isMounted = true; // Simulate component already mounted
-      setActiveContext(context);
+    it('registers destroy hook', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook = vi.fn();
-      registerLifecycleHook('mounted', mockHook);
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.destroy, hook);
 
-      // Verify hook was immediately called
-      expect(mockHook).toHaveBeenCalled();
-      // Verify hook was not added to the mounted collection
-      expect(context.mounted.has(mockHook)).toBe(false);
+      expect(context.destroy.has(hook)).toBe(true);
+      popContextStack();
     });
 
-    it('should handle errors in immediate mounted hook execution', () => {
-      const context = createContext();
-      context.isMounted = true;
-      setActiveContext(context);
+    it('executes mount hook immediately if context is already mount', () => {
+      const context = createContext(null);
+      context.isMount = true;
+      pushContextStack(context);
 
-      // Mock console.error to avoid polluting test output
-      const originalError = console.error;
-      console.error = vi.fn();
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
 
-      const mockHook = vi.fn().mockImplementation(() => {
-        throw new Error('Test error');
+      expect(hook).toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('handles errors in immediately executed mount hooks', () => {
+      const context = createContext(null);
+      context.isMount = true;
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const hook = vi.fn(() => {
+        throw new Error('Hook error');
       });
 
-      registerLifecycleHook('mounted', mockHook);
+      registerLifecycleHook(LIFECYCLE.mount, hook);
+      expect(hook).toHaveBeenCalled();
 
-      // Verify error was caught and output
-      expect(console.error).toHaveBeenCalled();
-      // Restore console.error
-      console.error = originalError;
+      consoleSpy.mockRestore();
+      popContextStack();
+    });
+
+    it('logs error when registering hook outside context', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('logs error for invalid lifecycle type', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const hook = vi.fn();
+
+      registerLifecycleHook('invalid' as any, hook);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+      popContextStack();
     });
   });
 
   describe('triggerLifecycleHook', () => {
-    it('should trigger all hooks of specified type', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('triggers all registered hooks', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook1 = vi.fn();
-      const mockHook2 = vi.fn();
+      const hook1 = vi.fn();
+      const hook2 = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook1);
+      registerLifecycleHook(LIFECYCLE.mount, hook2);
 
-      context.mounted.add(mockHook1);
-      context.mounted.add(mockHook2);
+      await triggerLifecycleHook(LIFECYCLE.mount);
 
-      triggerLifecycleHook('mounted');
-
-      expect(mockHook1).toHaveBeenCalled();
-      expect(mockHook2).toHaveBeenCalled();
+      expect(hook1).toHaveBeenCalled();
+      expect(hook2).toHaveBeenCalled();
+      popContextStack();
     });
 
-    it('should not trigger hooks if no active context', () => {
-      // Ensure no active context
-      // @ts-ignore - Setting to null is valid for tests
-      setActiveContext(null);
+    it('early returns when no hooks exist', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Mock console.error to avoid polluting test output
-      const originalError = console.error;
-      console.error = vi.fn();
-
-      triggerLifecycleHook('mounted');
-
-      // Verify error was output
-      expect(console.error).toHaveBeenCalled();
-
-      // Restore console.error
-      console.error = originalError;
+      await expect(triggerLifecycleHook(LIFECYCLE.mount)).resolves.toBeUndefined();
+      popContextStack();
     });
 
-    it('should do nothing if no hooks of specified type', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('logs error when triggering outside context', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-      // Ensure mounted hooks collection is empty
-      context.mounted.clear();
+      await triggerLifecycleHook(LIFECYCLE.mount);
 
-      // Should not throw error
-      expect(() => triggerLifecycleHook('mounted')).not.toThrow();
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
     });
 
-    it('should continue execution if one hook throws error', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('handles synchronous hooks', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Define hooks: first normal, second throws error, third normal
-      const mockHook1 = vi.fn();
-      const mockHook2 = vi.fn().mockImplementation(() => {
-        throw new Error('Test error');
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(hook).toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('handles asynchronous hooks', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const hook = vi.fn(async () => {
+        await new Promise<void>(resolve => setTimeout(resolve, 10));
       });
-      const mockHook3 = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
 
-      context.mounted.add(mockHook1);
-      context.mounted.add(mockHook2);
-      context.mounted.add(mockHook3);
+      await triggerLifecycleHook(LIFECYCLE.mount);
 
-      // Mock console.error to avoid polluting test output
-      const originalError = console.error;
-      console.error = vi.fn();
-
-      // Trigger lifecycle hook
-      triggerLifecycleHook('mounted');
-
-      // Verify all hooks were called
-      expect(mockHook1).toHaveBeenCalled();
-      expect(mockHook2).toHaveBeenCalled();
-      expect(mockHook3).toHaveBeenCalled();
-
-      // Verify error was caught and output
-      expect(console.error).toHaveBeenCalled();
-
-      // Restore console.error and __DEV__
-      console.error = originalError;
+      expect(hook).toHaveBeenCalled();
+      popContextStack();
     });
+
+    it('handles hook errors gracefully', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const errorHook = vi.fn(() => {
+        throw new Error('Hook error');
+      });
+      const successHook = vi.fn();
+
+      registerLifecycleHook(LIFECYCLE.mount, errorHook);
+      registerLifecycleHook(LIFECYCLE.mount, successHook);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(errorHook).toHaveBeenCalled();
+      expect(successHook).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+      popContextStack();
+    });
+
+    it('handles async hook errors gracefully', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const errorHook = vi.fn(async () => {
+        throw new Error('Async hook error');
+      });
+
+      registerLifecycleHook(LIFECYCLE.mount, errorHook);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(errorHook).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+      popContextStack();
+    });
+
+    it('handles hook timeout in development mode', async () => {
+      const originalDev = (globalThis as any).__DEV__;
+      (globalThis as any).__DEV__ = true;
+
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const slowHook = vi.fn(async () => {
+        await new Promise(resolve => setTimeout(resolve, 4000));
+      });
+
+      registerLifecycleHook(LIFECYCLE.mount, slowHook);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(slowHook).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+      popContextStack();
+      (globalThis as any).__DEV__ = originalDev;
+    }, 5000);
   });
 
-  describe('lifecycle Helper Functions', () => {
-    it('should register onMount hook', () => {
-      const context = createContext();
-      setActiveContext(context);
+  describe('lifecycle helper functions', () => {
+    it('supports onMount helper', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook = vi.fn();
-      onMounted(mockHook);
+      const mount = vi.fn();
+      onMount(mount);
 
-      expect(context.mounted.has(mockHook)).toBe(true);
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(mount).toHaveBeenCalled();
+      popContextStack();
     });
 
-    it('should register onDestroyed hook', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('supports onUpdate helper', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook = vi.fn();
-      onDestroyed(mockHook);
+      const update = vi.fn();
+      onUpdate(update);
 
-      expect(context.destroyed.has(mockHook)).toBe(true);
+      await triggerLifecycleHook(LIFECYCLE.update);
+
+      expect(update).toHaveBeenCalled();
+      popContextStack();
     });
 
-    it('should register onUpdated hook', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('supports onDestroy helper', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      const mockHook = vi.fn();
-      onUpdated(mockHook);
+      const destroy = vi.fn();
+      onDestroy(destroy);
 
-      expect(context.updated.has(mockHook)).toBe(true);
+      await triggerLifecycleHook(LIFECYCLE.destroy);
+
+      expect(destroy).toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('supports all lifecycle helpers together', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const mount = vi.fn();
+      const update = vi.fn();
+      const destroy = vi.fn();
+
+      onMount(mount);
+      onUpdate(update);
+      onDestroy(destroy);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+      await triggerLifecycleHook(LIFECYCLE.update);
+      await triggerLifecycleHook(LIFECYCLE.destroy);
+
+      expect(mount).toHaveBeenCalled();
+      expect(update).toHaveBeenCalled();
+      expect(destroy).toHaveBeenCalled();
+
+      popContextStack();
     });
   });
 
   describe('cleanupLifecycle', () => {
-    it('should clear all lifecycle hooks from specified context', () => {
-      const context = createContext();
+    it('clears all lifecycle hooks', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Add some lifecycle hooks
-      const mockMountedHook = vi.fn();
-      const mockDestroyedHook = vi.fn();
-      const mockUpdatedHook = vi.fn();
+      onMount(vi.fn());
+      onUpdate(vi.fn());
+      onDestroy(vi.fn());
 
-      context.mounted.add(mockMountedHook);
-      context.destroyed.add(mockDestroyedHook);
-      context.updated.add(mockUpdatedHook);
+      expect(context.mount.size).toBeGreaterThan(0);
+      expect(context.update.size).toBeGreaterThan(0);
+      expect(context.destroy.size).toBeGreaterThan(0);
 
-      // Clean up lifecycle
       cleanupLifecycle(context);
 
-      // Verify all hook collections were cleared
-      expect(context.mounted.size).toBe(0);
-      expect(context.destroyed.size).toBe(0);
-      expect(context.updated.size).toBe(0);
+      expect(context.mount.size).toBe(0);
+      expect(context.update.size).toBe(0);
+      expect(context.destroy.size).toBe(0);
+
+      popContextStack();
     });
 
-    it('should clear all lifecycle hooks from active context if no context specified', () => {
-      const context = createContext();
-      setActiveContext(context);
+    it('uses active context when no context provided', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-      // Add some lifecycle hooks
-      const mockMountedHook = vi.fn();
-      const mockDestroyedHook = vi.fn();
-      const mockUpdatedHook = vi.fn();
+      onMount(vi.fn());
 
-      context.mounted.add(mockMountedHook);
-      context.destroyed.add(mockDestroyedHook);
-      context.updated.add(mockUpdatedHook);
+      expect(context.mount.size).toBeGreaterThan(0);
 
-      // Clean up lifecycle
       cleanupLifecycle();
 
-      // Verify all hook collections were cleared
-      expect(context.mounted.size).toBe(0);
-      expect(context.destroyed.size).toBe(0);
-      expect(context.updated.size).toBe(0);
+      expect(context.mount.size).toBe(0);
+
+      popContextStack();
     });
 
-    it('should do nothing if no context specified and no active context', () => {
-      // Ensure no active context
-      // @ts-ignore - Setting to null is valid for tests
-      setActiveContext(null);
-
-      // Should not throw error
+    it('handles cleanup without active context', () => {
       expect(() => cleanupLifecycle()).not.toThrow();
+    });
+
+    it('handles cleanup with partial lifecycle hooks', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      onMount(vi.fn());
+      // Only mount hook registered
+
+      cleanupLifecycle(context);
+
+      expect(context.mount.size).toBe(0);
+      expect(context.update.size).toBe(0);
+      expect(context.destroy.size).toBe(0);
+
+      popContextStack();
+    });
+  });
+
+  describe('edge cases', () => {
+    it('handles multiple hooks of same type', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const hooks = [vi.fn(), vi.fn(), vi.fn()];
+      hooks.forEach(hook => registerLifecycleHook(LIFECYCLE.mount, hook));
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      hooks.forEach(hook => expect(hook).toHaveBeenCalled());
+      popContextStack();
+    });
+
+    it('handles hook that returns non-promise value', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const hook = vi.fn(() => {
+        // Hook should not return a value
+      });
+      registerLifecycleHook(LIFECYCLE.mount, hook);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(hook).toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('handles empty hook set', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      await expect(triggerLifecycleHook(LIFECYCLE.mount)).resolves.toBeUndefined();
+      popContextStack();
+    });
+
+    it('preserves hook execution order', async () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const order: number[] = [];
+      const hook1 = vi.fn(() => {
+        order.push(1);
+      });
+      const hook2 = vi.fn(() => {
+        order.push(2);
+      });
+      const hook3 = vi.fn(() => {
+        order.push(3);
+      });
+
+      registerLifecycleHook(LIFECYCLE.mount, hook1);
+      registerLifecycleHook(LIFECYCLE.mount, hook2);
+      registerLifecycleHook(LIFECYCLE.mount, hook3);
+
+      await triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(order).toEqual([1, 2, 3]);
+      popContextStack();
     });
   });
 });

@@ -1,5 +1,5 @@
 import { createApp, shallowSignal, signal } from 'essor';
-import './style.css';
+// import './style.css';
 const A = [
   'pretty',
   'large',

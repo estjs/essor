@@ -149,7 +149,7 @@ export class SignalImpl<T> implements ReactiveNode {
     }
   }
 
-  // Check if the value should be updated
+  // Check if the value should be update
   shouldUpdate(): boolean {
     // Clear "dirty" flag using bitwise AND with NOT
     this.flag &= ~ReactiveFlags.DIRTY;

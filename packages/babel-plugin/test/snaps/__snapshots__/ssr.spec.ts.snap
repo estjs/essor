@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx SSR transform > should work with CSS-in-JS in SSR 1`] = `
-"import { setClass as _setClass$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<div  data-styled></div>"),
   _tmpl$2 = _template$("Styled Content");
 const StyledComponent = ({
@@ -13,7 +13,7 @@ const StyledComponent = ({
   _insert$(_nodes[0], () => children);
   _memoEffect$(_p$ => {
     var _v$0 = className;
-    _v$0 !== _p$.c0 && _setClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$0 !== _p$.c0 && _patchClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
     return _p$;
   }, {
     c0: undefined
@@ -44,32 +44,10 @@ const AsyncComponent = async ({
   })();
 };
 const element = _createComponent$(AsyncComponent, {
-  "data": Promise.resolve('async content')
+  get data() {
+    return Promise.resolve('async content');
+  }
 });"
-`;
-
-exports[`jsx SSR transform > should work with bind api 1`] = `
-"import { getElement as _template$, mapSSRNodes as _mapNodes$, bindAttr as _bindAttr$ } from "essor";
-const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-const value = 1;
-(() => {
-  const _el = _tmpl$();
-  const _nodes = _mapNodes$(_el, [2]);
-  _bindAttr$(_nodes[0], "value", value, _value => value = _value);
-  return _el;
-})();"
-`;
-
-exports[`jsx SSR transform > should work with comment in JSX 1`] = `
-"import { getElement as _template$, mapSSRNodes as _mapNodes$, bindAttr as _bindAttr$ } from "essor";
-const _tmpl$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-const value = 1;
-(() => {
-  const _el = _tmpl$();
-  const _nodes = _mapNodes$(_el, [2]);
-  _bindAttr$(_nodes[0], "value", value, _value => value = _value);
-  return _el;
-})();"
 `;
 
 exports[`jsx SSR transform > should work with conditional rendering in SSR 1`] = `
@@ -148,10 +126,12 @@ const ErrorBoundary = ({
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  "fallback": (() => {
-    const _el2 = _tmpl$2();
-    return _el2;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el2 = _tmpl$2();
+      return _el2;
+    })();
+  },
   "children": [(() => {
     const _el = _tmpl$();
     return _el;
@@ -206,7 +186,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with list rendering in SSR 1`] = `
-"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, setAttr as _setAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<ul></ul>"),
   _tmpl$2 = _template$("<li></li>");
 const items = ['Item 1', 'Item 2', 'Item 3'];
@@ -219,7 +199,7 @@ const element = (() => {
     _insert$(_nodes2[0], () => item);
     _memoEffect$(_p$ => {
       var _v$0 = index;
-      _v$0 !== _p$.k0 && _setAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      _v$0 !== _p$.k0 && _patchAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
       return _p$;
     }, {
       k0: undefined
@@ -260,7 +240,7 @@ const Parent = () => (() => {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR 1`] = `
-"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, setAttr as _setAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<div></div>"),
   _tmpl$2 = _template$("<div></div>");
 const StreamingComponent = ({
@@ -275,8 +255,8 @@ const StreamingComponent = ({
     _memoEffect$(_p$ => {
       var _v$0 = index,
         _v$1 = index;
-      _v$0 !== _p$.k0 && _setAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
-      _v$1 !== _p$.d1 && _setAttr$(_nodes2[0], "data-chunk", _p$.d1, _p$.d1 = _v$1);
+      _v$0 !== _p$.k0 && _patchAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      _v$1 !== _p$.d1 && _patchAttr$(_nodes2[0], "data-chunk", _p$.d1, _p$.d1 = _v$1);
       return _p$;
     }, {
       k0: undefined,
@@ -302,7 +282,9 @@ const StreamingContext = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(ThemeContext.Provider, {
-    "value": value,
+    get value() {
+      return value;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
@@ -378,10 +360,12 @@ const StreamingDynamic = ({
   return _el;
 })();
 const element = _createComponent$(Suspense, {
-  "fallback": (() => {
-    const _el2 = _tmpl$2();
-    return _el2;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el2 = _tmpl$2();
+      return _el2;
+    })();
+  },
   "children": [_createComponent$(StreamingDynamic, {
     "children": [import('./Component')]
   })]
@@ -400,17 +384,21 @@ const StreamingErrorBoundary = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(ErrorBoundary, {
-    "fallback": fallback,
+    get fallback() {
+      return fallback;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
   return _el;
 })();
 const element = _createComponent$(StreamingErrorBoundary, {
-  "fallback": (() => {
-    const _el3 = _tmpl$3();
-    return _el3;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el3 = _tmpl$3();
+      return _el3;
+    })();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -430,17 +418,21 @@ const StreamingErrorBoundary = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(ErrorBoundary, {
-    "fallback": fallback,
+    get fallback() {
+      return fallback;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
   return _el;
 })();
 const element = _createComponent$(StreamingErrorBoundary, {
-  "fallback": (() => {
-    const _el3 = _tmpl$3();
-    return _el3;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el3 = _tmpl$3();
+      return _el3;
+    })();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -477,7 +469,7 @@ const element = _createComponent$(StreamingError, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and forwardRef 1`] = `
-"import { setAttr as _setAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<div  data-streaming-forward></div>"),
   _tmpl$2 = _template$("<div>Streaming Forward Ref Content</div>");
 const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
@@ -486,7 +478,7 @@ const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   _insert$(_nodes[0], () => props.children);
   _memoEffect$(_p$ => {
     var _v$0 = ref;
-    _v$0 !== _p$.r0 && _setAttr$(_nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
+    _v$0 !== _p$.r0 && _patchAttr$(_nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
     return _p$;
   }, {
     r0: undefined
@@ -494,7 +486,9 @@ const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   return _el;
 })());
 const element = _createComponent$(StreamingForwardRef, {
-  "ref": React.createRef(),
+  get ref() {
+    return React.createRef();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -537,10 +531,12 @@ const StreamingLazy = ({
 })();
 StreamingLazy._lazy = true;
 const element = _createComponent$(Suspense, {
-  "fallback": (() => {
-    const _el3 = _tmpl$3();
-    return _el3;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el3 = _tmpl$3();
+      return _el3;
+    })();
+  },
   "children": [_createComponent$(StreamingLazy, {
     "children": [(() => {
       const _el2 = _tmpl$2();
@@ -605,14 +601,20 @@ const StreamingContexts = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(ThemeContext.Provider, {
-    "value": theme,
+    get value() {
+      return theme;
+    },
     "children": [_createComponent$(UserContext.Provider, {
-      "value": user,
+      get value() {
+        return user;
+      },
       "children": [children]
     })]
   }));
   _insert$(_nodes[0], () => _createComponent$(UserContext.Provider, {
-    "value": user,
+    get value() {
+      return user;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
@@ -631,7 +633,7 @@ const element = _createComponent$(StreamingContexts, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and portals 1`] = `
-"import { setAttr as _setAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<div  data-streaming-portal></div>"),
   _tmpl$2 = _template$("<div>Streaming Portal Content</div>");
 const StreamingPortal = ({
@@ -643,7 +645,7 @@ const StreamingPortal = ({
   _insert$(_nodes[0], () => children);
   _memoEffect$(_p$ => {
     var _v$0 = target;
-    _v$0 !== _p$.d0 && _setAttr$(_nodes[0], "data-target", _p$.d0, _p$.d0 = _v$0);
+    _v$0 !== _p$.d0 && _patchAttr$(_nodes[0], "data-target", _p$.d0, _p$.d0 = _v$0);
     return _p$;
   }, {
     d0: undefined
@@ -660,7 +662,7 @@ const element = _createComponent$(StreamingPortal, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and refs 1`] = `
-"import { setAttr as _setAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _tmpl$ = _template$("<div  data-streaming-ref></div>"),
   _tmpl$2 = _template$("<div>Streaming Ref Content</div>");
 const StreamingRef = ({
@@ -671,7 +673,7 @@ const StreamingRef = ({
   _insert$(_nodes[0], () => children);
   _memoEffect$(_p$ => {
     var _v$0 = ref;
-    _v$0 !== _p$.r0 && _setAttr$(_nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
+    _v$0 !== _p$.r0 && _patchAttr$(_nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
     return _p$;
   }, {
     r0: undefined
@@ -679,7 +681,9 @@ const StreamingRef = ({
   return _el;
 })();
 const element = _createComponent$(StreamingRef, {
-  "ref": React.createRef(),
+  get ref() {
+    return React.createRef();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -699,17 +703,21 @@ const StreamingSuspense = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(Suspense, {
-    "fallback": fallback,
+    get fallback() {
+      return fallback;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
   return _el;
 })();
 const element = _createComponent$(StreamingSuspense, {
-  "fallback": (() => {
-    const _el3 = _tmpl$3();
-    return _el3;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el3 = _tmpl$3();
+      return _el3;
+    })();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -729,17 +737,21 @@ const StreamingSuspenseBoundary = ({
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
   _insert$(_nodes[0], () => _createComponent$(Suspense, {
-    "fallback": fallback,
+    get fallback() {
+      return fallback;
+    },
     "children": [children]
   }));
   _insert$(_nodes[0], () => children);
   return _el;
 })();
 const element = _createComponent$(StreamingSuspenseBoundary, {
-  "fallback": (() => {
-    const _el3 = _tmpl$3();
-    return _el3;
-  })(),
+  get fallback() {
+    return (() => {
+      const _el3 = _tmpl$3();
+      return _el3;
+    })();
+  },
   "children": [(() => {
     const _el2 = _tmpl$2();
     return _el2;
@@ -799,7 +811,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with class and style attributes 1`] = `
-"import { setClass as _setClass$, setStyle as _setStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
+"import { patchClass as _patchClass$, patchStyle as _patchStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const style = {
@@ -812,8 +824,8 @@ const element = (() => {
   _memoEffect$(_p$ => {
     var _v$0 = hasClass ? 'myClass' : '',
       _v$1 = style;
-    _v$0 !== _p$.c0 && _setClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
-    _v$1 !== _p$.s1 && _setStyle$(_nodes[0], _p$.s1, _p$.s1 = _v$1);
+    _v$0 !== _p$.c0 && _patchClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$1 !== _p$.s1 && _patchStyle$(_nodes[0], _p$.s1, _p$.s1 = _v$1);
     return _p$;
   }, {
     c0: undefined,
@@ -824,7 +836,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with conditional attributes 1`] = `
-"import { setClass as _setClass$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const element = (() => {
@@ -832,7 +844,7 @@ const element = (() => {
   const _nodes = _mapNodes$(_el, [1]);
   _memoEffect$(_p$ => {
     var _v$0 = hasClass ? 'myClass' : 'otherClass';
-    _v$0 !== _p$.c0 && _setClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$0 !== _p$.c0 && _patchClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
     return _p$;
   }, {
     c0: undefined
@@ -870,7 +882,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with nested expressions and children 1`] = `
-"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, setAttr as _setAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div><p>'s Profile</p><ul></ul></div>"),
   _tmpl$2 = _template$("<li>Item</li>");
 const name = 'John';
@@ -886,7 +898,7 @@ const element = (() => {
     _insert$(_nodes2[0], () => i + 1);
     _memoEffect$(_p$ => {
       var _v$0 = i;
-      _v$0 !== _p$.k0 && _setAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      _v$0 !== _p$.k0 && _patchAttr$(_nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
       return _p$;
     }, {
       k0: undefined
@@ -898,15 +910,15 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { setClass as _setClass$, getElement as _template$, mapSSRNodes as _mapNodes$, setAttr as _setAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!</div>");
 const element = (() => {
   const _el = _tmpl$();
   const _nodes = _mapNodes$(_el, [1]);
-  _setAttr$(_nodes[0], "id", null);
+  _patchAttr$(_nodes[0], "id", null);
   _memoEffect$(_p$ => {
     var _v$0 = undefined;
-    _v$0 !== _p$.c0 && _setClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$0 !== _p$.c0 && _patchClass$(_nodes[0], _p$.c0, _p$.c0 = _v$0);
     return _p$;
   }, {
     c0: undefined
@@ -951,7 +963,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with spread attributes 1`] = `
-"import { setAttr as _setAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!</div>");
 const props = {
   id: 'myId',
@@ -962,7 +974,7 @@ const element = (() => {
   const _nodes = _mapNodes$(_el, [1]);
   _memoEffect$(_p$ => {
     var _v$0 = props;
-    _v$0 !== _p$._0 && _setAttr$(_nodes[0], "_$spread$", _p$._0, _p$._0 = _v$0);
+    _v$0 !== _p$._0 && _patchAttr$(_nodes[0], "_$spread$", _p$._0, _p$._0 = _v$0);
     return _p$;
   }, {
     _0: undefined
@@ -972,7 +984,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with style attribute 1`] = `
-"import { setStyle as _setStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
+"import { patchStyle as _patchStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _tmpl$ = _template$("<div>Hello, World!</div>");
 const style = {
   color: 'red',
@@ -983,7 +995,7 @@ const element = (() => {
   const _nodes = _mapNodes$(_el, [1]);
   _memoEffect$(_p$ => {
     var _v$0 = style;
-    _v$0 !== _p$.s0 && _setStyle$(_nodes[0], _p$.s0, _p$.s0 = _v$0);
+    _v$0 !== _p$.s0 && _patchStyle$(_nodes[0], _p$.s0, _p$.s0 = _v$0);
     return _p$;
   }, {
     s0: undefined

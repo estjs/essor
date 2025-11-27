@@ -86,76 +86,65 @@ describe('classNames module', () => {
 
   describe('patchClass function', () => {
     it('should set class attribute on elements', () => {
-      const classPatcher = patchClass(element);
-      classPatcher(null, 'test-class');
+      patchClass(element, null, 'test-class');
       expect(element.className).toBe('test-class');
     });
 
     it('should set class attribute on SVG elements', () => {
-      const classPatcher = patchClass(svgElement, true);
-      classPatcher(null, 'test-class');
+      patchClass(svgElement, true, 'test-class', true);
       expect(svgElement.getAttribute('class')).toBe('test-class');
     });
 
     it('should remove class attribute when class is empty string', () => {
       element.className = 'test-class';
-      const classPatcher = patchClass(element);
-      classPatcher('test-class', '');
+      patchClass(element, null, '');
       expect(element.hasAttribute('class')).toBe(false);
     });
 
     it('should skip update if class has not changed', () => {
-      const classPatcher = patchClass(element);
-
-      // First call sets the className
-      classPatcher(null, 'test-class');
+      patchClass(element, null, 'test-class');
       expect(element.className).toBe('test-class');
 
       // Mock className property setter
       const classNameSetter = vi.spyOn(element, 'className', 'set');
 
       // Second call with same value should be a no-op
-      classPatcher('test-class', 'test-class');
+      patchClass(element, 'test-class', 'test-class');
       expect(classNameSetter).not.toHaveBeenCalled();
 
       // New value should call className setter
-      classPatcher('test-class', 'new-class');
+      patchClass(element, 'test-class', 'new-class');
       expect(classNameSetter).toHaveBeenCalledWith('new-class');
     });
 
     it('should handle various class formats', () => {
-      const classPatcher = patchClass(element);
-
-      // Object format
-      classPatcher(null, { active: true, disabled: false });
+      patchClass(element, null, { active: true, disabled: false });
       expect(element.className).toBe('active');
     });
 
     it('should handle null and undefined values', () => {
-      const classPatcher = patchClass(element);
+      patchClass(element, null, 'test-class');
 
       // Set a class first
       element.className = 'test-class';
 
       // Test null
-      classPatcher('test-class', null);
+      patchClass(element, 'test-class', null);
       expect(element.hasAttribute('class')).toBe(false);
 
       // Test undefined
       element.className = 'test-class';
-      classPatcher('test-class', undefined);
+      patchClass(element, 'test-class', undefined);
       expect(element.hasAttribute('class')).toBe(false);
     });
 
     it('should handle array values', () => {
-      const classPatcher = patchClass(element);
-      classPatcher(null, ['a', 'b', 'c']);
+      patchClass(element, null, ['a', 'b', 'c']);
       expect(element.className).toBe('a b c');
     });
 
     it('should handle object values', () => {
-      const classPatcher = patchClass(element);
-      classPatcher(null, { active: true, disabled: false });
+      patchClass(element, null, { active: true, disabled: false });
       expect(element.className).toBe('active');
     });
   });

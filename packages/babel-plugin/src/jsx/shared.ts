@@ -753,31 +753,43 @@ export function normalizeProps(raw: Record<string, any>): Record<string, any> {
 /**
  * Create props object expression
  * @description Convert attribute record to AST object expression
- * @param {Record<string, any>} propsData - Attribute data
+ * @param {Record<string, unknown>} propsData - Attribute data
  * @param {Function} transformJSX - JSX conversion function
  * @return {t.ObjectExpression} Generated object expression
  */
 export function createPropsObjectExpression(
-  propsData: Record<string, any>,
+  propsData: Record<string, unknown>,
   transformJSX: (path: NodePath<JSXElement>, tree: TreeNode) => t.Expression,
 ): t.ObjectExpression {
-  const objectProperties: (t.ObjectProperty | t.SpreadElement)[] = [];
+  const objectProperties: (t.ObjectProperty | t.SpreadElement | t.ObjectMethod)[] = [];
 
   const propsToProcess = normalizeProps(propsData);
 
   for (const propName in propsToProcess) {
-    let propValue = propsToProcess[propName];
+    const propValue = propsToProcess[propName];
     // Skip empty children
     if (propName === CHILDREN_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
       continue;
     }
-    propValue = convertValueToASTNode(propValue, transformJSX);
+    const astValue = convertValueToASTNode(propValue as any, transformJSX);
 
     // Process spread attribute
     if (propName === SPREAD_NAME) {
-      objectProperties.push(t.spreadElement(propValue));
+      objectProperties.push(t.spreadElement(astValue));
     } else {
-      objectProperties.push(t.objectProperty(t.stringLiteral(propName), propValue));
+      // Check if dynamic and not a function
+      if (isDynamicExpression(astValue) && !t.isFunction(astValue) && propName !== 'children') {
+        objectProperties.push(
+          t.objectMethod(
+            'get',
+            t.identifier(propName),
+            [],
+            t.blockStatement([t.returnStatement(astValue)]),
+          ),
+        );
+      } else {
+        objectProperties.push(t.objectProperty(t.stringLiteral(propName), astValue));
+      }
     }
   }
 
@@ -865,13 +877,13 @@ export function getSetFunctionForAttribute(attrName: string) {
   switch (attrName) {
     case CLASS_NAME:
       return {
-        name: 'setClass',
-        value: state.imports.setClass,
+        name: 'patchClass',
+        value: state.imports.patchClass,
       };
     case STYLE_NAME:
-      return { name: 'setStyle', value: state.imports.setStyle };
+      return { name: 'patchStyle', value: state.imports.patchStyle };
     default:
-      return { name: 'setAttr', value: state.imports.setAttr };
+      return { name: 'patchAttr', value: state.imports.patchAttr };
   }
 }
 

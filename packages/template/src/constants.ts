@@ -14,10 +14,13 @@ export const UPDATE_PREFIX = 'update';
 export const CHILDREN_PROP = 'children';
 
 /**
- * reference property key
  * used to get the DOM element reference
  */
 export const REF_KEY = 'ref';
+/**
+ * Component key property name
+ */
+export const KEY_PROP = 'key' as const;
 
 /**
  * SVG namespace constant
@@ -38,3 +41,27 @@ export const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
  * data-idx regex
  */
 export const DATA_IDX_REGEX = /^\d+-\d+$/;
+/**
+ * Defines various states of components for state management and debugging
+ */
+export enum COMPONENT_STATE {
+  /** Initial state */
+  INITIAL,
+  /** Mounting */
+  MOUNTING,
+  /** MOUNTED */
+  MOUNTED,
+  /** Updating */
+  UPDATING,
+  /** Destroying */
+  DESTROYING,
+  /** destroy */
+  DESTROYED,
+}
+
+export enum COMPONENT_TYPE {
+  NORMAL = 'normal',
+  FRAGMENT = 'fragment',
+  PORTAL = 'portal',
+  SUSPENSE = 'suspense',
+}

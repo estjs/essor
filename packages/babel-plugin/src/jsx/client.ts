@@ -226,7 +226,7 @@ function generateIndexMap({ props, children }) {
  * - key: Optional attribute key (such as attribute name, event name, etc.)
  * - value: Attribute value, supports single value or array values
  *
- * @param {t.Identifier} functionIdentifier - Function identifier to call (e.g., setAttr, setClass)
+ * @param {t.Identifier} functionIdentifier - Function identifier to call (e.g., patchAttr, patchClass)
  * @param {t.Identifier} nodesId - Node mapping array identifier
  * @param {number} nodeIndex - Target node index in the mapping array
  * @param {t.Expression} value - Attribute value expression (supports array spreading)
@@ -362,9 +362,9 @@ function generateSpecificAttributeCode(
 
   switch (attributeName) {
     case CLASS_NAME:
-      addImport(importMap.setClass);
+      addImport(importMap.patchClass);
       statements.push(
-        createAttributeStatement(state.imports.setClass, nodesId, nodeIndex, attributeValue),
+        createAttributeStatement(state.imports.patchClass, nodesId, nodeIndex, attributeValue),
       );
       break;
 
@@ -376,9 +376,9 @@ function generateSpecificAttributeCode(
       break;
 
     case STYLE_NAME:
-      addImport(importMap.setStyle);
+      addImport(importMap.patchStyle);
       statements.push(
-        createAttributeStatement(state.imports.setStyle, nodesId, nodeIndex, attributeValue),
+        createAttributeStatement(state.imports.patchStyle, nodesId, nodeIndex, attributeValue),
       );
       break;
 
@@ -398,10 +398,10 @@ function generateSpecificAttributeCode(
         return;
       }
       // Process normal attributes
-      addImport(importMap.setAttr);
+      addImport(importMap.patchAttr);
       statements.push(
         createAttributeStatement(
-          state.imports.setAttr,
+          state.imports.patchAttr,
           nodesId,
           nodeIndex,
           attributeValue,
@@ -649,7 +649,7 @@ function generateUnifiedMemoizedEffect(
     let domOperationCall: t.CallExpression;
 
     // Handle attribute operations
-    if (op.setFunction.name === 'setAttr') {
+    if (op.setFunction.name === 'patchAttr') {
       domOperationCall = t.callExpression(op.setFunction.value, [
         elementRef,
         t.stringLiteral(op.attrName),
@@ -672,7 +672,7 @@ function generateUnifiedMemoizedEffect(
       ]);
     }
 
-    // _v$0 !== _p$.c0 && (_p$.c0 = _v$0, _$setClass(_el$, _v$0));
+    // _v$0 !== _p$.c0 && (_p$.c0 = _v$0, _$patchClass(_el$, _v$0));
     return t.expressionStatement(
       t.logicalExpression(
         '&&',

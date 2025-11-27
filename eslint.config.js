@@ -7,6 +7,7 @@ export default estjs(
       'unicorn/prefer-dom-node-remove': 'off',
       'unicorn/prefer-dom-node-append': 'off',
       'unicorn/no-lonely-if': 'off',
+      'unicorn/no-new-array': 'off',
     },
     typescript: {
       '@typescript-eslint/no-this-alias': 'off',

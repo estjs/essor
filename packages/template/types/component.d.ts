@@ -10,7 +10,7 @@ export interface NodeTrack {
   isRoot?: boolean;
   lastNodes?: Map<string, Node | JSX.Element>;
 }
-export type Hook = 'mounted' | 'destroy';
+export type Hook = 'mount' | 'destroy';
 export interface NodeTrack {
   cleanup: () => void;
   isRoot?: boolean;

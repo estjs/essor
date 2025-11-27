@@ -16,7 +16,7 @@ import { createImportIdentifiers } from '../src/import';
 
 describe('jsx client helpers', () => {
   it('builds attribute setter statements', () => {
-    const fnIdentifier = t.identifier('_setAttr$');
+    const fnIdentifier = t.identifier('_patchAttr$');
     const nodes = t.identifier('_nodes');
     const stmt = createAttributeStatement(
       fnIdentifier,

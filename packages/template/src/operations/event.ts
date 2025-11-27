@@ -18,7 +18,6 @@ export type EventCleanup = () => void;
 
 /**
  * Adds an event listener to an element with optional delegation
- * Balance between simplicity and performance
  *
  * @param el - The element to attach the event to
  * @param event - The event name (e.g., 'click', 'input')
@@ -33,7 +32,6 @@ export function addEvent(
   handler: EventListener,
   options?: EventOptions,
 ): EventCleanup {
-  // Fast path: no delegation needed
   if (!options?.delegate) {
     el.addEventListener(event, handler, options);
     return () => el.removeEventListener(event, handler, options);

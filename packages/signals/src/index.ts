@@ -49,7 +49,8 @@ export {
 } from './scheduler';
 
 // ==================== Tracking & Debugging API ====================
-export { untrack, type DebuggerEvent, type DebuggerEventType } from './link';
+export { untrack, trigger, type DebuggerEvent, type DebuggerEventType } from './link';
+export { TriggerOpTypes } from './constants';
 
 // ==================== Type Utilities ====================
 
@@ -70,10 +71,10 @@ export { untrack, type DebuggerEvent, type DebuggerEventType } from './link';
 export type Unwrap<T> = T extends import('./signal').Signal<infer V>
   ? V
   : T extends import('./computed').Computed<infer V>
-    ? V
-    : T extends import('./reactive').Reactive<infer V extends object>
-      ? V
-      : T;
+  ? V
+  : T extends import('./reactive').Reactive<infer V extends object>
+  ? V
+  : T;
 
 /**
  * Make all properties of an object type reactive
@@ -90,10 +91,10 @@ export type Unwrap<T> = T extends import('./signal').Signal<infer V>
  */
 export type DeepReactive<T> = T extends object
   ? T extends infer O
-    ? O extends object
-      ? import('./reactive').Reactive<O>
-      : O
-    : never
+  ? O extends object
+  ? import('./reactive').Reactive<O>
+  : O
+  : never
   : T;
 
 /**
@@ -109,8 +110,8 @@ export type DeepReactive<T> = T extends object
  */
 export type ShallowReactive<T> = T extends object
   ? {
-      [K in keyof T]: T[K];
-    }
+    [K in keyof T]: T[K];
+  }
   : T;
 
 /**

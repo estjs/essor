@@ -291,7 +291,7 @@ describe('reactive - nested objects and arrays', () => {
 
     // Now modify the original array
     array[0] = 0;
-    // The result should be updated with the new value at index 0
+    // The result should be update with the new value at index 0
     expect(result.value).toStrictEqual([0, -2, 3]);
   });
 
@@ -456,7 +456,7 @@ describe('reactive & shallowReactive - Non-object and primitive values', () => {
 
   // Handling functions
   it('should not work with functions', () => {
-    const func = () => { };
+    const func = () => {};
     // @ts-ignore
     const state = reactive(func);
     expect(state).toBe(func);

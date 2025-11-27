@@ -1,30 +1,38 @@
-import { insert } from '../binding';
-import { createContext, withContext } from '../context';
-/**
- * Type definition for Fragment component
- */
-export interface FragmentProps {
-  children: JSX.Element | JSX.Element[] | (() => JSX.Element | JSX.Element[]) | null;
-}
+import { insertNode, normalizeNode } from '../utils';
+import { COMPONENT_TYPE } from '../constants';
+import type { AnyNode } from '../types';
 
-/**
- * Fragment component - Used to wrap multiple child elements without creating extra DOM nodes
- * Optimized performance, supports reactive updates
- */
-export function Fragment(props: FragmentProps): DocumentFragment {
+export function Fragment(props: { children?: AnyNode | AnyNode[]; key?: string }) {
+  // Check if we're in SSR mode (no document)
+  if (typeof document === 'undefined') {
+    const children = props.children;
+    if (!children) return '';
+    const childArray = Array.isArray(children) ? children : [children];
+    // In SSR, convert children to string
+    return childArray.map(child => String(child || '')).join('');
+  }
+
   const fragment = document.createDocumentFragment();
+  const children = props.children;
 
-  const context = createContext();
-  withContext(context, () => {
-    insert(fragment, () => props.children);
-  });
+  if (children) {
+    const childArray = Array.isArray(children) ? children : [children];
+    childArray.forEach(child => {
+      if (child != null) {
+        // Skip null/undefined
+        const normalized = normalizeNode(child);
+        if (normalized) {
+          insertNode(fragment, normalized);
+        }
+      }
+    });
+  }
 
   return fragment;
 }
 
-/**
- * Determine if it's a Fragment node
- */
+Fragment[COMPONENT_TYPE.FRAGMENT] = true;
+
 export function isFragment(node: unknown): boolean {
-  return node instanceof DocumentFragment;
+  return !!node && !!(node as any)[COMPONENT_TYPE.FRAGMENT];
 }

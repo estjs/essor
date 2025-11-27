@@ -4,9 +4,9 @@ import { type Context, getActiveContext } from './context';
 export type LifecycleHook = () => void;
 
 export const LIFECYCLE = {
-  mounted: 'mounted',
-  destroyed: 'destroyed',
-  updated: 'updated',
+  mount: 'mount',
+  destroy: 'destroy',
+  update: 'update',
 } as const;
 
 export type LifecycleType = (typeof LIFECYCLE)[keyof typeof LIFECYCLE];
@@ -45,8 +45,8 @@ export function registerLifecycleHook(type: LifecycleType, hook: LifecycleHook) 
     return;
   }
 
-  // check if type is mounted and context is mounted
-  if (type === LIFECYCLE.mounted && context.isMounted) {
+  // check if type is mount and context is mount
+  if (type === LIFECYCLE.mount && context.isMount) {
     try {
       hook();
     } catch (error_) {
@@ -87,18 +87,18 @@ export function triggerLifecycleHook(type: LifecycleType) {
 }
 
 // on mount
-export function onMounted(hook: LifecycleHook) {
-  registerLifecycleHook(LIFECYCLE.mounted, hook);
+export function onMount(hook: LifecycleHook) {
+  registerLifecycleHook(LIFECYCLE.mount, hook);
 }
 
-// on destroyed
-export function onDestroyed(hook: LifecycleHook) {
-  registerLifecycleHook(LIFECYCLE.destroyed, hook);
+// on destroy
+export function onDestroy(hook: LifecycleHook) {
+  registerLifecycleHook(LIFECYCLE.destroy, hook);
 }
 
-// on updated
-export function onUpdated(hook: LifecycleHook) {
-  registerLifecycleHook(LIFECYCLE.updated, hook);
+// on update
+export function onUpdate(hook: LifecycleHook) {
+  registerLifecycleHook(LIFECYCLE.update, hook);
 }
 
 /**
@@ -112,13 +112,13 @@ export function cleanupLifecycle(context?: Context): void {
   }
 
   // clear all lifecycle hooks
-  if (ctx.mounted) {
-    ctx.mounted.clear();
+  if (ctx.mount) {
+    ctx.mount.clear();
   }
-  if (ctx.destroyed) {
-    ctx.destroyed.clear();
+  if (ctx.destroy) {
+    ctx.destroy.clear();
   }
-  if (ctx.updated) {
-    ctx.updated.clear();
+  if (ctx.update) {
+    ctx.update.clear();
   }
 }

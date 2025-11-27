@@ -1,53 +1,42 @@
-import { effect } from '@estjs/signals';
 import { coerceArray, isFunction } from '@estjs/shared';
+import { effect } from '@estjs/signals';
 import { getActiveContext } from './context';
 import {
   isHtmlInputElement,
   isHtmlSelectElement,
   isHtmlTextAreaElement,
   normalizeNode,
+  removeNode,
 } from './utils';
 import { patchChildren } from './patch';
 import type { AnyNode } from './types';
 
 /**
- * add an event listener to a node
- * @param {Element} node - the node to add the event listener to
- * @param {string} eventName - the event name to listen to
- * @param {EventListener} listener - the listener to call when the event is triggered
- * @param {AddEventListenerOptions} listenerOptions - the options for the event listener
- */
-/**
- * Adds an event listener to the given node.
- *
- * If an active context is available, a cleanup function will be added to the context's
- * cleanup collection to remove the event listener when the context is destroyed.
- *
- * @param node - The node to add the event listener to.
- * @param name - The name of the event to listen for.
- * @param handler - The event handler function to call when the event occurs.
- * @param options - Optional options for the event listener.
+ * Add event listener with automatic cleanup on context destruction
  */
 export function addEventListener(
-  node: Element,
-  name: string,
+  element: Element,
+  event: string,
   handler: EventListener,
-  options?: boolean | AddEventListenerOptions,
-) {
-  const activeContext = getActiveContext();
-  node.addEventListener(name, handler, options);
-  if (activeContext) {
-    const cleanup = () => node.removeEventListener(name, handler);
-    activeContext.cleanup.add(cleanup);
+  options?: AddEventListenerOptions,
+): void {
+  element.addEventListener(event, handler, options);
+
+  const context = getActiveContext();
+  if (context) {
+    context.cleanup.add(() => {
+      element.removeEventListener(event, handler, options);
+    });
   }
 }
+
 /**
  * Bind an element to a setter function, allowing the element to update the setter value when its value changes.
  *
  * @param node The element to bind.
  * @param setter The setter function to call when the element's value changes.
  */
-export function bindElement(node: Element, setter: (value: unknown) => void) {
+export function bindElement(node: Element, key, defaultValue, setter: (value: unknown) => void) {
   if (isHtmlInputElement(node)) {
     switch (node.type) {
       case 'checkbox':
@@ -71,9 +60,7 @@ export function bindElement(node: Element, setter: (value: unknown) => void) {
       case 'number':
       case 'range':
         addEventListener(node, 'input', () => {
-          const numValue = Number.parseFloat(node.value);
-          const value = Number.isNaN(numValue) ? '' : String(numValue);
-          setter(value);
+          setter(node.value || '');
         });
         break;
 
@@ -83,39 +70,31 @@ export function bindElement(node: Element, setter: (value: unknown) => void) {
       case 'time':
       case 'week':
         addEventListener(node, 'change', () => {
-          setter(node.value ? node.value : '');
+          setter(node.value || '');
         });
         break;
 
       default:
-        // Text input types
+        // text, email, password, search, tel, url, etc.
         addEventListener(node, 'input', () => {
-          setter(node.value ? node.value : '');
+          setter(node.value);
         });
         break;
     }
-  }
-
-  if (isHtmlSelectElement(node)) {
+  } else if (isHtmlSelectElement(node)) {
     addEventListener(node, 'change', () => {
-      let value: string | string[];
-
       if (node.multiple) {
-        // Multi-select dropdown
-        value = Array.from((node as unknown as HTMLSelectElement).selectedOptions).map(
-          option => option.value,
-        );
+        const values = Array.from(node.options)
+          .filter(option => option.selected)
+          .map(option => option.value);
+        setter(values);
       } else {
-        // Single-select dropdown
-        value = node.value;
+        setter(node.value);
       }
-      setter(value);
     });
-  }
-
-  if (isHtmlTextAreaElement(node)) {
+  } else if (isHtmlTextAreaElement(node)) {
     addEventListener(node, 'input', () => {
-      setter(node.value ? node.value : '');
+      setter(node.value);
     });
   }
 }
@@ -126,67 +105,91 @@ export function bindElement(node: Element, setter: (value: unknown) => void) {
  * @param parent Parent node
  * @param nodeFactory Node factory function or static node
  * @param before Reference node for insertion position
- * @param options Binding options
  *
  * @example
  * ```typescript
- * insert(container, () => createTextNode(message.value), null);
+ * insert(container, () => message.value, null);
  * insert(container, staticElement, referenceNode);
+ * insert(container, "Hello World", null); // Direct string support
  * ```
  */
-export function insert(parent: Node, nodeFactory: Function | Node, before?: Node): void {
+export interface InsertOptions {
+  preserveOnCleanup?: boolean;
+}
+
+/**
+ * Reactive node insertion with binding support
+ *
+ * @param parent Parent node
+ * @param nodeFactory Node factory function or static node
+ * @param before Reference node for insertion position
+ * @param options Insertion options
+ *
+ * @example
+ * ```typescript
+ * insert(container, () => message.value, null);
+ * insert(container, staticElement, referenceNode);
+ * insert(container, "Hello World", null); // Direct string support
+ * ```
+ */
+export function insert(
+  parent: Node,
+  nodeFactory: Function | Node | string,
+  before?: Node,
+  options?: InsertOptions,
+): void {
   if (!parent) return;
 
   const context = getActiveContext();
   if (!context) return;
 
-  let renderedNodes;
+  let renderedNodes: AnyNode[] = [];
 
-  const cleanup = effect(
-    () => {
-      const nodes = coerceArray(isFunction(nodeFactory) ? nodeFactory() : nodeFactory).map(
-        normalizeNode,
-      ) as AnyNode[];
-      renderedNodes = patchChildren(parent, renderedNodes, nodes, before);
-    },
-    { flush: 'post' },
-  );
+  // Create effect for reactive updates
+  const cleanup = effect(() => {
+    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+    const nodes = coerceArray(rawNodes).map(normalizeNode) as AnyNode[];
+    renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+  });
 
   // Register cleanup function
   context.cleanup.add(() => {
-    if (renderedNodes.length) {
-      renderedNodes.length = 0;
-    }
     cleanup();
+    if (!options?.preserveOnCleanup) {
+      renderedNodes.forEach(node => removeNode(node));
+    }
+    renderedNodes.length = 0;
   });
 }
 /**
- * map the nodes
+ * Map nodes from template by indexes
  */
 export function mapNodes(template: Node, indexes: number[]): Node[] {
+  const len = indexes.length;
+  const tree = new Array<Node>(len); // Pre-allocate with exact size
+  const indexSet = new Set(indexes); // O(1) lookup
+
   let index = 1;
-  const tree: Node[] = [];
-  const done: number[] = [];
+  let found = 0;
 
-  const walk = (node: Node) => {
+  const walk = (node: Node): boolean => {
     if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-      if (indexes.includes(index)) {
-        done.push(index);
-        tree.push(node);
+      if (indexSet.has(index)) {
+        tree[found++] = node;
+        if (found === len) return true; // Early exit when all nodes found
       }
-
       index++;
     }
-    if (done.length === indexes.length) {
-      return;
-    }
+
     let child = node.firstChild;
     while (child) {
-      walk(child);
+      if (walk(child)) return true; // Propagate early exit
       child = child.nextSibling;
     }
-  };
-  walk(template);
 
+    return false;
+  };
+
+  walk(template);
   return tree;
 }

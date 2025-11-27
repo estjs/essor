@@ -23,69 +23,61 @@ describe('attributes module', () => {
 
   describe('patchAttr function', () => {
     it('should set a regular attribute', () => {
-      const attrPatcher = patchAttr(element, 'data-test');
-      attrPatcher(null, 'value');
+      patchAttr(element, 'data-test', null, 'value');
       expect(element.dataset.test).toBe('value');
     });
 
     it('should remove attribute when value is null', () => {
       element.dataset.test = 'value';
-      const attrPatcher = patchAttr(element, 'data-test');
-      attrPatcher('value', null);
+      patchAttr(element, 'data-test', 'value', null);
       expect(element.dataset.test).toBeUndefined();
       expect(Object.hasOwn(element.dataset, 'test')).toBe(false);
     });
 
     it('should handle undefined values', () => {
       element.dataset.test = 'value';
-      const attrPatcher = patchAttr(element, 'data-test');
+      patchAttr(element, 'data-test', 'value', undefined);
 
       // Should not throw an exception
       expect(() => {
-        attrPatcher('value', undefined);
+        patchAttr(element, 'data-test', 'value', undefined);
       }).not.toThrow();
     });
 
     it('should convert values to string', () => {
-      const attrPatcher = patchAttr(element, 'data-test');
-      attrPatcher(null, 123);
+      patchAttr(element, 'data-test', null, 123);
       expect(element.dataset.test).toBe('123');
     });
 
     it('should handle symbol values', () => {
       const symbol = Symbol('test');
-      const attrPatcher = patchAttr(element, 'data-test');
-      // @ts-ignore - testing special type conversion
-      attrPatcher(null, symbol);
+      patchAttr(element, 'data-test', null, symbol as unknown as string);
       expect(element.dataset.test).toBe('Symbol(test)');
     });
 
     it('should skip update if value has not changed', () => {
       // First call sets the attribute
-      const attrPatcher = patchAttr(element, 'data-test');
-      attrPatcher(null, 'value');
+      patchAttr(element, 'data-test', null, 'value');
       expect(element.dataset.test).toBe('value');
 
-      // Mock setAttribute to track calls
+      // Mock patchAttribute to track calls
       const setSpy = vi.spyOn(element, 'setAttribute');
 
       // Second call with same value should be a no-op
-      attrPatcher('value', 'value');
+      patchAttr(element, 'data-test', 'value', 'value');
       expect(setSpy).not.toHaveBeenCalled();
 
-      // New value should call setAttribute
-      attrPatcher('value', 'new-value');
+      // New value should call patchAttribute
+      patchAttr(element, 'data-test', 'value', 'new-value');
       expect(setSpy).toHaveBeenCalledWith('data-test', 'new-value');
     });
 
     describe('xlink attributes for SVG', () => {
       it('should set xlink attribute with namespace', () => {
-        const setAttributeNSSpy = vi.spyOn(svgElement, 'setAttributeNS');
-        const xlinkPatcher = patchAttr(svgElement, 'xlink:href', true);
+        const patchAttributeNSSpy = vi.spyOn(svgElement, 'setAttributeNS');
+        patchAttr(svgElement, 'xlink:href', null, 'https://example.com');
 
-        xlinkPatcher(null, 'https://example.com');
-
-        expect(setAttributeNSSpy).toHaveBeenCalledWith(
+        expect(patchAttributeNSSpy).toHaveBeenCalledWith(
           XLINK_NAMESPACE,
           'xlink:href',
           'https://example.com',
@@ -96,9 +88,7 @@ describe('attributes module', () => {
         svgElement.setAttributeNS(XLINK_NAMESPACE, 'href', 'https://example.com');
 
         const removeAttributeNSSpy = vi.spyOn(svgElement, 'removeAttributeNS');
-        const xlinkPatcher = patchAttr(svgElement, 'xlink:href', true);
-
-        xlinkPatcher('https://example.com', null);
+        patchAttr(svgElement, 'xlink:href', true, null);
 
         expect(removeAttributeNSSpy).toHaveBeenCalledWith(XLINK_NAMESPACE, 'href');
       });
@@ -106,47 +96,47 @@ describe('attributes module', () => {
 
     describe('boolean attributes', () => {
       it('should set an empty string value for truthy boolean attributes', () => {
-        const boolPatcher = patchAttr(element, 'disabled');
-        boolPatcher(null, true);
+        patchAttr(element, 'disabled', null, true);
         expect(element.getAttribute('disabled')).toBe('');
       });
 
       it('should remove the attribute for falsy boolean attributes', () => {
         element.setAttribute('disabled', '');
-        const boolPatcher = patchAttr(element, 'disabled');
-        boolPatcher(true, false);
+        patchAttr(element, 'disabled', null, false);
         expect(element.hasAttribute('disabled')).toBe(false);
       });
 
-      it('should remove the attribute when value is null', () => {
-        element.setAttribute('disabled', '');
-        const boolPatcher = patchAttr(element, 'disabled');
-        boolPatcher(true, null);
+      it('should remove the attribute when value is nul', () => {
+        element.setAttribute('value', '');
+        patchAttr(element, 'value', null, null);
         expect(element.getAttribute('disabled')).toBeNull();
+      });
+
+      it('should set empty string with special boolean attr', () => {
+        element.setAttribute('SpecialBooleanAtt', '');
+        patchAttr(element, 'SpecialBooleanAtt', null, null);
+        expect(element.getAttribute('disabled')).toBe('');
       });
     });
 
     describe('data attributes', () => {
       it('should handle data-* attributes setting', () => {
-        const dataPatcher = patchAttr(element, 'data-test');
-        dataPatcher(null, 'value');
+        patchAttr(element, 'data-test', null, 'value');
         expect(element.dataset.test).toBe('value');
       });
 
       it('should handle data-* attributes with null value', () => {
         element.dataset.test = 'value';
-        const dataPatcher = patchAttr(element, 'data-test');
-        dataPatcher('value', null);
+        patchAttr(element, 'data-test', 'value', null);
         expect(element.dataset.test).toBeUndefined();
         expect(Object.hasOwn(element.dataset, 'test')).toBe(false);
       });
 
       it('should handle data-* attributes with kebab-case names', () => {
-        const kebabPatcher = patchAttr(element, 'data-kebab-case');
-        kebabPatcher(null, 'value');
+        patchAttr(element, 'data-kebab-case', null, 'value');
         expect(element.dataset.kebabCase).toBe('value');
 
-        kebabPatcher('value', null);
+        patchAttr(element, 'data-kebab-case', 'value', null);
         expect(element.dataset.kebabCase).toBeUndefined();
         expect(Object.hasOwn(element.dataset, 'kebabCase')).toBe(false);
       });
@@ -157,8 +147,7 @@ describe('attributes module', () => {
 
       // Should throw an exception (text nodes don't have attributes)
       expect(() => {
-        const textPatcher = patchAttr(textNode as any, 'data-test');
-        textPatcher(null, 'test');
+        patchAttr(textNode as any, 'data-test', null, 'test');
       }).toThrow();
     });
   });

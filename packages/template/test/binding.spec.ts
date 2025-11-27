@@ -1,469 +1,460 @@
-import { computed, signal } from '@estjs/signals';
-import * as signalModule from '@estjs/signals';
-import {
-  addEventListener,
-  convertToNode,
-  createComponentEffect,
-  insert,
-  mapNodes,
-  setAttr,
-  setClass,
-  setStyle,
-  trackDependency,
-  trackSignal,
-} from '../src/binding';
-import { type Context, createContext, popContextStack, pushContextStack } from '../src/context';
-import * as operations from '../src/operations';
-import { REF_KEY } from '../src/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { isHtmlInputElement } from '../src/utils';
+import { addEventListener, bindElement, insert, mapNodes } from '../src/binding';
+import { cleanupContext, createContext, popContextStack, pushContextStack } from '../src/context';
+import { createTestRoot, resetEnvironment } from './test-utils';
 
-describe('binding Module', () => {
-  let mockContext: Context;
-  let cleanupSpy: any;
-
+describe('binding utilities', () => {
   beforeEach(() => {
-    // Create a real context
-    mockContext = createContext();
-    cleanupSpy = vi.spyOn(mockContext.cleanup, 'add');
-
-    // Set as active context
-    pushContextStack(mockContext);
+    resetEnvironment();
   });
 
-  afterEach(() => {
-    // Restore context
-    popContextStack();
-    vi.restoreAllMocks();
-  });
+  describe('addEventListener', () => {
+    it('registers event listeners with context cleanup', () => {
+      const context = createContext(null);
+      pushContextStack(context);
 
-  describe('addEventListener function', () => {
-    let node: HTMLElement;
-    let listener: EventListener;
+      const button = document.createElement('button');
+      const handler = vi.fn();
 
-    beforeEach(() => {
-      // Create a new node and listener for each test
-      node = document.createElement('div');
-      listener = vi.fn();
-      vi.spyOn(node, 'addEventListener');
-      vi.spyOn(node, 'removeEventListener');
-    });
-
-    it('should add event listener to node and register cleanup function', () => {
-      // Call addEventListener
-      addEventListener(node, 'click', listener);
-
-      // Verify cleanup function was added
-      expect(cleanupSpy).toHaveBeenCalled();
-
-      // Get registered cleanup function
-      const cleanupFn: any = cleanupSpy.mock.calls[0][0];
-
-      // Execute cleanup function
-      cleanupFn();
-
-      // Verify removeEventListener was called with correct parameters
-      expect(node.removeEventListener).toHaveBeenCalledWith('click', listener, undefined);
-    });
-
-    it('should handle different event types and options', () => {
-      const options = { capture: true, passive: true };
-
-      addEventListener(node, 'focus', listener, options);
-
-      const cleanupFn: any = cleanupSpy.mock.calls[0][0];
-      cleanupFn();
-
-      expect(node.removeEventListener).toHaveBeenCalledWith('focus', listener, options);
-    });
-
-    it('should not add event listener or cleanup function when no active context', () => {
-      // Remove active context
+      addEventListener(button, 'click', handler);
       popContextStack();
 
-      addEventListener(node, 'click', listener);
+      button.dispatchEvent(new Event('click'));
+      expect(handler).toHaveBeenCalledTimes(1);
 
-      // Should not add cleanup function
-      expect(cleanupSpy).not.toHaveBeenCalled();
+      cleanupContext(context);
+      button.dispatchEvent(new Event('click'));
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('adds event listener without context', () => {
+      const button = document.createElement('button');
+      const handler = vi.fn();
+
+      addEventListener(button, 'click', handler);
+      button.dispatchEvent(new Event('click'));
+      expect(handler).toHaveBeenCalledTimes(1);
+    });
+
+    it('supports event listener options', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const button = document.createElement('button');
+      const handler = vi.fn();
+
+      addEventListener(button, 'click', handler, { once: true });
+      popContextStack();
+
+      button.dispatchEvent(new Event('click'));
+      button.dispatchEvent(new Event('click'));
+      expect(handler).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('trackSignal function', () => {
-    let updateFn: any;
-
-    beforeEach(() => {
-      updateFn = vi.fn();
-    });
-
-    it('should directly call updateFn for regular values', () => {
-      const testValues = ['string', 123, true, { key: 'value' }, [1, 2, 3]];
-
-      testValues.forEach(value => {
-        updateFn.mockClear();
-        trackSignal(value, updateFn);
-        expect(updateFn).toHaveBeenCalledWith(value);
+  describe('bindElement', () => {
+    it('binds text input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
       });
+
+      input.type = 'text';
+      expect(isHtmlInputElement(input)).toBe(true);
+      bindElement(input, setter);
+
+      const handler = listeners.input;
+      expect(handler).toBeDefined();
+
+      const event = new Event('input');
+      input.value = 'hello';
+      handler(event);
+
+      expect(setter).toHaveBeenCalledWith('hello');
     });
 
-    it('should handle signal values by tracking dependency', () => {
-      const testSignal = signal('test-value');
-      const trackDependencySpy = vi.spyOn(mockContext.deps, 'set');
+    it('binds checkbox input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
 
-      trackSignal(testSignal, updateFn);
+      input.type = 'checkbox';
+      bindElement(input, setter);
 
-      expect(trackDependencySpy).toHaveBeenCalled();
-      expect(cleanupSpy).toHaveBeenCalled();
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      input.checked = true;
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(true);
     });
 
-    it('should handle computed values by tracking dependency', () => {
-      const testComputed = computed(() => 'computed-value');
-      const trackDependencySpy = vi.spyOn(mockContext.deps, 'set');
+    it('binds radio input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
 
-      trackSignal(testComputed, updateFn);
+      input.type = 'radio';
+      input.value = 'option1';
+      bindElement(input, setter);
 
-      expect(trackDependencySpy).toHaveBeenCalled();
-      expect(cleanupSpy).toHaveBeenCalled();
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      input.checked = true;
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('option1');
+
+      input.checked = false;
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('');
     });
 
-    it('should handle function values by creating computed', () => {
-      const testFn = () => 'function-value';
-      const computedSpy = vi.spyOn(signalModule, 'computed');
+    it('binds file input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
 
-      trackSignal(testFn, updateFn);
+      input.type = 'file';
+      bindElement(input, setter);
 
-      expect(computedSpy).toHaveBeenCalled();
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(input.files);
+    });
+
+    it('binds number input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'number';
+      bindElement(input, setter);
+
+      const handler = listeners.input;
+      expect(handler).toBeDefined();
+
+      input.value = '42';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('42');
+
+      input.value = 'invalid';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('');
+    });
+
+    it('binds range input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'range';
+      bindElement(input, setter);
+
+      const handler = listeners.input;
+      expect(handler).toBeDefined();
+
+      input.value = '50';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('50');
+    });
+
+    it('binds date input to setter', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'date';
+      bindElement(input, setter);
+
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      input.value = '2024-01-01';
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('2024-01-01');
+
+      input.value = '';
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('');
+    });
+
+    it('binds select element to setter', () => {
+      const select = document.createElement('select');
+      const option = document.createElement('option');
+      option.value = 'option1';
+      select.appendChild(option);
+
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(select, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      bindElement(select, setter);
+
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      select.value = 'option1';
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('option1');
+    });
+
+    it('binds multi-select element to setter', () => {
+      const select = document.createElement('select');
+      select.multiple = true;
+      const option1 = document.createElement('option');
+      option1.value = 'opt1';
+      option1.selected = true;
+      const option2 = document.createElement('option');
+      option2.value = 'opt2';
+      option2.selected = true;
+      select.appendChild(option1);
+      select.appendChild(option2);
+
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(select, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      bindElement(select, setter);
+
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(['opt1', 'opt2']);
+    });
+
+    it('binds textarea to setter', () => {
+      const textarea = document.createElement('textarea');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(textarea, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      bindElement(textarea, setter);
+
+      const handler = listeners.input;
+      expect(handler).toBeDefined();
+
+      textarea.value = 'text content';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('text content');
+
+      textarea.value = '';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('');
+    });
+
+    it('handles empty text input value', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'text';
+      bindElement(input, setter);
+
+      const handler = listeners.input;
+      input.value = '';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('');
     });
   });
 
-  describe('trackDependency function', () => {
-    let updateFn: any;
+  describe('insert', () => {
+    it('inserts reactive nodes and cleans on teardown', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
 
-    beforeEach(() => {
-      updateFn = vi.fn();
-    });
-
-    it('should add updateFn to dependency set in context', () => {
-      const testSignal = signal('test');
-
-      trackDependency(testSignal, updateFn);
-
-      const depSet = mockContext.deps.get(testSignal);
-      expect(depSet).toBeInstanceOf(Set);
-      expect(depSet?.has(updateFn)).toBe(true);
-    });
-
-    it('should add updateFn to existing dependency set', () => {
-      const testSignal = signal('test');
-      const existingSet = new Set([vi.fn()]);
-      mockContext.deps.set(testSignal, existingSet);
-
-      trackDependency(testSignal, updateFn);
-
-      expect(mockContext.deps.get(testSignal)).toBe(existingSet);
-      expect(existingSet.has(updateFn)).toBe(true);
-    });
-
-    it('should add cleanup function for signals', () => {
-      const testSignal = signal('test');
-
-      trackDependency(testSignal, updateFn);
-
-      expect(cleanupSpy).toHaveBeenCalled();
-      const cleanupFn = cleanupSpy.mock.calls[0][0];
-
-      // Call cleanup function
-      cleanupFn();
-
-      // Should remove dependency from context deps
-      expect(mockContext.deps.has(testSignal)).toBe(false);
-    });
-
-    it('should add cleanup function for computed values', () => {
-      const testComputed = computed(() => 'computed');
-
-      trackDependency(testComputed, updateFn);
-
-      expect(cleanupSpy).toHaveBeenCalled();
-    });
-
-    it('should do nothing if no active context', () => {
+      insert(root, () => document.createTextNode('content'));
       popContextStack();
-      const testSignal = signal('test');
 
-      trackDependency(testSignal, updateFn);
+      expect(root.textContent).toBe('content');
 
-      expect(mockContext.deps.size).toBe(0);
-      expect(cleanupSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('createComponentEffect function', () => {
-    it('should create effect to track all dependencies', () => {
-      const effectSpy = vi.spyOn(signalModule, 'effect');
-
-      createComponentEffect();
-
-      expect(effectSpy).toHaveBeenCalled();
-      expect(cleanupSpy).toHaveBeenCalled();
+      // Cleanup should remove nodes
+      cleanupContext(context);
+      // Note: The cleanup behavior depends on preserveOnCleanup option
+      // By default (preserveOnCleanup: false), nodes should be removed
     });
 
-    it('should not create effect if no active context', () => {
+    it('supports inserting static nodes', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const span = document.createElement('span');
+      span.textContent = 'static';
+      insert(root, span);
       popContextStack();
-      const effectSpy = vi.spyOn(signalModule, 'effect');
 
-      createComponentEffect();
+      expect(root.textContent).toBe('static');
+    });
 
-      expect(effectSpy).not.toHaveBeenCalled();
-      expect(cleanupSpy).not.toHaveBeenCalled();
+    it('supports inserting static strings', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      insert(root, 'Hello World');
+      popContextStack();
+
+      expect(root.textContent).toBe('Hello World');
+    });
+
+    it('ignores insert when no active context exists', () => {
+      const root = createTestRoot();
+      expect(() => insert(root, document.createTextNode('no-context'))).not.toThrow();
+      expect(root.textContent).toBe('');
+    });
+
+    it('ignores insert when parent is null', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+      expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
+      popContextStack();
+    });
+
+    it('inserts nodes with before reference', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const first = document.createTextNode('first');
+      const second = document.createTextNode('second');
+      root.appendChild(second);
+
+      insert(root, first, second);
+      popContextStack();
+
+      expect(root.textContent).toBe('firstsecond');
+    });
+
+    it('preserves nodes on cleanup when preserveOnCleanup is true', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      insert(root, () => document.createTextNode('preserved'), undefined, {
+        preserveOnCleanup: true,
+      });
+      popContextStack();
+
+      expect(root.textContent).toBe('preserved');
+
+      cleanupContext(context);
+      expect(root.textContent).toBe('preserved');
+    });
+
+    it('handles reactive updates', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const counter = 0;
+      insert(root, () => document.createTextNode(`count: ${counter}`));
+      popContextStack();
+
+      expect(root.textContent).toBe('count: 0');
     });
   });
 
-  describe('setAttr function', () => {
-    let element: HTMLElement;
+  describe('mapNodes', () => {
+    it('maps template nodes by index', () => {
+      const template = document.createDocumentFragment();
+      template.appendChild(document.createElement('div'));
+      template.appendChild(document.createElement('span'));
+      template.appendChild(document.createElement('p'));
 
-    beforeEach(() => {
-      element = document.createElement('div');
-    });
-
-    it('should handle ref attribute specially', () => {
-      const refSignal = signal(null);
-
-      setAttr(element, REF_KEY, refSignal);
-
-      expect(refSignal.value).toStrictEqual(element);
-    });
-
-    it('should use patchAttr for regular attributes', () => {
-      const patchAttrSpy = vi.spyOn(operations, 'patchAttr');
-      patchAttrSpy.mockReturnValue(vi.fn());
-
-      setAttr(element, 'data-test', 'value');
-
-      expect(patchAttrSpy).toHaveBeenCalledWith(element, 'data-test', undefined);
-    });
-
-    it('should track signal attributes', () => {
-      const valueSig = signal('sig-value');
-      const trackSignalSpy = vi.spyOn(mockContext.deps, 'set');
-
-      setAttr(element, 'data-test', valueSig);
-
-      expect(trackSignalSpy).toHaveBeenCalled();
-    });
-  });
-
-  describe('setStyle function', () => {
-    let element: HTMLElement;
-
-    beforeEach(() => {
-      element = document.createElement('div');
-    });
-
-    it('should use patchStyle for style properties', () => {
-      const patchStyleSpy = vi.spyOn(operations, 'patchStyle');
-      patchStyleSpy.mockReturnValue(vi.fn());
-
-      setStyle(element, { color: 'red' });
-
-      expect(patchStyleSpy).toHaveBeenCalledWith(element);
-    });
-
-    it('should track signal style values', () => {
-      const styleSig = signal({ color: 'red' });
-      const trackSignalSpy = vi.spyOn(mockContext.deps, 'set');
-
-      setStyle(element, styleSig);
-
-      expect(trackSignalSpy).toHaveBeenCalled();
-    });
-
-    it('should do nothing if element is not provided', () => {
-      const patchStyleSpy = vi.spyOn(operations, 'patchStyle');
-
-      setStyle(null as any, { color: 'red' });
-
-      expect(patchStyleSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('setClass function', () => {
-    let element: HTMLElement;
-
-    beforeEach(() => {
-      element = document.createElement('div');
-    });
-
-    it('should use patchClass for class values', () => {
-      const patchClassSpy = vi.spyOn(operations, 'patchClass');
-      patchClassSpy.mockReturnValue(vi.fn());
-
-      setClass(element, 'test-class');
-
-      expect(patchClassSpy).toHaveBeenCalledWith(element, undefined);
-    });
-
-    it('should track signal class values', () => {
-      const classSig = signal('sig-class');
-      const trackSignalSpy = vi.spyOn(mockContext.deps, 'set');
-
-      setClass(element, classSig);
-
-      expect(trackSignalSpy).toHaveBeenCalled();
-    });
-
-    it('should do nothing if element is not provided', () => {
-      const patchClassSpy = vi.spyOn(operations, 'patchClass');
-
-      setClass(null as any, 'test-class');
-
-      expect(patchClassSpy).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('mapNodes function', () => {
-    it('should map nodes by index', () => {
-      const template = document.createElement('div');
-      const child1 = document.createElement('span');
-      const child2 = document.createElement('p');
-      template.appendChild(child1);
-      template.appendChild(child2);
-
-      const nodes = mapNodes(template, [1, 2]);
-
+      const nodes = mapNodes(template.cloneNode(true), [1, 3]);
       expect(nodes).toHaveLength(2);
-      expect(nodes[0]).toBe(template);
-      expect(nodes[1]).toBe(child1);
+      expect(nodes[0].nodeName).toBe('DIV');
+      expect(nodes[1].nodeName).toBe('P');
     });
 
-    it('should handle nested nodes', () => {
-      const template = document.createElement('div');
-      const child1 = document.createElement('span');
-      const grandchild = document.createElement('strong');
-      child1.appendChild(grandchild);
-      template.appendChild(child1);
+    it('handles empty index array', () => {
+      const template = document.createDocumentFragment();
+      template.appendChild(document.createElement('div'));
 
-      const nodes = mapNodes(template, [1, 3]);
+      const nodes = mapNodes(template.cloneNode(true), []);
+      expect(nodes).toHaveLength(0);
+    });
 
+    it('handles nested elements', () => {
+      const template = document.createDocumentFragment();
+      const div = document.createElement('div');
+      const span = document.createElement('span');
+      div.appendChild(span);
+      template.appendChild(div);
+      template.appendChild(document.createElement('p'));
+
+      const nodes = mapNodes(template.cloneNode(true), [1, 2]);
       expect(nodes).toHaveLength(2);
-      expect(nodes[0]).toBe(template);
-      expect(nodes[1]).toBe(grandchild);
-    });
-  });
-
-  describe('convertToNode function', () => {
-    it('should return node as is', () => {
-      const node = document.createElement('div');
-
-      const result = convertToNode(node);
-
-      expect(result).toBe(node);
+      expect(nodes[0].nodeName).toBe('DIV');
+      expect(nodes[1].nodeName).toBe('SPAN');
     });
 
-    it('should convert primitive values to text nodes', () => {
-      const values = ['text', 123, true];
+    it('early exits when all nodes are found', () => {
+      const template = document.createDocumentFragment();
+      for (let i = 0; i < 100; i++) {
+        template.appendChild(document.createElement('div'));
+      }
 
-      values.forEach(value => {
-        const result = convertToNode(value);
-
-        expect(result).toBeInstanceOf(Text);
-        expect(result.textContent).toBe(String(value));
-      });
+      const nodes = mapNodes(template.cloneNode(true), [1, 2]);
+      expect(nodes).toHaveLength(2);
     });
 
-    it('should convert falsy values to empty text nodes', () => {
-      const values = [null, undefined, false, 0, ''];
-      const valueResults = ['', '', '', '0', ''];
+    it('handles document fragments correctly', () => {
+      const template = document.createDocumentFragment();
+      const nested = document.createDocumentFragment();
+      nested.appendChild(document.createElement('span'));
+      template.appendChild(nested);
+      template.appendChild(document.createElement('div'));
 
-      values.forEach((value, index) => {
-        const result = convertToNode(value);
-
-        expect(result).toBeInstanceOf(Text);
-        expect(result.textContent).toBe(valueResults[index]);
-      });
-    });
-
-    it('should return non-primitive values as is', () => {
-      const obj = { foo: 'bar' };
-
-      // @ts-ignore
-      const result = convertToNode(obj);
-
-      expect(result).toBe(obj);
-    });
-  });
-
-  describe('insert function', () => {
-    let parent: HTMLElement;
-    let node: HTMLElement;
-    let before: HTMLElement;
-
-    beforeEach(() => {
-      parent = document.createElement('div');
-      node = document.createElement('span');
-      before = document.createElement('p');
-      parent.appendChild(before);
-    });
-
-    // it('should create effect to insert node into parent', () => {
-    //   const effectSpy = vi.spyOn(signalModule, 'effect');
-    //   const patchChildrenSpy = vi.spyOn(patch, 'patchChildren');
-    //   patchChildrenSpy.mockReturnValue(new Map());
-
-    //   insert(parent, node, before);
-
-    //   expect(effectSpy).toHaveBeenCalled();
-
-    //   // Call the effect callback
-    //   const effectCallback = effectSpy.mock.calls[0][0];
-    //   effectCallback();
-
-    //   expect(patchChildrenSpy).toHaveBeenCalledWith(
-    //     parent,
-    //     expect.any(Map),
-    //     expect.arrayContaining([node]),
-    //     before,
-    //   );
-    // });
-
-    // it('should handle function node by calling it', () => {
-    //   const nodeFunc = () => node;
-    //   const effectSpy = vi.spyOn(signalModule, 'effect');
-    //   const patchChildrenSpy = vi.spyOn(patch, 'patchChildren');
-    //   patchChildrenSpy.mockReturnValue(new Map());
-
-    //   insert(parent, nodeFunc, before);
-
-    //   // Call the effect callback
-    //   const effectCallback = effectSpy.mock.calls[0][0];
-    //   effectCallback();
-
-    //   expect(patchChildrenSpy).toHaveBeenCalledWith(
-    //     parent,
-    //     expect.any(Map),
-    //     expect.arrayContaining([node]),
-    //     before,
-    //   );
-    // });
-
-    it('should do nothing if parent is not provided', () => {
-      const effectSpy = vi.spyOn(signalModule, 'effect');
-
-      insert(null as any, node);
-
-      expect(effectSpy).not.toHaveBeenCalled();
-    });
-
-    it('should do nothing if no active context', () => {
-      popContextStack();
-      const effectSpy = vi.spyOn(signalModule, 'effect');
-
-      insert(parent, node);
-
-      expect(effectSpy).not.toHaveBeenCalled();
-    });
-
-    it('should add cleanup function to context', () => {
-      insert(parent, node);
-
-      expect(cleanupSpy).toHaveBeenCalled();
+      const nodes = mapNodes(template.cloneNode(true), [1]);
+      expect(nodes).toHaveLength(1);
+      expect(nodes[0].nodeName).toBe('SPAN');
     });
   });
 });

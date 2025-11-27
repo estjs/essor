@@ -37,7 +37,7 @@ let isFlushPending = false;
  * Schedules a function to be executed in the next microtask
  *
  * If no function is provided, returns a Promise that resolves in the next microtask.
- * This is useful for waiting until the DOM is updated or deferring execution.
+ * This is useful for waiting until the DOM is update or deferring execution.
  *
  * @param fn - Optional function to execute
  * @returns A Promise that resolves after the function execution

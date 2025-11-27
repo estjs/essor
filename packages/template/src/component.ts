@@ -1,23 +1,19 @@
 import { isSignal, shallowReactive } from '@estjs/signals';
-import { error, isHTMLElement, startsWith } from '@estjs/shared';
+import { isFunction, isHTMLElement, startsWith } from '@estjs/shared';
 import {
   type Context,
   createContext,
   destroyContext,
-  findParentContext,
   getActiveContext,
   popContextStack,
   pushContextStack,
 } from './context';
-import { getKey, insertNode, removeChild } from './patch';
+import { insertNode } from './patch';
 import { LIFECYCLE, triggerLifecycleHook } from './lifecycle';
-import { EVENT_PREFIX, REF_KEY } from './constants';
-import { addEventListener, createComponentEffect } from './binding';
-
-/**
- * component parent context cache
- */
-const componentParentContextCache = new WeakMap<object, Context | null>();
+import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
+import { addEventListener } from './binding';
+import { getComponentKey, normalizeKey } from './key';
+import { removeNode, replaceNode } from './utils';
 
 export type ComponentFn = (props?: ComponentProps) => Node;
 export type ComponentProps = Record<string, unknown>;
@@ -38,14 +34,22 @@ export class Component {
   // component props
   private reactiveProps: Record<string, any> = {};
 
-  // component is mounted
-  protected isMounted = false;
+  // component key
+  public readonly key: string | undefined;
+  // component state
+  protected state: number = COMPONENT_STATE.INITIAL;
 
-  // Component key - can be provided in props or auto-generated
-  public readonly key: any;
+  // component context
+  protected context: Context | null = null;
+  // component parent context
+  protected parentContext: Context | null = null;
+
+  // component type
+  // @ts-ignore
+  private [COMPONENT_TYPE.NORMAL] = true;
 
   get isConnected(): boolean {
-    return this.isMounted;
+    return this.state === COMPONENT_STATE.MOUNTED;
   }
 
   get firstChild(): Node | null {
@@ -54,102 +58,207 @@ export class Component {
 
   constructor(
     public component: (props: ComponentProps) => Node,
-    public props?: ComponentProps,
+    public props: ComponentProps | undefined = {},
   ) {
-    // Extract key from props if available, otherwise generate a unique key
-    this.key = props?.key ?? getKey(this);
+    this.key = props.key ? normalizeKey(props?.key) : getComponentKey(component);
     this.reactiveProps = shallowReactive(this.props || {});
+    this.parentContext = getActiveContext();
   }
 
-  mount(parentNode: Node, beforeNode?: Node | null): Node | null {
+  mount(parentNode: Node, beforeNode?: Node | null): Node | null | Promise<Node | null> {
     this.parentNode = parentNode;
     this.beforeNode = beforeNode || null;
+    this.state = COMPONENT_STATE.MOUNTING;
 
-    // if the component is already mounted, insert the rendered node
+    // if the component is already mount, insert the rendered node
     if (this.renderedNode) {
       insertNode(parentNode, this.renderedNode, beforeNode);
       return this.renderedNode;
     }
 
     // context
-    const parentContext = findContext(this.component as any);
-    this.componentContext = createContext(parentContext);
+    this.componentContext = createContext(this.parentContext);
     pushContextStack(this.componentContext);
 
     // render the component
-    this.renderedNode = this.component(this.reactiveProps);
+    const result = this.component(this.reactiveProps);
 
-    // insert the rendered node
-    insertNode(parentNode, this.renderedNode, beforeNode);
+    const handleMount = (node: any) => {
+      // Handle default export for async components
+      if (node && typeof node === 'object' && 'default' in node) {
+        node = node.default;
+      }
+      if (isFunction(node)) {
+        node = node();
+      }
 
-    // apply props
-    this.applyProps(this.props || {});
+      this.renderedNode = node as Node;
 
-    createComponentEffect();
-    // mark the component as mounted
-    this.isMounted = true;
-    this.componentContext.isMounted = true;
+      // insert the rendered node
+      insertNode(parentNode, this.renderedNode, beforeNode);
 
-    // trigger mounted hook
-    triggerLifecycleHook(LIFECYCLE.mounted);
+      // apply props
+      this.applyProps(this.props || {});
 
-    return this.renderedNode;
+      // update marks
+      this.state = COMPONENT_STATE.MOUNTED;
+      this.componentContext!.isMount = true;
+      // trigger mount hook
+      triggerLifecycleHook(LIFECYCLE.mount);
+
+      return this.renderedNode;
+    };
+
+    if (result instanceof Promise) {
+      return result.then(handleMount);
+    }
+
+    return handleMount(result);
   }
 
-  update(previousNode: Component): Component {
+  update(prevNode: Component): Component {
     // if key is different, mount the component
-    if (this.key !== previousNode.key) {
-      this.mount(previousNode.parentNode!, previousNode.beforeNode);
+    if (this.key !== prevNode.key) {
+      this.mount(prevNode.parentNode!, prevNode.beforeNode);
       return this;
     }
 
-    // Take previous node's properties
-    this.parentNode = previousNode.parentNode;
-    this.beforeNode = previousNode.beforeNode;
-    this.componentContext = previousNode.componentContext;
-    this.reactiveProps = previousNode.reactiveProps;
-    this.props = previousNode.props;
-    this.renderedNode = previousNode.renderedNode;
-    this.isMounted = previousNode.isMounted;
+    // Take previous node's properties and reactive state
+    this.parentNode = prevNode.parentNode;
+    this.beforeNode = prevNode.beforeNode;
+    this.componentContext = prevNode.componentContext;
+    this.renderedNode = prevNode.renderedNode;
+    this.state = prevNode.state;
+    // Reuse the same reactive object
+    this.reactiveProps = prevNode.reactiveProps;
+    this.props = prevNode.props;
 
-    // check if the component is already mounted
-    if (!this.isMounted && this.parentNode) {
+    // Update reactiveProps with NEW props
+    // if (this.props) {
+    //   const rawTarget = toRaw(this.reactiveProps);
+
+    //   for (const key in this.props) {
+    //     const descriptor = Object.getOwnPropertyDescriptor(this.props, key);
+    //     if (!descriptor) continue;
+
+    //     // Always use defineProperty to safely update the property on the target
+    //     // This handles value->getter, getter->value, and getter->getter transitions
+    //     // without triggering the proxy's set trap (which would fail for readonly getters)
+    //     Object.defineProperty(this.reactiveProps, key, descriptor);
+
+    //     if (
+    //       (descriptor.get || descriptor.set) &&
+    //       this.reactiveProps[key] !== prevNode.reactiveProps[key]
+    //     ) {
+    //       // For accessors, we can't easily check if value changed, so we always trigger
+    //       trigger(rawTarget, TriggerOpTypes.SET, key);
+    //     } else {
+    //       // For data properties, check if we need to trigger
+    //       const newValue = descriptor.value;
+    //       const oldValue = prevNode.props ? prevNode.props[key] : undefined;
+
+    //       // Trigger if value changed OR if it's an object (to handle mutations of same ref)
+    //       if (newValue !== oldValue || isObject(newValue)) {
+    //         trigger(rawTarget, TriggerOpTypes.SET, key, newValue);
+    //       }
+    //     }
+    //   }
+    // }
+
+    // check if the component is already mount
+    if (!this.isConnected && this.parentNode) {
       this.mount(this.parentNode, this.beforeNode);
     }
 
-    // if the component is mounted and has context, trigger update lifecycle
+    // if the component is mount and has context, apply new props and trigger update lifecycle
     if (this.componentContext) {
       pushContextStack(this.componentContext);
       this.applyProps(this.props || {});
-      triggerLifecycleHook(LIFECYCLE.updated);
+      triggerLifecycleHook(LIFECYCLE.update);
       popContextStack();
     }
 
     return this;
   }
+  /**
+   * Force update component
+   */
+  async forceUpdate() {
+    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.context) {
+      return;
+    }
 
+    // Re-render
+    const prevNode = this.renderedNode;
+    let newNode: Node | Promise<Node>;
+
+    try {
+      // Create new context for re-render
+      if (this.context) {
+        pushContextStack(this.context);
+      }
+
+      newNode = (this.component as Function)(this.reactiveProps);
+
+      if (isFunction(newNode)) {
+        newNode = (newNode as Function)(this.reactiveProps) as Node;
+      }
+
+      if (prevNode && newNode && prevNode !== newNode) {
+        // Replace node
+        if (this.parentNode) {
+          replaceNode(this.parentNode, newNode as Node, prevNode as Node);
+          this.renderedNode = newNode as Node;
+        }
+      }
+
+      // Trigger update lifecycle
+      await triggerLifecycleHook(LIFECYCLE.update);
+    } catch (error) {
+      console.error('Force update failed:', error);
+      throw error;
+    } finally {
+      if (this.context) {
+        popContextStack();
+      }
+    }
+  }
+
+  /**
+   * Destroy component
+   */
   destroy(): void {
-    if (this.componentContext) {
-      // cleanup the component context
-      pushContextStack(this.componentContext);
-      this.componentContext.isDestroyed = true;
-      triggerLifecycleHook(LIFECYCLE.destroyed);
-      destroyContext(this.componentContext);
-      this.componentContext = null;
+    // Prevent duplicate destruction
+    if (this.state === COMPONENT_STATE.DESTROYING || this.state === COMPONENT_STATE.DESTROYED) {
+      return;
     }
 
-    // remove the component from the parent node
-    if (this.renderedNode) {
-      removeChild(this.renderedNode);
+    this.state = COMPONENT_STATE.DESTROYING;
+
+    const context = this.context;
+    if (context) {
+      pushContextStack(context);
+
+      // Trigger destroyed lifecycle
+      triggerLifecycleHook(LIFECYCLE.destroy);
+      destroyContext(context);
+      this.context = null;
+
+      popContextStack();
     }
 
-    //rest all component properties
+    const rendered = this.renderedNode;
+    if (rendered) {
+      removeNode(rendered);
+    }
+
+    // Reset all component properties
     this.renderedNode = null;
     this.parentNode = null;
     this.beforeNode = null;
     this.reactiveProps = {};
     this.props = undefined;
-    this.isMounted = false;
+    this.state = COMPONENT_STATE.DESTROYED;
   }
 
   applyProps(props: ComponentProps): void {
@@ -179,31 +288,12 @@ export class Component {
 }
 
 /**
- * find parent context for a component
- * @param {Function} componentFn - the component function
- * @returns {Context | null} the parent context
- */
-function findContext(componentFn: ComponentFn): Context | null {
-  // find cached parent context
-  let parentContext = componentParentContextCache.get(componentFn);
-
-  // if no cached context, find valid parent context and cache it
-  if (!parentContext) {
-    parentContext = findParentContext();
-    if (parentContext) {
-      componentParentContextCache.set(componentFn, parentContext);
-    }
-  }
-  return parentContext;
-}
-
-/**
  * check if a node is a component
  * @param {unknown} node - the node to check
  * @returns {boolean} true if the node is a component, false otherwise
  */
 export function isComponent(node: unknown): node is Component {
-  return node instanceof Component;
+  return !!node && !!node[COMPONENT_TYPE.NORMAL];
 }
 
 /**
@@ -213,15 +303,8 @@ export function isComponent(node: unknown): node is Component {
  * @returns {Component} the component
  */
 export function createComponent(componentFn: ComponentFn, props?: ComponentProps): Component {
-  return new Component(componentFn, props);
-}
-
-export function componentEffect(EffectFn: () => void) {
-  const activeContext = getActiveContext();
-  if (!activeContext) {
-    error('No active context found');
-    return;
+  if (isComponent(componentFn)) {
+    return componentFn;
   }
-
-  activeContext.componentEffect.add(EffectFn);
+  return new Component(componentFn, props);
 }

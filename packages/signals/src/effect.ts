@@ -600,7 +600,7 @@ export function memoEffect<T>(
 
   const effectFn = () => {
     // Pass current state each time
-    // fn may modify the passed object, so the return value is the updated state
+    // fn may modify the passed object, so the return value is the update state
     const result = fn(currentState);
     currentState = result;
   };

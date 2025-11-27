@@ -82,7 +82,7 @@ describe('import utilities', () => {
     program.state = state;
 
     addImport(importMap.createComponent);
-    addImport(importMap.setAttr);
+    addImport(importMap.patchAttr);
     createImport(program, state.imports, 'essor');
 
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;

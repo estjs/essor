@@ -35,11 +35,10 @@ export {
   isPrimitive,
   isHTMLElement,
   isStringNumber,
-  isHTMLNode,
   isNumber,
   isUndefined,
   isBoolean,
-  isIntegerKey,
+  isNaN,
   type StringNumber,
 } from './is';
 
