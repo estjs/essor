@@ -1,4 +1,4 @@
-import { signal } from '@estjs/signal';
+import { signal } from '@estjs/signals';
 import {
   Component,
   type ComponentProps,

@@ -1,4 +1,4 @@
-import { type memoEffectFn, effect, memoEffect, signal } from '../src';
+import { type MemoizedEffectFn, effect, memoEffect, signal } from '../src';
 
 describe('effect', () => {
   it('should run the effect function', () => {
@@ -127,7 +127,7 @@ describe('memoEffect', () => {
       const counter = signal(1);
       const states: Array<{ value: number }> = [];
 
-      const effectFn: memoEffectFn<{ value: number }> = prev => {
+      const effectFn: MemoizedEffectFn<{ value: number }> = prev => {
         states.push({ ...prev });
         const current = counter.value;
         return { value: current };
@@ -148,7 +148,7 @@ describe('memoEffect', () => {
 
     it('should re-execute when signal value changes', () => {
       const count = signal(1);
-      const mockFn = vi.fn().mockImplementation((prev: { lastValue: number }) => {
+      const mockFn = vi.fn().mockImplementation(() => {
         return { lastValue: count.value };
       });
 
@@ -172,7 +172,7 @@ describe('memoEffect', () => {
         updateCount: number;
       };
 
-      const effectFn: memoEffectFn<State> = prev => {
+      const effectFn: MemoizedEffectFn<State> = prev => {
         return {
           lastWidth: width.value,
           lastHeight: height.value,
@@ -208,7 +208,7 @@ describe('memoEffect', () => {
 
       type State = { v1?: string; v2?: string; v3?: string };
 
-      const effectFn: memoEffectFn<State> = prev => {
+      const effectFn: MemoizedEffectFn<State> = prev => {
         const current = {
           v1: value1.value,
           v2: value2.value,
@@ -262,12 +262,12 @@ describe('memoEffect', () => {
     it('should avoid repeated DOM operations', () => {
       const width = signal(100);
       const setAttributeSpy = vi.fn();
-      const setStyleSpy = vi.fn();
+      const patchStyleSpy = vi.fn();
 
       // Mock DOM element
       const mockElement = {
         setAttribute: setAttributeSpy,
-        style: { setProperty: setStyleSpy },
+        style: { setProperty: patchStyleSpy },
       };
 
       type State = {
@@ -276,7 +276,7 @@ describe('memoEffect', () => {
         lastTitle?: string;
       };
 
-      const effectFn: memoEffectFn<State> = prev => {
+      const effectFn: MemoizedEffectFn<State> = prev => {
         const currentWidth = width.value;
         const currentWidthPx = `${currentWidth}px`;
         const currentTitle = `Width: ${currentWidth}`;
@@ -306,7 +306,7 @@ describe('memoEffect', () => {
       // Initial setup
       expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '100');
       expect(setAttributeSpy).toHaveBeenCalledWith('title', 'Width: 100');
-      expect(setStyleSpy).toHaveBeenCalledWith('width', '100px');
+      expect(patchStyleSpy).toHaveBeenCalledWith('width', '100px');
 
       // Reset
       vi.clearAllMocks();
@@ -315,20 +315,20 @@ describe('memoEffect', () => {
       width.value = 100;
 
       expect(setAttributeSpy).not.toHaveBeenCalled();
-      expect(setStyleSpy).not.toHaveBeenCalled();
+      expect(patchStyleSpy).not.toHaveBeenCalled();
 
       // Set new value, should trigger DOM operations
       width.value = 200;
 
       expect(setAttributeSpy).toHaveBeenCalledWith('data-width', '200');
       expect(setAttributeSpy).toHaveBeenCalledWith('title', 'Width: 200');
-      expect(setStyleSpy).toHaveBeenCalledWith('width', '200px');
+      expect(patchStyleSpy).toHaveBeenCalledWith('width', '200px');
     });
   });
 
   describe('error handling tests', () => {
     it('should handle errors in effect function', () => {
-      const errorFn: memoEffectFn<{ count: number }> = prev => {
+      const errorFn: MemoizedEffectFn<{ count: number }> = prev => {
         if (prev.count > 2) {
           throw new Error('Test error');
         }
@@ -362,7 +362,7 @@ describe('memoEffect', () => {
 
     type State = { e?: number; t?: string; a?: string };
 
-    const effectFn: memoEffectFn<State> = prev => {
+    const effectFn: MemoizedEffectFn<State> = prev => {
       const v1 = editorWidth.value;
       const v2 = `${editorWidth.value}%`;
       const v3 = `${100 - editorWidth.value}%`;

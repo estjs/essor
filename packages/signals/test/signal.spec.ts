@@ -35,27 +35,43 @@ describe('signal', () => {
   });
 
   it('should work with array', () => {
-    const testSignal = signal<number[] | null>([]);
+    const testSignal = signal<number[]>([]);
+
+    let effectCount = 0;
+    effect(() => {
+      // trigger
+      testSignal.value?.length;
+      effectCount++;
+    });
+
+    expect(effectCount).toBe(1);
+
     expect(testSignal.value).toEqual([]);
     expect(testSignal.peek()).toEqual([]);
 
     testSignal.value = [1, 2, 3];
+    expect(effectCount).toBe(2);
+
     expect(testSignal.value).toEqual([1, 2, 3]);
     expect(testSignal.peek()).toEqual([1, 2, 3]);
 
     testSignal.value[0] = 10;
+    expect(effectCount).toBe(3);
     expect(testSignal.value).toEqual([10, 2, 3]);
     expect(testSignal.peek()).toEqual([10, 2, 3]);
 
     testSignal.value[1] = 20;
+    expect(effectCount).toBe(4);
     expect(testSignal.value).toEqual([10, 20, 3]);
     expect(testSignal.peek()).toEqual([10, 20, 3]);
 
     testSignal.value[2] = 30;
+    expect(effectCount).toBe(5);
     expect(testSignal.value).toEqual([10, 20, 30]);
     expect(testSignal.peek()).toEqual([10, 20, 30]);
 
-    testSignal.value = null;
+    (testSignal.value as any) = null;
+    expect(effectCount).toBe(6);
     expect(testSignal.value).toBeNull();
     expect(testSignal.peek()).toBeNull();
   });
@@ -450,44 +466,40 @@ describe('shallowSignal', () => {
   });
 
   // skip this testcase because too slow
-  it(
-    'should work with set method ant function calls',
-    () => {
-      const value1 = shallowSignal<any>(new Set([1, 2, 3]));
-      const value2 = signal<any>(1);
-      const value3 = signal<any>({});
+  it.skip('should work with set method ant function calls', () => {
+    const value1 = shallowSignal<any>(new Set([1, 2, 3]));
+    const value2 = signal<any>(1);
+    const value3 = signal<any>({});
 
-      let triggerCount = 0;
+    let triggerCount = 0;
 
-      effect(() => {
-        // trigger value
-        //@ts-ignore
-        value1();
+    effect(() => {
+      // trigger value
+      //@ts-ignore
+      value1();
 
-        //@ts-ignore
-        value2();
+      //@ts-ignore
+      value2();
 
-        //@ts-ignore
-        value3();
+      //@ts-ignore
+      value3();
 
-        triggerCount++;
-      });
+      triggerCount++;
+    });
 
-      expect(triggerCount).toBe(1);
-      value1.set(1);
-      value2.set(new Map([['a', 1]]));
-      value3.set({ a: 2 });
+    expect(triggerCount).toBe(1);
+    value1.set(1);
+    value2.set(new Map([['a', 1]]));
+    value3.set({ a: 2 });
 
-      expect(triggerCount).toBe(4);
+    expect(triggerCount).toBe(4);
 
-      value1.set(new Set([1, 2, 3, 4]));
-      value2.set(new Map([['a', 1]]));
-      value3.set({ a: 2 });
+    value1.set(new Set([1, 2, 3, 4]));
+    value2.set(new Map([['a', 1]]));
+    value3.set({ a: 2 });
 
-      expect(triggerCount).toBe(7);
-    },
-    { skip: true },
-  );
+    expect(triggerCount).toBe(7);
+  });
 
   it('should work with update', () => {
     const value1 = shallowSignal(new Set([1, 2, 3]));

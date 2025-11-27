@@ -12,11 +12,11 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    signal: './src/index.ts',
+    signals: './src/index.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
-  target: 'es2015',
+  target: 'es2016',
   dts: true,
   shims: true,
   clean: true,

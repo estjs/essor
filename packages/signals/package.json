@@ -1,0 +1,62 @@
+{
+  "name": "@estjs/signals",
+  "version": "0.0.14-beta.19",
+  "description": "",
+  "type": "module",
+  "keywords": [],
+  "license": "MIT",
+  "homepage": "https://github.com/estjs/essor/essor#readme",
+  "bugs": "https://github.com/estjs/essor/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
+  "author": "jiangxd <jiangxd2016@gmail.com>",
+  "funding": "https://github.com/sponsors/estjs",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/signals.esm.js",
+  "module": "./dist/signals.esm.js",
+  "types": "./dist/signals.d.ts",
+  "exports": {
+    ".": {
+      "browser": {
+        "development": {
+          "types": "./dist/signals.d.ts",
+          "require": "./dist/signals.dev.cjs.js",
+          "import": "./dist/signals.dev.esm.js"
+        },
+        "types": "./dist/signals.d.ts",
+        "require": "./dist/signals.cjs.js",
+        "import": "./dist/signals.esm.js"
+      },
+      "development": {
+        "types": "./dist/signals.d.ts",
+        "require": "./dist/signals.dev.cjs.js",
+        "import": "./dist/signals.dev.esm.js"
+      },
+      "types": "./dist/signals.d.ts",
+      "require": "./dist/signals.cjs.js",
+      "import": "./dist/signals.dev.esm.js"
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "./dist/signals.d.ts"
+      ]
+    }
+  },
+  "sideEffects": false,
+  "unpkg": "dist/signals.esm.js",
+  "jsdelivr": "dist/signals.esm.js",
+  "scripts": {
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "dev": "tsup --watch",
+    "bench": "node --expose-gc benchmark/benchmark.js && node benchmark/score.js"
+  },
+  "dependencies": {
+    "@estjs/shared": "workspace:*"
+  }
+}

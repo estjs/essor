@@ -1,4 +1,4 @@
-import { isComputed, isSignal } from '@estjs/signal';
+import { isComputed, isSignal } from '@estjs/signals';
 import { isArray, isObject, isString, kebabCase } from '@estjs/shared';
 
 /**

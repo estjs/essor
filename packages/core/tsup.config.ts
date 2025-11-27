@@ -25,7 +25,7 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: false,
-  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signal'],
+  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals'],
   minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
   define: {

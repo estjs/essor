@@ -58,7 +58,7 @@
   },
   "dependencies": {
     "@estjs/shared": "workspace:*",
-    "@estjs/signal": "workspace:*",
+    "@estjs/signals": "workspace:*",
     "@estjs/template": "workspace:*"
   }
 }

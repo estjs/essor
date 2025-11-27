@@ -28,7 +28,7 @@ export default defineConfig({
   sourcemap: false,
   minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
-  external: ['csstype', '@estjs/shared', '@estjs/signal'],
+  external: ['csstype', '@estjs/shared', '@estjs/signals'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },

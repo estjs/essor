@@ -1,5 +1,5 @@
-import { computed, signal } from '@estjs/signal';
-import * as signalModule from '@estjs/signal';
+import { computed, signal } from '@estjs/signals';
+import * as signalModule from '@estjs/signals';
 import {
   addEventListener,
   convertToNode,

@@ -1,4 +1,4 @@
-import { effect, signal } from '@estjs/signal';
+import { effect, signal } from '@estjs/signals';
 import { onMounted } from '../lifecycle';
 import type { ComponentProps } from '../component';
 

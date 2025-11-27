@@ -126,6 +126,35 @@ describe('reactive - nested objects and arrays', () => {
     expect(mockFn).toHaveBeenCalledTimes(3);
   });
 
+  it('should work with Array', () => {
+    const state = reactive([1, 2, 3]);
+
+    const mockFn = vi.fn(() => state.length);
+    effect(mockFn);
+
+    expect(state.length).toBe(3);
+    expect(state[1]).toBe(2);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    state.push(4);
+    expect(state.length).toBe(4);
+    expect(state[3]).toBe(4);
+
+    expect(mockFn).toHaveBeenCalledTimes(2);
+
+    state.pop();
+    expect(state.length).toBe(3);
+    expect(mockFn).toHaveBeenCalledTimes(3);
+
+    state.shift();
+    expect(state.length).toBe(2);
+    expect(mockFn).toHaveBeenCalledTimes(4);
+
+    state[1] = 5;
+    expect(state.length).toBe(2);
+    expect(state[1]).toBe(5);
+    expect(mockFn).toHaveBeenCalledTimes(5);
+  });
   // Nested arrays reactivity
   it('should work with nested arrays', () => {
     const state = reactive({
@@ -427,7 +456,7 @@ describe('reactive & shallowReactive - Non-object and primitive values', () => {
 
   // Handling functions
   it('should not work with functions', () => {
-    const func = () => {};
+    const func = () => { };
     // @ts-ignore
     const state = reactive(func);
     expect(state).toBe(func);
@@ -562,6 +591,7 @@ describe('reactive Arrays with Effects', () => {
     let sum = 0;
     state.forEach((n: number) => (sum += n));
     expect(sum).toBe(6);
+    expect(effectFn).toHaveBeenCalledTimes(1);
     state[0] = 2;
     expect(effectFn).toHaveBeenCalledTimes(2);
   });

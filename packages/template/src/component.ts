@@ -1,4 +1,4 @@
-import { isSignal, shallowReactive } from '@estjs/signal';
+import { isSignal, shallowReactive } from '@estjs/signals';
 import { error, isHTMLElement, startsWith } from '@estjs/shared';
 import {
   type Context,

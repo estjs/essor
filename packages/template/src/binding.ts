@@ -1,4 +1,4 @@
-import { effect } from '@estjs/signal';
+import { effect } from '@estjs/signals';
 import { coerceArray, isFunction } from '@estjs/shared';
 import { getActiveContext } from './context';
 import {

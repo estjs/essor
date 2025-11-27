@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { computed, signal } from '@estjs/signal';
+import { computed, signal } from '@estjs/signals';
 import {
   type NormalizedStyle,
   normalizeClassName,
