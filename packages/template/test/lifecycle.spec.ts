@@ -133,18 +133,18 @@ describe('lifecycle management', () => {
       popContextStack();
     });
 
-    it('early returns when no hooks exist', async () => {
+    it('early returns when no hooks exist', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      await expect(triggerLifecycleHook(LIFECYCLE.mount)).resolves.toBeUndefined();
+      expect(triggerLifecycleHook(LIFECYCLE.mount)).toBeUndefined();
       popContextStack();
     });
 
-    it('logs error when triggering outside context', async () => {
+    it('logs error when triggering outside context', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
-      await triggerLifecycleHook(LIFECYCLE.mount);
+      triggerLifecycleHook(LIFECYCLE.mount);
 
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -394,11 +394,11 @@ describe('lifecycle management', () => {
       popContextStack();
     });
 
-    it('handles empty hook set', async () => {
+    it('handles empty hook set', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      await expect(triggerLifecycleHook(LIFECYCLE.mount)).resolves.toBeUndefined();
+      expect(triggerLifecycleHook(LIFECYCLE.mount)).toBeUndefined();
       popContextStack();
     });
 

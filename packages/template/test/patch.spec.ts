@@ -45,9 +45,11 @@ describe('patchNodes', () => {
     const textB = document.createTextNode('B');
 
     const mounted = patchNodes(root, [], [textA], null);
-    const patched = patchNodes(root, mounted, [textB], null);
+    const mountedArray = Array.from(mounted.values());
+    const patched = patchNodes(root, mountedArray, [textB], null);
+    const patchedArray = Array.from(patched.values());
 
-    expect(patched[0]).toBe(textA);
+    expect(patchedArray[0]).toBe(textA);
     expect(root.textContent).toBe('B');
   });
 
@@ -55,11 +57,13 @@ describe('patchNodes', () => {
     const root = createTestRoot();
     const initial = [createDiv('1', 'one'), createDiv('2', 'two'), createDiv('3', 'three')];
     const mounted = patchNodes(root, [], initial, null);
+    const mountedArray = Array.from(mounted.values());
 
     const reordered = [createDiv('3', 'three'), createDiv('1', 'one'), createDiv('2', 'two')];
-    const patched = patchNodes(root, mounted, reordered, null);
+    const patched = patchNodes(root, mountedArray, reordered, null);
+    const patchedArray = Array.from(patched.values());
 
-    expect(patched.map(node => (node as HTMLElement).textContent)).toEqual(['3', '1', '2']);
+    expect(patchedArray.map(node => (node as HTMLElement).textContent)).toEqual(['3', '1', '2']);
     expect(root.children[0].textContent).toBe('3');
   });
 
@@ -98,9 +102,11 @@ describe('patchNodes', () => {
     const second = createComponent(Comp, { key: 'c', label: 'two' });
 
     const mounted = patchNodes(root, [], [first], null);
-    const patched = patchNodes(root, mounted, [second], null);
+    const mountedArray = Array.from(mounted.values());
+    const patched = patchNodes(root, mountedArray, [second], null);
+    const patchedArray = Array.from(patched.values());
 
-    expect(patched[0]).toBe(first);
+    expect(patchedArray[0]).toBe(first);
     await new Promise(resolve => setTimeout(resolve, 0));
     expect((first.firstChild as HTMLElement).textContent).toBe('one'); // Content updates are async/reactive
     expect(first.firstChild).toBe(first.firstChild);

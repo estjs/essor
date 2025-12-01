@@ -23,7 +23,7 @@ describe('dOM operations', () => {
     expect(el.hasAttribute('disabled')).toBe(true);
 
     patchAttr(el, 'key', null, 'node-key');
-    expect(getNodeKey(el)).toBeUndefined(); // key is not set as attribute
+    expect(getNodeKey(el)).toBe('node-key'); // key is set via setNodeKey
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     patchAttr(svg, 'xlink:href', null, '#id');

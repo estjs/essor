@@ -91,13 +91,13 @@ describe('classNames module', () => {
     });
 
     it('should set class attribute on SVG elements', () => {
-      patchClass(svgElement, true, 'test-class', true);
+      patchClass(svgElement, null, 'test-class', true);
       expect(svgElement.getAttribute('class')).toBe('test-class');
     });
 
     it('should remove class attribute when class is empty string', () => {
       element.className = 'test-class';
-      patchClass(element, null, '');
+      patchClass(element, 'test-class', '');
       expect(element.hasAttribute('class')).toBe(false);
     });
 

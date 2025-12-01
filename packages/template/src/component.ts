@@ -58,10 +58,10 @@ export class Component {
 
   constructor(
     public component: (props: ComponentProps) => Node,
-    public props: ComponentProps | undefined = {},
+    public props: ComponentProps | undefined,
   ) {
-    this.key = props.key ? normalizeKey(props?.key) : getComponentKey(component);
-    this.reactiveProps = shallowReactive(this.props || {});
+    this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
+    this.reactiveProps = shallowReactive({ ...(this.props || {}) });
     this.parentContext = getActiveContext();
   }
 
@@ -90,6 +90,11 @@ export class Component {
       }
       if (isFunction(node)) {
         node = node();
+      }
+
+      // Unwrap signals and computed values
+      if (isSignal(node)) {
+        node = node.value;
       }
 
       this.renderedNode = node as Node;
@@ -123,6 +128,9 @@ export class Component {
       return this;
     }
 
+    // Save new props before inheriting from prevNode
+    const newProps = prevNode.props;
+
     // Take previous node's properties and reactive state
     this.parentNode = prevNode.parentNode;
     this.beforeNode = prevNode.beforeNode;
@@ -130,37 +138,42 @@ export class Component {
     this.renderedNode = prevNode.renderedNode;
     this.state = prevNode.state;
     // Reuse the same reactive object
-    this.reactiveProps = prevNode.reactiveProps;
-    this.props = prevNode.props;
+    // this.reactiveProps = Object.assign(this.reactiveProps, prevNode.reactiveProps);
 
-    // Update reactiveProps with NEW props
-    // if (this.props) {
+    Object.keys(newProps || {}).forEach(key => {
+      console.log(key, newProps![key], this.props![key]);
+
+      // @ts-ignore
+      // this.reactiveProps[key] = newProps![key];
+    });
+
+    // Sync new props to reactiveProps
+    // if (newProps) {
     //   const rawTarget = toRaw(this.reactiveProps);
 
-    //   for (const key in this.props) {
-    //     const descriptor = Object.getOwnPropertyDescriptor(this.props, key);
+    //   for (const key in newProps) {
+    //     if (key === 'key') continue; // Skip key prop
+
+    //     const descriptor = Object.getOwnPropertyDescriptor(newProps, key);
+
+    //     // @ts-ignore
+    //     console.log(key, rawTarget[key], descriptor.get.call(newProps));
     //     if (!descriptor) continue;
-
-    //     // Always use defineProperty to safely update the property on the target
-    //     // This handles value->getter, getter->value, and getter->getter transitions
-    //     // without triggering the proxy's set trap (which would fail for readonly getters)
-    //     Object.defineProperty(this.reactiveProps, key, descriptor);
-
-    //     if (
-    //       (descriptor.get || descriptor.set) &&
-    //       this.reactiveProps[key] !== prevNode.reactiveProps[key]
-    //     ) {
-    //       // For accessors, we can't easily check if value changed, so we always trigger
-    //       trigger(rawTarget, TriggerOpTypes.SET, key);
-    //     } else {
-    //       // For data properties, check if we need to trigger
-    //       const newValue = descriptor.value;
-    //       const oldValue = prevNode.props ? prevNode.props[key] : undefined;
-
-    //       // Trigger if value changed OR if it's an object (to handle mutations of same ref)
-    //       if (newValue !== oldValue || isObject(newValue)) {
-    //         trigger(rawTarget, TriggerOpTypes.SET, key, newValue);
-    //       }
+    //     // @ts-ignore
+    //     if (!hasChanged(descriptor.get.call(newProps), rawTarget[key])) {
+    //       continue;
+    //     }
+    //     if (descriptor.get) {
+    //       // For getter props: delete first, then set via proxy, then define getter
+    //       // This ensures the proxy's set trap is triggered
+    //       delete rawTarget[key];
+    //       // Set current value through proxy (triggers ADD since key was deleted)
+    //       this.reactiveProps[key] = descriptor.get.call(newProps);
+    //       // Now define the getter for future accesses
+    //       Object.defineProperty(rawTarget, key, descriptor);
+    //     } else if ('value' in descriptor) {
+    //       // For value props, set directly through proxy
+    //       this.reactiveProps[key] = descriptor.value;
     //     }
     //   }
     // }
@@ -184,7 +197,7 @@ export class Component {
    * Force update component
    */
   async forceUpdate() {
-    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.context) {
+    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.componentContext) {
       return;
     }
 
@@ -194,14 +207,19 @@ export class Component {
 
     try {
       // Create new context for re-render
-      if (this.context) {
-        pushContextStack(this.context);
+      if (this.componentContext) {
+        pushContextStack(this.componentContext);
       }
 
       newNode = (this.component as Function)(this.reactiveProps);
 
       if (isFunction(newNode)) {
         newNode = (newNode as Function)(this.reactiveProps) as Node;
+      }
+
+      // Unwrap signals and computed values
+      if (isSignal(newNode)) {
+        newNode = (newNode as any).value;
       }
 
       if (prevNode && newNode && prevNode !== newNode) {
@@ -218,7 +236,7 @@ export class Component {
       console.error('Force update failed:', error);
       throw error;
     } finally {
-      if (this.context) {
+      if (this.componentContext) {
         popContextStack();
       }
     }
@@ -235,14 +253,14 @@ export class Component {
 
     this.state = COMPONENT_STATE.DESTROYING;
 
-    const context = this.context;
+    const context = this.componentContext;
     if (context) {
       pushContextStack(context);
 
       // Trigger destroyed lifecycle
       triggerLifecycleHook(LIFECYCLE.destroy);
       destroyContext(context);
-      this.context = null;
+      this.componentContext = null;
 
       popContextStack();
     }

@@ -379,8 +379,8 @@ describe.skip('server/attrs module', () => {
     it('should ignore invalid style values', () => {
       expect(setSSGAttr('style', null, 'hk1')).toBe('');
 
-      // Empty object should result in empty string
-      expect(setSSGAttr('style', {}, 'hk1')).toBe('');
+      // Empty object should result in empty style attribute
+      expect(setSSGAttr('style', {}, 'hk1')).toBe(' style=""');
     });
 
     it('should handle class attributes with string values', () => {

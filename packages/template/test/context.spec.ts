@@ -75,6 +75,8 @@ describe('context system', () => {
     popContextStack();
     expect(findParentContext()).toBe(root);
 
+    popContextStack(); // Pop root from stack before destroying
+
     destroyContext(root);
 
     expect(root.isDestroy).toBe(true);

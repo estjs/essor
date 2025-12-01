@@ -314,7 +314,7 @@ function addEventListenerStatement(
 
     // Generate delegated event code: element.$eventName = handler
     const elementRef = t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true);
-    const eventProperty = t.memberExpression(elementRef, t.stringLiteral(`$${eventName}`), true);
+    const eventProperty = t.memberExpression(elementRef, t.stringLiteral(`_$${eventName}`), true);
 
     // Create assignment statement: nodes[index].$eventName = handler
     const assignmentStmt = t.expressionStatement(
