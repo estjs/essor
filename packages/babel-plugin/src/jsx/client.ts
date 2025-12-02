@@ -126,15 +126,17 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
  * @param attrName - The attribute name to generate a key for
  * @returns A unique property key string
  */
-function generatePropKey(attrName: string): string {
+function generatePropKey(attrName: string = 'attr'): string {
   const { operationIndex } = getContext();
   const keyMap: Record<string, string> = {
     [CLASS_NAME]: 'c',
     [STYLE_NAME]: 's',
     name: 'n',
+    attr: 'a',
   };
 
   const baseKey = keyMap[attrName] || attrName.charAt(0);
+  setContext({ ...getContext(), operationIndex: operationIndex + 1 });
   setContext({ ...getContext(), operationIndex: operationIndex + 1 });
   return `${baseKey}${operationIndex}`;
 }
@@ -899,6 +901,7 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
             currentProps[attrName] = attrValue;
           }
         }
+
         props.push({
           props: currentProps,
           parentIndex: node?.index ?? null,

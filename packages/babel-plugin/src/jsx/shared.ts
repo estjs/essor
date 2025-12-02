@@ -872,7 +872,7 @@ export function convertValueToASTNode(
 /**
  * Get the setting function corresponding to the attribute
  */
-export function getSetFunctionForAttribute(attrName: string) {
+export function getSetFunctionForAttribute(attrName?: string) {
   const { state } = getContext();
   switch (attrName) {
     case CLASS_NAME:
@@ -886,7 +886,6 @@ export function getSetFunctionForAttribute(attrName: string) {
       return { name: 'patchAttr', value: state.imports.patchAttr };
   }
 }
-
 /**
  * Determine if an AST node should be considered dynamic for attribute evaluation.
  * Covers common JS expression types beyond Identifier, including member/call/conditional/template, etc.
