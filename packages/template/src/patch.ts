@@ -1,5 +1,5 @@
+import { warn } from '@estjs/shared';
 import { isComponent } from './component';
-import { isHydrating } from './server/shared';
 import { getNodeKey, isSameNodeType, setNodeKey } from './key';
 import type { AnyNode } from './types';
 
@@ -34,7 +34,10 @@ export function insertNode(parent: Node, child: AnyNode, before?: AnyNode | null
     return;
   }
 
-  if (isHydrating()) {
+  if (!child) {
+    if (__DEV__) {
+      warn('child is null');
+    }
     return;
   }
 

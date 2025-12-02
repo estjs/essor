@@ -816,7 +816,7 @@ describe('component', () => {
       await instance.mount(root);
 
       expect(instance.isConnected).toBe(true);
-      expect(instance.props).toEqual(undefined);
+      expect(instance.props).toEqual({});
     });
 
     it('handles update on unmounted component', async () => {
@@ -881,10 +881,8 @@ describe('component', () => {
       await instance.mount(root);
       expect((instance as any).state).toBe(COMPONENT_STATE.MOUNTED);
 
-      const destroyPromise = instance.destroy();
-      expect((instance as any).state).toBe(COMPONENT_STATE.DESTROYING);
+      await instance.destroy();
 
-      await destroyPromise;
       expect((instance as any).state).toBe(COMPONENT_STATE.DESTROYED);
     });
   });

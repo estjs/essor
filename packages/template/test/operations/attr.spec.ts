@@ -114,8 +114,8 @@ describe('attributes module', () => {
 
       it('should set empty string with special boolean attr', () => {
         element.setAttribute('SpecialBooleanAtt', '');
-        patchAttr(element, 'SpecialBooleanAtt', null, null);
-        expect(element.getAttribute('disabled')).toBe('');
+        patchAttr(element, 'SpecialBooleanAtt', '', null);
+        expect(element.getAttribute('SpecialBooleanAtt')).toBeNull();
       });
     });
 

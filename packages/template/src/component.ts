@@ -92,44 +92,32 @@ export class Component {
     pushContextStack(this.componentContext);
 
     // render the component
-    const result = this.component(this.reactiveProps);
+    let result = this.component(this.reactiveProps);
 
-    const handleMount = (node: any) => {
-      // Handle default export for async components
-      if (node && typeof node === 'object' && 'default' in node) {
-        node = node.default;
-      }
-      if (isFunction(node)) {
-        node = node();
-      }
-
-      // Unwrap signals and computed values
-      if (isSignal(node)) {
-        node = node.value;
-      }
-
-      this.renderedNode = node as Node;
-
-      // insert the rendered node
-      insertNode(parentNode, this.renderedNode, beforeNode);
-
-      // apply props
-      this.applyProps(this.props || {});
-
-      // update marks
-      this.state = COMPONENT_STATE.MOUNTED;
-      this.componentContext!.isMount = true;
-      // trigger mount hook
-      triggerLifecycleHook(LIFECYCLE.mount);
-
-      return this.renderedNode;
-    };
-
-    if (result instanceof Promise) {
-      return result.then(handleMount);
+    if (isFunction(result)) {
+      result = result();
     }
 
-    return handleMount(result);
+    // Unwrap signals and computed values
+    if (isSignal<Node>(result)) {
+      result = result.value;
+    }
+
+    this.renderedNode = result;
+
+    // insert the rendered node
+    insertNode(parentNode, this.renderedNode, beforeNode);
+
+    // apply props
+    this.applyProps(this.props || {});
+
+    // update marks
+    this.state = COMPONENT_STATE.MOUNTED;
+    this.componentContext!.isMount = true;
+    // trigger mount hook
+    triggerLifecycleHook(LIFECYCLE.mount);
+
+    return this.renderedNode;
   }
 
   update(prevNode: Component): Component {

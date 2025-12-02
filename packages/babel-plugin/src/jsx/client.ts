@@ -384,11 +384,11 @@ function generateSpecificAttributeCode(
 
     default:
       if (startsWith(attributeName, `${UPDATE_PREFIX}:`)) {
-        addImport(importMap.bindAttr);
+        addImport(importMap.bindElement);
         const attrName = attributeName.split(':')[1];
         statements.push(
           createAttributeStatement(
-            state.imports.bindAttr,
+            state.imports.bindElement,
             nodesId,
             nodeIndex,
             attributeValue,
