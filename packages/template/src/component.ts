@@ -1,5 +1,5 @@
 import { isSignal, shallowReactive } from '@estjs/signals';
-import { isFunction, isHTMLElement, startsWith } from '@estjs/shared';
+import { hasChanged, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
 import {
   type Context,
   createContext,
@@ -13,7 +13,7 @@ import { LIFECYCLE, triggerLifecycleHook } from './lifecycle';
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
 import { addEventListener } from './binding';
 import { getComponentKey, normalizeKey } from './key';
-import { removeNode, replaceNode } from './utils';
+import { removeNode, replaceNode, shallowCompare } from './utils';
 
 export type ComponentFn = (props?: ComponentProps) => Node;
 export type ComponentProps = Record<string, unknown>;
@@ -33,6 +33,7 @@ export class Component {
 
   // component props
   private reactiveProps: Record<string, any> = {};
+  private _propSnapshots: Record<string, any> = {};
 
   // component key
   public readonly key: string | undefined;
@@ -63,6 +64,16 @@ export class Component {
     this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
     this.reactiveProps = shallowReactive({ ...(this.props || {}) });
     this.parentContext = getActiveContext();
+
+    // Init snapshots for object props
+    if (this.props) {
+      for (const key in this.props) {
+        const val = this.props[key];
+        if (isObject(val) && val !== null) {
+          this._propSnapshots[key] = Array.isArray(val) ? [...val] : { ...val };
+        }
+      }
+    }
   }
 
   mount(parentNode: Node, beforeNode?: Node | null): Node | null | Promise<Node | null> {
@@ -128,55 +139,45 @@ export class Component {
       return this;
     }
 
-    // Save new props before inheriting from prevNode
-    const newProps = prevNode.props;
-
     // Take previous node's properties and reactive state
     this.parentNode = prevNode.parentNode;
     this.beforeNode = prevNode.beforeNode;
     this.componentContext = prevNode.componentContext;
     this.renderedNode = prevNode.renderedNode;
     this.state = prevNode.state;
-    // Reuse the same reactive object
-    // this.reactiveProps = Object.assign(this.reactiveProps, prevNode.reactiveProps);
+    this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
+    this._propSnapshots = prevNode._propSnapshots;
 
-    Object.keys(newProps || {}).forEach(key => {
-      console.log(key, newProps![key], this.props![key]);
+    // Smart update: shallow compare object props to detect mutations
+    if (this.props) {
+      const flattened = { ...this.props };
+      for (const key in flattened) {
+        if (key === 'key') continue;
+        const newValue = flattened[key];
+        const oldValue = this.reactiveProps[key];
 
-      // @ts-ignore
-      // this.reactiveProps[key] = newProps![key];
-    });
-
-    // Sync new props to reactiveProps
-    // if (newProps) {
-    //   const rawTarget = toRaw(this.reactiveProps);
-
-    //   for (const key in newProps) {
-    //     if (key === 'key') continue; // Skip key prop
-
-    //     const descriptor = Object.getOwnPropertyDescriptor(newProps, key);
-
-    //     // @ts-ignore
-    //     console.log(key, rawTarget[key], descriptor.get.call(newProps));
-    //     if (!descriptor) continue;
-    //     // @ts-ignore
-    //     if (!hasChanged(descriptor.get.call(newProps), rawTarget[key])) {
-    //       continue;
-    //     }
-    //     if (descriptor.get) {
-    //       // For getter props: delete first, then set via proxy, then define getter
-    //       // This ensures the proxy's set trap is triggered
-    //       delete rawTarget[key];
-    //       // Set current value through proxy (triggers ADD since key was deleted)
-    //       this.reactiveProps[key] = descriptor.get.call(newProps);
-    //       // Now define the getter for future accesses
-    //       Object.defineProperty(rawTarget, key, descriptor);
-    //     } else if ('value' in descriptor) {
-    //       // For value props, set directly through proxy
-    //       this.reactiveProps[key] = descriptor.value;
-    //     }
-    //   }
-    // }
+        if (isObject(newValue) && newValue !== null) {
+          // For objects: compare with snapshot
+          const snapshot = this._propSnapshots[key];
+          if (!snapshot || !shallowCompare(newValue, snapshot)) {
+            // Content changed (or new prop) -> Force update
+            const newSnapshot = Array.isArray(newValue) ? [...newValue] : { ...newValue };
+            this.reactiveProps[key] = newSnapshot;
+            this._propSnapshots[key] = newSnapshot;
+          }
+          // If content same -> Do nothing (skip update)
+        } else {
+          // For primitives: standard check
+          if (hasChanged(newValue, oldValue)) {
+            this.reactiveProps[key] = newValue;
+            // Clear snapshot if it existed (type change)
+            if (this._propSnapshots[key]) {
+              delete this._propSnapshots[key];
+            }
+          }
+        }
+      }
+    }
 
     // check if the component is already mount
     if (!this.isConnected && this.parentNode) {

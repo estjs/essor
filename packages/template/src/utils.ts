@@ -180,3 +180,25 @@ export function isHtmLTextElement(val: unknown): val is Text {
 export function isHTMLNode(val: unknown): val is HTMLElement {
   return val instanceof HTMLElement;
 }
+/**
+ * Shallow compare two objects
+ * @param {any} a - The first object to compare
+ * @param {any} b - The second object to compare
+ * @returns {boolean} - Returns true if the objects are equal, false otherwise
+ */
+export function shallowCompare(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
+
+  if (keysA.length !== keysB.length) return false;
+
+  for (const key of keysA) {
+    if (a[key] !== b[key]) return false;
+  }
+
+  return true;
+}
