@@ -65,7 +65,7 @@ describe('binding utilities', () => {
 
       input.type = 'text';
       expect(isHtmlInputElement(input)).toBe(true);
-      bindElement(input, setter);
+      bindElement(input, 'value', '', setter);
 
       const handler = listeners.input;
       expect(handler).toBeDefined();
@@ -87,7 +87,7 @@ describe('binding utilities', () => {
       });
 
       input.type = 'checkbox';
-      bindElement(input, setter);
+      bindElement(input, 'checked', false, setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -108,7 +108,7 @@ describe('binding utilities', () => {
 
       input.type = 'radio';
       input.value = 'option1';
-      bindElement(input, setter);
+      bindElement(input, 'checked', '', setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -132,7 +132,7 @@ describe('binding utilities', () => {
       });
 
       input.type = 'file';
-      bindElement(input, setter);
+      bindElement(input, 'files', null, setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -151,14 +151,14 @@ describe('binding utilities', () => {
       });
 
       input.type = 'number';
-      bindElement(input, setter);
+      bindElement(input, 'value', '', setter);
 
       const handler = listeners.input;
       expect(handler).toBeDefined();
 
       input.value = '42';
       handler(new Event('input'));
-      expect(setter).toHaveBeenCalledWith('42');
+      expect(setter).toHaveBeenCalledWith(42);
 
       input.value = 'invalid';
       handler(new Event('input'));
@@ -175,14 +175,14 @@ describe('binding utilities', () => {
       });
 
       input.type = 'range';
-      bindElement(input, setter);
+      bindElement(input, 'value', '', setter);
 
       const handler = listeners.input;
       expect(handler).toBeDefined();
 
       input.value = '50';
       handler(new Event('input'));
-      expect(setter).toHaveBeenCalledWith('50');
+      expect(setter).toHaveBeenCalledWith(50);
     });
 
     it('binds date input to setter', () => {
@@ -195,7 +195,7 @@ describe('binding utilities', () => {
       });
 
       input.type = 'date';
-      bindElement(input, setter);
+      bindElement(input, 'value', '', setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -222,7 +222,7 @@ describe('binding utilities', () => {
         return undefined as any;
       });
 
-      bindElement(select, setter);
+      bindElement(select, 'value', '', setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -251,7 +251,7 @@ describe('binding utilities', () => {
         return undefined as any;
       });
 
-      bindElement(select, setter);
+      bindElement(select, 'value', [], setter);
 
       const handler = listeners.change;
       expect(handler).toBeDefined();
@@ -269,7 +269,7 @@ describe('binding utilities', () => {
         return undefined as any;
       });
 
-      bindElement(textarea, setter);
+      bindElement(textarea, 'value', '', setter);
 
       const handler = listeners.input;
       expect(handler).toBeDefined();
@@ -293,12 +293,94 @@ describe('binding utilities', () => {
       });
 
       input.type = 'text';
-      bindElement(input, setter);
+      bindElement(input, 'value', '', setter);
 
       const handler = listeners.input;
       input.value = '';
       handler(new Event('input'));
       expect(setter).toHaveBeenCalledWith('');
+    });
+
+    it('supports lazy modifier', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'text';
+      bindElement(input, 'value', '', setter, { lazy: true });
+
+      expect(listeners.input).toBeUndefined();
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      input.value = 'lazy update';
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('lazy update');
+    });
+
+    it('supports number modifier', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'text';
+      bindElement(input, 'value', '', setter, { number: true });
+
+      const handler = listeners.input;
+      input.value = '123.45';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith(123.45);
+
+      input.value = 'abc';
+      handler(new Event('input'));
+      // Should return original string if not a number
+      expect(setter).toHaveBeenCalledWith('abc');
+    });
+
+    it('supports trim modifier', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'text';
+      bindElement(input, 'value', '', setter, { trim: true });
+
+      const handler = listeners.input;
+      input.value = '  hello  ';
+      handler(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('hello');
+    });
+
+    it('supports combined modifiers', () => {
+      const input = document.createElement('input');
+      const setter = vi.fn();
+      const listeners: Record<string, EventListener> = {};
+      vi.spyOn(input, 'addEventListener').mockImplementation((event, handler) => {
+        listeners[event as string] = handler as EventListener;
+        return undefined as any;
+      });
+
+      input.type = 'text';
+      bindElement(input, 'value', '', setter, { lazy: true, number: true, trim: true });
+
+      const handler = listeners.change;
+      expect(handler).toBeDefined();
+
+      input.value = '  42  ';
+      handler(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(42);
     });
   });
 

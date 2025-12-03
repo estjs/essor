@@ -879,13 +879,30 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
       // Dynamic attributes include: event handlers, conditional rendering attributes, dynamic styles, etc.
       if (node.props && Object.keys(node.props).length > 0) {
         const currentProps = {};
+
         for (const [attrName, attrValue] of Object.entries(node.props)) {
+          // Type guard: check if attrValue is a Node before checking if it's dynamic
           const isReactive =
-            isDynamicExpression(attrValue as t.Node) &&
+            t.isNode(attrValue) &&
+            isDynamicExpression(attrValue) &&
             !startsWith(attrName, `${UPDATE_PREFIX}:`) &&
             !startsWith(attrName, EVENT_ATTR_NAME);
+          // support bind:value
 
-          if (isReactive) {
+          if (startsWith(attrName, `${UPDATE_PREFIX}:`)) {
+            const name = attrName.split(':')[1];
+            const setFunction = getSetFunctionForAttribute();
+            addImport(importMap[setFunction.name as keyof typeof importMap]);
+
+            operations.push({
+              nodeIndex: node?.index,
+              attrName: name,
+              attrValue: t.memberExpression((attrValue as any)[0], t.identifier('value')),
+              setFunction,
+              propKey: generatePropKey(),
+            });
+          }
+          if (isReactive && t.isExpression(attrValue)) {
             // Collect reactive attributes for unified processing later
             const setFunction = getSetFunctionForAttribute(attrName);
             addImport(importMap[setFunction.name as keyof typeof importMap]);
@@ -893,7 +910,7 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
             operations.push({
               nodeIndex: node?.index,
               attrName,
-              attrValue: attrValue as t.Expression,
+              attrValue,
               setFunction,
               propKey: generatePropKey(attrName),
             });
@@ -902,11 +919,12 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
           }
         }
 
-        props.push({
-          props: currentProps,
-          parentIndex: node?.index ?? null,
-        });
-        break;
+        if (Object.keys(currentProps).length > 0) {
+          props.push({
+            props: currentProps,
+            parentIndex: node?.index ?? null,
+          });
+        }
       }
   }
 }

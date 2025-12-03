@@ -114,7 +114,7 @@ function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): Tree
   treeNode.selfClosing = isSelfClosingTag(tagName);
 
   // Process JSX attributes and properties
-  treeNode.props = processProps(path);
+  treeNode.props = processProps(path, treeNode);
 
   // Self-closing tags don't need to process children
   if (!treeNode.selfClosing) {
@@ -126,7 +126,7 @@ function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): Tree
   return treeNode;
 }
 
-function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
+function processProps(path: NodePath<JSXElement>, treeNode: TreeNode): Record<string, unknown> {
   const props = {};
   const attributes = path.get('openingElement.attributes') as NodePath<
     t.JSXAttribute | t.JSXSpreadAttribute
@@ -156,7 +156,7 @@ function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
             props[name] = expression.node;
           } else if (expression.isExpression()) {
             // <div a={a} >
-            processPropsExpression(expression, name, props, path);
+            processPropsExpression(expression, name, props, path, treeNode);
           }
         } else if (value.isStringLiteral() || value.isNumericLiteral()) {
           props[name] = value.node.value;
@@ -164,7 +164,7 @@ function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
           props[name] = value.node;
         } else if (value.isExpression()) {
           // <div a={a} >
-          processPropsExpression(value, name, props, path);
+          processPropsExpression(value, name, props, path, treeNode);
         }
       }
     } else if (t.isJSXSpreadAttribute(attribute.node)) {
@@ -180,6 +180,7 @@ function processPropsExpression(
   name: string,
   props: Record<string, unknown>,
   path: NodePath<JSXElement>,
+  treeNode: TreeNode,
 ): void {
   if (BIND_REG.test(name)) {
     processPropsBind(name, expression, props, path);
@@ -196,16 +197,24 @@ function processPropsBind(
   path: NodePath<JSXElement>,
 ): void {
   const value = path.scope.generateUidIdentifier('value');
-  const bindName = name.slice(5).toLowerCase();
+  const [bindKey, ...modifiers] = name.slice(5).split('.');
+  const bindName = bindKey.toLowerCase();
 
-  // Register update:value
-  props[`${UPDATE_PREFIX}:${bindName}`] = [
-    expression.node,
-    t.arrowFunctionExpression(
-      [value],
-      t.assignmentExpression('=', expression.node as t.LVal, value),
-    ),
-  ];
+  const setter = t.arrowFunctionExpression(
+    [value],
+    t.assignmentExpression('=', expression.node as t.LVal, value),
+  );
+
+  // For both native elements and components: use update:prop with modifiers
+  const args: any[] = [expression.node, setter];
+  if (modifiers.length > 0) {
+    const modifiersObj = t.objectExpression(
+      modifiers.map(m => t.objectProperty(t.identifier(m), t.booleanLiteral(true))),
+    );
+    args.push(modifiersObj);
+  }
+
+  props[`${UPDATE_PREFIX}:${bindName}`] = args;
 }
 
 /**
