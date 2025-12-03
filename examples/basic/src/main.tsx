@@ -4,10 +4,10 @@ function App() {
   const value = signal('Hello, World!');
 
   return (
-    <div>
+    <Fragment>
       <p>{value.value}</p>
       <input type="text" value={value.value} oninput={e => (value.value = e.target.value)} />
-    </div>
+    </Fragment>
   );
 }
 

@@ -81,3 +81,4 @@ export const DATA_IDX_REGEX = /^\d+-\d+$/;
  * Bind regex for bind attributes
  */
 export const BIND_REG = /^bind:.+/;
+export const BUILT_IN_COMPONENTS = ['Fragment', 'If', 'Switch', 'Case', 'For'];

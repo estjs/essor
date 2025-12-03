@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { Fragment } from '../../src/components/Fragment';
-import { mount } from '../testUtils';
+import { Fragment, isFragment } from '../../src/components/Fragment';
+import { mount } from '../test-utils';
 
 describe('fragment component', () => {
   let container;
@@ -107,5 +107,199 @@ describe('fragment component', () => {
     // Check text content
     expect(container.textContent).toBe('HelloWorld');
     expect(container.querySelector('span')).not.toBeNull();
+  });
+
+  it('should handle single child element', () => {
+    const app = () => {
+      return Fragment({
+        children: document.createElement('p'),
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.children.length).toBe(1);
+    expect(container.querySelector('p')).not.toBeNull();
+  });
+
+  it('should handle single text node', () => {
+    const app = () => {
+      return Fragment({
+        children: document.createTextNode('Single text'),
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.textContent).toBe('Single text');
+    expect(container.children.length).toBe(0); // Text nodes are not elements
+  });
+
+  it('should handle mixed content with null and undefined', () => {
+    const app = () => {
+      return Fragment({
+        children: [
+          document.createElement('div'),
+          null,
+          document.createElement('span'),
+          undefined,
+          document.createTextNode('text'),
+        ],
+      });
+    };
+
+    mount(app, container);
+
+    // Only valid nodes should be rendered
+    expect(container.children.length).toBe(2); // div and span
+    expect(container.textContent).toBe('text');
+  });
+
+  it('should handle undefined children prop', () => {
+    const app = () => {
+      return Fragment({});
+    };
+
+    mount(app, container);
+
+    expect(container.children.length).toBe(0);
+  });
+
+  it('should preserve element attributes', () => {
+    const app = () => {
+      const div = document.createElement('div');
+      div.className = 'test-class';
+      div.dataset.test = 'value';
+
+      return Fragment({
+        children: div,
+      });
+    };
+
+    mount(app, container);
+
+    const divElement = container.querySelector('div');
+    expect(divElement).not.toBeNull();
+    expect(divElement?.className).toBe('test-class');
+    expect(divElement?.dataset.test).toBe('value');
+  });
+
+  it('should handle deeply nested Fragments', () => {
+    const app = () => {
+      const level3 = Fragment({
+        children: document.createElement('span'),
+      });
+
+      const level2 = Fragment({
+        children: [document.createElement('p'), level3],
+      });
+
+      const level1 = Fragment({
+        children: [document.createElement('div'), level2],
+      });
+
+      return level1;
+    };
+
+    mount(app, container);
+
+    expect(container.querySelector('div')).not.toBeNull();
+    expect(container.querySelector('p')).not.toBeNull();
+    expect(container.querySelector('span')).not.toBeNull();
+  });
+
+  it('should handle large number of children', () => {
+    const app = () => {
+      const children = Array.from({ length: 100 }, (_, i) => {
+        const el = document.createElement('div');
+        el.textContent = `Item ${i}`;
+        return el;
+      });
+
+      return Fragment({ children });
+    };
+
+    mount(app, container);
+
+    expect(container.children.length).toBe(100);
+    expect(container.firstChild?.textContent).toBe('Item 0');
+    expect(container.lastChild?.textContent).toBe('Item 99');
+  });
+
+  it('should handle Fragment with key prop', () => {
+    const app = () => {
+      return Fragment({
+        children: document.createElement('div'),
+        key: 'test-key',
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.children.length).toBe(1);
+  });
+
+  it('should have Fragment type marker', () => {
+    expect(isFragment(Fragment)).toBe(true);
+    expect(isFragment({})).toBe(false);
+    expect(isFragment(null)).toBe(false);
+    expect(isFragment(undefined)).toBe(false);
+  });
+
+  it('should return DocumentFragment instance', () => {
+    const result = Fragment({
+      children: document.createElement('div'),
+    });
+
+    expect(result).toBeInstanceOf(DocumentFragment);
+  });
+
+  it('should handle empty array children', () => {
+    const app = () => {
+      return Fragment({
+        children: [],
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.children.length).toBe(0);
+  });
+
+  it('should handle mixed element types', () => {
+    const app = () => {
+      const div = document.createElement('div');
+      const span = document.createElement('span');
+      const button = document.createElement('button');
+      const input = document.createElement('input');
+
+      return Fragment({
+        children: [div, span, button, input],
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.querySelector('div')).not.toBeNull();
+    expect(container.querySelector('span')).not.toBeNull();
+    expect(container.querySelector('button')).not.toBeNull();
+    expect(container.querySelector('input')).not.toBeNull();
+  });
+
+  it('should normalize primitive children', () => {
+    const app = () => {
+      // Fragment should handle primitive values through normalizeNode
+      return Fragment({
+        children: [
+          document.createTextNode('Hello'),
+          document.createTextNode(' '),
+          document.createTextNode('World'),
+        ],
+      });
+    };
+
+    mount(app, container);
+
+    expect(container.textContent).toBe('Hello World');
   });
 });

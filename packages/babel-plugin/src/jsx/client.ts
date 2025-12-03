@@ -11,10 +11,10 @@ import {
 import { types as t } from '@babel/core';
 import { addImport, importMap } from '../import';
 import {
+  BUILT_IN_COMPONENTS,
   CLASS_NAME,
   CREATE_COMPONENT_NAME,
   EVENT_ATTR_NAME,
-  FRAGMENT_NAME,
   NODE_TYPE,
   SPREAD_NAME,
   STYLE_NAME,
@@ -160,23 +160,21 @@ function transformJSXClientChildren(path: NodePath<JSXElement>, treeNode: TreeNo
 function createComponentExpression(node: TreeNode, componentProps: Record<string, unknown>) {
   const { state } = getContext();
 
-  // Determine component function name
-  const componentName = node.type === NODE_TYPE.FRAGMENT ? FRAGMENT_NAME : CREATE_COMPONENT_NAME;
-
   addImport(importMap.createComponent);
-  addImport(importMap[componentName]);
 
+  // Built-in components
+  const isBuiltIn = BUILT_IN_COMPONENTS.includes(node.tag!);
+  if (isBuiltIn) {
+    addImport(importMap[node.tag!]);
+  }
+
+  const argTag = isBuiltIn ? state.imports[node.tag!] : t.identifier(node.tag!);
   // Create props object expression
   const propsObj = createPropsObjectExpression(componentProps, transformJSXClientChildren);
 
-  if (node.type === NODE_TYPE.FRAGMENT) {
-    // Fragment： Fragment(props)
-    return t.callExpression(state.imports[componentName], [propsObj]);
-  }
+  const args: t.Expression[] = [argTag, propsObj];
 
-  const args: t.Expression[] = [t.identifier(node.tag!), propsObj];
-
-  return t.callExpression(state.imports[componentName], args);
+  return t.callExpression(state.imports[CREATE_COMPONENT_NAME], args);
 }
 
 /**
