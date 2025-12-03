@@ -210,11 +210,16 @@ export function createTree(path: NodePath<JSXElement>, parentNode?: TreeNode): T
   if (parentNode) {
     const nodeInfo = path.node as JSXElement;
     const isComponent = isComponentName(getTagName(nodeInfo)) || path.isJSXFragment();
+    console.log(getTagName(nodeInfo), isComponent, treeIndex);
 
-    if (!isComponent && parentNode.type !== NODE_TYPE.COMPONENT) {
+    if (isComponent) {
+      treeNode.root = true;
+      treeIndex = 0;
+    } else {
+      // Non-component nodes get incremental indices
       treeNode.index = ++treeIndex;
+      treeNode.parentIndex = parentNode.index;
     }
-    treeNode.parentIndex = treeIndex;
   } else {
     treeNode.root = true;
     treeIndex = 1;
@@ -268,7 +273,7 @@ function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): Tree
   const tagName = getTagName(path.node);
 
   treeNode.tag = tagName;
-  treeNode.type = determineNodeType(tagName);
+  treeNode.type = determineNodeType(path, tagName);
   treeNode.selfClosing = isSelfClosingTag(tagName);
 
   // Process JSX attributes and properties,fragment not have props
@@ -642,8 +647,8 @@ function processChildSpread(
  * @param {string} tagName - Tag name
  * @returns {NODE_TYPE} Node type enum value
  */
-function determineNodeType(tagName: string): NODE_TYPE {
-  const isComponent = isComponentName(tagName);
+function determineNodeType(path: NodePath<JSXElement>, tagName: string): NODE_TYPE {
+  const isComponent = path.isJSXFragment() || isComponentName(tagName);
 
   if (isComponent) {
     return NODE_TYPE.COMPONENT;

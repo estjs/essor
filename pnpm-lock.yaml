@@ -143,6 +143,74 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.5.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1)
 
+  examples/fragment:
+    dependencies:
+      essor:
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      '@estjs/eslint-config':
+        specifier: ^2.1.5
+        version: 2.1.5(@biomejs/biome@2.2.4)(@types/eslint@9.6.1)(@typescript-eslint/utils@8.43.0(eslint@9.37.0(jiti@2.5.1))(typescript@5.9.3))(eslint@9.37.0(jiti@2.5.1))(prettier@3.6.2)(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.5.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1))
+      '@types/node':
+        specifier: ^24.7.2
+        version: 24.7.2
+      eslint:
+        specifier: ^9.37.0
+        version: 9.37.0(jiti@2.5.1)
+      jsdom:
+        specifier: ^27.0.0
+        version: 27.0.0(postcss@8.5.6)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      unplugin-essor:
+        specifier: workspace:*
+        version: link:../../packages/unplugin
+      vite:
+        specifier: ^7.1.10
+        version: 7.1.10(@types/node@24.7.2)(jiti@2.5.1)(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1)
+      vite-plugin-inspect:
+        specifier: ^11.3.3
+        version: 11.3.3(vite@7.1.10(@types/node@24.7.2)(jiti@2.5.1)(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1))
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.5.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1)
+
+  examples/portal:
+    dependencies:
+      essor:
+        specifier: workspace:*
+        version: link:../../packages/core
+    devDependencies:
+      '@estjs/eslint-config':
+        specifier: ^2.1.5
+        version: 2.1.5(@biomejs/biome@2.2.4)(@types/eslint@9.6.1)(@typescript-eslint/utils@8.43.0(eslint@9.37.0(jiti@2.5.1))(typescript@5.9.3))(eslint@9.37.0(jiti@2.5.1))(prettier@3.6.2)(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.5.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1))
+      '@types/node':
+        specifier: ^24.7.2
+        version: 24.7.2
+      eslint:
+        specifier: ^9.37.0
+        version: 9.37.0(jiti@2.5.1)
+      jsdom:
+        specifier: ^27.0.0
+        version: 27.0.0(postcss@8.5.6)
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      unplugin-essor:
+        specifier: workspace:*
+        version: link:../../packages/unplugin
+      vite:
+        specifier: ^7.1.10
+        version: 7.1.10(@types/node@24.7.2)(jiti@2.5.1)(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1)
+      vite-plugin-inspect:
+        specifier: ^11.3.3
+        version: 11.3.3(vite@7.1.10(@types/node@24.7.2)(jiti@2.5.1)(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1))
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.5.1)(jsdom@27.0.0(postcss@8.5.6))(terser@5.43.1)(tsx@4.20.6)(yaml@2.8.1)
+
   examples/provide:
     dependencies:
       essor:

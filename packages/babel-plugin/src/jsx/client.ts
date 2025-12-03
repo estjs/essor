@@ -797,6 +797,13 @@ function generateDynamic(node: TreeNode) {
 
   function walk(node: TreeNode, parentNode?: TreeNode) {
     processNodeDynamic(dynamicCollection, node, parentNode);
+
+    // Don't recurse into component/fragment children - they're handled by the component itself
+    // Components and fragments process their own children as props
+    if (node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
+      return; // Skip processing component children in parent context
+    }
+
     if (node.children && node.children.length) {
       node.children.forEach(child => {
         walk(child as TreeNode, node);
