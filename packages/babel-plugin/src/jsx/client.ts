@@ -37,7 +37,7 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
   const state = path.state;
 
   // Handle component or fragment
-  if (node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
+  if (node.type === NODE_TYPE.COMPONENT) {
     const props = { ...node.props, children: node.children };
     return createComponentExpression(node, props);
   }
@@ -51,15 +51,15 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
   const indexMap = generateIndexMap(dynamicCollection);
 
   // Create identifiers for root element and node mapping
-  const elementId = path.scope.generateUidIdentifier('_el');
-  const nodesId = path.scope.generateUidIdentifier('_nodes');
+  const elementId = path.scope.generateUidIdentifier('_$el');
+  const nodesId = path.scope.generateUidIdentifier('_$nodes');
 
   // Initialize statements array for function body
   const statements: t.Statement[] = [];
 
   if (staticTemplate) {
     addImport(importMap.template);
-    const tmplId = path.scope.generateUidIdentifier('_tmpl$');
+    const tmplId = path.scope.generateUidIdentifier('_$tmpl');
 
     state.declarations.push(
       t.variableDeclarator(
@@ -88,17 +88,17 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
         ),
       ]),
     );
-    // Process dynamic child nodes if any exist
+    // Process dynamic child nodes if they exist
     if (dynamicCollection.children.length) {
       generateDynamicChildrenCode(dynamicCollection.children, statements, state, nodesId, indexMap);
     }
 
-    // Process dynamic properties if any exist
+    // Process dynamic properties if they exist
     if (dynamicCollection.props.length) {
       generateDynamicPropsCode(dynamicCollection.props, statements, state, nodesId, indexMap);
     }
 
-    // Process reactive operations if any exist
+    // Process reactive operations if they exist
     if (dynamicCollection.operations.length) {
       generateUnifiedMemoizedEffect(
         dynamicCollection.operations,
@@ -116,7 +116,6 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
   // Create and return IIFE expression
   return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(statements)), []);
 }
-
 /**
  * Generate property key name (for state objects)
  *
