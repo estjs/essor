@@ -1,5 +1,6 @@
 import { isFalsy, isPrimitive } from '@estjs/shared';
 import { isComponent } from './component';
+import { getNodeKey } from './key';
 import type { AnyNode } from './types';
 
 /**
@@ -9,7 +10,7 @@ import type { AnyNode } from './types';
  * @param keys - List of property names to exclude
  * @returns A reactive proxy with specified properties excluded
  */
-export function propsOmit<T extends object, K extends keyof T>(target: T, keys: K[]): Omit<T, K> {
+export function omitProps<T extends object, K extends keyof T>(target: T, keys: K[]): Omit<T, K> {
   const excludeSet = new Set(keys);
 
   return new Proxy(target, {
@@ -95,6 +96,9 @@ export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null 
     if (beforeNode) {
       parent.insertBefore(child as Node, beforeNode);
     } else {
+      if (!(child instanceof Node)) {
+        console.error('insertNode: child is not a Node', child);
+      }
       parent.appendChild(child as Node);
     }
   } catch (error) {
@@ -134,6 +138,45 @@ export function getFirstDOMNode(node: AnyNode): Node | null {
   }
 
   return node;
+}
+
+/**
+ * Check if two nodes are the same (inline for performance)
+ * This combines key check and type check
+ */
+export function isSameNode(a: AnyNode, b: AnyNode): boolean {
+  // Check key equality first (fast path)
+  const keyA = getNodeKey(a);
+  const keyB = getNodeKey(b);
+
+  if (keyA !== keyB) {
+    return false;
+  }
+
+  // Inline type check to avoid function call
+  const aIsComponent = isComponent(a);
+  const bIsComponent = isComponent(b);
+
+  if (aIsComponent && bIsComponent) {
+    return a.component === b.component;
+  }
+
+  if (aIsComponent !== bIsComponent) {
+    return false;
+  }
+
+  const aNode = a as Node;
+  const bNode = b as Node;
+
+  if (aNode.nodeType !== bNode.nodeType) {
+    return false;
+  }
+
+  if (aNode.nodeType === Node.ELEMENT_NODE) {
+    return (aNode as Element).tagName === (bNode as Element).tagName;
+  }
+
+  return true;
 }
 
 /**

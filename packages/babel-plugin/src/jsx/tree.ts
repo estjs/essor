@@ -1,6 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
 import { isSVGTag, isSelfClosingTag, warn } from '@estjs/shared';
-import { BIND_REG, NODE_TYPE, SPREAD_NAME, UPDATE_PREFIX } from './constants';
+import { BIND_REG, BUILT_IN_COMPONENTS, NODE_TYPE, SPREAD_NAME, UPDATE_PREFIX } from './constants';
 import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './shared';
 import type { JSXChild, JSXElement } from '../types';
 
@@ -208,19 +208,21 @@ export function createTree(path: NodePath<JSXElement>, parentNode?: TreeNode): T
   const treeNode = createDefaultTree();
 
   if (parentNode) {
+    // Child node processing: only non-component nodes get indices
     const nodeInfo = path.node as JSXElement;
-    const isComponent = isComponentName(getTagName(nodeInfo)) || path.isJSXFragment();
-    console.log(getTagName(nodeInfo), isComponent, treeIndex);
+    const isBuiltInComponent = BUILT_IN_COMPONENTS.includes(parentNode.tag!);
 
-    if (isComponent) {
-      treeNode.root = true;
-      treeIndex = 0;
-    } else {
-      // Non-component nodes get incremental indices
+    const isComponentOrFragment = isComponentName(getTagName(nodeInfo));
+
+    if (!isComponentOrFragment && !isBuiltInComponent) {
       treeNode.index = ++treeIndex;
-      treeNode.parentIndex = parentNode.index;
     }
+    if (isBuiltInComponent) {
+      treeIndex = 1;
+    }
+    treeNode.parentIndex = treeIndex;
   } else {
+    // Root node processing: mark as root node and reset counter
     treeNode.root = true;
     treeIndex = 1;
   }
@@ -273,7 +275,7 @@ function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): Tree
   const tagName = getTagName(path.node);
 
   treeNode.tag = tagName;
-  treeNode.type = determineNodeType(path, tagName);
+  treeNode.type = determineNodeType(tagName);
   treeNode.selfClosing = isSelfClosingTag(tagName);
 
   // Process JSX attributes and properties,fragment not have props
@@ -647,8 +649,8 @@ function processChildSpread(
  * @param {string} tagName - Tag name
  * @returns {NODE_TYPE} Node type enum value
  */
-function determineNodeType(path: NodePath<JSXElement>, tagName: string): NODE_TYPE {
-  const isComponent = path.isJSXFragment() || isComponentName(tagName);
+function determineNodeType(tagName: string): NODE_TYPE {
+  const isComponent = isComponentName(tagName);
 
   if (isComponent) {
     return NODE_TYPE.COMPONENT;

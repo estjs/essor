@@ -2,6 +2,7 @@ import { type NodePath, types as t } from '@babel/core';
 import {
   isArray,
   isBoolean,
+  isMap,
   isNull,
   isNumber,
   isObject,
@@ -54,7 +55,7 @@ export interface DynamicCollection {
   /** Dynamic attribute list */
   props: Array<{
     /** Attribute object */
-    props: Record<string, any>;
+    props: Record<string, unknown>;
     /** Parent node index */
     parentIndex: number | null;
   }>;
@@ -63,11 +64,12 @@ export interface DynamicCollection {
 /**
  * Determine whether a string is a component name
  *
- * Identifies React components by checking naming conventions:
+ * Identifies custom components by checking naming conventions:
  * - First letter capitalized (e.g., MyComponent)
  * - Contains dot notation (e.g., SomeLibrary.Component)
  * - Starts with non-alphabetic character (e.g., _Component)
  *
+
  * @param {string} tagName - The tag name to check
  * @returns {boolean} `true` if the tag represents a component, `false` otherwise
  */
@@ -76,25 +78,41 @@ export function isComponentName(tagName: string): boolean {
     return false;
   }
 
-  const firstChar = tagName[0];
+  const firstCharCode = tagName.charCodeAt(0);
 
-  if (firstChar && firstChar.toLowerCase() !== firstChar) {
-    return true;
+  // 65-90 are uppercase A-Z, 97-122 are lowercase a-z
+  if (firstCharCode >= 65 && firstCharCode <= 90) {
+    return true; // Uppercase letter
   }
 
-  if (tagName.includes('.') || tagName.includes(':')) {
+  // Check for dot or colon notation
+  const dotIndex = tagName.indexOf('.');
+  const colonIndex = tagName.indexOf(':');
+
+  if (dotIndex !== -1 || colonIndex !== -1) {
+    // Split and check segments
     const segments = tagName.split(/[:.]/);
-    return segments.some(segment => segment[0] && segment[0].toLowerCase() !== segment[0]);
+    const len = segments.length;
+    for (let i = 0; i < len; i++) {
+      const segment = segments[i];
+      if (segment.length > 0) {
+        const segmentCharCode = segment.charCodeAt(0);
+        if (segmentCharCode >= 65 && segmentCharCode <= 90) {
+          return true;
+        }
+      }
+    }
   }
 
-  return /[^a-z]/i.test(firstChar); // Handles _Component and similar cases
+  // Check for non-alphabetic first character (like _Component)
+  return !(firstCharCode >= 97 && firstCharCode <= 122); // Not lowercase letter
 }
 
 /**
  * Get tag name from JSX element node
  *
  * Extracts the tag name from JSX elements and fragments, handling both
- * regular HTML elements and React components.
+ * regular HTML elements and custom components.
  *
  * @param {t.JSXElement | t.JSXFragment} node - AST node of JSX element or fragment
  * @returns {string} Tag name string (e.g., 'div', 'MyComponent', 'Fragment')
@@ -126,8 +144,12 @@ export function jsxElementNameToString(
   }
 
   if (t.isMemberExpression(node)) {
-    const objectName = jsxElementNameToString(node.object as any);
-    const propertyName = jsxElementNameToString(node.property as any);
+    const objectName = jsxElementNameToString(
+      node.object as unknown as t.JSXIdentifier | t.JSXMemberExpression,
+    );
+    const propertyName = jsxElementNameToString(
+      node.property as unknown as t.JSXIdentifier | t.JSXMemberExpression,
+    );
     return `${objectName}.${propertyName}`;
   }
 
@@ -176,15 +198,14 @@ export function isTextChild(path: NodePath<JSXChild>): boolean {
 /**
  * Trim text content of JSXText node
  * @description Remove excess whitespace and line breaks, merge multiple spaces into a single space.
+ *
+
  * @param {t.JSXText} node - JSXText AST node.
  * @returns {string} Trimmed text content.
  */
 export function textTrim(node: t.JSXText): string {
   if (!node || !node.value) return '';
-  // Handle escaped sequences properly by checking original value
-  if (/^\s*$/.test(node.value)) {
-    return '';
-  }
+
   return node.value.trim();
 }
 
@@ -306,7 +327,7 @@ export function optimizeChildNodes(children: NodePath<JSXChild>[]): NodePath<JSX
 }
 
 /**
- * Deep check if any property in ObjectExpression contains dynamic values
+ * Deep check if property in ObjectExpression contains dynamic values
  * Recursively examines object expressions to detect dynamic attributes
  *
  * @example
@@ -392,7 +413,7 @@ export function deepCheckObjectDynamic(node: t.ObjectExpression): boolean {
 export function processObjectExpression(
   propName: string,
   objectExpr: t.ObjectExpression,
-  propsCollection: Record<string, any>,
+  propsCollection: Record<string, unknown>,
   isClassOrStyleAttr = false,
 ): string {
   let classStyleString = '';
@@ -409,7 +430,9 @@ export function processObjectExpression(
       .reduce((acc, property) => {
         const key = t.isIdentifier(property.key)
           ? property.key.name
-          : (property.key as t.StringLiteral).value;
+          : t.isStringLiteral(property.key)
+            ? property.key.value
+            : String(property.key);
 
         // Ensure value is static string literal
         if (t.isStringLiteral(property.value)) {
@@ -447,7 +470,6 @@ export function getAttrName(attribute: t.JSXAttribute): string {
  * Serialize HTML element attributes to string
  * @description Serialize JSX attribute object to HTML attribute string
  * @param {Record<string, unknown>|undefined} attributes - Attribute object
- * @param {State} state - Plugin state
  * @return {string} Serialized HTML attribute string
  */
 export function serializeAttributes(attributes: Record<string, unknown> | undefined): string {
@@ -486,16 +508,16 @@ export function serializeAttributes(attributes: Record<string, unknown> | undefi
       delete attributes[attrName];
     }
     // Process conditional expressions - let unified architecture handle
-    else if (t.isConditionalExpression(attrValue as t.Node)) {
+    else if (t.isConditionalExpression(attrValue)) {
       // Store conditional expressions directly, let unified memoizedEffect architecture handle
       // This way all reactive attributes will be handled uniformly in generateDynamicPropsCode
       attributes[attrName] = attrValue;
     }
     // Process object expressions
-    else if (t.isObjectExpression(attrValue as t.Node)) {
+    else if (t.isObjectExpression(attrValue)) {
       const result = processObjectExpression(
         attrName,
-        attrValue as t.ObjectExpression,
+        attrValue,
         attributes,
         attrName === CLASS_NAME || attrName === STYLE_NAME,
       );
@@ -553,15 +575,34 @@ export function findBeforeIndex(currentNode: TreeNode, parentNode: TreeNode): nu
     return null;
   }
 
-  const nodeIndex = parentNode.children.indexOf(currentNode);
-  // Define node types considered "dynamic", these nodes won't serve as static insertion markers
-  const dynamicTypes = [NODE_TYPE.EXPRESSION, NODE_TYPE.FRAGMENT, NODE_TYPE.COMPONENT];
+  const children = parentNode.children;
+  const childrenLength = children.length;
 
-  // Search backward for the nearest non-dynamic sibling node as insertion marker
-  for (let searchIndex = nodeIndex + 1; searchIndex < parentNode.children.length; searchIndex++) {
-    const siblingNode = parentNode.children[searchIndex] as TreeNode;
+  // Find current node index
+  let nodeIndex = -1;
+  for (let i = 0; i < childrenLength; i++) {
+    if (children[i] === currentNode) {
+      nodeIndex = i;
+      break;
+    }
+  }
 
-    if (!dynamicTypes.includes(siblingNode.type)) {
+  // If node not found or is last child, return null
+  if (nodeIndex === -1 || nodeIndex === childrenLength - 1) {
+    return null;
+  }
+
+  // Search forward for the nearest non-dynamic sibling node as insertion marker
+  for (let searchIndex = nodeIndex + 1; searchIndex < childrenLength; searchIndex++) {
+    const siblingNode = children[searchIndex] as TreeNode;
+    const siblingType = siblingNode.type;
+
+    // Check if node is static (not dynamic)
+    if (
+      siblingType !== NODE_TYPE.EXPRESSION &&
+      siblingType !== NODE_TYPE.FRAGMENT &&
+      siblingType !== NODE_TYPE.COMPONENT
+    ) {
       return siblingNode.index; // Found static node, return its index
     }
   }
@@ -572,36 +613,47 @@ export function findBeforeIndex(currentNode: TreeNode, parentNode: TreeNode): nu
 /**
  * Collect DOM node indices that need to be mapped
  * @description Extract DOM node indices that need to be referenced on the client side from dynamic children and dynamic attributes.
- * These indices are used to efficiently access specific DOM elements in client-side code.
+ *
  * @param {DynamicContent[]} dynamicChildren - Dynamic children collection.
- * @param {Array<{props: Record<string, any>; parentIndex: number | null}>} dynamicProps - Dynamic attribute collection.
+ * @param {Array<{props: Record<string, unknown>; parentIndex: number | null}>} dynamicProps - Dynamic attribute collection.
  * @returns {number[]} De-duplicated and sorted index list, representing DOM nodes that need to be mapped.
  */
 export function collectNodeIndexMap(
   dynamicChildren: DynamicContent[],
-  dynamicProps: Array<{ props: Record<string, any>; parentIndex: number | null }>,
+  dynamicProps: Array<{
+    props: Record<string, unknown>;
+    parentIndex: number | null;
+  }>,
 ): number[] {
   // Use Set for automatic de-duplication
   const indexSet = new Set<number>();
 
-  // Collect parent node indices and preceding node indices of dynamic children
-  dynamicChildren.forEach(item => {
-    if (item.parentIndex !== null) {
-      indexSet.add(item.parentIndex!);
+  const childrenLength = dynamicChildren.length;
+  for (let i = 0; i < childrenLength; i++) {
+    const item = dynamicChildren[i];
+    const parentIndex = item.parentIndex;
+    const beforeIndex = item.before;
+
+    // Add parent index if valid (not null/undefined)
+    if (parentIndex !== null && parentIndex) {
+      indexSet.add(parentIndex);
     }
-    if (item.before !== null) {
-      indexSet.add(item.before);
+    // Add before index if valid (not null/undefined)
+    if (beforeIndex !== null && beforeIndex) {
+      indexSet.add(beforeIndex);
     }
-  });
+  }
 
   // Collect parent node indices of dynamic attributes
-  dynamicProps.forEach(item => {
-    if (item.parentIndex !== null) {
-      indexSet.add(item.parentIndex);
+  const propsLength = dynamicProps.length;
+  for (let i = 0; i < propsLength; i++) {
+    const parentIndex = dynamicProps[i].parentIndex;
+    if (parentIndex !== null && parentIndex) {
+      indexSet.add(parentIndex);
     }
-  });
+  }
 
-  // Convert Set to array and sort in ascending order
+  // Convert Set to sorted array
   return Array.from(indexSet).sort((a, b) => a - b);
 }
 
@@ -623,22 +675,18 @@ export function findIndexPosition(
   targetIndex: number,
   indexMap: number[] | Map<number, number>,
 ): number {
-  if (Array.isArray(indexMap)) {
+  if (isArray(indexMap)) {
     return indexMap.indexOf(targetIndex);
   }
-  if (indexMap instanceof Map) {
+  if (isMap(indexMap)) {
     const position = indexMap.get(targetIndex);
-    return typeof position === 'number' ? position : -1;
+    return isNumber(position) ? position : -1;
   }
   return -1;
 }
 
 /**
  * Insert comment nodes (type: COMMENT) into TreeNode.children where needed
- * @description This function is used during JSX tree conversion, when an expression node is located between two text nodes,
- * or an expression node is immediately followed by another expression node,
- * to insert an empty comment node `<!>` as a marker for dynamic content insertion. This helps precisely locate insertion positions during client-side rendering.
- * This operation does not affect the original `TreeNode.index` system.
  * @param {TreeNode} node - Current TreeNode to process.
  */
 export function processTextElementAddComment(node: TreeNode): void {
@@ -646,32 +694,51 @@ export function processTextElementAddComment(node: TreeNode): void {
     return;
   }
 
-  // Recursively process all child nodes
-  for (const child of node.children) {
+  const children = node.children;
+  const childrenLength = children.length;
+
+  // Recursively process all child nodes first
+  for (let i = 0; i < childrenLength; i++) {
+    const child = children[i];
     // Only recursively process when child is TreeNode type
     if (isTreeNode(child)) {
       processTextElementAddComment(child);
     }
   }
 
-  // Process comment insertion only for this level of children
-  let i = 0;
-  while (i < node.children.length) {
-    // Determine if comment node needs to be inserted at current position
-    if (shouldInsertComment(node.children as TreeNode[], i)) {
-      // Insert comment node, note its index is set to -1, as it's not a regular DOM node, only used as marker.
-      node.children.splice(i + 1, 0, {
+  // Check if comments need to be inserted
+  let needsComments = false;
+  for (let i = 0; i < childrenLength - 1; i++) {
+    if (shouldInsertComment(children as TreeNode[], i)) {
+      needsComments = true;
+      break;
+    }
+  }
+
+  // If no comments needed, skip array reconstruction
+  if (!needsComments) {
+    return;
+  }
+
+  // Build new children array with comments inserted
+  const newChildren: (TreeNode | string | JSXChild)[] = [];
+  for (let i = 0; i < childrenLength; i++) {
+    newChildren.push(children[i]);
+
+    // Check if comment should be inserted after current node
+    if (shouldInsertComment(children as TreeNode[], i)) {
+      newChildren.push({
         type: NODE_TYPE.COMMENT,
         isComment: true,
         children: [],
         index: -1,
-        parentIndex: node.index, // Add required property to satisfy TreeNode type
-      } as TreeNode); // Force type assertion, as it's a special internal node
-      i += 2; // Skip current node and just inserted comment node
-    } else {
-      i += 1;
+        parentIndex: node.index,
+      } as TreeNode);
     }
   }
+
+  // Replace children array
+  node.children = newChildren;
 }
 
 /**
@@ -708,8 +775,8 @@ function shouldInsertComment(children: (TreeNode | string | JSXChild)[], idx: nu
  * 1. Multiple occurrences of `class` / `className` / `style` are merged into a single string (static) or array (dynamic).
  * 2. Collect multiple object spreads as unified `SPREAD_NAME` record to avoid extra traversal.
  */
-export function normalizeProps(raw: Record<string, any>): Record<string, any> {
-  const normalized: Record<string, any> = {};
+export function normalizeProps(raw: Record<string, unknown>): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
 
   const classBuffer: string[] = [];
   const styleBuffer: string[] = [];
@@ -717,7 +784,7 @@ export function normalizeProps(raw: Record<string, any>): Record<string, any> {
   for (const [key, value] of Object.entries(raw)) {
     // Handle both 'class' and 'className' (React compatibility)
     if (key === CLASS_NAME || key === 'className') {
-      if (typeof value === 'string') classBuffer.push(value);
+      if (isString(value)) classBuffer.push(value);
       else {
         // If there's already a dynamic class expression, keep the last one
         normalized[CLASS_NAME] = value; // Keep dynamic expressions as-is
@@ -726,7 +793,7 @@ export function normalizeProps(raw: Record<string, any>): Record<string, any> {
     }
 
     if (key === STYLE_NAME) {
-      if (typeof value === 'string') styleBuffer.push(value);
+      if (isString(value)) styleBuffer.push(value);
       else normalized[STYLE_NAME] = value;
       continue;
     }
@@ -734,7 +801,7 @@ export function normalizeProps(raw: Record<string, any>): Record<string, any> {
     if (key === SPREAD_NAME) {
       // If spread already exists, merge directly as array
       if (!normalized[SPREAD_NAME]) normalized[SPREAD_NAME] = [];
-      (normalized[SPREAD_NAME] as any[]).push(value);
+      (normalized[SPREAD_NAME] as unknown[]).push(value);
       continue;
     }
 
@@ -778,18 +845,18 @@ export function createPropsObjectExpression(
       objectProperties.push(t.spreadElement(astValue));
     } else {
       // Check if dynamic and not a function
-      // if (isDynamicExpression(astValue) && !t.isFunction(astValue) && propName !== 'children') {
-      //   objectProperties.push(
-      //     t.objectMethod(
-      //       'get',
-      //       t.identifier(propName),
-      //       [],
-      //       t.blockStatement([t.returnStatement(astValue)]),
-      //     ),
-      //   );
-      // } else {
-      objectProperties.push(t.objectProperty(t.stringLiteral(propName), astValue));
-      // }
+      if (isDynamicExpression(astValue) && !t.isFunction(astValue)) {
+        objectProperties.push(
+          t.objectMethod(
+            'get',
+            t.identifier(propName),
+            [],
+            t.blockStatement([t.returnStatement(astValue)]),
+          ),
+        );
+      } else {
+        objectProperties.push(t.objectProperty(t.stringLiteral(propName), astValue));
+      }
     }
   }
 
@@ -811,12 +878,24 @@ export function convertValueToASTNode(
   if (t.isExpression(value as Expression)) {
     return value as Expression;
   }
+
   if (isArray(value)) {
+    // Check if all items are strings
+    const allStrings = value.every(item => isString(item));
+    if (allStrings) {
+      // Return a single string literal instead of array
+      return t.stringLiteral(value.join(''));
+    }
     return t.arrayExpression(value.map(item => convertValueToASTNode(item, transformJSX)));
   }
+
   if (isObject(value)) {
+    if (isTreeNode(value) && hasPureStringChildren(value)) {
+      const stringContent = extractStringChildren(value);
+      return t.stringLiteral(stringContent);
+    }
+
     if (
-      value.type === NODE_TYPE.FRAGMENT ||
       value.type === NODE_TYPE.COMPONENT ||
       value.type === NODE_TYPE.NORMAL ||
       value.type === NODE_TYPE.TEXT ||
@@ -886,6 +965,7 @@ export function getSetFunctionForAttribute(attrName?: string) {
       return { name: 'patchAttr', value: state.imports.patchAttr };
   }
 }
+
 /**
  * Determine if an AST node should be considered dynamic for attribute evaluation.
  * Covers common JS expression types beyond Identifier, including member/call/conditional/template, etc.
@@ -922,7 +1002,7 @@ export function isDynamicExpression(node: t.Node | null | undefined): boolean {
     return deepCheckObjectDynamic(node);
   }
   if (t.isArrayExpression(node)) {
-    return node.elements.some(el => el != null && isDynamicExpression(el as t.Node));
+    return node.elements.some(el => el != null && t.isNode(el) && isDynamicExpression(el));
   }
 
   // Literals/null are static
@@ -937,5 +1017,51 @@ export function isDynamicExpression(node: t.Node | null | undefined): boolean {
   }
 
   // Fallback: if it is some other Expression, treat as dynamic; otherwise static
-  return t.isExpression(node as t.Node);
+  return t.isExpression(node);
+}
+
+/**
+ * Detect if all children are static strings and can be output directly
+ *
+ * @param node - TreeNode to check
+ * @returns true if all children are static strings
+ */
+export function hasPureStringChildren(node: TreeNode): boolean {
+  if (!node.children || node.children.length === 0) {
+    return false;
+  }
+
+  return node.children.every(child => {
+    if (isString(child)) {
+      return true;
+    }
+    if (isTreeNode(child) && child.type === NODE_TYPE.TEXT) {
+      return true;
+    }
+    return false;
+  });
+}
+
+/**
+ * Concatenates all string children into a single string
+ *
+ * @param node - TreeNode with string children
+ * @returns Concatenated string
+ */
+export function extractStringChildren(node: TreeNode): string {
+  if (!node.children || node.children.length === 0) {
+    return '';
+  }
+
+  return node.children
+    .map(child => {
+      if (isString(child)) {
+        return child;
+      }
+      if (isTreeNode(child) && child.type === NODE_TYPE.TEXT && child.children) {
+        return child.children.join('');
+      }
+      return '';
+    })
+    .join('');
 }

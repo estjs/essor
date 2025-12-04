@@ -8,12 +8,11 @@ import {
   popContextStack,
   pushContextStack,
 } from './context';
-import { insertNode } from './patch';
 import { LIFECYCLE, triggerLifecycleHook } from './lifecycle';
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
 import { addEventListener } from './binding';
 import { getComponentKey, normalizeKey } from './key';
-import { removeNode, replaceNode, shallowCompare } from './utils';
+import { insertNode, removeNode, replaceNode, shallowCompare } from './utils';
 
 export type ComponentFn = (props?: ComponentProps) => Node;
 export type ComponentProps = Record<string, unknown>;

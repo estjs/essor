@@ -6,7 +6,8 @@ export const DEFAULT_OPTIONS: PluginOptions = {
   symbol: '$',
   props: true,
   hmr: false,
-  styled: true,
+  styled: false,
+  for: false,
 };
 
 // Rendering mode
@@ -24,9 +25,13 @@ export const IMPORTS_MAPS = [
   'memoEffect',
   'omitProps',
 
+  // component
   'createComponent',
   'Fragment',
   'For',
+  'Suspense',
+  'Portal',
+
   // Template related
   'mapNodes',
   'template',

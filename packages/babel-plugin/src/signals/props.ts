@@ -334,7 +334,7 @@ function buildDefaultValue(
  *
  * // After
  * function Component(__props = { count: 0 }) {
- *   const rest = propsOmit(__props, ['title', 'count']);
+ *   const rest = omitProps(__props, ['title', 'count']);
  *   return <div>{__props.title} {__props.count} {rest}</div>;
  * }
  * ```

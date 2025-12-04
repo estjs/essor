@@ -2,6 +2,13 @@ import babel from '@babel/core';
 import babelPlugin from 'babel-plugin-essor';
 import { createContext, popContextStack, pushContextStack } from '../src/context';
 
+/**
+ * Mount a component to a container for testing
+ * @param componentFn - Component function to mount
+ * @param container - Container element to mount into
+ */
+import { insert } from '../src/binding';
+
 export function createTestRoot(id = 'app'): HTMLElement {
   let root = document.getElementById(id) as HTMLElement | null;
   if (!root) {
@@ -34,15 +41,11 @@ export function transform(code: string, opts): string {
  * @param componentFn - Component function to mount
  * @param container - Container element to mount into
  */
-export function mount(componentFn: () => Node, container: HTMLElement): void {
+export function mount(componentFn: () => any, container: HTMLElement): void {
   const context = createContext(null);
   pushContextStack(context);
 
-  const result = componentFn();
-
-  if (result) {
-    container.appendChild(result);
-  }
+  insert(container, componentFn);
 
   popContextStack();
 }
