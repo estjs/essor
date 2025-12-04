@@ -210,6 +210,53 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
 
   return store;
 }
+/**
+ * Creates store options from a class definition.
+ *
+ * @template S - The type of the store's state
+ * @param StoreClass - The store class
+ * @returns Store options derived from the class
+ * @internal
+ */
+function createClassStore<S extends State>(
+  StoreClass: new () => S,
+): StoreOptions<
+  S,
+  Record<string, (...args: any[]) => any>,
+  Record<string, (...args: any[]) => any>
+> {
+  const instance = new StoreClass();
+  const state = Object.create(null);
+  const getters: Record<string, (...args: any[]) => any> = {};
+  const actions: Record<string, (...args: any[]) => any> = {};
+
+  // Extract instance properties as state
+  Object.getOwnPropertyNames(instance).forEach(key => {
+    state[key] = instance[key];
+  });
+
+  // Extract prototype methods and getters
+  Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
+    const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
+    if (descriptor) {
+      if (typeof descriptor.get === 'function') {
+        getters[key] = function (this: S) {
+          return descriptor.get!.call(this);
+        };
+      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
+        actions[key] = function (this: S, ...args: any[]) {
+          return descriptor.value.apply(this, args);
+        };
+      }
+    }
+  });
+
+  return {
+    state,
+    getters,
+    actions,
+  };
+}
 
 /**
  * Store definition type that can be either a class or an options object.
@@ -217,10 +264,10 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
 type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
   | (new () => S)
   | ({
-      state: S;
-      getters?: G;
-      actions?: A;
-    } & ThisType<S & GetterValues<G> & A & StoreActions<S>>);
+    state: S;
+    getters?: G;
+    actions?: A;
+  } & ThisType<S & GetterValues<G> & A & StoreActions<S>>);
 
 /**
  * Creates a new store with the given definition.
@@ -290,53 +337,5 @@ export function createStore<S extends State, G extends Getters<S>, A extends Act
     }
 
     return store;
-  };
-}
-
-/**
- * Creates store options from a class definition.
- *
- * @template S - The type of the store's state
- * @param StoreClass - The store class
- * @returns Store options derived from the class
- * @internal
- */
-function createClassStore<S extends State>(
-  StoreClass: new () => S,
-): StoreOptions<
-  S,
-  Record<string, (...args: any[]) => any>,
-  Record<string, (...args: any[]) => any>
-> {
-  const instance = new StoreClass();
-  const state = Object.create(null);
-  const getters: Record<string, (...args: any[]) => any> = {};
-  const actions: Record<string, (...args: any[]) => any> = {};
-
-  // Extract instance properties as state
-  Object.getOwnPropertyNames(instance).forEach(key => {
-    state[key] = instance[key];
-  });
-
-  // Extract prototype methods and getters
-  Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
-    const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
-    if (descriptor) {
-      if (typeof descriptor.get === 'function') {
-        getters[key] = function (this: S) {
-          return descriptor.get!.call(this);
-        };
-      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
-        actions[key] = function (this: S, ...args: any[]) {
-          return descriptor.value.apply(this, args);
-        };
-      }
-    }
-  });
-
-  return {
-    state,
-    getters,
-    actions,
   };
 }

@@ -3,8 +3,34 @@ import { EffectFlags, ReactiveFlags, SignalFlags } from './constants';
 import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './link';
 import { isBatching } from './batch';
 import { createScheduler } from './scheduler';
-import type { FlushTiming } from './scheduler';
+import type { Computed } from './computed';
+import type { Signal } from './signal';
+import type { Reactive } from './reactive';
 import type { DebuggerEvent, Link, ReactiveNode } from './link';
+import type { FlushTiming } from './scheduler';
+
+/**
+ * Unwrap a Signal, Computed, or Reactive type to get the underlying value type
+ *
+ * @template T - The wrapped type
+ *
+ * @example
+ * ```typescript
+ * import type { Signal, Computed, Reactive, Unwrap } from '@estjs/signals';
+ *
+ * type Count = Unwrap<Signal<number>>; // number
+ * type User = Unwrap<Reactive<{ name: string }>>; // { name: string }
+ * type Double = Unwrap<Computed<number>>; // number
+ * ```
+ */
+export type Unwrap<T> =
+  T extends Signal<infer V>
+  ? V
+  : T extends Computed<infer V>
+  ? V
+  : T extends Reactive<infer V extends object>
+  ? V
+  : T;
 
 /**
  * Effect function type
@@ -141,7 +167,7 @@ export function flushJobs(): void {
     if (jobQueue.size > 0) {
       warn(
         `[Effect] Job queue not empty after flush. ${jobQueue.size} jobs remain. ` +
-          'This may indicate jobs were queued during flush.',
+        'This may indicate jobs were queued during flush.',
       );
     }
   }
@@ -448,13 +474,13 @@ export class EffectImpl<T = any> implements ReactiveNode {
       if (this.depLink) {
         error(
           '[Effect] Cleanup verification failed: depLink not cleared. ' +
-            'This indicates a memory leak in the dependency tracking system.',
+          'This indicates a memory leak in the dependency tracking system.',
         );
       }
       if (this.subLink) {
         error(
           '[Effect] Cleanup verification failed: subLink not cleared. ' +
-            'This indicates a memory leak in the subscription system.',
+          'This indicates a memory leak in the subscription system.',
         );
       }
     }
@@ -512,7 +538,7 @@ export function effect<T = any>(fn: EffectFunction<T>, options?: EffectOptions):
     if (__DEV__) {
       error(
         '[Effect] Effect failed during initial execution and has been stopped. ' +
-          'Fix the error in your effect function.',
+        'Fix the error in your effect function.',
         _error,
       );
     }

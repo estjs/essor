@@ -45,6 +45,28 @@ export interface Signal<T> {
 }
 
 /**
+ * A more precise type for the value held by a signal.
+ * This type helps TypeScript understand the type of the unwrapped value.
+ *
+ * @template T - The type of value held by the signal
+ */
+export type SignalValue<T> = T extends Signal<infer V> ? V : never;
+/**
+ * Extract the value type from a Signal
+ *
+ * @template T - The Signal type
+ *
+ * @example
+ * ```typescript
+ * import { signal, type SignalType } from '@estjs/signals';
+ *
+ * const count = signal(0);
+ * type CountValue = SignalType<typeof count>; // number
+ * ```
+ */
+export type SignalType<T> = T extends Signal<infer V> ? V : never;
+
+/**
  * Internal implementation of the Signal interface.
  * This class manages reactive state and handles dependency tracking.
 
@@ -115,7 +137,7 @@ export class SignalImpl<T> implements ReactiveNode {
       if (__DEV__) {
         warn(
           'Setting a signal value to another signal is not recommended. ' +
-            'The value will be unwrapped automatically.',
+          'The value will be unwrapped automatically.',
         );
       }
       value = (value as Signal<T>).peek() as T;
@@ -249,11 +271,3 @@ export function shallowSignal<T>(value?: T): Signal<T> {
 export function isSignal<T>(value: unknown): value is Signal<T> {
   return !!value && !!value[SignalFlags.IS_SIGNAL];
 }
-
-/**
- * A more precise type for the value held by a signal.
- * This type helps TypeScript understand the type of the unwrapped value.
- *
- * @template T - The type of value held by the signal
- */
-export type SignalValue<T> = T extends Signal<infer V> ? V : never;

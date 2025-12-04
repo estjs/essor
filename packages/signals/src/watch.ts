@@ -1,4 +1,4 @@
-import { hasChanged, isFunction, isObject } from '@estjs/shared';
+import { hasChanged, isFunction, isMap, isObject, isSet } from '@estjs/shared';
 import { queueJob } from './scheduler';
 import { isSignal } from './signal';
 import { isReactive } from './reactive';
@@ -46,14 +46,14 @@ function traverse(value: any, seen = new Set()) {
       traverse(element, seen);
     }
     // If it's a Map, traverse all its values, and access keys and values to track changes.
-  } else if (value instanceof Map) {
+  } else if (isMap(value)) {
     value.forEach((v: any) => {
       traverse(v, seen);
     });
     value.keys();
     value.values();
     // If it's a Set, traverse all its values to track changes.
-  } else if (value instanceof Set) {
+  } else if (isSet(value)) {
     value.forEach((v: any) => {
       traverse(v, seen);
     });
@@ -116,31 +116,6 @@ function resolveSource<T>(source: WatchSource<T>): () => T {
 }
 
 /**
- * Deep clone a value for providing oldValue in watch callbacks.
- * @param value - The value to clone.
- * @returns The cloned value.
- */
-function cloneValue(value: any): any {
-  if (Array.isArray(value)) {
-    return value.map(item => cloneValue(item));
-  }
-  if (isObject(value)) {
-    if (value instanceof Map) {
-      return new Map(value);
-    }
-    if (value instanceof Set) {
-      return new Set(value);
-    }
-    const result: Record<string, any> = {};
-    Object.keys(value).forEach(key => {
-      result[key] = cloneValue(value[key]);
-    });
-    return result;
-  }
-  return value;
-}
-
-/**
  * Watch one or more reactive data sources and execute callback when sources change.
  * @param source - The source(s) to watch.
  * @param callback - The callback function to execute when source changes.
@@ -179,7 +154,7 @@ export function watch<T = any>(
     if (hasChanged(newValue, oldValue)) {
       callback(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : (oldValue as T));
       // Update oldValue for next comparison.
-      oldValue = cloneValue(newValue);
+      oldValue = newValue;
     }
   };
 
@@ -204,7 +179,7 @@ export function watch<T = any>(
     job();
   } else {
     // Otherwise, run effect once first to collect initial value as oldValue.
-    oldValue = cloneValue(runner.effect.run());
+    oldValue = runner.effect.run();
   }
 
   // Return a stop function.

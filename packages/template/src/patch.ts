@@ -1,9 +1,10 @@
+import { isHTMLElement } from '@estjs/shared';
 import { isComponent } from './component';
 import { getNodeKey, setNodeKey } from './key';
 import {
   getFirstDOMNode,
   insertNode,
-  isHTMLNode,
+  isHtmLTextElement,
   isSameNode,
   removeNode,
   replaceNode,
@@ -13,7 +14,7 @@ import type { AnyNode } from './types';
 /**
  * Transfer key from old node to new node if new node doesn't have one
  */
-function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
+export function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
   if (isComponent(oldNode) || isComponent(newNode)) {
     return;
   }
@@ -38,13 +39,13 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
   if (newNode === oldNode) {
     return oldNode;
   }
-  if (isHTMLNode(newNode) && isHTMLNode(oldNode)) {
+  if (isHTMLElement(newNode) && isHTMLElement(oldNode)) {
     if (newNode.isEqualNode(oldNode)) {
       return oldNode;
     }
   }
   // Handle text nodes
-  if (oldNode instanceof Text && newNode instanceof Text) {
+  if (isHtmLTextElement(oldNode) && isHtmLTextElement(newNode)) {
     if (oldNode.textContent !== newNode.textContent) {
       oldNode.textContent = newNode.textContent;
     }
@@ -362,11 +363,6 @@ export function getSequence(arr: Int32Array | number[]): number[] {
   if (len === 0) return [];
   if (len === 1) return arr[0] !== 0 ? [0] : [];
 
-  // Fast path for very small arrays (< 10)
-  if (len < 10) {
-    return getSequenceSimple(arr);
-  }
-
   const result: number[] = [0];
   const p = new Int32Array(len);
 
@@ -414,53 +410,6 @@ export function getSequence(arr: Int32Array | number[]): number[] {
   while (u-- > 0) {
     result[u] = v;
     v = p[v];
-  }
-
-  return result;
-}
-
-/**
- * Simple O(n²) LIS for small arrays
- * Faster than binary search for n < 10
- */
-function getSequenceSimple(arr: Int32Array | number[]): number[] {
-  const len = arr.length;
-  const dp: number[] = [];
-  const parent: number[] = new Array(len).fill(-1);
-
-  for (let i = 0; i < len; i++) {
-    if (arr[i] === 0) continue;
-
-    let maxLen = 0;
-    let maxIdx = -1;
-
-    for (let j = 0; j < i; j++) {
-      if (arr[j] !== 0 && arr[j] < arr[i] && (dp[j] || 0) > maxLen) {
-        maxLen = dp[j] || 0;
-        maxIdx = j;
-      }
-    }
-
-    dp[i] = maxLen + 1;
-    parent[i] = maxIdx;
-  }
-
-  // Find max length
-  let maxLen = 0;
-  let maxIdx = -1;
-  for (let i = 0; i < len; i++) {
-    if ((dp[i] || 0) > maxLen) {
-      maxLen = dp[i] || 0;
-      maxIdx = i;
-    }
-  }
-
-  // Backtrack
-  const result: number[] = [];
-  let curr = maxIdx;
-  while (curr !== -1) {
-    result.unshift(curr);
-    curr = parent[curr];
   }
 
   return result;

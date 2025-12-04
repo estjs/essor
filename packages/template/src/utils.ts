@@ -1,4 +1,4 @@
-import { error, isFalsy, isPrimitive } from '@estjs/shared';
+import { error, isFalsy, isHTMLElement, isPrimitive } from '@estjs/shared';
 import { isComponent } from './component';
 import { getNodeKey } from './key';
 import type { AnyNode } from './types';
@@ -96,8 +96,10 @@ export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null 
     if (beforeNode) {
       parent.insertBefore(child as Node, beforeNode);
     } else {
-      if (!(child instanceof Node)) {
-        error('insertNode: child is not a Node', child);
+      if (__DEV__) {
+        if (!child || !isHTMLElement(child)) {
+          error('insertNode: child is not a Node', child);
+        }
       }
       parent.appendChild(child as Node);
     }
@@ -184,7 +186,7 @@ export function isSameNode(a: AnyNode, b: AnyNode): boolean {
  */
 export function normalizeNode(node: unknown): Node {
   // already a Node
-  if (node instanceof Node) {
+  if (isHTMLElement(node)) {
     return node;
   }
   // Handle primitives with memoization
@@ -215,14 +217,7 @@ export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
 export function isHtmLTextElement(val: unknown): val is Text {
   return val instanceof Text;
 }
-/**
- * Checks if a value is a HTML node
- * @param {unknown} val - The value to check
- * @returns {boolean} - Returns true if the value is a HTML node, false otherwise
- */
-export function isHTMLNode(val: unknown): val is HTMLElement {
-  return val instanceof HTMLElement;
-}
+
 /**
  * Shallow compare two objects
  * @param {any} a - The first object to compare

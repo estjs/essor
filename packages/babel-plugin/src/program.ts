@@ -69,7 +69,8 @@ export const transformProgram = {
     };
   },
 
-  exit: (path: NodePath<t.Program>, state: PluginState) => {
+  exit: (path: NodePath<t.Program>) => {
+    const state: PluginState = path.state;
     const { imports, declarations, events } = state;
     // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 

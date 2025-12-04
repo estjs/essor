@@ -1,4 +1,4 @@
-import { error, isNaN, isNull, isString, isSymbol, warn } from '@estjs/shared';
+import { error, isHTMLElement, isNaN, isNull, isString, isSymbol, warn } from '@estjs/shared';
 import { isComponent } from './component';
 import type { AnyNode } from './types';
 
@@ -79,7 +79,7 @@ export function normalizeKey(key: any): string | undefined {
       if (__DEV__) {
         warn(
           `[Key System] Key length exceeds ${MAX_KEY_LENGTH} characters. ` +
-            `This may impact performance. Consider using a shorter identifier.`,
+          `This may impact performance. Consider using a shorter identifier.`,
         );
       }
       return `${key.slice(0, MAX_KEY_LENGTH - 10)}_${simpleHash(key).toString(36)}`;
@@ -214,11 +214,11 @@ export function validateKeys(children: AnyNode[], parent?: Node): void {
   }
 
   if (duplicates.size > 0) {
-    const parentTag = parent instanceof Element ? parent.tagName.toLowerCase() : 'unknown';
+    const parentTag = isHTMLElement(parent) ? parent.tagName.toLowerCase() : 'unknown';
 
     error(
       `Duplicate keys detected in <${parentTag}>: [${Array.from(duplicates).join(', ')}]\n` +
-        `Keys must be unique among siblings.`,
+      `Keys must be unique among siblings.`,
     );
   }
 }
