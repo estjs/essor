@@ -1,5 +1,5 @@
 import { isComputed, isSignal } from '@estjs/signals';
-import { isArray, isObject, isString, kebabCase } from '@estjs/shared';
+import { isArray, isNumber, isObject, isString, kebabCase } from '@estjs/shared';
 
 /**
  * Normalized style object type
@@ -108,7 +108,7 @@ export function styleObjectToString(styleValue: NormalizedStyle | string | undef
     const propValue = styleValue[propName];
 
     // Only process valid string or number values
-    if (isString(propValue) || typeof propValue === 'number') {
+    if (isString(propValue) || isNumber(propValue)) {
       // Keep CSS variables as is, convert other properties to kebab-case
       const normalizedPropName = propName.startsWith('--') ? propName : kebabCase(propName);
       cssText += `${normalizedPropName}:${propValue};`;
@@ -199,7 +199,7 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
  */
 export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string): string {
   // Ignore null, undefined, and false value attributes
-  if (attrValue == null || attrValue === false) {
+  if (!attrValue) {
     return '';
   }
 
@@ -216,7 +216,7 @@ export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string
     }
 
     // Use string styles directly
-    if (typeof normalizedStyle === 'string') {
+    if (isString(normalizedStyle)) {
       return ` style="${normalizedStyle}"`;
     }
 

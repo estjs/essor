@@ -2,7 +2,7 @@
  * Server-side node mapping utilities
  */
 
-import { error } from '@estjs/shared';
+import { error, isString } from '@estjs/shared';
 import { createComponent } from '../component';
 import { template } from '../renderer';
 import { mapNodes } from '../binding';
@@ -131,8 +131,7 @@ export function hydrate(
 
   try {
     // Get container element
-    const rootElement =
-      typeof container === 'string' ? document.querySelector(container) : container;
+    const rootElement = isString(container) ? document.querySelector(container) : container;
 
     if (!rootElement) {
       error('Hydration error: Root element not found');

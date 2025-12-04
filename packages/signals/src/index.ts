@@ -69,14 +69,4 @@ export { createStore, type StoreOptions, type StoreActions } from './store';
 export { Ref, isRef, ref } from './ref';
 
 // ==================== Watch API ====================
-export {
-  watch,
-  watchEffect,
-  onWatcherCleanup,
-  traverse,
-  type WatchHandle,
-  type OnCleanup,
-  type WatchOptions,
-  type WatchSource,
-  type WatchCallback,
-} from './watch';
+export { watch } from './watch';
