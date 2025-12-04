@@ -7,7 +7,6 @@ export const DEFAULT_OPTIONS: PluginOptions = {
   props: true,
   hmr: false,
   styled: false,
-  for: false,
 };
 
 // Rendering mode

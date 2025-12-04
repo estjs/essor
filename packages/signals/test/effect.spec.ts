@@ -283,7 +283,6 @@ describe('memoEffect', () => {
 
         // Avoid repeated attribute settings
         if (currentWidth !== prev.lastWidth) {
-          // eslint-disable-next-line unicorn/prefer-dom-node-dataset
           mockElement.patchAttribute('data-width', currentWidth.toString());
           prev.lastWidth = currentWidth;
         }

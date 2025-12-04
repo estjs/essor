@@ -88,7 +88,7 @@ export function propagate(link: Link): void {
     }
 
     // Process sibling nodes
-    if (next ) {
+    if (next) {
       link = next;
       next = link.nextSubLink;
       continue;

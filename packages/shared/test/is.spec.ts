@@ -46,10 +46,10 @@ describe('type Check Utils', () => {
   describe('isPromise', () => {
     const testCases = [
       { value: Promise.resolve(), expected: true },
-      { value: new Promise(() => { }), expected: true },
+      { value: new Promise(() => {}), expected: true },
       { value: {}, expected: false },
       { value: [], expected: false },
-      { value: () => { }, expected: false },
+      { value: () => {}, expected: false },
       { value: null, expected: false },
       { value: undefined, expected: false },
     ];
@@ -241,9 +241,9 @@ describe('type Check Utils', () => {
 
   describe('isFunction', () => {
     const testCases = [
-      { value: () => { }, expected: true },
-      { value: async () => { }, expected: true },
-      { *value() { }, expected: true },
+      { value: () => {}, expected: true },
+      { value: async () => {}, expected: true },
+      { *value() {}, expected: true },
       { value: {}, expected: false },
       { value: [], expected: false },
       { value: 'string', expected: false },
@@ -288,7 +288,7 @@ describe('type Check Utils', () => {
       { value: undefined, expected: true },
       { value: {}, expected: false },
       { value: [], expected: false },
-      { value: () => { }, expected: false },
+      { value: () => {}, expected: false },
       { value: new Date(), expected: false },
       { value: /(?:)/, expected: false },
     ];
@@ -322,7 +322,7 @@ describe('type Check Utils', () => {
       { value: { a: 1, b: 2 }, expected: true },
       { value: Object.create(null), expected: true },
       { value: [], expected: false },
-      { value: () => { }, expected: false },
+      { value: () => {}, expected: false },
       { value: new Date(), expected: false },
       { value: /(?:)/, expected: false },
       { value: null, expected: false },

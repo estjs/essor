@@ -50,7 +50,7 @@ describe('node-operations', () => {
     it('handles insertion errors gracefully', () => {
       const root = createTestRoot();
       const node = document.createElement('div');
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Create a scenario that might cause an error
       const invalidBefore = document.createElement('span');
@@ -91,7 +91,7 @@ describe('node-operations', () => {
     });
 
     it('handles removal errors gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const node = document.createElement('div');
       removeNode(node);
       consoleSpy.mockRestore();
@@ -144,7 +144,7 @@ describe('node-operations', () => {
     });
 
     it('handles replace errors gracefully', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const root = createTestRoot();
       const node = document.createElement('div');
       replaceNode(root, node, document.createElement('span'));

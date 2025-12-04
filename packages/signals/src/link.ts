@@ -341,7 +341,7 @@ export function unlinkReactiveNode(
         if (depNode.depLink) {
           error(
             '[Link] Cascading cleanup failed: depNode still has dependency links. ' +
-            'This indicates a bug in the unlinking logic.',
+              'This indicates a bug in the unlinking logic.',
           );
         }
       }

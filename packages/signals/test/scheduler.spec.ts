@@ -216,7 +216,10 @@ describe('scheduler Test Suite', () => {
       queueJob(faultyJob);
       await nextTick();
 
-      expect(errorSpy).toHaveBeenCalledWith('Error executing queued job:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[Essor error]: Error executing queued job:',
+        expect.any(Error),
+      );
     });
 
     it('error handling - production environment should ignore job errors', async () => {

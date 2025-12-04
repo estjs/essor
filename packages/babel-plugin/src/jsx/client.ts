@@ -489,8 +489,8 @@ export function createInsertArguments(
     // CallExpression not be use call function
     // Content lazy function: () => dynamicContent (implements on-demand calculation)
     t.isCallExpression(dynamicContent.node) ||
-      t.isArrowFunctionExpression(dynamicContent.node) ||
-      t.isFunctionExpression(dynamicContent.node)
+    t.isArrowFunctionExpression(dynamicContent.node) ||
+    t.isFunctionExpression(dynamicContent.node)
       ? dynamicContent.node
       : t.arrowFunctionExpression([], dynamicContent.node),
   ];

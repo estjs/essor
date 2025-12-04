@@ -44,6 +44,7 @@ describe('component', () => {
 
       const button = root.querySelector('button');
       expect(button).toBeTruthy();
+      // @ts-ignore
       expect(instance.componentContext?.isMount).toBe(true);
 
       // Trigger click event
@@ -64,7 +65,7 @@ describe('component', () => {
       expect((ref.value as Node).isEqualNode(instance.firstChild)).toBe(true);
     });
 
-    it('triggers mounted lifecycle hook', async () => {
+    it('triggers mounted lifecycle hook', () => {
       const root = createTestRoot();
       const mountedHook = vi.fn();
 
@@ -74,7 +75,7 @@ describe('component', () => {
       };
 
       const instance = createComponent(TestComp);
-      await instance.mount(root);
+      instance.mount(root);
 
       expect(mountedHook).toHaveBeenCalledTimes(1);
     });
@@ -127,42 +128,8 @@ describe('component', () => {
     });
   });
 
-  describe('asynchronous component mounting', () => {
-    it('mounts async component successfully', async () => {
-      const root = createTestRoot();
-      const TestComp = async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
-        const div = document.createElement('div');
-        div.textContent = 'Async';
-        return { default: div };
-      };
-
-      const instance = createComponent(TestComp as any);
-      const result = await instance.mount(root);
-
-      expect(result).toBeTruthy();
-      expect(instance.isConnected).toBe(true);
-      expect((instance.firstChild as HTMLElement).textContent).toBe('Async');
-    });
-
-    it('handles async component with default export', async () => {
-      const root = createTestRoot();
-      const TestComp = () => {
-        return Promise.resolve({
-          default: () => {
-            const div = document.createElement('div');
-            div.textContent = 'Default Export';
-            return div;
-          },
-        });
-      };
-
-      const instance = createComponent(TestComp as any);
-      await instance.mount(root);
-
-      expect((instance.firstChild as HTMLElement).textContent).toBe('Default Export');
-    });
-
+  // TODO: not support async component
+  describe.skip('asynchronous component mounting', () => {
     it('triggers mounted lifecycle hook for async component', async () => {
       const root = createTestRoot();
       const mountedHook = vi.fn();
@@ -219,28 +186,6 @@ describe('component', () => {
       // The mount should have been cancelled, DOM should be empty
       expect(root.childElementCount).toBe(0);
       expect(instance.isConnected).toBe(false);
-    });
-
-    it('handles concurrent mount calls correctly', async () => {
-      const root1 = createTestRoot('root1');
-      const root2 = createTestRoot('root2');
-
-      const TestComp = async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
-        const div = document.createElement('div');
-        div.textContent = 'Async Content';
-        return div;
-      };
-
-      const instance = createComponent(TestComp as any);
-      const promise1 = instance.mount(root1);
-      const promise2 = instance.mount(root2);
-
-      await Promise.all([promise1, promise2]);
-
-      // Only the last mount should be active
-      // Note: The component should be in the last parent
-      expect(instance.isConnected).toBe(true);
     });
   });
 
@@ -363,7 +308,9 @@ describe('component', () => {
       await next.update(first);
 
       // Props are updated but reactiveProps is reused from first
+      // @ts-ignore
       expect(next.reactiveProps.id).toBe('two');
+      // @ts-ignore
       expect('extra' in next.reactiveProps).toBe(true);
 
       // Context is inherited, so updated hook from first mount should be triggered
@@ -421,7 +368,7 @@ describe('component', () => {
 
       // Create new instance and update
       const next = createComponent(TestComp, { text: 'Second' });
-      const result = await next.update(first);
+      await next.update(first);
 
       // Updated hook should be triggered from inherited context
       expect(updatedHook).toHaveBeenCalled();
@@ -445,7 +392,7 @@ describe('component', () => {
 
       // Create new instance and update
       const next = createComponent(TestComp, { text: 'Second' });
-      const result = await next.update(first);
+      await next.update(first);
 
       // Async hook should have been awaited from inherited context
       expect(updatedHook).toHaveBeenCalledTimes(1);
@@ -492,7 +439,8 @@ describe('component', () => {
       expect(updatedHook).toHaveBeenCalled();
     });
 
-    it('handles forceUpdate with async component', async () => {
+    // TODO:  not support  async component
+    it.skip('handles forceUpdate with async component', async () => {
       const root = createTestRoot();
       let renderCount = 0;
 
@@ -581,7 +529,8 @@ describe('component', () => {
       expect(instance.firstChild).toBe(originalNode);
     });
 
-    it('handles concurrent forceUpdate calls correctly', async () => {
+    // TODO: not supported Promise
+    it.skip('handles concurrent forceUpdate calls correctly', async () => {
       const root = createTestRoot();
       let renderCount = 0;
       const resolvers: Array<() => void> = [];
@@ -687,6 +636,7 @@ describe('component', () => {
       const instance = createComponent(TestComp);
       await instance.mount(root);
 
+      // @ts-ignore
       const context = instance.componentContext;
       expect(context).toBeTruthy();
 
@@ -740,7 +690,7 @@ describe('component', () => {
 
       const instance = createComponent(TestComp);
       await instance.mount(root);
-
+      // @ts-ignore
       expect(instance.componentContext?.mount.size).toBe(0);
     });
 

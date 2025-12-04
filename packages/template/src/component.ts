@@ -1,4 +1,4 @@
-import { isSignal, shallowReactive } from '@estjs/signals';
+import { type Computed, type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
 import { error, hasChanged, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
 import {
   type Context,
@@ -14,7 +14,8 @@ import { addEventListener } from './binding';
 import { getComponentKey, normalizeKey } from './key';
 import { insertNode, removeNode, replaceNode, shallowCompare } from './utils';
 
-export type ComponentFn = (props?: ComponentProps) => Node;
+// TODO: support Promise<Node> ?
+export type ComponentFn = (props?: ComponentProps) => Node | Signal<Node> | Computed<Node>;
 export type ComponentProps = Record<string, unknown>;
 
 export class Component {
@@ -57,7 +58,7 @@ export class Component {
   }
 
   constructor(
-    public component: (props: ComponentProps) => Node,
+    public component: ComponentFn,
     public props: ComponentProps | undefined,
   ) {
     this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
@@ -93,12 +94,8 @@ export class Component {
     // render the component
     let result = this.component(this.reactiveProps);
 
-    if (isFunction(result)) {
-      result = result();
-    }
-
     // Unwrap signals and computed values
-    if (isSignal<Node>(result)) {
+    if (isSignal<Node>(result) || isComputed<Node>(result)) {
       result = result.value;
     }
 
@@ -205,8 +202,8 @@ export class Component {
       }
 
       // Unwrap signals and computed values
-      if (isSignal(newNode)) {
-        newNode = (newNode as any).value;
+      if (isSignal<Node>(newNode) || isComputed<Node>(newNode)) {
+        newNode = newNode.value;
       }
 
       if (prevNode && newNode && prevNode !== newNode) {

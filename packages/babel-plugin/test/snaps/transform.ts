@@ -37,9 +37,9 @@ export function getTransform(
 ): (code: string) => string {
   const transform = Array.isArray(transformName)
     ? transformName.reduce((obj, key) => {
-      Object.assign(obj, transforms[key]);
-      return obj;
-    }, {})
+        Object.assign(obj, transforms[key]);
+        return obj;
+      }, {})
     : transforms[transformName];
   if (!transform) {
     throw new Error(`Unsupported transform: ${transformName}`);

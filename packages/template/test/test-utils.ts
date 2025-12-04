@@ -10,7 +10,7 @@ import { createContext, popContextStack, pushContextStack } from '../src/context
 import { insert } from '../src/binding';
 
 export function createTestRoot(id = 'app'): HTMLElement {
-  let root = document.getElementById(id) as HTMLElement | null;
+  let root = document.querySelector(`#${id}`) as HTMLElement | null;
   if (!root) {
     root = document.createElement('div');
     root.id = id;

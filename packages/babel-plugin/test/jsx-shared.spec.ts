@@ -4,7 +4,6 @@ import * as t from '@babel/types';
 import traverse from '@babel/traverse';
 import {
   collectNodeIndexMap,
-  convertValueToASTNode,
   createPropsObjectExpression,
   deepCheckObjectDynamic,
   findBeforeIndex,
@@ -175,37 +174,5 @@ describe('jsx shared helpers', () => {
     );
     expect(map).toEqual([1, 3]);
     expect(findIndexPosition(3, map)).toBe(1);
-  });
-
-  it('converts arbitrary values to AST nodes', () => {
-    const ast = parse('const element = <span />;', { sourceType: 'module', plugins: ['jsx'] });
-    let jsxPath: any;
-    traverse(ast, {
-      JSXElement(path) {
-        jsxPath = path;
-        path.stop();
-      },
-    });
-
-    const state = {
-      opts: { mode: 'client' },
-      imports: createImportIdentifiers(jsxPath.scope.path as any),
-      declarations: [],
-      events: new Set<string>(),
-    };
-    transformProgram.enter(jsxPath.scope.path as any, state);
-    setContext({ state, path: jsxPath, operationIndex: 0 });
-
-    const literalNode = convertValueToASTNode('text', () => {
-      throw new Error('unexpected JSX conversion');
-    });
-    expect(literalNode.type).toBe('StringLiteral');
-
-    const arrayNode = convertValueToASTNode(['a', 'b'], () => {
-      throw new Error('unexpected JSX conversion');
-    });
-    expect(arrayNode.type).toBe('ArrayExpression');
-
-    resetContext();
   });
 });

@@ -63,12 +63,6 @@ export interface PluginOptions {
    * @default true
    */
   styled?: boolean;
-
-  /**
-   * for
-   */
-
-  for: boolean;
 }
 
 /**

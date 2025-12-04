@@ -79,7 +79,7 @@ describe('lifecycle management', () => {
       context.isMount = true;
       pushContextStack(context);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const hook = vi.fn(() => {
         throw new Error('Hook error');
       });
@@ -92,7 +92,7 @@ describe('lifecycle management', () => {
     });
 
     it('logs error when registering hook outside context', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       const hook = vi.fn();
       registerLifecycleHook(LIFECYCLE.mount, hook);
@@ -105,7 +105,7 @@ describe('lifecycle management', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const hook = vi.fn();
 
       registerLifecycleHook('invalid' as any, hook);
@@ -142,7 +142,7 @@ describe('lifecycle management', () => {
     });
 
     it('logs error when triggering outside context', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       triggerLifecycleHook(LIFECYCLE.mount);
 
@@ -182,7 +182,7 @@ describe('lifecycle management', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const errorHook = vi.fn(() => {
         throw new Error('Hook error');
       });
@@ -204,8 +204,8 @@ describe('lifecycle management', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
-      const errorHook = vi.fn(async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorHook = vi.fn(() => {
         throw new Error('Async hook error');
       });
 
@@ -226,7 +226,7 @@ describe('lifecycle management', () => {
       const context = createContext(null);
       pushContextStack(context);
 
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const slowHook = vi.fn(async () => {
         await new Promise(resolve => setTimeout(resolve, 4000));
       });

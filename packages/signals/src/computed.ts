@@ -155,8 +155,8 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
     } else if (__DEV__) {
       warn(
         '[Computed] Cannot set readonly computed value. ' +
-        'Provide a setter in the computed options to make it writable.\n' +
-        'Example: computed({ get: () => value, set: (v) => { ... } })',
+          'Provide a setter in the computed options to make it writable.\n' +
+          'Example: computed({ get: () => value, set: (v) => { ... } })',
       );
     }
   }
@@ -241,7 +241,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
       if (__DEV__) {
         error(
           '[Computed] Error occurred while computing value. ' +
-          'Check your getter function for errors.',
+            'Check your getter function for errors.',
           _error,
         );
       }
@@ -316,7 +316,7 @@ export function computed<T>(
     if (__DEV__) {
       warn(
         '[Computed] Creating a computed from another computed is not recommended. ' +
-        'The existing computed will be returned to avoid unnecessary wrapping.',
+          'The existing computed will be returned to avoid unnecessary wrapping.',
       );
     }
     return getterOrOptions as unknown as ComputedImpl<T>;
@@ -339,7 +339,7 @@ export function computed<T>(
     if (!get) {
       throw new Error(
         '[Computed] Invalid options: getter function is required.\n' +
-        'Usage: computed({ get: () => value, set: (v) => { ... } })',
+          'Usage: computed({ get: () => value, set: (v) => { ... } })',
       );
     }
 
@@ -354,7 +354,7 @@ export function computed<T>(
 
   throw new Error(
     '[Computed] Invalid argument: expected a function or options object.\n' +
-    `Received: ${typeof getterOrOptions}`,
+      `Received: ${typeof getterOrOptions}`,
   );
 }
 

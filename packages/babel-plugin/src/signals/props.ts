@@ -304,9 +304,9 @@ function buildDefaultValue(
   const propsParam =
     Object.keys(defaultValues).length > 0
       ? t.assignmentPattern(
-        t.identifier(TRANSFORM_PROPERTY_NAME),
-        buildDefaultValueObject(defaultValues),
-      )
+          t.identifier(TRANSFORM_PROPERTY_NAME),
+          buildDefaultValueObject(defaultValues),
+        )
       : t.identifier(TRANSFORM_PROPERTY_NAME);
 
   path.node.params[0] = propsParam;

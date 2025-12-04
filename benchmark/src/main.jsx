@@ -1,4 +1,4 @@
-import { createApp, shallowSignal, signal } from 'essor';
+import { createApp, shallowSignal } from 'essor';
 // import './style.css';
 const A = [
   'pretty',

@@ -79,7 +79,7 @@ export function normalizeKey(key: any): string | undefined {
       if (__DEV__) {
         warn(
           `[Key System] Key length exceeds ${MAX_KEY_LENGTH} characters. ` +
-          `This may impact performance. Consider using a shorter identifier.`,
+            `This may impact performance. Consider using a shorter identifier.`,
         );
       }
       return `${key.slice(0, MAX_KEY_LENGTH - 10)}_${simpleHash(key).toString(36)}`;
@@ -218,7 +218,7 @@ export function validateKeys(children: AnyNode[], parent?: Node): void {
 
     error(
       `Duplicate keys detected in <${parentTag}>: [${Array.from(duplicates).join(', ')}]\n` +
-      `Keys must be unique among siblings.`,
+        `Keys must be unique among siblings.`,
     );
   }
 }

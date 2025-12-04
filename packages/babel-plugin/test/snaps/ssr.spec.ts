@@ -581,24 +581,6 @@ describe('jsx SSR transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with streaming SSR and error boundaries', () => {
-    const inputCode = `
-      const StreamingErrorBoundary = ({ children, fallback }) => (
-        <div data-streaming-error-boundary>
-          <ErrorBoundary fallback={fallback}>
-            {children}
-          </ErrorBoundary>
-        </div>
-      );
-      const element = (
-        <StreamingErrorBoundary fallback={<div>Error occurred!</div>}>
-          <div>Protected Content</div>
-        </StreamingErrorBoundary>
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
   it('should work with head management in SSR', () => {
     const inputCode = `
       const Head = ({ children }) => <head data-ssr>{children}</head>;

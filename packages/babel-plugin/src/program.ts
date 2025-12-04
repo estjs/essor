@@ -1,6 +1,7 @@
 import { type NodePath, types as t } from '@babel/core';
 import { addImport, clearImport, createImport, createImportIdentifiers, importMap } from './import';
-import { DEFAULT_OPTIONS, RENDER_MODE } from './constants';
+import { DEFAULT_OPTIONS } from './constants';
+import type { PluginState } from './types';
 
 // ============================================
 // Virtual module path - unified use of virtual:essor-hmr
@@ -50,7 +51,7 @@ export function createImportIdentifier(path: babel.NodePath, importName: string)
 }
 
 export const transformProgram = {
-  enter: (path: NodePath<t.Program>, state) => {
+  enter: (path: NodePath<t.Program>, state: PluginState) => {
     const opts = { ...DEFAULT_OPTIONS, ...state.opts };
     const imports = createImportIdentifiers(path);
 
@@ -68,9 +69,9 @@ export const transformProgram = {
     };
   },
 
-  exit: (path: NodePath<t.Program>, state) => {
-    const { imports, declarations, events, opts } = path.state;
-    const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
+  exit: (path: NodePath<t.Program>, state: PluginState) => {
+    const { imports, declarations, events } = state;
+    // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
     // Find optimal insertion point after imports but before other code
     const insertIndex = path.node.body.findIndex(
