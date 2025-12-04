@@ -880,12 +880,6 @@ export function convertValueToASTNode(
   }
 
   if (isArray(value)) {
-    // Check if all items are strings
-    const allStrings = value.every(item => isString(item));
-    if (allStrings) {
-      // Return a single string literal instead of array
-      return t.stringLiteral(value.join(''));
-    }
     return t.arrayExpression(value.map(item => convertValueToASTNode(item, transformJSX)));
   }
 

@@ -160,9 +160,8 @@ export function patchChildren(
 }
 
 /**
- * General-purpose keyed children patching
- * Optimized with Map for O(1) lookups (from For component)
- * And LIS for minimal moves (from Vue 3)
+ * General-purpose keyed children patching using optimized diff algorithm
+ * Implements Vue 3's algorithm with LIS optimization
  */
 function patchKeyedChildren(
   parent: Node,
@@ -175,47 +174,44 @@ function patchKeyedChildren(
   let oldEndIdx = oldChildren.length - 1;
   let newEndIdx = newChildren.length - 1;
 
-  // ===== STEP 1: Sync from start =====
+  let oldStartNode = oldChildren[0];
+  let oldEndNode = oldChildren[oldEndIdx];
+  let newStartNode = newChildren[0];
+  let newEndNode = newChildren[newEndIdx];
+
+  // 1. Sync from start - inlined comparison
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-    const oldNode = oldChildren[oldStartIdx];
-    const newNode = newChildren[newStartIdx];
-
-    if (!oldNode) {
-      oldStartIdx++;
-      continue;
-    }
-
-    if (isSameNode(oldNode, newNode)) {
-      patch(parent, oldNode, newNode);
-      newChildren[newStartIdx] = oldNode;
-      oldStartIdx++;
-      newStartIdx++;
+    if (!oldStartNode) {
+      oldStartNode = oldChildren[++oldStartIdx];
+    } else if (!oldEndNode) {
+      oldEndNode = oldChildren[--oldEndIdx];
+    } else if (isSameNode(oldStartNode, newStartNode)) {
+      patch(parent, oldStartNode, newStartNode);
+      newChildren[newStartIdx] = oldStartNode;
+      oldStartNode = oldChildren[++oldStartIdx];
+      newStartNode = newChildren[++newStartIdx];
     } else {
       break;
     }
   }
 
-  // ===== STEP 2: Sync from end =====
+  // 2. Sync from end - inlined comparison
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
-    const oldNode = oldChildren[oldEndIdx];
-    const newNode = newChildren[newEndIdx];
-
-    if (!oldNode) {
-      oldEndIdx--;
-      continue;
-    }
-
-    if (isSameNode(oldNode, newNode)) {
-      patch(parent, oldNode, newNode);
-      newChildren[newEndIdx] = oldNode;
-      oldEndIdx--;
-      newEndIdx--;
+    if (!oldStartNode) {
+      oldStartNode = oldChildren[++oldStartIdx];
+    } else if (!oldEndNode) {
+      oldEndNode = oldChildren[--oldEndIdx];
+    } else if (isSameNode(oldEndNode, newEndNode)) {
+      patch(parent, oldEndNode, newEndNode);
+      newChildren[newEndIdx] = oldEndNode;
+      oldEndNode = oldChildren[--oldEndIdx];
+      newEndNode = newChildren[--newEndIdx];
     } else {
       break;
     }
   }
 
-  // ===== STEP 3: Mount remaining new nodes =====
+  // 3. Common sequence + mount
   if (oldStartIdx > oldEndIdx) {
     if (newStartIdx <= newEndIdx) {
       const anchorNode =
@@ -225,77 +221,117 @@ function patchKeyedChildren(
         insertNode(parent, newChildren[i], anchorNode);
       }
     }
-    return newChildren;
   }
-
-  // ===== STEP 4: Unmount remaining old nodes =====
-  if (newStartIdx > newEndIdx) {
+  // 4. Common sequence + unmount
+  else if (newStartIdx > newEndIdx) {
     for (let i = oldStartIdx; i <= oldEndIdx; i++) {
       if (oldChildren[i]) {
         removeNode(oldChildren[i]);
       }
     }
-    return newChildren;
+  }
+  // 5. Unknown sequence - use optimized LIS
+  else {
+    patchUnknownSequence(
+      parent,
+      oldChildren,
+      newChildren,
+      oldStartIdx,
+      oldEndIdx,
+      newStartIdx,
+      newEndIdx,
+      anchor,
+    );
   }
 
-  // ===== STEP 5: Handle unknown sequence with Map + LIS =====
+  return newChildren;
+}
+
+/**
+ * Patch unknown sequence with optimized LIS (Longest Increasing Subsequence)
+ * Uses Object instead of Map for better performance on string keys
+ */
+function patchUnknownSequence(
+  parent: Node,
+  oldChildren: AnyNode[],
+  newChildren: AnyNode[],
+  oldStartIdx: number,
+  oldEndIdx: number,
+  newStartIdx: number,
+  newEndIdx: number,
+  anchor?: Node | null,
+): void {
   const newLength = newEndIdx - newStartIdx + 1;
 
-  // Build Map for O(1) lookups (technique from For component)
-  const oldNodeMap = new Map<any, number>();
-  for (let i = oldStartIdx; i <= oldEndIdx; i++) {
-    const node = oldChildren[i];
-    if (node) {
-      const key = getNodeKey(node);
-      // Map by key if available, otherwise by node itself
-      oldNodeMap.set(key !== undefined ? key : node, i);
+  // Use Object literal instead of Map for faster lookup
+  const keyToNewIndexMap: Record<string, number> = Object.create(null);
+
+  for (let i = newStartIdx; i <= newEndIdx; i++) {
+    const key = getNodeKey(newChildren[i]);
+    if (key !== undefined) {
+      keyToNewIndexMap[key] = i;
     }
   }
 
-  // Track which old nodes to keep/move
+  // Use Int32Array for better performance
   const newIndexToOldIndexMap = new Int32Array(newLength);
   let moved = false;
   let maxNewIndexSoFar = 0;
+  let patched = 0;
 
-  // Process new children
-  for (let i = 0; i < newLength; i++) {
-    const newNode = newChildren[newStartIdx + i];
-    const key = getNodeKey(newNode);
-    const lookupKey = key !== undefined ? key : newNode;
-    const oldIndex = oldNodeMap.get(lookupKey);
+  for (let i = oldStartIdx; i <= oldEndIdx; i++) {
+    const oldNode = oldChildren[i];
+    if (!oldNode) continue;
 
-    if (oldIndex !== undefined) {
-      // Found matching old node
-      const oldNode = oldChildren[oldIndex];
-      patch(parent, oldNode, newNode);
-      newChildren[newStartIdx + i] = oldNode;
+    if (patched >= newLength) {
+      removeNode(oldNode);
+      continue;
+    }
 
-      // Mark as used
-      newIndexToOldIndexMap[i] = oldIndex + 1; // +1 to distinguish from 0
-      oldNodeMap.delete(lookupKey);
+    let newIndex: number | undefined;
+    const oldKey = getNodeKey(oldNode);
 
-      // Detect if moved
-      if (oldIndex < maxNewIndexSoFar) {
-        moved = true;
-      } else {
-        maxNewIndexSoFar = oldIndex;
+    // Object property access is faster than Map.get
+    if (oldKey !== undefined && oldKey in keyToNewIndexMap) {
+      newIndex = keyToNewIndexMap[oldKey];
+    } else {
+      // Fallback: type-based matching
+      for (let j = newStartIdx; j <= newEndIdx; j++) {
+        const newKey = getNodeKey(newChildren[j]);
+        if (
+          newIndexToOldIndexMap[j - newStartIdx] === 0 &&
+          oldKey === undefined &&
+          newKey === undefined &&
+          isSameNode(oldNode, newChildren[j])
+        ) {
+          newIndex = j;
+          break;
+        }
       }
     }
-    // else: new node, will be mounted later
-  }
 
-  // Remove unused old nodes
-  for (const oldIndex of oldNodeMap.values()) {
-    if (oldChildren[oldIndex]) {
-      removeNode(oldChildren[oldIndex]);
+    if (newIndex === undefined) {
+      removeNode(oldNode);
+    } else {
+      newIndexToOldIndexMap[newIndex - newStartIdx] = i + 1;
+
+      if (newIndex >= maxNewIndexSoFar) {
+        maxNewIndexSoFar = newIndex;
+      } else {
+        moved = true;
+      }
+
+      patch(parent, oldNode, newChildren[newIndex]);
+      newChildren[newIndex] = oldNode;
+      patched++;
     }
   }
 
-  // ===== STEP 6: Move/Mount nodes using LIS =====
+  // Move and mount nodes
   const increasingNewIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : [];
   let j = increasingNewIndexSequence.length - 1;
 
-  // Loop backwards for correct anchor
+  // Loop backwards to ensure correct anchor
   for (let i = newLength - 1; i >= 0; i--) {
     const nextIndex = newStartIdx + i;
     const nextNode = newChildren[nextIndex];
@@ -303,10 +339,8 @@ function patchKeyedChildren(
       nextIndex + 1 < newChildren.length ? getFirstDOMNode(newChildren[nextIndex + 1]) : anchor;
 
     if (newIndexToOldIndexMap[i] === 0) {
-      // New node - mount it
       insertNode(parent, nextNode, nextAnchor);
     } else if (moved) {
-      // Existing node - move if needed
       if (j < 0 || i !== increasingNewIndexSequence[j]) {
         const domNode = getFirstDOMNode(nextNode);
         if (domNode && domNode.parentNode === parent) {
@@ -317,75 +351,117 @@ function patchKeyedChildren(
       }
     }
   }
-
-  return newChildren;
 }
-
 /**
- * Compute Longest Increasing Subsequence (LIS)
- * Optimized implementation for determining minimal moves
- *
- * @param arr - Array where arr[i] is the old index + 1 (0 means new node)
- * @returns Indices forming the LIS
+ * Compute the Longest Increasing Subsequence (LIS)
+ * Optimized with fast path for small arrays
+ * For n < 10, simple algorithm is actually faster
  */
-function getSequence(arr: Int32Array | number[]): number[] {
-  const n = arr.length;
+export function getSequence(arr: Int32Array | number[]): number[] {
+  const len = arr.length;
+  if (len === 0) return [];
+  if (len === 1) return arr[0] !== 0 ? [0] : [];
 
-  // Fast path for very small arrays
-  if (n <= 1) return n === 1 && arr[0] !== 0 ? [0] : [];
-  if (n === 2) {
-    if (arr[0] === 0) return arr[1] !== 0 ? [1] : [];
-    if (arr[1] === 0) return [0];
-    return arr[0] < arr[1] ? [0, 1] : [1];
+  // Fast path for very small arrays (< 10)
+  if (len < 10) {
+    return getSequenceSimple(arr);
   }
 
-  // Binary search based LIS for larger arrays
-  const p = new Int32Array(n); // Predecessor indices
-  const result: number[] = []; // Indices of LIS
-  let len = 0;
+  const result: number[] = [0];
+  const p = new Int32Array(len);
 
-  for (let i = 0; i < n; i++) {
-    if (arr[i] === 0) continue; // Skip new nodes
+  let i: number;
+  let j: number;
+  let u: number;
+  let v: number;
+  let c: number;
 
+  for (i = 0; i < len; i++) {
     const arrI = arr[i];
+    if (arrI !== 0) {
+      j = result[result.length - 1];
+      if (arr[j] < arrI) {
+        p[i] = j;
+        result.push(i);
+        continue;
+      }
 
-    if (len === 0 || arrI > arr[result[len - 1]]) {
-      // Extend sequence
-      p[i] = len > 0 ? result[len - 1] : -1;
-      result[len++] = i;
-    } else {
-      // Binary search for position
-      let left = 0;
-      let right = len - 1;
+      u = 0;
+      v = result.length - 1;
 
-      while (left < right) {
-        const mid = (left + right) >> 1;
-        if (arr[result[mid]] < arrI) {
-          left = mid + 1;
+      // Binary search
+      while (u < v) {
+        c = (u + v) >> 1;
+        if (arr[result[c]] < arrI) {
+          u = c + 1;
         } else {
-          right = mid;
+          v = c;
         }
       }
 
-      // Replace
-      if (arrI < arr[result[left]]) {
-        if (left > 0) {
-          p[i] = result[left - 1];
+      if (arrI < arr[result[u]]) {
+        if (u > 0) {
+          p[i] = result[u - 1];
         }
-        result[left] = i;
+        result[u] = i;
       }
     }
   }
 
-  // Backtrack to build LIS
-  let u = len;
-  let v = result[len - 1];
+  u = result.length;
+  v = result[u - 1];
 
   while (u-- > 0) {
     result[u] = v;
     v = p[v];
   }
 
-  result.length = len;
+  return result;
+}
+
+/**
+ * Simple O(n²) LIS for small arrays
+ * Faster than binary search for n < 10
+ */
+function getSequenceSimple(arr: Int32Array | number[]): number[] {
+  const len = arr.length;
+  const dp: number[] = [];
+  const parent: number[] = new Array(len).fill(-1);
+
+  for (let i = 0; i < len; i++) {
+    if (arr[i] === 0) continue;
+
+    let maxLen = 0;
+    let maxIdx = -1;
+
+    for (let j = 0; j < i; j++) {
+      if (arr[j] !== 0 && arr[j] < arr[i] && (dp[j] || 0) > maxLen) {
+        maxLen = dp[j] || 0;
+        maxIdx = j;
+      }
+    }
+
+    dp[i] = maxLen + 1;
+    parent[i] = maxIdx;
+  }
+
+  // Find max length
+  let maxLen = 0;
+  let maxIdx = -1;
+  for (let i = 0; i < len; i++) {
+    if ((dp[i] || 0) > maxLen) {
+      maxLen = dp[i] || 0;
+      maxIdx = i;
+    }
+  }
+
+  // Backtrack
+  const result: number[] = [];
+  let curr = maxIdx;
+  while (curr !== -1) {
+    result.unshift(curr);
+    curr = parent[curr];
+  }
+
   return result;
 }

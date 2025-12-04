@@ -59,16 +59,17 @@ export function normalizeKey(key: any): string | undefined {
 
   if (__DEV__) {
     // NaN check
-    if (isNaN(key)) {
-      warn('[Key System] NaN cannot be used as a key');
-      return undefined;
+    if (typeof key === 'number') {
+      if (isNaN(key)) {
+        warn('[Key System] NaN cannot be used as a key');
+        return undefined;
+      }
+      // Infinity check
+      if (!Number.isFinite(key)) {
+        warn('[Key System] Infinity cannot be used as a key');
+        return undefined;
+      }
     }
-    // Infinity check
-    if (!Number.isFinite(key)) {
-      warn('[Key System] Infinity cannot be used as a key');
-      return undefined;
-    }
-    return String(key);
   }
 
   // String fast path (most common ~60% of cases)
@@ -78,7 +79,7 @@ export function normalizeKey(key: any): string | undefined {
       if (__DEV__) {
         warn(
           `[Key System] Key length exceeds ${MAX_KEY_LENGTH} characters. ` +
-            `This may impact performance. Consider using a shorter identifier.`,
+          `This may impact performance. Consider using a shorter identifier.`,
         );
       }
       return `${key.slice(0, MAX_KEY_LENGTH - 10)}_${simpleHash(key).toString(36)}`;
@@ -157,7 +158,6 @@ export function setNodeKey(node: AnyNode, key: NodeKey | undefined): void {
     // @ts-ignore - using Symbol as property
     delete node[NODE_KEY_SYMBOL];
   } else {
-    // @ts-ignore - using Symbol as property
     node[NODE_KEY_SYMBOL] = normalizedKey;
   }
 }
@@ -175,8 +175,8 @@ export function getNodeKey(node: AnyNode): string | undefined {
     return node.key;
   }
 
-  // @ts-ignore - direct Symbol property access
-  return node[NODE_KEY_SYMBOL];
+  const val = node[NODE_KEY_SYMBOL];
+  return val;
 }
 
 /**
@@ -218,7 +218,7 @@ export function validateKeys(children: AnyNode[], parent?: Node): void {
 
     error(
       `Duplicate keys detected in <${parentTag}>: [${Array.from(duplicates).join(', ')}]\n` +
-        `Keys must be unique among siblings.`,
+      `Keys must be unique among siblings.`,
     );
   }
 }

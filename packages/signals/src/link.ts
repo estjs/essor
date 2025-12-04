@@ -1,4 +1,4 @@
-import { isFunction } from '@estjs/shared';
+import { error, isFunction } from '@estjs/shared';
 import { ReactiveFlags } from './constants';
 import { type Effect, propagate } from './propagation';
 
@@ -339,7 +339,7 @@ export function unlinkReactiveNode(
       if (__DEV__) {
         // Verify that all links were properly cleared
         if (depNode.depLink) {
-          console.error(
+          error(
             '[Link] Cascading cleanup failed: depNode still has dependency links. ' +
             'This indicates a bug in the unlinking logic.',
           );

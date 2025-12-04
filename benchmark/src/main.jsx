@@ -67,7 +67,7 @@ const buildData = count => {
   }
   return data;
 };
-const data = signal([]);
+const data = shallowSignal([]);
 const selected = shallowSignal(0);
 const actions = {
   run: () => {
@@ -79,28 +79,28 @@ const actions = {
     selected.set(0);
   },
   add: () => {
-    data.value = data.value.concat(buildData(1000));
+    data.value = data.value.slice().concat(buildData(1000));
   },
   update: () => {
-    const _rows = data.value;
+    const _rows = data.value.slice();
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
-    data.set(_rows.slice());
+    data.set(_rows);
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-    const _rows = data.value;
+    const _rows = data.value.slice();
     if (_rows.length > 998) {
       const d1 = _rows[1];
       const d998 = _rows[998];
       _rows[1] = d998;
       _rows[998] = d1;
     }
-    data.set(_rows.slice());
+    data.set(_rows);
   },
   remove: id => {
     data.update(d =>

@@ -1,4 +1,4 @@
-import { isFunction } from '@estjs/shared';
+import { error, isFunction, warn } from '@estjs/shared';
 import { EffectFlags, ReactiveFlags, SignalFlags } from './constants';
 import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './link';
 import { isBatching } from './batch';
@@ -127,10 +127,10 @@ export function flushJobs(): void {
   jobs.forEach(job => {
     try {
       job();
-    } catch (error) {
+    } catch (_error) {
       // Continue executing other jobs even if one fails
       if (__DEV__) {
-        console.error('[Effect] Error executing queued job:', error);
+        error('[Effect] Error executing queued job:', _error);
       }
     }
   });
@@ -139,9 +139,9 @@ export function flushJobs(): void {
   if (__DEV__) {
     // Verify queue is empty after flush
     if (jobQueue.size > 0) {
-      console.warn(
+      warn(
         `[Effect] Job queue not empty after flush. ${jobQueue.size} jobs remain. ` +
-          'This may indicate jobs were queued during flush.',
+        'This may indicate jobs were queued during flush.',
       );
     }
   }
@@ -414,7 +414,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
   stop(): void {
     if (!this._active) {
       if (__DEV__) {
-        console.warn('[Effect] Attempting to stop an already stopped effect.');
+        warn('[Effect] Attempting to stop an already stopped effect.');
       }
       return;
     }
@@ -446,15 +446,15 @@ export class EffectImpl<T = any> implements ReactiveNode {
     if (__DEV__) {
       // Verify all links are properly cleared
       if (this.depLink) {
-        console.error(
+        error(
           '[Effect] Cleanup verification failed: depLink not cleared. ' +
-            'This indicates a memory leak in the dependency tracking system.',
+          'This indicates a memory leak in the dependency tracking system.',
         );
       }
       if (this.subLink) {
-        console.error(
+        error(
           '[Effect] Cleanup verification failed: subLink not cleared. ' +
-            'This indicates a memory leak in the subscription system.',
+          'This indicates a memory leak in the subscription system.',
         );
       }
     }
@@ -506,17 +506,17 @@ export function effect<T = any>(fn: EffectFunction<T>, options?: EffectOptions):
   try {
     // Execute immediately once
     effectInstance.run();
-  } catch (error) {
+  } catch (_error) {
     // First execution failed, stop Effect and rethrow
     effectInstance.stop();
     if (__DEV__) {
-      console.error(
+      error(
         '[Effect] Effect failed during initial execution and has been stopped. ' +
-          'Fix the error in your effect function.',
-        error,
+        'Fix the error in your effect function.',
+        _error,
       );
     }
-    throw error;
+    throw _error;
   }
 
   // Create runner function

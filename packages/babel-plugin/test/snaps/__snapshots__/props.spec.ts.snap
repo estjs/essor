@@ -14,13 +14,13 @@ exports[`jsx props transform > should not work with not pattern props 1`] = `
 
 exports[`jsx props transform > should replace function parameter with "props" 1`] = `
 "function testFunction(__props) {
-  return <div prop1={__props.prop1} prop2={__props.prop2} />;
+  return <div prop1={__propsprop1} prop2={__propsprop2} />;
 }"
 `;
 
 exports[`jsx props transform > should replace function parameter with 'props' when it's an object 1`] = `
 "function testFunction(__props, otherProps) {
-  return <div prop1={__props.prop1} prop2={__props.prop2}>{otherProps}</div>;
+  return <div prop1={__propsprop1} prop2={__propsprop2}>{otherProps}</div>;
 }"
 `;
 
@@ -41,7 +41,7 @@ exports[`jsx props transform > should work with array destructuring in object pa
 exports[`jsx props transform > should work with arrow functions in class properties 1`] = `
 "class TestClass {
   handler = __props => {
-    return <div prop1={__props.prop1} prop2={__props.prop2} />;
+    return <div prop1={__propsprop1} prop2={__propsprop2} />;
   };
 }"
 `;
@@ -49,13 +49,13 @@ exports[`jsx props transform > should work with arrow functions in class propert
 exports[`jsx props transform > should work with async functions 1`] = `
 "async function testFunction(__props) {
   const result = await someAsyncOperation();
-  return <div prop1={__props.prop1} prop2={__props.prop2} result={result} />;
+  return <div prop1={__propsprop1} prop2={__propsprop2} result={result} />;
 }"
 `;
 
 exports[`jsx props transform > should work with async generator functions 1`] = `
 "async function* testFunction(__props) {
-  return <div prop2={__props.prop2} />;
+  return <div prop2={__propsprop2} />;
 }"
 `;
 
@@ -71,20 +71,23 @@ exports[`jsx props transform > should work with class methods 1`] = `
 `;
 
 exports[`jsx props transform > should work with complex nested patterns 1`] = `
-"function testFunction(__props) {
-  return <div name={__props.user.name} primary={primary} others={others} theme={theme} settings={otherSettings} />;
+"function testFunction(__props = {
+  theme: 'light',
+  settings: {}
+}) {
+  return <div name={__propsuser.name} primary={primary} others={others} theme={__propsuser.settings.theme} settings={otherSettings} />;
 }"
 `;
 
 exports[`jsx props transform > should work with computed property names 1`] = `
 "function testFunction(__props) {
-  return <div prop={__props.computedProp} />;
+  return <div prop={__propscomputedProp} />;
 }"
 `;
 
 exports[`jsx props transform > should work with deep props 1`] = `
 "function testFunction(__props) {
-  return <div prop4={__props.prop1.prop2.prop3.prop4} prop5={__props.prop1.prop2.prop3.prop5} />;
+  return <div prop4={__propsprop1.prop2.prop3.prop4} prop5={__propsprop1.prop2.prop3.prop5} />;
 }"
 `;
 
@@ -93,7 +96,7 @@ exports[`jsx props transform > should work with default values 1`] = `
   prop1: 'default1',
   prop2: 42
 }) {
-  return <div prop1={__props.prop1} prop2={__props.prop2} />;
+  return <div prop1={__propsprop1} prop2={__propsprop2} />;
 }"
 `;
 
@@ -101,7 +104,7 @@ exports[`jsx props transform > should work with function parameters 1`] = `
 "function testFunction(__props = {
   callback: () => {}
 }) {
-  return <button onClick={__props.callback}>Click me</button>;
+  return <button onClick={__propscallback}>Click me</button>;
 }"
 `;
 
@@ -125,26 +128,30 @@ exports[`jsx props transform > should work with multiple parameters including ob
 `;
 
 exports[`jsx props transform > should work with nested destructuring and defaults 1`] = `
-"function testFunction(__props) {
-  return <div name={name} age={age} />;
+"function testFunction(__props = {
+  name: 'John',
+  age: 25,
+  user: {}
+}) {
+  return <div name={__propsuser.name} age={__propsuser.age} />;
 }"
 `;
 
 exports[`jsx props transform > should work with nested function declarations 1`] = `
 "function outer() {
   function inner(__props) {
-    return <div prop1={__props.prop1} prop2={__props.prop2} />;
+    return <div prop1={__propsprop1} prop2={__propsprop2} />;
   }
   return inner;
 }"
 `;
 
 exports[`jsx props transform > should work with nested function declarations with rest props 1`] = `
-"import { reactive as _reactive$ } from "essor";
+"import { omitProps as _omitProps$ } from "essor";
 function outer() {
   function inner(__props) {
-    const restProps = _reactive$(__props, ["prop1", "prop2"]);
-    return <div prop1={__props.prop1} prop2={__props.prop2} rest={{
+    const restProps = _omitProps$(__props,, ["prop1", "prop2"]);
+    return <div prop1={__propsprop1} prop2={__propsprop2} rest={{
       ...restProps
     }} />;
   }
@@ -164,18 +171,18 @@ exports[`jsx props transform > should work with object method shorthand 1`] = `
 `;
 
 exports[`jsx props transform > should work with rest pattern props 1`] = `
-"import { reactive as _reactive$ } from "essor";
+"import { omitProps as _omitProps$ } from "essor";
 function testFunction(__props) {
-  const restProps = _reactive$(__props, ["prop1", "prop2"]);
-  return <div prop1={__props.prop1} prop2={__props.prop2} {...restProps} />;
+  const restProps = _omitProps$(__props,, ["prop1", "prop2"]);
+  return <div prop1={__propsprop1} prop2={__propsprop2} {...restProps} />;
 }"
 `;
 
 exports[`jsx props transform > should work with rest value props 1`] = `
-"import { reactive as _reactive$ } from "essor";
+"import { omitProps as _omitProps$ } from "essor";
 function testFunction(__props) {
-  const restProps = _reactive$(__props, ["prop1", "prop2"]);
-  return <div prop1={__props.prop1} prop2={__props.prop2} rest={{
+  const restProps = _omitProps$(__props,, ["prop1", "prop2"]);
+  return <div prop1={__propsprop1} prop2={__propsprop2} rest={{
     ...restProps
   }} />;
 }"

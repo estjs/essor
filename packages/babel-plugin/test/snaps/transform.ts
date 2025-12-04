@@ -1,12 +1,12 @@
 import babel from '@babel/core';
 import { transformProgram } from '../../src/program';
-import { transformProps } from '../../src/signal/props';
+import { transformProps } from '../../src/signals/props';
 import {
   replaceSymbol,
   symbolArrayPattern,
   symbolIdentifier,
   symbolObjectPattern,
-} from '../../src/signal/symbol';
+} from '../../src/signals/symbol';
 import { transformJSX } from '../../src/jsx';
 const transforms = {
   jsx: {
@@ -37,9 +37,9 @@ export function getTransform(
 ): (code: string) => string {
   const transform = Array.isArray(transformName)
     ? transformName.reduce((obj, key) => {
-        Object.assign(obj, transforms[key]);
-        return obj;
-      }, {})
+      Object.assign(obj, transforms[key]);
+      return obj;
+    }, {})
     : transforms[transformName];
   if (!transform) {
     throw new Error(`Unsupported transform: ${transformName}`);

@@ -8,6 +8,7 @@ import {
   isStringNumber,
   isWeakMap,
   isWeakSet,
+  warn,
 } from '@estjs/shared';
 import {
   ARRAY_ITERATE_KEY,
@@ -766,7 +767,7 @@ export function reactive<T extends object>(target: T): T {
   // Guard: If already reactive, return directly to prevent double wrapping
   if (isReactive(target)) {
     if (__DEV__) {
-      console.warn(
+      warn(
         '[Reactive] Target is already reactive. Returning existing reactive proxy to avoid double wrapping.',
       );
     }
@@ -776,7 +777,7 @@ export function reactive<T extends object>(target: T): T {
   // Guard: If target is a signal, warn and unwrap it
   if (isSignal(target)) {
     if (__DEV__) {
-      console.warn(
+      warn(
         '[Reactive] Creating a reactive proxy from a signal is not recommended. ' +
         'Use the signal directly or access its value property.',
       );
@@ -806,12 +807,12 @@ export function shallowReactive<T extends object>(target: T): T {
   if (isReactive(target)) {
     if (__DEV__) {
       if (isShallow(target)) {
-        console.warn(
+        warn(
           '[ShallowReactive] Target is already a shallow reactive proxy. ' +
           'Returning existing proxy to avoid double wrapping.',
         );
       } else {
-        console.warn(
+        warn(
           '[ShallowReactive] Target is already a deep reactive proxy. ' +
           'Cannot convert deep reactive to shallow reactive. Returning existing proxy.',
         );
@@ -823,7 +824,7 @@ export function shallowReactive<T extends object>(target: T): T {
   // Guard: If target is a signal, warn and unwrap it
   if (isSignal(target)) {
     if (__DEV__) {
-      console.warn(
+      warn(
         '[ShallowReactive] Creating a reactive proxy from a signal is not recommended. ' +
         'Use the signal directly or access its value property.',
       );

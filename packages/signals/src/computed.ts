@@ -1,4 +1,4 @@
-import { hasChanged, isFunction, isPlainObject } from '@estjs/shared';
+import { error, hasChanged, isFunction, isPlainObject, warn } from '@estjs/shared';
 import { ReactiveFlags, SignalFlags } from './constants';
 import { activeSub, checkDirty, endTracking, linkReactiveNode, startTracking } from './link';
 import { shallowPropagate } from './propagation';
@@ -153,10 +153,10 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
     if (this.setter) {
       this.setter(newValue);
     } else if (__DEV__) {
-      console.warn(
+      warn(
         '[Computed] Cannot set readonly computed value. ' +
-          'Provide a setter in the computed options to make it writable.\n' +
-          'Example: computed({ get: () => value, set: (v) => { ... } })',
+        'Provide a setter in the computed options to make it writable.\n' +
+        'Example: computed({ get: () => value, set: (v) => { ... } })',
       );
     }
   }
@@ -234,19 +234,19 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
         // No need to propagate since subscribers already have correct value
         this.flag = flags & clearMask;
       }
-    } catch (error) {
+    } catch (_error) {
       // On error, ensure flags are cleared to prevent stuck dirty state
       this.flag &= ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
 
       if (__DEV__) {
-        console.error(
+        error(
           '[Computed] Error occurred while computing value. ' +
-            'Check your getter function for errors.',
-          error,
+          'Check your getter function for errors.',
+          _error,
         );
       }
 
-      throw error;
+      throw _error;
     } finally {
       // End tracking, clean up stale dependencies
       // This removes links to dependencies that are no longer accessed
@@ -314,9 +314,9 @@ export function computed<T>(
   // Guard: Prevent passing computed to computed
   if (isComputed(getterOrOptions)) {
     if (__DEV__) {
-      console.warn(
+      warn(
         '[Computed] Creating a computed from another computed is not recommended. ' +
-          'The existing computed will be returned to avoid unnecessary wrapping.',
+        'The existing computed will be returned to avoid unnecessary wrapping.',
       );
     }
     return getterOrOptions as unknown as ComputedImpl<T>;
@@ -339,7 +339,7 @@ export function computed<T>(
     if (!get) {
       throw new Error(
         '[Computed] Invalid options: getter function is required.\n' +
-          'Usage: computed({ get: () => value, set: (v) => { ... } })',
+        'Usage: computed({ get: () => value, set: (v) => { ... } })',
       );
     }
 
@@ -354,7 +354,7 @@ export function computed<T>(
 
   throw new Error(
     '[Computed] Invalid argument: expected a function or options object.\n' +
-      `Received: ${typeof getterOrOptions}`,
+    `Received: ${typeof getterOrOptions}`,
   );
 }
 

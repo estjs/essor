@@ -1,4 +1,4 @@
-import { isFalsy, isPrimitive } from '@estjs/shared';
+import { error, isFalsy, isPrimitive } from '@estjs/shared';
 import { isComponent } from './component';
 import { getNodeKey } from './key';
 import type { AnyNode } from './types';
@@ -69,8 +69,8 @@ export function removeNode(node: AnyNode): void {
         element.remove();
       }
     }
-  } catch (error) {
-    console.error('Failed to remove node:', error);
+  } catch (_error) {
+    error('Failed to remove node:', _error);
   }
 }
 
@@ -97,12 +97,12 @@ export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null 
       parent.insertBefore(child as Node, beforeNode);
     } else {
       if (!(child instanceof Node)) {
-        console.error('insertNode: child is not a Node', child);
+        error('insertNode: child is not a Node', child);
       }
       parent.appendChild(child as Node);
     }
-  } catch (error) {
-    console.error('Failed to insert node:', error);
+  } catch (_error) {
+    error('Failed to insert node:', _error);
   }
 }
 
@@ -120,8 +120,8 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
   try {
     insertNode(parent, newNode, oldNode as Node);
     removeNode(oldNode);
-  } catch (error) {
-    console.error('Failed to replace node:', error);
+  } catch (_error) {
+    error('Failed to replace node:', _error);
   }
 }
 

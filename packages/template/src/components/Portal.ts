@@ -1,4 +1,4 @@
-import { isArray, isString, isUndefined } from '@estjs/shared';
+import { isArray, isString, isUndefined, warn } from '@estjs/shared';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
 import { onMount } from '../lifecycle';
@@ -43,7 +43,7 @@ export function Portal(props: PortalProps): Comment | string {
 
     if (!targetElement) {
       if (__DEV__) {
-        console.warn(`[Portal] Target element not found: ${props.target}`);
+        warn(`[Portal] Target element not found: ${props.target}`);
       }
       return document.createComment('portal-no-target');
     }

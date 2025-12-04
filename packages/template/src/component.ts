@@ -1,5 +1,5 @@
 import { isSignal, shallowReactive } from '@estjs/signals';
-import { hasChanged, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
+import { error, hasChanged, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
 import {
   type Context,
   createContext,
@@ -112,7 +112,9 @@ export class Component {
 
     // update marks
     this.state = COMPONENT_STATE.MOUNTED;
-    this.componentContext!.isMount = true;
+    if (this.componentContext) {
+      this.componentContext.isMount = true;
+    }
     // trigger mount hook
     triggerLifecycleHook(LIFECYCLE.mount);
 
@@ -181,9 +183,6 @@ export class Component {
 
     return this;
   }
-  /**
-   * Force update component
-   */
   async forceUpdate() {
     if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.componentContext) {
       return;
@@ -220,9 +219,9 @@ export class Component {
 
       // Trigger update lifecycle
       await triggerLifecycleHook(LIFECYCLE.update);
-    } catch (error) {
-      console.error('Force update failed:', error);
-      throw error;
+    } catch (_error) {
+      error('Force update failed:', _error);
+      throw _error;
     } finally {
       if (this.componentContext) {
         popContextStack();

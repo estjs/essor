@@ -1,4 +1,4 @@
-import { warn } from '@estjs/shared';
+import { error, warn } from '@estjs/shared';
 
 /**
  * Represents a task (job) that can be scheduled for execution
@@ -134,7 +134,7 @@ export function flushJobs(): void {
         job();
       } catch (_error) {
         if (__DEV__) {
-          console.error('Error executing queued job:', _error);
+          error('Error executing queued job:', _error);
         }
       }
     }
@@ -167,7 +167,7 @@ function flushPreFlushCbs(): void {
       callback();
     } catch (_error) {
       if (__DEV__) {
-        console.error('Error executing pre-flush callback:', _error);
+        error('Error executing pre-flush callback:', _error);
       }
     }
   }

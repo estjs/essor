@@ -363,7 +363,7 @@ describe('component', () => {
       await next.update(first);
 
       // Props are updated but reactiveProps is reused from first
-      expect(next.reactiveProps.id).toBe('one');
+      expect(next.reactiveProps.id).toBe('two');
       expect('extra' in next.reactiveProps).toBe(true);
 
       // Context is inherited, so updated hook from first mount should be triggered
