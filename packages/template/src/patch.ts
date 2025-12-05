@@ -12,23 +12,27 @@ import {
 import type { AnyNode } from './types';
 
 /**
- * Transfer key from old node to new node if new node doesn't have one
+ * Transfer key from old node to new node if new node doesn't have one.
+ * Skips component nodes as they manage their own keys.
+ *
+ * @param oldNode - Source node to transfer key from
+ * @param newNode - Target node to receive key
  */
 export function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
+  // Components manage their own keys, skip them
   if (isComponent(oldNode) || isComponent(newNode)) {
     return;
   }
 
   const oldKey = getNodeKey(oldNode);
-  const newKey = getNodeKey(newNode);
-
-  if (oldKey && !newKey) {
+  if (oldKey && !getNodeKey(newNode)) {
     setNodeKey(newNode, oldKey);
   }
 }
 
 /**
- * Patches a single node, updating it if possible or replacing it
+ * Patches a single node, updating it if possible or replacing it.
+ * Optimized for common cases with early returns and minimal allocations.
  *
  * @param parent - The parent node
  * @param oldNode - The old node
@@ -36,14 +40,49 @@ export function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
  * @returns The patched node (reused old node or new node)
  */
 export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode {
+  // Fast path: same reference
   if (newNode === oldNode) {
     return oldNode;
   }
-  if (isHTMLElement(newNode) && isHTMLElement(oldNode)) {
+
+  // Cache type checks to avoid repeated function calls
+  const oldIsElement = isHTMLElement(oldNode);
+  const newIsElement = isHTMLElement(newNode);
+
+  // Both are HTML elements - optimize attribute patching
+  if (newIsElement && oldIsElement) {
+    // Fast path: structurally equal nodes
     if (newNode.isEqualNode(oldNode)) {
       return oldNode;
     }
+
+    // Patch attributes if tags are same
+    if (oldNode.tagName === newNode.tagName) {
+      // Iterate directly without creating intermediate arrays
+      const oldAttrs = oldNode.attributes;
+      const newAttrs = newNode.attributes;
+
+      // Remove old attributes not in new (iterate backwards to handle live collection)
+      for (let i = oldAttrs.length - 1; i >= 0; i--) {
+        const attrName = oldAttrs[i].name;
+        if (!newNode.hasAttribute(attrName)) {
+          oldNode.removeAttribute(attrName);
+        }
+      }
+
+      // Set new/changed attributes
+      for (let i = 0, len = newAttrs.length; i < len; i++) {
+        const attr = newAttrs[i];
+        if (oldNode.getAttribute(attr.name) !== attr.value) {
+          oldNode.setAttribute(attr.name, attr.value);
+        }
+      }
+
+      transferKey(oldNode, newNode);
+      return oldNode;
+    }
   }
+
   // Handle text nodes
   if (isHtmLTextElement(oldNode) && isHtmLTextElement(newNode)) {
     if (oldNode.textContent !== newNode.textContent) {
@@ -53,8 +92,11 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
     return oldNode;
   }
 
-  // Handle component instances
-  if (isComponent(oldNode) && isComponent(newNode)) {
+  // Handle component instances - cache isComponent results
+  const oldIsComponent = isComponent(oldNode);
+  const newIsComponent = isComponent(newNode);
+
+  if (oldIsComponent && newIsComponent) {
     if (oldNode.component === newNode.component) {
       return newNode.update(oldNode);
     }
@@ -66,8 +108,7 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
 }
 
 /**
- * Unified children patching with Map-based diffing and LIS optimization
- * Combines best practices from For component and Vue 3 algorithm
+ * Unified children patching with Map-based diffing and LIS optimization.
  *
  * @param parent - The parent DOM node
  * @param oldChildren - Array of current children
@@ -105,6 +146,7 @@ export function patchChildren(
 
   // ===== FAST PATH 2: Unmount all (no new children) =====
   if (newLength === 0) {
+    // Remove all children efficiently
     for (let i = 0; i < oldLength; i++) {
       removeNode(oldArr[i]);
     }
@@ -161,8 +203,13 @@ export function patchChildren(
 }
 
 /**
- * General-purpose keyed children patching using optimized diff algorithm
- * Implements Vue 3's algorithm with LIS optimization
+ * General-purpose keyed children patching using optimized diff algorithm.
+ *
+ * @param parent - Parent DOM node
+ * @param oldChildren - Old children array
+ * @param newChildren - New children array
+ * @param anchor - Optional anchor node
+ * @returns Patched new children array
  */
 function patchKeyedChildren(
   parent: Node,
@@ -180,7 +227,7 @@ function patchKeyedChildren(
   let newStartNode = newChildren[0];
   let newEndNode = newChildren[newEndIdx];
 
-  // 1. Sync from start - inlined comparison
+  // 1. Sync from start - skip common prefix
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
     if (!oldStartNode) {
       oldStartNode = oldChildren[++oldStartIdx];
@@ -196,7 +243,7 @@ function patchKeyedChildren(
     }
   }
 
-  // 2. Sync from end - inlined comparison
+  // 2. Sync from end - skip common suffix
   while (oldStartIdx <= oldEndIdx && newStartIdx <= newEndIdx) {
     if (!oldStartNode) {
       oldStartNode = oldChildren[++oldStartIdx];
@@ -212,9 +259,10 @@ function patchKeyedChildren(
     }
   }
 
-  // 3. Common sequence + mount
+  // 3. Common sequence + mount new nodes
   if (oldStartIdx > oldEndIdx) {
     if (newStartIdx <= newEndIdx) {
+      // Cache anchor calculation
       const anchorNode =
         newEndIdx + 1 < newChildren.length ? getFirstDOMNode(newChildren[newEndIdx + 1]) : anchor;
 
@@ -223,15 +271,16 @@ function patchKeyedChildren(
       }
     }
   }
-  // 4. Common sequence + unmount
+  // 4. Common sequence + unmount old nodes
   else if (newStartIdx > newEndIdx) {
     for (let i = oldStartIdx; i <= oldEndIdx; i++) {
-      if (oldChildren[i]) {
-        removeNode(oldChildren[i]);
+      const node = oldChildren[i];
+      if (node) {
+        removeNode(node);
       }
     }
   }
-  // 5. Unknown sequence - use optimized LIS
+  // 5. Unknown sequence - use optimized LIS algorithm
   else {
     patchUnknownSequence(
       parent,
@@ -249,8 +298,17 @@ function patchKeyedChildren(
 }
 
 /**
- * Patch unknown sequence with optimized LIS (Longest Increasing Subsequence)
- * Uses Object instead of Map for better performance on string keys
+ * Patch unknown sequence with optimized LIS (Longest Increasing Subsequence).
+ * Uses Object literal instead of Map for faster string key lookup.
+ *
+ * @param parent - Parent DOM node
+ * @param oldChildren - Old children array
+ * @param newChildren - New children array
+ * @param oldStartIdx - Start index in old children
+ * @param oldEndIdx - End index in old children
+ * @param newStartIdx - Start index in new children
+ * @param newEndIdx - End index in new children
+ * @param anchor - Optional anchor node
  */
 function patchUnknownSequence(
   parent: Node,
@@ -262,11 +320,14 @@ function patchUnknownSequence(
   newEndIdx: number,
   anchor?: Node | null,
 ): void {
+  // Cache length calculation
   const newLength = newEndIdx - newStartIdx + 1;
+  const newChildrenLen = newChildren.length;
 
-  // Use Object literal instead of Map for faster lookup
+  // Use Object literal for faster string key lookup
   const keyToNewIndexMap: Record<string, number> = Object.create(null);
 
+  // Build key to index map for new children
   for (let i = newStartIdx; i <= newEndIdx; i++) {
     const key = getNodeKey(newChildren[i]);
     if (key !== undefined) {
@@ -274,16 +335,18 @@ function patchUnknownSequence(
     }
   }
 
-  // Use Int32Array for better performance
+  // Use Int32Array for better memory layout and performance
   const newIndexToOldIndexMap = new Int32Array(newLength);
   let moved = false;
   let maxNewIndexSoFar = 0;
   let patched = 0;
 
+  // Map old children to new positions
   for (let i = oldStartIdx; i <= oldEndIdx; i++) {
     const oldNode = oldChildren[i];
     if (!oldNode) continue;
 
+    // All new nodes have been patched, remove remaining old nodes
     if (patched >= newLength) {
       removeNode(oldNode);
       continue;
@@ -292,17 +355,16 @@ function patchUnknownSequence(
     let newIndex: number | undefined;
     const oldKey = getNodeKey(oldNode);
 
-    // Object property access is faster than Map.get
+    // Fast path: keyed lookup using object property access
     if (oldKey !== undefined && oldKey in keyToNewIndexMap) {
       newIndex = keyToNewIndexMap[oldKey];
     } else {
-      // Fallback: type-based matching
+      // Fallback: type-based matching for unkeyed nodes
       for (let j = newStartIdx; j <= newEndIdx; j++) {
-        const newKey = getNodeKey(newChildren[j]);
         if (
           newIndexToOldIndexMap[j - newStartIdx] === 0 &&
           oldKey === undefined &&
-          newKey === undefined &&
+          getNodeKey(newChildren[j]) === undefined &&
           isSameNode(oldNode, newChildren[j])
         ) {
           newIndex = j;
@@ -312,36 +374,42 @@ function patchUnknownSequence(
     }
 
     if (newIndex === undefined) {
+      // No match found, remove old node
       removeNode(oldNode);
     } else {
+      // Record mapping (add 1 to distinguish from 0 which means unmapped)
       newIndexToOldIndexMap[newIndex - newStartIdx] = i + 1;
 
+      // Track if nodes have moved (for LIS optimization)
       if (newIndex >= maxNewIndexSoFar) {
         maxNewIndexSoFar = newIndex;
       } else {
         moved = true;
       }
 
+      // Patch the matched nodes
       patch(parent, oldNode, newChildren[newIndex]);
       newChildren[newIndex] = oldNode;
       patched++;
     }
   }
 
-  // Move and mount nodes
+  // Calculate LIS only if nodes have moved
   const increasingNewIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : [];
   let j = increasingNewIndexSequence.length - 1;
 
-  // Loop backwards to ensure correct anchor
+  // Loop backwards to ensure correct anchor calculation
   for (let i = newLength - 1; i >= 0; i--) {
     const nextIndex = newStartIdx + i;
     const nextNode = newChildren[nextIndex];
     const nextAnchor =
-      nextIndex + 1 < newChildren.length ? getFirstDOMNode(newChildren[nextIndex + 1]) : anchor;
+      nextIndex + 1 < newChildrenLen ? getFirstDOMNode(newChildren[nextIndex + 1]) : anchor;
 
     if (newIndexToOldIndexMap[i] === 0) {
+      // New node - insert it
       insertNode(parent, nextNode, nextAnchor);
     } else if (moved) {
+      // Existing node - move if not in LIS
       if (j < 0 || i !== increasingNewIndexSequence[j]) {
         const domNode = getFirstDOMNode(nextNode);
         if (domNode && domNode.parentNode === parent) {
@@ -353,17 +421,22 @@ function patchUnknownSequence(
     }
   }
 }
+
 /**
- * Compute the Longest Increasing Subsequence (LIS)
- * Optimized with fast path for small arrays
- * For n < 10, simple algorithm is actually faster
+ * Compute the Longest Increasing Subsequence (LIS).
+ * Uses patience sorting with binary search for O(n log n) time complexity.
+ *
+ * @param arr - Array of indices (0 means no mapping)
+ * @returns Array of indices representing the LIS
  */
 export function getSequence(arr: Int32Array | number[]): number[] {
   const len = arr.length;
   if (len === 0) return [];
+
+  // Fast path: single element
   if (len === 1) return arr[0] !== 0 ? [0] : [];
 
-  const result: number[] = [0];
+  const result: number[] = [];
   const p = new Int32Array(len);
 
   let i: number;
@@ -376,16 +449,18 @@ export function getSequence(arr: Int32Array | number[]): number[] {
     const arrI = arr[i];
     if (arrI !== 0) {
       j = result[result.length - 1];
-      if (arr[j] < arrI) {
+
+      // Append to result if greater than last element
+      if (result.length === 0 || arr[j] < arrI) {
         p[i] = j;
         result.push(i);
         continue;
       }
 
+      // Binary search for the correct position
       u = 0;
       v = result.length - 1;
 
-      // Binary search
       while (u < v) {
         c = (u + v) >> 1;
         if (arr[result[c]] < arrI) {
@@ -395,6 +470,7 @@ export function getSequence(arr: Int32Array | number[]): number[] {
         }
       }
 
+      // Update result if smaller value found
       if (arrI < arr[result[u]]) {
         if (u > 0) {
           p[i] = result[u - 1];
@@ -404,6 +480,7 @@ export function getSequence(arr: Int32Array | number[]): number[] {
     }
   }
 
+  // Reconstruct the sequence
   u = result.length;
   v = result[u - 1];
 
