@@ -193,12 +193,11 @@ export function normalizeNode(node: unknown): Node {
   if (isPrimitive(node)) {
     const textContent = isFalsy(node) ? '' : String(node);
 
-    // Create and cache new text node
-    const textNode = document.createTextNode(textContent);
-    return textNode.cloneNode(false) as Text;
+    // Create new text node directly
+    return document.createTextNode(textContent);
   }
 
-  return node;
+  return node as Node;
 }
 export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
   return val instanceof HTMLInputElement;
@@ -229,13 +228,12 @@ export function shallowCompare(a: any, b: any): boolean {
   if (!a || !b) return false;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
 
-  const keysA = Object.keys(a);
-  const keysB = Object.keys(b);
-
-  if (keysA.length !== keysB.length) return false;
-
-  for (const key of keysA) {
+  for (const key in a) {
     if (a[key] !== b[key]) return false;
+  }
+
+  for (const key in b) {
+    if (!(key in a)) return false;
   }
 
   return true;
