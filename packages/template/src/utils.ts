@@ -1,237 +1,240 @@
-import { isArray, isFalsy, kebabCase } from '@estjs/shared';
-import { type Signal, isSignal } from '@estjs/signal';
-import { isJsxElement } from './jsxRenderer';
-import { renderContext } from './sharedConfig';
-import { isSSGNode } from './ssgNode';
-
-const SELF_CLOSING_TAGS =
-  'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr'.split(',');
-const HTML_TAGS =
-  'a,abbr,acronym,address,applet,area,article,aside,audio,b,base,basefont,bdi,bdo,bgsound,big,blink,blockquote,body,br,button,canvas,caption,center,cite,code,col,colgroup,command,content,data,datalist,dd,del,details,dfn,dialog,dir,div,dl,dt,em,embed,fieldset,figcaption,figure,font,footer,form,frame,frameset,h1,h2,h3,h4,h5,h6,head,header,hgroup,hr,html,i,iframe,image,img,input,ins,kbd,keygen,label,legend,li,link,listing,main,map,mark,marquee,menu,menuitem,meta,meter,nav,nobr,noframes,noscript,object,ol,optgroup,option,output,p,param,picture,plaintext,pre,progress,q,rb,rp,rt,rtc,ruby,s,samp,script,section,select,shadow,small,source,spacer,span,strike,strong,style,sub,summary,sup,table,tbody,td,template,textarea,tfoot,th,thead,time,title,tr,track,tt,u,ul,var,video,wbr,xmp'.split(
-    ',',
-  );
+import { error, isFalsy, isHTMLElement, isPrimitive } from '@estjs/shared';
+import { isComponent } from './component';
+import { getNodeKey } from './key';
+import type { AnyNode } from './types';
 
 /**
- * Converts any data to a Node or JSX.Element type.
- * @param data - The data to be coerced into a Node or JSX.Element.
- * @returns A Node or JSX.Element.
+ * Create a reactive proxy that excludes specified properties
+ *
+ * @param target - The original reactive object
+ * @param keys - List of property names to exclude
+ * @returns A reactive proxy with specified properties excluded
  */
-export function coerceNode(data: unknown) {
-  if (isJsxElement(data) || data instanceof Node || isSSGNode(data)) {
-    return data;
-  }
-  const text = isFalsy(data) ? '' : String(data);
-  return document.createTextNode(text);
-}
+export function omitProps<T extends object, K extends keyof T>(target: T, keys: K[]): Omit<T, K> {
+  const excludeSet = new Set(keys);
 
-/**
- * Inserts a child Node or JSX.Element into a parent Node at a specified position.
- * @param parent - The parent Node where the child will be inserted.
- * @param child - The child Node or JSX.Element to insert.
- * @param before - The Node or JSX.Element before which the new child will be inserted.
- */
-export function insertChild(
-  parent: Node,
-  child: Node | JSX.Element,
-  before: Node | JSX.Element | null = null,
-): void {
-  const beforeNode = isJsxElement(before) ? before.firstChild : before;
-  const ssr = renderContext.isSSR;
-  if (isJsxElement(child)) {
-    child.mount(parent, beforeNode);
-    // hack ssr compile node
-  } else if (beforeNode && !ssr) {
-    (beforeNode as HTMLElement).before(child);
-    // hack ssr compile node
-  } else if (!ssr) {
-    (parent as HTMLElement).append(child);
-  }
-}
+  return new Proxy(target, {
+    // Intercept property reads
+    get(obj, prop) {
+      // Return undefined if it's an excluded property
+      if (excludeSet.has(prop as K)) {
+        return undefined;
+      }
+      // Otherwise return the original value (maintaining reactivity)
+      return Reflect.get(obj, prop);
+    },
 
-/**
- * Removes a child Node or JSX.Element from its parent.
- * @param child - The child Node or JSX.Element to remove.
- */
-export function removeChild(child: Node | JSX.Element): void {
-  if (isJsxElement(child)) {
-    child.unmount();
-  } else {
-    const parent = child.parentNode;
-    if (parent) {
-      (child as HTMLElement).remove();
-    }
-  }
+    // Intercept property enumeration (for...in, Object.keys, etc.)
+    ownKeys(obj) {
+      return Reflect.ownKeys(obj).filter(key => !excludeSet.has(key as K));
+    },
+
+    // Intercept property descriptor retrieval
+    getOwnPropertyDescriptor(obj, prop) {
+      if (excludeSet.has(prop as K)) {
+        return undefined;
+      }
+      return Reflect.getOwnPropertyDescriptor(obj, prop);
+    },
+
+    // Intercept the 'in' operator
+    has(obj, prop) {
+      if (excludeSet.has(prop as K)) {
+        return false;
+      }
+      return Reflect.has(obj, prop);
+    },
+  });
 }
 
 /**
- * Replaces an existing child Node or JSX.Element with a new one in a parent Node.
- * @param parent - The parent Node where the replacement will occur.
- * @param node - The new Node or JSX.Element to insert.
- * @param child - The existing Node or JSX.Element to be replaced.
+ * Remove node from its parent
+ *
+ * @param node Node to remove
+ *
+ * @example
+ * ```typescript
+ * removeNode(elementToRemove);
+ * ```
  */
-export function replaceChild(
-  parent: Node,
-  node: Node | JSX.Element,
-  child: Node | JSX.Element,
-): void {
-  insertChild(parent, node, child);
-  removeChild(child);
-}
+export function removeNode(node: AnyNode): void {
+  if (!node) return;
 
-/**
- * Sets an attribute on an HTMLElement, handling special cases for 'class' and 'style'.
- * @param element - The HTMLElement on which to set the attribute.
- * @param attr - The attribute name.
- * @param value - The attribute value.
- */
-export function setAttribute(element: HTMLElement, attr: string, value: unknown): void {
-  if (attr === 'class') {
-    setClassAttribute(element, value);
-  } else if (attr === 'style') {
-    setStyleAttribute(element, value);
-  } else {
-    setGenericAttribute(element, attr, value);
-  }
-}
-
-function setClassAttribute(element: HTMLElement, value: unknown): void {
-  if (typeof value === 'string') {
-    element.className = value;
-  } else if (isArray(value)) {
-    element.className = value.join(' ');
-  } else if (value && typeof value === 'object') {
-    element.className = Object.entries(value)
-      .reduce((acc, [key, value]) => acc + (value ? ` ${key}` : ''), '')
-      .trim();
-  }
-}
-
-function setStyleAttribute(element: HTMLElement, value: unknown): void {
-  if (typeof value === 'string') {
-    element.style.cssText = value;
-  } else if (value && typeof value === 'object') {
-    const obj = value as Record<string, unknown>;
-    Object.entries(obj).forEach(([key, value]) => {
-      element.style.setProperty(kebabCase(key), String(value));
-    });
-  }
-}
-
-function setGenericAttribute(element: HTMLElement, attr: string, value: unknown): void {
-  if (isFalsy(value)) {
-    element.removeAttribute(attr);
-  } else if (value === true) {
-    element.setAttribute(attr, '');
-  } else {
-    if (element instanceof HTMLInputElement && attr === 'value') {
-      element.value = String(value);
+  try {
+    if (isComponent(node)) {
+      node.destroy();
     } else {
-      element.setAttribute(attr, String(value));
+      const element = node as Element;
+      if (element.parentElement) {
+        element.remove();
+      }
     }
+  } catch (_error) {
+    error('Failed to remove node:', _error);
   }
 }
 
 /**
- * Binds an event listener to an input element to update a state setter based on the input type.
- * @param node - The input HTML element to bind the event listener to.
- * @param setter - The function to call when the input value changes.
+ * Insert child node
+ * Handle insertion of component nodes and DOM nodes
+ *
+ * @param parent Parent node
+ * @param child Child node
+ * @param before Reference node for insertion
  */
-export function bindNode(node: Node, setter: (value: any) => void) {
-  if (node instanceof HTMLInputElement) {
-    switch (node.type) {
-      case 'checkbox':
-        return addEventListener(node, 'change', () => {
-          setter(Boolean(node.checked));
-        });
-      case 'date':
-        return addEventListener(node, 'change', () => {
-          setter(node.value ? node.value : '');
-        });
-      case 'file':
-        return addEventListener(node, 'change', () => {
-          if (node.files) {
-            setter(node.files);
-          }
-        });
-      case 'number':
-        return addEventListener(node, 'input', () => {
-          const value = Number.parseFloat(node.value);
-          setter(Number.isNaN(value) ? '' : String(value));
-        });
-      case 'radio':
-        return addEventListener(node, 'change', () => {
-          setter(node.checked ? node.value : '');
-        });
-      case 'text':
-        return addEventListener(node, 'input', () => {
-          setter(node.value);
-        });
+export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null = null): void {
+  if (!parent || !child) return;
+
+  try {
+    const beforeNode = isComponent(before) ? before.firstChild : (before as Node);
+
+    if (isComponent(child)) {
+      child.mount(parent, beforeNode);
+      return;
     }
+
+    if (beforeNode) {
+      parent.insertBefore(child as Node, beforeNode);
+    } else {
+      if (__DEV__) {
+        if (!child) {
+          error('insertNode: child is not a Node', child);
+        }
+      }
+      parent.appendChild(child as Node);
+    }
+  } catch (_error) {
+    error('Failed to insert node:', _error);
   }
-
-  if (node instanceof HTMLSelectElement) {
-    return addEventListener(node, 'change', () => {
-      setter(node.value);
-    });
-  }
-
-  if (node instanceof HTMLTextAreaElement) {
-    return addEventListener(node, 'input', () => {
-      setter(node.value);
-    });
-  }
-}
-
-export type Listener<T> = (value: T) => void;
-
-export interface EventTarget {
-  addEventListener(type: string, listener: Listener<unknown>): void;
-  removeEventListener(type: string, listener: Listener<unknown>): void;
 }
 
 /**
- * Adds an event listener to a DOM node and returns a function to remove it.
- * @param node - The target node to add the event listener to.
- * @param eventName - The name of the event.
- * @param handler - The event handler function.
- * @returns A function to remove the event listener.
+ * Replace child node
+ * Handle replacement of component nodes and DOM nodes
+ *
+ * @param parent Parent node
+ * @param newNode New node
+ * @param oldNode Old node to be replaced
  */
-export function addEventListener(
-  node: EventTarget,
-  eventName: string,
-  handler: Listener<any>,
-): () => void {
-  node.addEventListener(eventName, handler);
-  return () => node.removeEventListener(eventName, handler);
-}
+export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): void {
+  if (!parent || !newNode || !oldNode || newNode === oldNode) return;
 
-/**
- * Checks if a given tag name is a valid HTML tag.
- * @param tagName - The tag name to check.
- * @returns A boolean indicating if the tag name is valid.
- */
-export function isHtmlTagName(tagName: string): tagName is keyof HTMLElementTagNameMap {
-  return HTML_TAGS.includes(tagName);
-}
-
-/**
- * Converts a string to a valid HTML tag name.
- * @param tagName - The input string to convert.
- * @returns The valid HTML tag name.
- */
-export function convertToHtmlTag(tagName: string): string {
-  return SELF_CLOSING_TAGS.includes(tagName) ? `<${tagName}/>` : `<${tagName}></${tagName}>`;
-}
-
-/**
- * Extracts the value from a signal if given, or returns the given value if not a signal.
- * @param signal - The signal or value to extract.
- * @returns The extracted value.
- */
-export function extractSignal<T>(signal: T | Signal<T>): T {
-  if (isSignal(signal)) {
-    return signal.value;
-  } else {
-    return signal;
+  try {
+    insertNode(parent, newNode, oldNode as Node);
+    removeNode(oldNode);
+  } catch (_error) {
+    error('Failed to replace node:', _error);
   }
+}
+
+/**
+ * Get the first DOM node from a node or component
+ */
+export function getFirstDOMNode(node: AnyNode): Node | null {
+  if (!node) {
+    return null;
+  }
+
+  if (isComponent(node)) {
+    return node.firstChild;
+  }
+
+  return node;
+}
+
+/**
+ * Check if two nodes are the same (inline for performance)
+ * This combines key check and type check
+ */
+export function isSameNode(a: AnyNode, b: AnyNode): boolean {
+  // Check key equality first (fast path)
+  const keyA = getNodeKey(a);
+  const keyB = getNodeKey(b);
+
+  if (keyA !== keyB) {
+    return false;
+  }
+
+  // Inline type check to avoid function call
+  const aIsComponent = isComponent(a);
+  const bIsComponent = isComponent(b);
+
+  if (aIsComponent && bIsComponent) {
+    return a.component === b.component;
+  }
+
+  if (aIsComponent !== bIsComponent) {
+    return false;
+  }
+
+  const aNode = a as Node;
+  const bNode = b as Node;
+
+  if (aNode.nodeType !== bNode.nodeType) {
+    return false;
+  }
+
+  if (aNode.nodeType === Node.ELEMENT_NODE) {
+    return (aNode as Element).tagName === (bNode as Element).tagName;
+  }
+
+  return true;
+}
+
+/**
+ * Normalize node for reconciliation
+ */
+export function normalizeNode(node: unknown): Node {
+  // already a Node
+  if (isHTMLElement(node)) {
+    return node;
+  }
+  // Handle primitives with memoization
+  if (isPrimitive(node)) {
+    const textContent = isFalsy(node) ? '' : String(node);
+
+    // Create new text node directly
+    return document.createTextNode(textContent);
+  }
+
+  return node as Node;
+}
+export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
+  return val instanceof HTMLInputElement;
+}
+export function isHtmlSelectElement(val: unknown): val is HTMLSelectElement {
+  return val instanceof HTMLSelectElement;
+}
+export function isHtmlTextAreaElement(val: unknown): val is HTMLTextAreaElement {
+  return val instanceof HTMLTextAreaElement;
+}
+
+export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
+  return val instanceof HTMLFormElement;
+}
+
+export function isHtmLTextElement(val: unknown): val is Text {
+  return val instanceof Text;
+}
+
+/**
+ * Shallow compare two objects
+ * @param {any} a - The first object to compare
+ * @param {any} b - The second object to compare
+ * @returns {boolean} - Returns true if the objects are equal, false otherwise
+ */
+export function shallowCompare(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  for (const key in a) {
+    if (a[key] !== b[key]) return false;
+  }
+
+  for (const key in b) {
+    if (!(key in a)) return false;
+  }
+
+  return true;
 }

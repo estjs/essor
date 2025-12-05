@@ -1,5 +1,5 @@
 import type * as csstype from 'csstype';
-import type { EssorNode } from './node';
+import type { estNode } from './node';
 /**
  * Based on JSX types for Surplus and Inferno and adapted for `dom-expressions`.
  *
@@ -9,13 +9,13 @@ import type { EssorNode } from './node';
 type DOMElement = Element;
 declare const SERIALIZABLE: unique symbol;
 
-type Component<Props> = (props: Props) => EssorNode;
+type Component<Props> = (props: Props) => estNode;
 type PropsOf<C> = C extends (props: infer P) => any ? P : never;
 
 declare global {
   export namespace JSX {
-    export type Element = EssorNode;
-    export type JSXElement = EssorNode;
+    export type Element = estNode;
+    export type JSXElement = estNode;
 
     type Children =
       | string
@@ -39,14 +39,12 @@ declare global {
     interface ElementChildrenAttribute {
       children: {};
     }
-    interface EventHandler<T, E extends Event> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: DOMElement;
-        },
-      ): void;
-    }
+    type EventHandler<T, E extends Event> = (
+      e: E & {
+        currentTarget: T;
+        target: DOMElement;
+      },
+    ) => void;
     interface BoundEventHandler<T, E extends Event> {
       0: (
         data: any,
@@ -59,16 +57,14 @@ declare global {
     }
     type EventHandlerUnion<T, E extends Event> = EventHandler<T, E> | BoundEventHandler<T, E>;
 
-    interface InputEventHandler<T, E extends InputEvent> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type InputEventHandler<T, E extends InputEvent> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundInputEventHandler<T, E extends InputEvent> {
       0: (
         data: any,
@@ -85,16 +81,14 @@ declare global {
       | InputEventHandler<T, E>
       | BoundInputEventHandler<T, E>;
 
-    interface ChangeEventHandler<T, E extends Event> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type ChangeEventHandler<T, E extends Event> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundChangeEventHandler<T, E extends Event> {
       0: (
         data: any,
@@ -111,16 +105,14 @@ declare global {
       | ChangeEventHandler<T, E>
       | BoundChangeEventHandler<T, E>;
 
-    interface FocusEventHandler<T, E extends FocusEvent> {
-      (
-        e: E & {
-          currentTarget: T;
-          target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-            ? T
-            : DOMElement;
-        },
-      ): void;
-    }
+    type FocusEventHandler<T, E extends FocusEvent> = (
+      e: E & {
+        currentTarget: T;
+        target: T extends HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+          ? T
+          : DOMElement;
+      },
+    ) => void;
     interface BoundFocusEventHandler<T, E extends FocusEvent> {
       0: (
         data: any,
@@ -149,10 +141,10 @@ declare global {
       ref?: Signal<T> | ((el: T) => void);
       key?: string | number | symbol;
     }
-    type Accessor<T> = () => T;
+    type Accest<T> = () => T;
     interface Directives {}
     interface DirectiveFunctions {
-      [x: string]: (el: DOMElement, accessor: Accessor<any>) => void;
+      [x: string]: (el: DOMElement, accest: Accest<any>) => void;
     }
     interface ExplicitProperties<T> {
       value: Signal<T>;
@@ -406,7 +398,7 @@ declare global {
       | 'allow-orientation-lock'
       | 'allow-pointer-lock'
       | 'allow-popups'
-      | 'allow-popups-to-escape-sandbox'
+      | 'allow-popups-to-escapeHTML-sandbox'
       | 'allow-presentation'
       | 'allow-same-origin'
       | 'allow-scripts'
@@ -539,7 +531,7 @@ declare global {
       'aria-labelledby'?: string;
       /** Defines the hierarchical level of an element within a structure. */
       'aria-level'?: number | string;
-      /** Indicates that an element will be updated, and describes the types of updates the user agents, assistive technologies, and user can expect from the live region. */
+      /** Indicates that an element will be update, and describes the types of updates the user agents, assistive technologies, and user can expect from the live region. */
       'aria-live'?: 'off' | 'assertive' | 'polite';
       /** Indicates whether an element is modal when displayed. */
       'aria-modal'?: boolean | 'false' | 'true';
@@ -1208,7 +1200,7 @@ declare global {
       | 'defer xMidYMax slice'
       | 'defer xMaxYMax slice';
     type SVGUnits = 'userSpaceOnUse' | 'objectBoundingBox';
-    interface CoreSVGAttributes<T> extends AriaAttributes, DOMAttributes<T> {
+    interface estSVGAttributes<T> extends AriaAttributes, DOMAttributes<T> {
       id?: string;
       lang?: string;
       tabIndex?: number | string;
@@ -1366,11 +1358,11 @@ declare global {
       'writing-mode'?: 'lr-tb' | 'rl-tb' | 'tb-rl' | 'lr' | 'rl' | 'tb' | 'inherit';
     }
     interface AnimationElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         ConditionalProcessingSVGAttributes {}
     interface ContainerElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
@@ -1384,7 +1376,7 @@ declare global {
           | 'color-rendering'
         > {}
     interface FilterPrimitiveElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<PresentationSVGAttributes, 'color-interpolation-filters'> {
       x?: number | string;
       y?: number | string;
@@ -1404,7 +1396,7 @@ declare global {
       preserveAspectRatio?: SVGPreserveAspectRatio;
     }
     interface GradientElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
       gradientUnits?: SVGUnits;
@@ -1413,7 +1405,7 @@ declare global {
       href?: string;
     }
     interface GraphicsElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'clip-rule'
@@ -1427,14 +1419,14 @@ declare global {
           | 'color-interpolation'
           | 'color-rendering'
         > {}
-    interface LightSourceElementSVGAttributes<T> extends CoreSVGAttributes<T> {}
+    interface LightSourceElementSVGAttributes<T> extends estSVGAttributes<T> {}
     interface NewViewportSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<PresentationSVGAttributes, 'overflow' | 'clip'> {
       viewBox?: string;
     }
     interface ShapeElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'color'
@@ -1453,7 +1445,7 @@ declare global {
           | 'pathLength'
         > {}
     interface TextContentElementSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'font-family'
@@ -1525,7 +1517,7 @@ declare global {
       r?: number | string;
     }
     interface ClipPathSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1539,7 +1531,7 @@ declare global {
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         TransformableSVGAttributes {}
-    interface DescSVGAttributes<T> extends CoreSVGAttributes<T>, StylableSVGAttributes {}
+    interface DescSVGAttributes<T> extends estSVGAttributes<T>, StylableSVGAttributes {}
     interface EllipseSVGAttributes<T>
       extends GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
@@ -1615,7 +1607,7 @@ declare global {
       elevation?: number | string;
     }
     interface FeDropShadowSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {
@@ -1627,7 +1619,7 @@ declare global {
       extends FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {}
-    interface FeFuncSVGAttributes<T> extends CoreSVGAttributes<T> {
+    interface FeFuncSVGAttributes<T> extends estSVGAttributes<T> {
       type?: 'identity' | 'table' | 'discrete' | 'linear' | 'gamma';
       tableValues?: string;
       slope?: number | string;
@@ -1653,7 +1645,7 @@ declare global {
       extends FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes {}
     interface FeMergeNodeSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         SingleInputFilterSVGAttributes {}
     interface FeMorphologySVGAttributes<T>
       extends FilterPrimitiveElementSVGAttributes<T>,
@@ -1708,7 +1700,7 @@ declare global {
       type?: 'fractalNoise' | 'turbulence';
     }
     interface FilterSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
       filterUnits?: SVGUnits;
@@ -1796,8 +1788,8 @@ declare global {
       width?: number | string;
       height?: number | string;
     }
-    interface MetadataSVGAttributes<T> extends CoreSVGAttributes<T> {}
-    interface MPathSVGAttributes<T> extends CoreSVGAttributes<T> {}
+    interface MetadataSVGAttributes<T> extends estSVGAttributes<T> {}
+    interface MPathSVGAttributes<T> extends estSVGAttributes<T> {}
     interface PathSVGAttributes<T>
       extends GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
@@ -1867,11 +1859,11 @@ declare global {
       ry?: number | string;
     }
     interface SetSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         StylableSVGAttributes,
         AnimationTimingSVGAttributes {}
     interface StopSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'stop-color' | 'stop-opacity'> {
       offset?: number | string;
@@ -1977,7 +1969,7 @@ declare global {
       href?: string;
     }
     interface ViewSVGAttributes<T>
-      extends CoreSVGAttributes<T>,
+      extends estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         FitToViewBoxSVGAttributes,
         ZoomAndPanSVGAttributes {

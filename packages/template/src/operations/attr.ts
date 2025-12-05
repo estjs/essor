@@ -1,0 +1,93 @@
+import { includeBooleanAttr, isBooleanAttr, isSpecialBooleanAttr, isSymbol } from '@estjs/shared';
+import { KEY_PROP, REF_KEY, SVG_NAMESPACE, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../constants';
+import { setNodeKey } from '../key';
+
+export type AttrValue = string | boolean | number | null | undefined;
+
+export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrValue) {
+  if (key === REF_KEY) {
+    (prev as any).value = el;
+    return;
+  }
+  if (key === KEY_PROP) {
+    if (next == null) {
+      setNodeKey(el, undefined);
+    } else {
+      setNodeKey(el, String(next));
+    }
+    return;
+  }
+
+  const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
+  const isXlink = elementIsSVG && key.startsWith('xlink:');
+  const isXmlns = elementIsSVG && key.startsWith('xmlns:');
+
+  const isBoolean = isSpecialBooleanAttr(key) || isBooleanAttr(key);
+
+  if (prev === next) {
+    return;
+  }
+
+  const lowerKey = key.toLowerCase();
+  if (/^on[a-z]+/.test(lowerKey)) {
+    return;
+  }
+  if (lowerKey === 'innerhtml') {
+    return;
+  }
+
+  if (next == null) {
+    if (isXlink) {
+      el.removeAttributeNS(XLINK_NAMESPACE, key.slice(6));
+    } else if (isXmlns) {
+      const localName = key.slice(6);
+      el.removeAttributeNS(XMLNS_NAMESPACE, localName);
+    } else {
+      el.removeAttribute(key);
+    }
+    return;
+  }
+
+  if (isXlink) {
+    el.setAttributeNS(XLINK_NAMESPACE, key, String(next));
+    return;
+  }
+
+  if (isXmlns) {
+    el.setAttributeNS(XMLNS_NAMESPACE, key, String(next));
+    return;
+  }
+
+  if (isBoolean) {
+    if (includeBooleanAttr(next)) {
+      el.setAttribute(key, '');
+    } else {
+      el.removeAttribute(key);
+    }
+    return;
+  }
+
+  const attrValue = isSymbol(next) ? String(next) : next;
+
+  const isUrlAttr = lowerKey === 'href' || lowerKey === 'src' || lowerKey === 'xlink:href';
+  if (isUrlAttr && typeof attrValue === 'string') {
+    const v = attrValue.trim().toLowerCase();
+    if (v.startsWith('javascript:') || v.startsWith('data:')) {
+      return;
+    }
+  }
+
+  if (elementIsSVG) {
+    el.setAttribute(key, String(attrValue));
+  } else {
+    if (key in el) {
+      try {
+        (el as any)[key] = attrValue;
+      } catch {
+        el.setAttribute(key, String(attrValue));
+      }
+    } else {
+      el.setAttribute(key, String(attrValue));
+    }
+  }
+}

@@ -2,7 +2,7 @@ import { defineConfig } from 'athen';
 
 export default defineConfig({
   lang: 'en-US',
-  title: 'essor',
+  title: 'Essor',
   icon: '/logo.png',
 
   themeConfig: {

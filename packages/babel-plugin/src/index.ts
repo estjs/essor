@@ -1,35 +1,37 @@
-import { transformJSX } from './jsx';
 import { transformProgram } from './program';
+import { transformProps } from './signals/props';
+import { transformJSX } from './jsx';
 import {
   replaceSymbol,
   symbolArrayPattern,
+  symbolAssignment,
   symbolIdentifier,
   symbolObjectPattern,
-} from './signal/symbol';
-import { replaceImportDeclaration } from './signal/import';
-import { replaceProps } from './signal/props';
+  symbolUpdate,
+} from './signals/symbol';
 import type { PluginObj } from '@babel/core';
-export { Options, State } from './types';
+
 export default function (): PluginObj {
   return {
     name: 'babel-plugin-essor',
-    manipulateOptions({ filename }, parserOpts) {
-      if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
-        parserOpts.plugins.push('typescript');
-      }
+
+    manipulateOptions(_, parserOpts) {
       parserOpts.plugins.push('jsx');
     },
+
     visitor: {
       Program: transformProgram,
-
-      FunctionDeclaration: replaceProps,
-      ArrowFunctionExpression: replaceProps,
-      VariableDeclarator: replaceSymbol,
-      ImportDeclaration: replaceImportDeclaration,
-      Identifier: symbolIdentifier,
-      ObjectPattern: symbolObjectPattern,
-      ArrayPattern: symbolArrayPattern,
-
+      // props
+      FunctionDeclaration: transformProps,
+      ArrowFunctionExpression: transformProps,
+      // Symbol
+      VariableDeclarator: replaceSymbol, // let $x = 0 → let $x = signal(0)
+      Identifier: symbolIdentifier, // $x → $x.value
+      AssignmentExpression: symbolAssignment, // $x = 1 → $x.value = 1
+      UpdateExpression: symbolUpdate, // $x++ → $x.value++
+      ObjectPattern: symbolObjectPattern, // { $x } → handle nested patterns
+      ArrayPattern: symbolArrayPattern, // [$x] → handle nested patterns
+      // JSX
       JSXElement: transformJSX,
       JSXFragment: transformJSX,
     },

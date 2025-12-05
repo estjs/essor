@@ -6,6 +6,8 @@ export default estjs(
       'unicorn/prefer-modern-dom-apis': 'off',
       'unicorn/prefer-dom-node-remove': 'off',
       'unicorn/prefer-dom-node-append': 'off',
+      'unicorn/no-lonely-if': 'off',
+      'unicorn/no-new-array': 'off',
     },
     typescript: {
       '@typescript-eslint/no-this-alias': 'off',
@@ -14,5 +16,5 @@ export default estjs(
       'no-prototype-builtins': 'off',
     },
   },
-  { unocss: false },
+  { unocss: false, node: false },
 );

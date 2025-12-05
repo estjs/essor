@@ -5,7 +5,7 @@
   "type": "module",
   "keywords": [],
   "license": "MIT",
-  "homepage": "https://github.com/estjs/essor#readme",
+  "homepage": "https://github.com/estjs/essor",
   "bugs": "https://github.com/estjs/essor/issues",
   "repository": {
     "type": "git",
@@ -16,14 +16,29 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/shared.js",
-  "module": "./dist/shared.js",
+  "main": "./dist/shared.esm.js",
+  "module": "./dist/shared.esm.js",
   "types": "./dist/shared.d.ts",
   "exports": {
     ".": {
+      "browser": {
+        "development": {
+          "types": "./dist/shared.d.ts",
+          "require": "./dist/shared.dev.cjs.js",
+          "import": "./dist/shared.dev.esm.js"
+        },
+        "types": "./dist/shared.d.ts",
+        "require": "./dist/shared.cjs.js",
+        "import": "./dist/shared.esm.js"
+      },
+      "development": {
+        "types": "./dist/shared.d.ts",
+        "require": "./dist/shared.dev.cjs.js",
+        "import": "./dist/shared.dev.esm.js"
+      },
       "types": "./dist/shared.d.ts",
-      "require": "./dist/shared.cjs",
-      "import": "./dist/shared.js"
+      "require": "./dist/shared.cjs.js",
+      "import": "./dist/shared.esm.js"
     }
   },
   "typesVersions": {
@@ -35,7 +50,7 @@
   },
   "sideEffects": false,
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
     "dev": "tsup --watch"
   }
 }

@@ -35,8 +35,8 @@ function updateChangeLog() {
   }
   const initialChangelogStr = readFileSync(join(`${resolve()}/CHANGELOG.md`), 'utf8') || '';
 
-  const pageDataStr = `${initialChangelogStr.match(/---[\S\s]+---/)![0]}\n`;
-  const data = initialChangelogStr.split(/---[\S\s]+---/);
+  const pageDataStr = `${initialChangelogStr.match(/---[\s\S]+---/)![0]}\n`;
+  const data = initialChangelogStr.split(/---[\s\S]+---/);
   data.unshift(pageDataStr);
 
   new Promise(resolve => {

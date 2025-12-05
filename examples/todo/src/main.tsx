@@ -1,10 +1,12 @@
 function App() {
   const $list: string[] = [];
-  let $val: string = '';
+  let $val = '';
   const $checkedList: string[] = [];
 
   const addTodo = () => {
-    if (!$val) return;
+    if (!$val) {
+      return;
+    }
     $list.push($val);
     $val = '';
   };

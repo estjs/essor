@@ -8,10 +8,12 @@
     "estjs",
     "jiangxd",
     "tsup",
-    "typecheck"
+    "typecheck",
+    "tmpl"
   ],
   "prettier.enable": false,
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
-  }
+  },
+  "vitest.disableWorkspaceWarning": true
 }

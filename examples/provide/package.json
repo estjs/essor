@@ -1,5 +1,5 @@
 {
-  "name": "essor-benchmark",
+  "name": "essor-example-provide",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,14 +13,14 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^2.0.2",
-    "@types/node": "^22.14.1",
-    "eslint": "^9.24.0",
-    "jsdom": "^26.1.0",
-    "typescript": "^5.8.3",
+    "@estjs/eslint-config": "^2.1.5",
+    "@types/node": "^24.7.2",
+    "eslint": "^9.37.0",
+    "jsdom": "^27.0.0",
+    "typescript": "^5.9.3",
     "unplugin-essor": "workspace:*",
-    "vite": "^6.3.2",
-    "vite-plugin-inspect": "^11.0.0",
-    "vitest": "^3.1.1"
+    "vite": "^7.1.10",
+    "vite-plugin-inspect": "^11.3.3",
+    "vitest": "^3.2.4"
   }
 }

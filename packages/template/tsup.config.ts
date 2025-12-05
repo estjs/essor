@@ -17,7 +17,12 @@ export default defineConfig({
   outDir: 'dist',
   format: ['cjs', 'esm'],
   target: 'es2015',
-  dts: true,
+  dts: {
+    compilerOptions: {
+      // Include types folder for JSX declarations
+      types: ['./types/index.d.ts'],
+    },
+  },
   shims: true,
   clean: true,
   banner: {
@@ -26,9 +31,9 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: false,
-  minify: env === 'production' ? true : false,
+  minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
-  external: ['csstype', '@estjs/shared', '@estjs/signal'],
+  external: ['csstype', '@estjs/shared', '@estjs/signals'],
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',
   },

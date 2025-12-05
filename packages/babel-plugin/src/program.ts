@@ -1,55 +1,109 @@
 import { type NodePath, types as t } from '@babel/core';
-import type { Options, State } from './types';
-export const imports = new Set<string>();
+import { addImport, clearImport, createImport, createImportIdentifiers, importMap } from './import';
+import { DEFAULT_OPTIONS } from './constants';
+import type { PluginState } from './types';
 
-const defaultOption: Options = {
-  server: false,
-  symbol: '$',
-  props: true,
-};
+// ============================================
+// Virtual module path - unified use of virtual:essor-hmr
+// ============================================
+function getHmrModulePath(): string {
+  return '/@essor-refresh';
+}
+// ============================================
+// Create import identifier
+// ============================================
+export function createImportIdentifier(path: babel.NodePath, importName: string): t.Identifier {
+  const source = getHmrModulePath();
+  const program = path.scope.getProgramParent().path as babel.NodePath<t.Program>;
 
-export const transformProgram = {
-  enter(path: NodePath<t.Program>, state) {
-    imports.clear();
+  // Check if already imported
+  let importId: t.Identifier | undefined;
 
-    // merge options
-    state.opts = { ...defaultOption, ...state.opts };
-
-    path.state = {
-      h: path.scope.generateUidIdentifier('h$'),
-      template: path.scope.generateUidIdentifier('template$'),
-      ssg: path.scope.generateUidIdentifier('ssg$'),
-      Fragment: path.scope.generateUidIdentifier('fragment$'),
-
-      useSignal: path.scope.generateUidIdentifier('useSignal$'),
-      useComputed: path.scope.generateUidIdentifier('useComputed$'),
-      useReactive: path.scope.generateUidIdentifier('useReactive$'),
-
-      tmplDeclaration: t.variableDeclaration('const', []),
-      opts: state.opts,
-    } as State;
-  },
-  exit(path: NodePath<t.Program>) {
-    const state: State = path.state;
-    if (state.tmplDeclaration.declarations.length > 0) {
-      const index = path.node.body.findIndex(
-        node => !t.isImportDeclaration(node) && !t.isExportDeclaration(node),
-      );
-      path.node.body.splice(index, 0, state.tmplDeclaration);
-    }
-    if (imports.size > 0) {
-      path.node.body.unshift(createImport(state, 'essor'));
-    }
-  },
-};
-function createImport(state: State, from: string) {
-  const ImportSpecifier: t.ImportSpecifier[] = [];
-  imports.forEach(name => {
-    const local = t.identifier(state[name].name);
-    const imported = t.identifier(name);
-    ImportSpecifier.push(t.importSpecifier(local, imported));
+  program.traverse({
+    ImportDeclaration(importPath) {
+      if (importPath.node.source.value === source) {
+        const specifier = importPath.node.specifiers.find(
+          spec =>
+            t.isImportSpecifier(spec) &&
+            t.isIdentifier(spec.imported) &&
+            spec.imported.name === importName,
+        );
+        if (specifier && t.isImportSpecifier(specifier)) {
+          importId = specifier.local;
+        }
+      }
+    },
   });
 
-  const importSource = t.stringLiteral(from);
-  return t.importDeclaration(ImportSpecifier, importSource);
+  if (!importId) {
+    // Create new import
+    importId = path.scope.generateUidIdentifier(importName);
+    const importDecl = t.importDeclaration(
+      [t.importSpecifier(importId, t.identifier(importName))],
+      t.stringLiteral(source),
+    );
+
+    // Insert import at the top of program
+    program.unshiftContainer('body', importDecl);
+  }
+
+  return importId;
 }
+
+export const transformProgram = {
+  enter: (path: NodePath<t.Program>, state) => {
+    const opts = { ...DEFAULT_OPTIONS, ...state.opts };
+    const imports = createImportIdentifiers(path);
+
+    // Clear any previous import state to ensure clean transformation
+    clearImport();
+
+    // Extend path state with plugin-specific data
+    path.state = {
+      ...state,
+      opts,
+      imports,
+      declarations: [], // Collect template declarations during transformation
+      filename: state.filename,
+      events: new Set(), // Track delegated events for optimization
+    };
+  },
+
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  exit: (path: NodePath<t.Program>, state) => {
+    const pluginState: PluginState = path.state as PluginState;
+    const { imports, declarations, events } = pluginState;
+    // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
+
+    // Find optimal insertion point after imports but before other code
+    const insertIndex = path.node.body.findIndex(
+      node => !t.isImportDeclaration(node) && !t.isExportDeclaration(node),
+    );
+
+    // Insert template declarations for reactive components
+    if (declarations?.length) {
+      const templateDeclaration = t.variableDeclaration('const', declarations);
+
+      // Insert at the appropriate location to maintain code organization
+      if (insertIndex !== -1) {
+        path.node.body.splice(insertIndex, 0, templateDeclaration);
+      } else {
+        path.node.body.push(templateDeclaration);
+      }
+    }
+
+    // Setup event delegation for performance optimization
+    if (events && events.size > 0) {
+      const eventsDeclaration = t.expressionStatement(
+        t.callExpression(imports.delegateEvents, [
+          t.arrayExpression(Array.from(events).map(event => t.stringLiteral(event))),
+        ]),
+      );
+      addImport(importMap.delegateEvents);
+      path.node.body.push(eventsDeclaration);
+    }
+
+    // Generate and insert required import statements
+    createImport(path, imports, 'essor');
+  },
+};

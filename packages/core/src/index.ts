@@ -1,10 +1,10 @@
-import { essor_version } from './version';
+import { __version } from './version';
 
+export * from '@estjs/signals';
 export * from '@estjs/template';
-export * from '@estjs/signal';
 
 if (globalThis) {
-  globalThis.__essor_version__ = essor_version;
+  globalThis.__essor_version__ = __version;
 }
 
-export { essor_version };
+export { __version };

@@ -5,6 +5,7 @@ import pkg from './package.json';
 const env = process.env.NODE_ENV;
 const banner = `/**
 * ${pkg.name} v${pkg.version}
+* build time ${new Date().toISOString()}
 * (c) 2023-Present jiangxd <jiangxd2016@gmail.com>
 * @license MIT
 **/`;
@@ -15,7 +16,7 @@ export default defineConfig({
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
-  target: 'es2015',
+  target: 'es2016',
   dts: true,
   shims: true,
   clean: true,
@@ -24,9 +25,9 @@ export default defineConfig({
   },
   treeshake: true,
   cjsInterop: true,
-  sourcemap: false,
-  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signal'],
-  minify: env === 'production' ? true : false,
+  sourcemap: true,
+  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals'],
+  minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
   define: {
     __DEV__: env !== 'production' ? 'true' : 'false',

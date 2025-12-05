@@ -1,0 +1,877 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`jsx SSR transform > should work with CSS-in-JS in SSR 1`] = `
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-styled></div>");
+const StyledComponent = ({
+  className,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  _memoEffect$(_p$ => {
+    var _v$0 = className;
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
+  return _$el;
+})();
+const element = _createComponent$(StyledComponent, {
+  "children": ["Styled Content"],
+  "class": "generated-class"
+});"
+`;
+
+exports[`jsx SSR transform > should work with async data in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div></div>");
+const AsyncComponent = async ({
+  data
+}) => {
+  const result = await data;
+  return (() => {
+    const _$el = _$tmpl();
+    const _$nodes = _mapNodes$(_$el, [1]);
+    _insert$(_$nodes[0], () => result);
+    return _$el;
+  })();
+};
+const element = _createComponent$(AsyncComponent, {
+  "data": Promise.resolve('async content')
+});"
+`;
+
+exports[`jsx SSR transform > should work with bind api 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, bindElement as _bindElement$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const value = 1;
+(() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [2]);
+  _bindElement$(_$nodes[0], "value", value, _value => value = _value);
+  _memoEffect$(_p$ => {
+    var _v$0 = value;
+    _v$0 !== _p$.a0 && _patchAttr$(_$nodes[0], "value", _p$.a0, _p$.a0 = _v$0);
+    return _p$;
+  }, {
+    a0: undefined
+  });
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with comment in JSX 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, bindElement as _bindElement$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const value = 1;
+(() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [2]);
+  _bindElement$(_$nodes[0], "value", value, _value => value = _value);
+  _memoEffect$(_p$ => {
+    var _v$0 = value;
+    _v$0 !== _p$.a0 && _patchAttr$(_$nodes[0], "value", _p$.a0, _p$.a0 = _v$0);
+    return _p$;
+  }, {
+    a0: undefined
+  });
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with conditional rendering in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div></div>"),
+  _$tmpl2 = _template$("<p>Visible Content</p>"),
+  _$tmpl3 = _template$("<span>True</span>"),
+  _$tmpl4 = _template$("<span>False</span>");
+const isVisible = true;
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => isVisible && (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })());
+  _insert$(_$nodes[0], () => isVisible ? (() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })() : (() => {
+    const _$el4 = _$tmpl4();
+    return _$el4;
+  })());
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with context in SSR 1`] = `
+"import { createComponent as _createComponent$ } from "essor";
+const ThemeContext = {
+  Provider: ({
+    value,
+    children
+  }) => children
+};
+const element = _createComponent$(ThemeContext.Provider, {
+  "value": "dark",
+  "children": ["Themed Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with data fetching in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-ssr-data></div>");
+const DataComponent = ({
+  data
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => JSON.stringify(data));
+  return _$el;
+})();
+const element = _createComponent$(DataComponent, {
+  "data": {
+    key: 'value'
+  }
+});"
+`;
+
+exports[`jsx SSR transform > should work with error handling in SSR 1`] = `
+"import { createComponent as _createComponent$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Error Page</div>");
+const ErrorBoundary = ({
+  fallback,
+  children
+}) => {
+  try {
+    return children;
+  } catch (error) {
+    return fallback;
+  }
+};
+const element = _createComponent$(ErrorBoundary, {
+  "fallback": (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })(),
+  "children": ["Protected Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with event handlers in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, delegateEvents as _delegateEvents$ } from "essor";
+const _$tmpl = _template$("<button>Click me</button>");
+const handleClick = () => console.log('clicked');
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _$nodes[0]["_$click"] = handleClick;
+  return _$el;
+})();
+_delegateEvents$(["click"]);"
+`;
+
+exports[`jsx SSR transform > should work with head management in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<head  data-ssr></head>"),
+  _$tmpl2 = _template$("<meta  name=\\"description\\" content=\\"Page description\\"/>");
+const Head = ({
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  return _$el;
+})();
+const element = _createComponent$(Head, {
+  "children": ["Page Title", (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
+});"
+`;
+
+exports[`jsx SSR transform > should work with hydration attributes 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div  data-hydrate=\\"true\\">Hydration Content</div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with list rendering in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<ul></ul>"),
+  _$tmpl2 = _template$("<li></li>");
+const items = ['Item 1', 'Item 2', 'Item 3'];
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => items.map((item, index) => (() => {
+    const _$el2 = _$tmpl2();
+    const _$nodes2 = _mapNodes$(_$el2, [1]);
+    _insert$(_$nodes2[0], () => item);
+    _memoEffect$(_p$ => {
+      var _v$0 = index;
+      _v$0 !== _p$.k0 && _patchAttr$(_$nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      return _p$;
+    }, {
+      k0: undefined
+    });
+    return _$el2;
+  })()));
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with nested components and props in SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div>Name:<!>, Age:</div>"),
+  _$tmpl2 = _template$("<div></div>");
+const Child = ({
+  name,
+  age
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1, 3]);
+  _insert$(_$nodes[0], () => name, _$nodes[1]);
+  _insert$(_$nodes[0], () => age);
+  return _$el;
+})();
+const Parent = () => (() => {
+  const _$el2 = _$tmpl2();
+  const _$nodes2 = _mapNodes$(_$el2, [1]);
+  _insert$(_$nodes2[0], _createComponent$(Child, {
+    "name": "John",
+    "age": 25
+  }));
+  _insert$(_$nodes2[0], _createComponent$(Child, {
+    "name": "Jane",
+    "age": 23
+  }));
+  return _$el2;
+})();"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div></div>"),
+  _$tmpl2 = _template$("<div></div>");
+const StreamingComponent = ({
+  chunks
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => chunks.map((chunk, index) => (() => {
+    const _$el2 = _$tmpl2();
+    const _$nodes2 = _mapNodes$(_$el2, [1]);
+    _insert$(_$nodes2[0], () => chunk);
+    _memoEffect$(_p$ => {
+      var _v$0 = index,
+        _v$1 = index;
+      _v$0 !== _p$.k0 && _patchAttr$(_$nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      _v$1 !== _p$.d1 && _patchAttr$(_$nodes2[0], "data-chunk", _p$.d1, _p$.d1 = _v$1);
+      return _p$;
+    }, {
+      k0: undefined,
+      d1: undefined
+    });
+    return _$el2;
+  })()));
+  return _$el;
+})();
+const element = _createComponent$(StreamingComponent, {
+  "chunks": ['chunk1', 'chunk2']
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and context 1`] = `
+"import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-context></div>");
+const StreamingContext = ({
+  value,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(ThemeContext.Provider, {
+    "value": value,
+    "children": [children]
+  }));
+  return _$el;
+})();
+const element = _createComponent$(StreamingContext, {
+  "value": "dark",
+  "children": ["Streaming Context Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and custom hooks 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-hook></div>");
+const useStreamingHook = () => ({
+  value: 'streaming'
+});
+const StreamingHook = () => {
+  const {
+    value
+  } = useStreamingHook();
+  return (() => {
+    const _$el = _$tmpl();
+    const _$nodes = _mapNodes$(_$el, [1]);
+    _insert$(_$nodes[0], () => value);
+    return _$el;
+  })();
+};
+const element = _createComponent$(StreamingHook, {});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and data fetching 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-data></div>"),
+  _$tmpl2 = _template$("<div>Loading data...</div>");
+const StreamingData = ({
+  data,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => data ? children : (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })());
+  return _$el;
+})();
+const element = _createComponent$(StreamingData, {
+  "data": {
+    key: 'value'
+  },
+  "children": ["Data Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and dynamic imports 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-dynamic></div>"),
+  _$tmpl2 = _template$("<div>Loading...</div>");
+const StreamingDynamic = ({
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  return _$el;
+})();
+const element = _createComponent$(_Suspense$, {
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": [_createComponent$(StreamingDynamic, {
+    "children": [import('./Component')]
+  })]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and error boundaries 1`] = `
+"import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-error></div>"),
+  _$tmpl2 = _template$("<div>Error occurred!</div>");
+const StreamingErrorBoundary = ({
+  children,
+  fallback
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(ErrorBoundary, {
+    "fallback": fallback,
+    "children": [children]
+  }));
+  return _$el;
+})();
+const element = _createComponent$(StreamingErrorBoundary, {
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": ["Protected Streaming Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and error handling 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-error></div>"),
+  _$tmpl2 = _template$("<div>Error:</div>");
+const StreamingError = ({
+  error,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => error ? (() => {
+    const _$el2 = _$tmpl2();
+    const _$nodes2 = _mapNodes$(_$el2, [1]);
+    _insert$(_$nodes2[0], () => error.message);
+    return _$el2;
+  })() : children);
+  return _$el;
+})();
+const element = _createComponent$(StreamingError, {
+  "error": null,
+  "children": ["Streaming Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and forwardRef 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-forward></div>");
+const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => props.children);
+  _memoEffect$(_p$ => {
+    var _v$0 = ref;
+    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
+    return _p$;
+  }, {
+    r0: undefined
+  });
+  return _$el;
+})());
+const element = _createComponent$(StreamingForwardRef, {
+  "ref": React.createRef(),
+  "children": ["Streaming Forward Ref Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and hydration 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-hydration></div>");
+const StreamingHydration = ({
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  return _$el;
+})();
+const element = _createComponent$(StreamingHydration, {
+  "children": ["Hydration Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and lazy loading 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-lazy></div>"),
+  _$tmpl2 = _template$("<div>Loading...</div>");
+const StreamingLazy = ({
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  return _$el;
+})();
+StreamingLazy._lazy = true;
+const element = _createComponent$(_Suspense$, {
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": ["Lazy Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and loading states 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-loading></div>"),
+  _$tmpl2 = _template$("<div>Loading...</div>");
+const StreamingLoading = ({
+  isLoading,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => isLoading ? (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })() : children);
+  return _$el;
+})();
+const element = _createComponent$(StreamingLoading, {
+  "isLoading": false,
+  "children": ["Loaded Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and memo 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-memo></div>");
+const StreamingMemo = ({
+  value
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => value);
+  return _$el;
+})();
+StreamingMemo._memo = true;
+const element = _createComponent$(StreamingMemo, {
+  "value": "Memo Content"
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and multiple contexts 1`] = `
+"import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-contexts></div>");
+const StreamingContexts = ({
+  theme,
+  user,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(ThemeContext.Provider, {
+    "value": theme,
+    "children": [_createComponent$(UserContext.Provider, {
+      "value": user,
+      "children": [children]
+    })]
+  }));
+  return _$el;
+})();
+const element = _createComponent$(StreamingContexts, {
+  "theme": "dark",
+  "user": {
+    name: 'John'
+  },
+  "children": ["Multiple Contexts Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and portals 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-portal></div>");
+const StreamingPortal = ({
+  target,
+  children
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  _memoEffect$(_p$ => {
+    var _v$0 = target;
+    _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-target", _p$.d0, _p$.d0 = _v$0);
+    return _p$;
+  }, {
+    d0: undefined
+  });
+  return _$el;
+})();
+const element = _createComponent$(StreamingPortal, {
+  "target": "modal",
+  "children": ["Streaming Portal Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and refs 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-ref></div>");
+const StreamingRef = ({
+  children
+}, ref) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => children);
+  _memoEffect$(_p$ => {
+    var _v$0 = ref;
+    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
+    return _p$;
+  }, {
+    r0: undefined
+  });
+  return _$el;
+})();
+const element = _createComponent$(StreamingRef, {
+  "ref": React.createRef(),
+  "children": ["Streaming Ref Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and suspense 1`] = `
+"import { createComponent as _createComponent$, Suspense as _Suspense$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming></div>"),
+  _$tmpl2 = _template$("<div>Loading...</div>");
+const StreamingSuspense = ({
+  children,
+  fallback
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(_Suspense$, {
+    "fallback": fallback,
+    "children": [children]
+  }));
+  return _$el;
+})();
+const element = _createComponent$(StreamingSuspense, {
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": ["Streaming Content"]
+});"
+`;
+
+exports[`jsx SSR transform > should work with streaming SSR and suspense boundaries 1`] = `
+"import { createComponent as _createComponent$, Suspense as _Suspense$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div  data-streaming-suspense></div>"),
+  _$tmpl2 = _template$("<div>Loading...</div>");
+const StreamingSuspenseBoundary = ({
+  children,
+  fallback
+}) => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(_Suspense$, {
+    "fallback": fallback,
+    "children": [children]
+  }));
+  return _$el;
+})();
+const element = _createComponent$(StreamingSuspenseBoundary, {
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": ["Suspense Content"]
+});"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with JSX fragment 1`] = `
+"import { createComponent as _createComponent$, Fragment as _Fragment$ } from "essor";
+const element = _createComponent$(_Fragment$, {
+  "children": ["Paragraph 1", "Paragraph 2"]
+});"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with JSX fragment as children 1`] = `
+"import { createComponent as _createComponent$, Fragment as _Fragment$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div></div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(_Fragment$, {
+    "children": ["Paragraph 1", "Paragraph 2"]
+  }));
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with SVG tags 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<svg><circle  cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\"></circle></svg>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with attributes 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div  id=\\"myId\\" class=\\"myClass\\">Hello, World!</div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with boolean attribute 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<input  disabled/>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with children 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with class and style attributes 1`] = `
+"import { patchClass as _patchClass$, patchStyle as _patchStyle$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const hasClass = true;
+const style = {
+  color: 'red',
+  fontSize: '16px'
+};
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with conditional attributes 1`] = `
+"import { patchClass as _patchClass$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const hasClass = true;
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with dynamic expressions 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div>Hello,<!>!</div>");
+const name = 'John';
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1, 3]);
+  _insert$(_$nodes[0], () => name, _$nodes[1]);
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with function components 1`] = `
+"import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div></div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], _createComponent$(MyComponent, {
+    "text": "Component 1"
+  }));
+  _insert$(_$nodes[0], _createComponent$(MyComponent, {
+    "text": "Component 2"
+  }));
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with nested expressions and children 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<div><p>'s Profile</p><ul></ul></div>"),
+  _$tmpl2 = _template$("<li>Item</li>");
+const name = 'John';
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [2, 3, 4]);
+  _insert$(_$nodes[0], () => name, _$nodes[1]);
+  _insert$(_$nodes[2], () => Array.from({
+    length: 3
+  }, (_, i) => (() => {
+    const _$el2 = _$tmpl2();
+    const _$nodes2 = _mapNodes$(_$el2, [1]);
+    _insert$(_$nodes2[0], () => i + 1);
+    _memoEffect$(_p$ => {
+      var _v$0 = i;
+      _v$0 !== _p$.k0 && _patchAttr$(_$nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      return _p$;
+    }, {
+      k0: undefined
+    });
+    return _$el2;
+  })()));
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with null and undefined attributes 1`] = `
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _patchAttr$(_$nodes[0], "id", null);
+  _memoEffect$(_p$ => {
+    var _v$0 = undefined;
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with null and undefined children 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1, 2, 4]);
+  _insert$(_$nodes[0], () => null, _$nodes[1]);
+  _insert$(_$nodes[0], () => undefined, _$nodes[2]);
+  _insert$(_$nodes[0], () => false, _$nodes[2]);
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with null and undefined in expressions 1`] = `
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div><p>'s Profile</p><p>Paragraph 2</p></div>");
+const name = null;
+const element = (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1, 2, 3, 4]);
+  _insert$(_$nodes[1], () => name, _$nodes[2]);
+  _insert$(_$nodes[0], () => undefined, _$nodes[3]);
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with self-closing tags 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div><img  src=\\"image.jpg\\" alt=\\"Image 1\\"/><img  src=\\"image.jpg\\" alt=\\"Image 2\\"/></div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with spread attributes 1`] = `
+"import { patchAttr as _patchAttr$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const props = {
+  id: 'myId',
+  class: 'myClass'
+};
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms JSX element with style attribute 1`] = `
+"import { patchStyle as _patchStyle$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const style = {
+  color: 'red',
+  fontSize: '16px'
+};
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
+exports[`jsx SSR transform > transforms simple JSX element 1`] = `
+"import { getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div>Hello, World!</div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;

@@ -1,28 +1,24 @@
-# Essor babel plugin
+# babel-plugin-essor
 
-## Install
+The Babel plugin for **Essor**. It transforms JSX into Essor's runtime calls and provides syntax sugar for working with signals.
+
+## Installation
 
 ```bash
-npm install babel-plugin-essor --save-dev
+npm install -D babel-plugin-essor
 ```
 
-## Usage
+## Configuration
 
-```js
-import EssorBabelPlugin from 'babel-plugin-essor';
-{
-  "plugins": [[EssorBabelPlugin,pluginOptions]]
-}
-```
-
-## Options
+Add it to your Babel configuration:
 
 ```json
 {
-  // translate signal symbol,default "$"
-  "symbol":"$",
-  // enable ssg, dot use it,not a stable API
-  "ssg":false,
-  // enable props translate,default true
-  "props":true
+  "plugins": ["babel-plugin-essor"]
 }
+```
+
+
+## License
+
+MIT

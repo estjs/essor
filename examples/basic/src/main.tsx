@@ -1,12 +1,14 @@
+import { createApp, signal } from 'essor';
+
 function App() {
-  const $v = 'Hello, World!';
+  const value = signal('Hello, World!');
 
   return (
-    <>
-      <p key={$v}>{$v}</p>
-      <input type="text" bind:value={$v} />
-    </>
+    <Fragment>
+      <p>{value.value}</p>
+      <input type="text" value={value.value} oninput={e => (value.value = e.target.value)} />
+    </Fragment>
   );
 }
 
-(<App></App>).mount(document.body.querySelector('#app')!);
+createApp(App, '#app');

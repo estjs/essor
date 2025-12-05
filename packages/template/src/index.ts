@@ -1,10 +1,23 @@
-export { h, Fragment, isJsxElement, isComponent, createTemplate as template } from './jsxRenderer';
+export { template, createApp } from './renderer';
 
-export { onMount, onDestroy, inject, provide } from './hooks';
+export {
+  Component,
+  createComponent,
+  isComponent,
+  type ComponentFn,
+  type ComponentProps,
+} from './component';
 
-export type { InjectionKey } from './hooks';
+export { onMount, onDestroy, onUpdate } from './lifecycle';
 
-export { renderToString, hydrate, ssg } from './server';
+// Dependency injection
+export { provide, inject, type InjectionKey } from './provide';
 
-//@ts-ignore
-export * from '../types/jsx.d.ts';
+// Data binding and events
+export { addEventListener, bindElement, insert, mapNodes } from './binding';
+
+export { delegateEvents } from './events';
+
+export * from './operations';
+export * from './components';
+export * from './server';

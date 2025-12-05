@@ -2,7 +2,7 @@
 pageType: home
 
 hero:
-  name: essor docs
+  name: Essor docs
   text:  Essor
   tagline: A simple and powerful framework
   image:

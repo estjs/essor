@@ -1,4 +1,5 @@
-import { shallowSignal,  useSignal} from 'essor';
+import { createApp, shallowSignal } from 'essor';
+// import './style.css';
 const A = [
   'pretty',
   'large',
@@ -55,8 +56,8 @@ const N = [
   'keyboard',
 ];
 let nextId = 1;
-const random = (max) => Math.round(Math.random() * 1000) % max;
-const buildData = (count) => {
+const random = max => Math.round(Math.random() * 1000) % max;
+const buildData = count => {
   const data = Array.from({ length: count });
   for (let i = 0; i < count; i++) {
     data[i] = {
@@ -67,63 +68,65 @@ const buildData = (count) => {
   return data;
 };
 const data = shallowSignal([]);
-const selected = useSignal(0);
+const selected = shallowSignal(0);
 const actions = {
   run: () => {
     data.set(buildData(1000));
     selected.set(0);
   },
   runLots: () => {
-    data.set(buildData(10000))
+    data.set(buildData(10000));
     selected.set(0);
   },
   add: () => {
-    data.value = data.value.concat(buildData(1000));
+    data.value = data.value.slice().concat(buildData(1000));
   },
   update: () => {
-    const _rows = data.value;
+    const _rows = data.value.slice();
     for (let i = 0; i < _rows.length; i += 10) {
       _rows[i].label += ' !!!';
     }
-    data.set(_rows.slice());
+    data.set(_rows);
   },
   clear: () => {
     data.set([]);
     selected.set(0);
   },
   swapRows: () => {
-      const _rows = data.value;
-      if (_rows.length > 998) {
-        const d1 = _rows[1];
-        const d998 = _rows[998];
-        _rows[1] = d998;
-        _rows[998] = d1;
-      }
-data.set(_rows.slice());
+    const _rows = data.value.slice();
+    if (_rows.length > 998) {
+      const d1 = _rows[1];
+      const d998 = _rows[998];
+      _rows[1] = d998;
+      _rows[998] = d1;
+    }
+    data.set(_rows);
   },
-  remove: (id) => {
-    data.update(data => {
-      const idx = data.findIndex((d) => d.id === id);
-      return [...data.slice(0, idx), ...data.slice(idx + 1)];
-    })
+  remove: id => {
+    data.update(d =>
+      d.toSpliced(
+        d.findIndex(d => d.id === id),
+        1,
+      ),
+    );
   },
-  select: (id) => {
+  select: id => {
     selected.set(id);
   },
 };
 function Row(props) {
   return (
     <tr class={selected.value === props.item.id ? 'danger' : ''}>
-      <td class="col-md-1">{props.item.id}</td>
-      <td class="col-md-4">
+      <td class="col-md-1 1">{props.item.id}</td>
+      <td class="col-md-4 2">
         <a onClick={() => actions.select(props.item.id)}>{props.item.label}</a>
       </td>
-      <td class="col-md-1">
+      <td class="col-md-1 3">
         <a onClick={() => actions.remove(props.item.id)}>
           <span class="glyphicon glyphicon-remove" aria-hidden="true" />
         </a>
       </td>
-      <td class="col-md-6" />
+      <td class="col-md-6 4" />
     </tr>
   );
 }
@@ -143,7 +146,7 @@ function Jumbotron() {
     <div class="jumbotron">
       <div class="row">
         <div class="col-md-6">
-          <h1>Essor keyed</h1>
+          <h1>Essor Benchmark Keyed</h1>
         </div>
         <div class="col-md-6">
           <div class="row">
@@ -188,4 +191,4 @@ function Main() {
   );
 }
 
-(<Main />).mount(document.querySelector('#app'));
+createApp(Main, '#app');
