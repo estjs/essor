@@ -140,10 +140,9 @@ export class Component {
 
     // Smart update: shallow compare object props to detect mutations
     if (this.props) {
-      const flattened = { ...this.props };
-      for (const key in flattened) {
+      for (const key in this.props) {
         if (key === 'key') continue;
-        const newValue = flattened[key];
+        const newValue = this.props[key];
         const oldValue = this.reactiveProps[key];
 
         if (isObject(newValue) && newValue !== null) {
@@ -151,7 +150,9 @@ export class Component {
           const snapshot = this._propSnapshots[key];
           if (!snapshot || !shallowCompare(newValue, snapshot)) {
             // Content changed (or new prop) -> Force update
-            const newSnapshot = Array.isArray(newValue) ? [...newValue] : { ...newValue };
+            const newSnapshot = Array.isArray(newValue)
+              ? newValue.slice()
+              : Object.assign({}, newValue);
             this.reactiveProps[key] = newSnapshot;
             this._propSnapshots[key] = newSnapshot;
           }

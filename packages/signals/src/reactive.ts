@@ -274,6 +274,9 @@ const arrayHandlers = (shallow: boolean) => ({
   },
 });
 
+const shallowArrayHandlers = arrayHandlers(true);
+const deepArrayHandlers = arrayHandlers(false);
+
 // Proxy handler for Map and Set collections.
 const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
   get(target, key: string | symbol) {
@@ -725,7 +728,7 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   // Choose appropriate handler based on target type.
   let handler;
   if (isArray(target)) {
-    handler = arrayHandlers(shallow);
+    handler = shallow ? shallowArrayHandlers : deepArrayHandlers;
   } else if (isSet(target) || isMap(target)) {
     handler = collectionHandlers;
   } else if (isWeakMap(target) || isWeakSet(target)) {
@@ -779,7 +782,7 @@ export function reactive<T extends object>(target: T): T {
     if (__DEV__) {
       warn(
         '[Reactive] Creating a reactive proxy from a signal is not recommended. ' +
-          'Use the signal directly or access its value property.',
+        'Use the signal directly or access its value property.',
       );
     }
     // Return the signal as-is since signals are already reactive
@@ -809,12 +812,12 @@ export function shallowReactive<T extends object>(target: T): T {
       if (isShallow(target)) {
         warn(
           '[ShallowReactive] Target is already a shallow reactive proxy. ' +
-            'Returning existing proxy to avoid double wrapping.',
+          'Returning existing proxy to avoid double wrapping.',
         );
       } else {
         warn(
           '[ShallowReactive] Target is already a deep reactive proxy. ' +
-            'Cannot convert deep reactive to shallow reactive. Returning existing proxy.',
+          'Cannot convert deep reactive to shallow reactive. Returning existing proxy.',
         );
       }
     }
@@ -826,7 +829,7 @@ export function shallowReactive<T extends object>(target: T): T {
     if (__DEV__) {
       warn(
         '[ShallowReactive] Creating a reactive proxy from a signal is not recommended. ' +
-          'Use the signal directly or access its value property.',
+        'Use the signal directly or access its value property.',
       );
     }
     // Return the signal as-is since signals are already reactive

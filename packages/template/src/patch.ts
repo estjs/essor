@@ -322,13 +322,16 @@ function patchUnknownSequence(
   const newChildrenLen = newChildren.length;
 
   // Use Object literal for faster string key lookup
-  const keyToNewIndexMap: Record<string, number> = Object.create(null);
+  let keyToNewIndexMap: Record<string, number> | undefined;
 
   // Build key to index map for new children
   for (let i = newStartIdx; i <= newEndIdx; i++) {
     const key = getNodeKey(newChildren[i]);
     if (key !== undefined) {
-      keyToNewIndexMap[key] = i;
+      if (!keyToNewIndexMap) {
+        keyToNewIndexMap = Object.create(null);
+      }
+      keyToNewIndexMap![key] = i;
     }
   }
 
@@ -353,7 +356,7 @@ function patchUnknownSequence(
     const oldKey = getNodeKey(oldNode);
 
     // Fast path: keyed lookup using object property access
-    if (oldKey !== undefined && oldKey in keyToNewIndexMap) {
+    if (oldKey !== undefined && keyToNewIndexMap && oldKey in keyToNewIndexMap) {
       newIndex = keyToNewIndexMap[oldKey];
     } else {
       // Fallback: type-based matching for unkeyed nodes
