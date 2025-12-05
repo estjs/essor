@@ -17,7 +17,12 @@ export default defineConfig({
   outDir: 'dist',
   format: ['cjs', 'esm'],
   target: 'es2015',
-  dts: true,
+  dts: {
+    compilerOptions: {
+      // Include types folder for JSX declarations
+      types: ['./types/index.d.ts'],
+    },
+  },
   shims: true,
   clean: true,
   banner: {

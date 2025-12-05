@@ -118,14 +118,11 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
  */
 export function patchChildren(
   parent: Node,
-  oldChildren: AnyNode[] | Map<string, AnyNode>,
+  oldChildren: AnyNode[],
   newChildren: AnyNode[],
   anchor?: Node,
 ): AnyNode[] {
-  // Convert Map to Array if needed
-  const oldArr = Array.isArray(oldChildren) ? oldChildren : Array.from(oldChildren.values());
-
-  const oldLength = oldArr.length;
+  const oldLength = oldChildren.length;
   const newLength = newChildren.length;
 
   // ===== FAST PATH 0: Both empty =====
@@ -148,14 +145,14 @@ export function patchChildren(
   if (newLength === 0) {
     // Remove all children efficiently
     for (let i = 0; i < oldLength; i++) {
-      removeNode(oldArr[i]);
+      removeNode(oldChildren[i]);
     }
     return [];
   }
 
   // ===== FAST PATH 3: Single child =====
   if (oldLength === 1 && newLength === 1) {
-    const oldNode = oldArr[0];
+    const oldNode = oldChildren[0];
     const newNode = newChildren[0];
     if (isSameNode(oldNode, newNode)) {
       patch(parent, oldNode, newNode);
@@ -168,8 +165,8 @@ export function patchChildren(
 
   // ===== FAST PATH 4: Two children =====
   if (oldLength === 2 && newLength === 2) {
-    const o0 = oldArr[0];
-    const o1 = oldArr[1];
+    const o0 = oldChildren[0];
+    const o1 = oldChildren[1];
     const n0 = newChildren[0];
     const n1 = newChildren[1];
 
@@ -199,7 +196,7 @@ export function patchChildren(
   }
 
   // ===== GENERAL ALGORITHM: Map-based diffing with LIS =====
-  return patchKeyedChildren(parent, oldArr, newChildren, anchor);
+  return patchKeyedChildren(parent, oldChildren, newChildren, anchor);
 }
 
 /**

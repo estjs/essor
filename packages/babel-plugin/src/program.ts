@@ -51,7 +51,7 @@ export function createImportIdentifier(path: babel.NodePath, importName: string)
 }
 
 export const transformProgram = {
-  enter: (path: NodePath<t.Program>, state: PluginState) => {
+  enter: (path: NodePath<t.Program>, state) => {
     const opts = { ...DEFAULT_OPTIONS, ...state.opts };
     const imports = createImportIdentifiers(path);
 
@@ -69,9 +69,10 @@ export const transformProgram = {
     };
   },
 
-  exit: (path: NodePath<t.Program>) => {
-    const state: PluginState = path.state;
-    const { imports, declarations, events } = state;
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  exit: (path: NodePath<t.Program>, state) => {
+    const pluginState: PluginState = path.state as PluginState;
+    const { imports, declarations, events } = pluginState;
     // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
     // Find optimal insertion point after imports but before other code

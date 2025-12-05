@@ -64,4 +64,5 @@ export enum COMPONENT_TYPE {
   FRAGMENT = 'fragment',
   PORTAL = 'portal',
   SUSPENSE = 'suspense',
+  FOR = 'for',
 }

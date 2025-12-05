@@ -97,7 +97,7 @@ export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null 
       parent.insertBefore(child as Node, beforeNode);
     } else {
       if (__DEV__) {
-        if (!child || !isHTMLElement(child)) {
+        if (!child) {
           error('insertNode: child is not a Node', child);
         }
       }

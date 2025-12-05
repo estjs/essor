@@ -1,6 +1,5 @@
 export { template, createApp } from './renderer';
 
-// Component system
 export {
   Component,
   createComponent,
@@ -21,5 +20,4 @@ export { delegateEvents } from './events';
 
 export * from './operations';
 export * from './components';
-
 export * from './server';

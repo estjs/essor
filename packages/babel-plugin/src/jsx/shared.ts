@@ -845,18 +845,18 @@ export function createPropsObjectExpression(
       objectProperties.push(t.spreadElement(astValue));
     } else {
       // Check if dynamic and not a function
-      if (isDynamicExpression(astValue) && !t.isFunction(astValue)) {
-        objectProperties.push(
-          t.objectMethod(
-            'get',
-            t.identifier(propName),
-            [],
-            t.blockStatement([t.returnStatement(astValue)]),
-          ),
-        );
-      } else {
-        objectProperties.push(t.objectProperty(t.stringLiteral(propName), astValue));
-      }
+      // if (isDynamicExpression(astValue) && !t.isFunction(astValue)) {
+      //   objectProperties.push(
+      //     t.objectMethod(
+      //       'get',
+      //       t.identifier(propName),
+      //       [],
+      //       t.blockStatement([t.returnStatement(astValue)]),
+      //     ),
+      //   );
+      // } else {
+      objectProperties.push(t.objectProperty(t.stringLiteral(propName), astValue));
+      // }
     }
   }
 

@@ -11,7 +11,6 @@ import {
 import { types as t } from '@babel/core';
 import { addImport, importMap } from '../import';
 import { isSignal } from '../signals/symbol';
-import { checkHasJSXReturn } from '../signals/utils';
 import {
   BUILT_IN_COMPONENTS,
   CLASS_NAME,
@@ -986,7 +985,7 @@ function generateDynamic(node: TreeNode) {
  */
 function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: TreeNode): void {
   const { children, props, operations } = dynamicCollection;
-  const { state } = getContext();
+  const { state, path } = getContext();
 
   switch (node.type) {
     case NODE_TYPE.COMPONENT: {
@@ -1012,50 +1011,49 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
         const firstChild = node.children[0];
         // Handle JavaScript expression nodes
         if (isObject(firstChild) && t.isNode(firstChild) && t.isExpression(firstChild)) {
-          if (state.opts.for && isMapCall(firstChild)) {
-            const mapCall = firstChild as t.CallExpression;
-            const list = (mapCall.callee as t.MemberExpression).object;
-            const callback = mapCall.arguments[0];
+          // if (isMapCall(firstChild)) {
+          //   const mapCall = firstChild as t.CallExpression;
+          //   const list = (mapCall.callee as t.MemberExpression).object;
+          //   const callback = mapCall.arguments[0];
 
-            addImport(importMap.For);
+          //   addImport(importMap.For);
 
-            let childrenProp = callback;
-            // Wrap callback if it uses index to unwrap the getter
-            if (
-              (t.isArrowFunctionExpression(callback) || t.isFunctionExpression(callback)) &&
-              callback.params.length > 1 &&
-              checkHasJSXReturn(callback)
-            ) {
-              const { path } = getContext();
-              const itemParam = path.scope.generateUidIdentifier('item');
-              const indexParam = path.scope.generateUidIdentifier('index');
-              childrenProp = t.arrowFunctionExpression(
-                [itemParam, indexParam],
-                t.callExpression(callback as t.Expression, [
-                  itemParam,
-                  t.callExpression(indexParam, []),
-                ]),
-              );
-            }
-            // 特殊处理，默认tree不处理map，所有这里要添加一个tag
-            node.tag = 'For';
-            children.push({
-              index: node.index,
-              node: createComponentExpression(node, {
-                each: list,
-                children: childrenProp,
-              }),
-              before: findBeforeIndex(node, parentNode as TreeNode),
-              parentIndex: parentNode?.index ?? null,
-            });
-          } else {
-            children.push({
-              index: node.index,
-              node: t.arrowFunctionExpression([], firstChild),
-              before: findBeforeIndex(node, parentNode as TreeNode),
-              parentIndex: parentNode?.index ?? null,
-            });
-          }
+          //   let childrenProp = callback;
+          //   // Wrap callback if it uses index to unwrap the getter
+          //   if (
+          //     (t.isArrowFunctionExpression(callback) || t.isFunctionExpression(callback)) &&
+          //     callback.params.length > 1 &&
+          //     checkHasJSXReturn(callback)
+          //   ) {
+          //     const itemParam = path.scope.generateUidIdentifier('item');
+          //     const indexParam = path.scope.generateUidIdentifier('index');
+          //     childrenProp = t.arrowFunctionExpression(
+          //       [itemParam, indexParam],
+          //       t.callExpression(callback as t.Expression, [
+          //         itemParam,
+          //         t.callExpression(indexParam, []),
+          //       ]),
+          //     );
+          //   }
+          //   // 特殊处理，默认tree不处理map，所有这里要添加一个tag
+          //   node.tag = 'For';
+          //   children.push({
+          //     index: node.index,
+          //     node: createComponentExpression(node, {
+          //       each: list,
+          //       children: childrenProp,
+          //     }),
+          //     before: findBeforeIndex(node, parentNode as TreeNode),
+          //     parentIndex: parentNode?.index ?? null,
+          //   });
+          // } else {
+          children.push({
+            index: node.index,
+            node: t.arrowFunctionExpression([], firstChild),
+            before: findBeforeIndex(node, parentNode as TreeNode),
+            parentIndex: parentNode?.index ?? null,
+          });
+          // }
         }
         // Handle JSX elements/fragments in expression containers
         else if (isObject(firstChild) && t.isNode(firstChild) && t.isJSXElement(firstChild)) {
