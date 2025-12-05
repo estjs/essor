@@ -69,6 +69,45 @@ function traverse(value: any, seen = new Set()) {
 }
 
 /**
+ * Create a deep clone of a value for comparison purposes.
+ * Handles plain objects, arrays, Map, Set, and primitives.
+ * @param value - The value to clone.
+ * @returns A deep clone of the value.
+ */
+function cloneValue<T>(value: T): T {
+  if (!isObject(value)) {
+    return value;
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => cloneValue(item)) as unknown as T;
+  }
+
+  if (isMap(value)) {
+    const cloned = new Map();
+    value.forEach((v, k) => {
+      cloned.set(k, cloneValue(v));
+    });
+    return cloned as unknown as T;
+  }
+
+  if (isSet(value)) {
+    const cloned = new Set();
+    value.forEach(v => {
+      cloned.add(cloneValue(v));
+    });
+    return cloned as unknown as T;
+  }
+
+  // Plain object
+  const cloned: any = {};
+  for (const key of Object.keys(value as object)) {
+    cloned[key] = cloneValue((value as any)[key]);
+  }
+  return cloned as T;
+}
+
+/**
  * Resolve watch sources of various forms into a standard getter function.
  * @param source - The watch source passed by the user.
  * @returns A getter function that returns the current source value.
@@ -153,8 +192,8 @@ export function watch<T = any>(
     // If value has changed, execute callback.
     if (hasChanged(newValue, oldValue)) {
       callback(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : (oldValue as T));
-      // Update oldValue for next comparison.
-      oldValue = newValue;
+      // Update oldValue for next comparison (clone to snapshot current state).
+      oldValue = cloneValue(newValue);
     }
   };
 
@@ -179,7 +218,7 @@ export function watch<T = any>(
     job();
   } else {
     // Otherwise, run effect once first to collect initial value as oldValue.
-    oldValue = runner.effect.run();
+    oldValue = cloneValue(runner.effect.run());
   }
 
   // Return a stop function.

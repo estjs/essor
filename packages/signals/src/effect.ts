@@ -2,7 +2,7 @@ import { error, isFunction, warn } from '@estjs/shared';
 import { EffectFlags, ReactiveFlags, SignalFlags } from './constants';
 import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './link';
 import { isBatching } from './batch';
-import { createScheduler } from './scheduler';
+import { createScheduler, queueJob } from './scheduler';
 import type { Computed } from './computed';
 import type { Signal } from './signal';
 import type { Reactive } from './reactive';
@@ -110,67 +110,6 @@ export interface EffectRunner<T = any> {
   (): T;
   effect: EffectImpl<T>;
   stop: () => void;
-}
-
-const jobQueue: Set<() => void> = new Set();
-let isFlushPending = false;
-
-function queueJob(job: () => void): void {
-  jobQueue.add(job); // Set automatically deduplicates
-  if (!isFlushPending) {
-    isFlushPending = true;
-    Promise.resolve().then(flushJobs);
-  }
-}
-
-/**
- * Flush all queued jobs
- *
- * Executes all effects in the job queue and performs cleanup.
- *
- * ## Cleanup Process
- *
- * 1. Reset flush pending flag
- * 2. Copy jobs to array and clear the queue
- * 3. Execute all jobs
- * 4. Verify cleanup in development mode
- *
- * ## Memory Management
- *
- * - Queue is cleared before execution to allow new jobs during flush
- * - Jobs are executed from a snapshot to prevent infinite loops
- * - All temporary state is cleared after execution
- */
-export function flushJobs(): void {
-  isFlushPending = false;
-
-  // Copy jobs to array and clear the queue immediately
-  // This allows new jobs to be queued during execution
-  const jobs = Array.from(jobQueue);
-  jobQueue.clear();
-
-  // Execute all jobs
-  jobs.forEach(job => {
-    try {
-      job();
-    } catch (_error) {
-      // Continue executing other jobs even if one fails
-      if (__DEV__) {
-        error('[Effect] Error executing queued job:', _error);
-      }
-    }
-  });
-
-  // Development mode verification
-  if (__DEV__) {
-    // Verify queue is empty after flush
-    if (jobQueue.size > 0) {
-      warn(
-        `[Effect] Job queue not empty after flush. ${jobQueue.size} jobs remain. ` +
-        'This may indicate jobs were queued during flush.',
-      );
-    }
-  }
 }
 
 /**
