@@ -23,9 +23,7 @@ const AsyncComponent = async ({
   return _render$(_tmpl$, _getHydrationKey$(), result);
 };
 const element = _createComponent$(AsyncComponent, {
-  get data() {
-    return Promise.resolve('async content');
-  }
+  "data": Promise.resolve('async content')
 });"
 `;
 
@@ -94,9 +92,7 @@ const ErrorBoundary = ({
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  get fallback() {
-    return _render$(_tmpl$, _getHydrationKey$());
-  },
+  "fallback": _render$(_tmpl$, _getHydrationKey$()),
   "children": ["Protected Content"]
 });"
 `;
@@ -117,9 +113,7 @@ const Head = ({
   children
 }) => _render$(_tmpl$, _getHydrationKey$(), children);
 const element = _createComponent$(Head, {
-  get children() {
-    return ["Page Title", _render$(_tmpl$3, _getHydrationKey$())];
-  }
+  "children": ["Page Title", _render$(_tmpl$3, _getHydrationKey$())]
 });"
 `;
 

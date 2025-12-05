@@ -1,4 +1,4 @@
-import { batch, effect, reactive, signal } from '../src';
+import { batch, effect, endBatch, getBatchDepth, isBatching, reactive, signal } from '../src';
 
 describe('useBatch', () => {
   it('should useBatch multiple updates', () => {
@@ -51,5 +51,58 @@ describe('useBatch', () => {
 
     expect(effectFn).toHaveBeenCalledTimes(2);
     expect(count.value).toBe(1);
+  });
+  it('should handle nested batches', () => {
+    const count = signal(0);
+    const fn = vi.fn();
+    effect(() => fn(count.value));
+    fn.mockClear();
+
+    batch(() => {
+      count.value = 1;
+      expect(fn).not.toHaveBeenCalled();
+
+      batch(() => {
+        count.value = 2;
+        expect(fn).not.toHaveBeenCalled();
+      });
+
+      expect(fn).not.toHaveBeenCalled();
+    });
+
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith(2);
+  });
+
+  it('should expose batch status utilities', () => {
+    expect(isBatching()).toBe(false);
+    expect(getBatchDepth()).toBe(0);
+
+    batch(() => {
+      expect(isBatching()).toBe(true);
+      expect(getBatchDepth()).toBe(1);
+
+      batch(() => {
+        expect(isBatching()).toBe(true);
+        expect(getBatchDepth()).toBe(2);
+      });
+
+      expect(getBatchDepth()).toBe(1);
+    });
+
+    expect(isBatching()).toBe(false);
+    expect(getBatchDepth()).toBe(0);
+  });
+
+  it('should warn on unbalanced batch calls in dev', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+
+    // Manually call endBatch without startBatch
+    endBatch();
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('[Batch] endBatch() called without matching startBatch()'),
+    );
+    warnSpy.mockRestore();
   });
 });

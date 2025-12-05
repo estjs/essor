@@ -65,7 +65,7 @@ function transformProperty(
       const keyName = property.key.name;
 
       if (t.isIdentifier(property.value)) {
-        path.scope.rename(property.value.name, `${parentPath}${keyName}`);
+        path.scope.rename(property.value.name, `${parentPath}.${keyName}`);
       } else if (t.isAssignmentPattern(property.value)) {
         // Case 2: Assignment pattern (with default value) - collect default value and rename
         // Example: { delay = 1500 } -> collect default value, rename to __props.delay
@@ -74,13 +74,13 @@ function transformProperty(
           defaultValues[keyName] = property.value.right;
           // Rename identifier to use parent path
 
-          path.scope.rename(property.value.left.name, `${parentPath}${keyName}`);
+          path.scope.rename(property.value.left.name, `${parentPath}.${keyName}`);
         } else if (t.isObjectPattern(property.value.left)) {
           // Nested object with default: { nested: { x } = {} }
           transformProperty(
             path,
             property.value.left.properties as ObjectProperty[],
-            `${parentPath}${keyName}.`,
+            `${parentPath}.${keyName}`,
             defaultValues,
           );
           // Store the default value for the nested object
@@ -92,7 +92,7 @@ function transformProperty(
         transformProperty(
           path,
           property.value.properties as ObjectProperty[],
-          `${parentPath}${keyName}.`,
+          `${parentPath}.${keyName}`,
           defaultValues,
         );
       }
@@ -232,7 +232,7 @@ function transformRestProperties(
       const restDeclaration = buildRestVariableDeclaration(
         path.state,
         restName,
-        `${TRANSFORM_PROPERTY_NAME},`,
+        TRANSFORM_PROPERTY_NAME,
         notRestNames,
       );
       restDeclarations.push(restDeclaration);
@@ -304,9 +304,9 @@ function buildDefaultValue(
   const propsParam =
     Object.keys(defaultValues).length > 0
       ? t.assignmentPattern(
-          t.identifier(TRANSFORM_PROPERTY_NAME),
-          buildDefaultValueObject(defaultValues),
-        )
+        t.identifier(TRANSFORM_PROPERTY_NAME),
+        buildDefaultValueObject(defaultValues),
+      )
       : t.identifier(TRANSFORM_PROPERTY_NAME);
 
   path.node.params[0] = propsParam;

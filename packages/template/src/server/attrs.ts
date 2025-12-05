@@ -198,14 +198,14 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
  * @returns Formatted HTML attribute string
  */
 export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string): string {
-  // Ignore null, undefined, and false value attributes
-  if (!attrValue) {
-    return '';
-  }
-
   // Handle reactive values (signals or computed values)
   if (isSignal(attrValue) || isComputed(attrValue)) {
     return setSSGAttr(attrName, attrValue.value, hydrationId);
+  }
+
+  // Ignore null, undefined, and false value attributes
+  if (!attrValue && attrValue !== 0) {
+    return '';
   }
 
   // Special attribute handling: style

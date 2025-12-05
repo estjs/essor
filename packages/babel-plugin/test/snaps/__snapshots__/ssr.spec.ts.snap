@@ -40,9 +40,7 @@ const AsyncComponent = async ({
   })();
 };
 const element = _createComponent$(AsyncComponent, {
-  get data() {
-    return Promise.resolve('async content');
-  }
+  "data": Promise.resolve('async content')
 });"
 `;
 
@@ -155,12 +153,10 @@ const ErrorBoundary = ({
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })();
-  },
+  "fallback": (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })(),
   "children": ["Protected Content"]
 });"
 `;
@@ -191,12 +187,10 @@ const Head = ({
   return _$el;
 })();
 const element = _createComponent$(Head, {
-  get children() {
-    return ["Page Title", (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })()];
-  }
+  "children": ["Page Title", (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
@@ -305,12 +299,8 @@ const StreamingContext = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], _createComponent$(ThemeContext.Provider, {
-    get value() {
-      return value;
-    },
-    get children() {
-      return [children];
-    }
+    "value": value,
+    "children": [children]
   }));
   return _$el;
 })();
@@ -377,19 +367,13 @@ const StreamingDynamic = ({
   return _$el;
 })();
 const element = _createComponent$(_Suspense$, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
-  get children() {
-    return [_createComponent$(StreamingDynamic, {
-      get children() {
-        return [import('./Component')];
-      }
-    })];
-  }
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": [_createComponent$(StreamingDynamic, {
+    "children": [import('./Component')]
+  })]
 });"
 `;
 
@@ -404,54 +388,17 @@ const StreamingErrorBoundary = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], _createComponent$(ErrorBoundary, {
-    get fallback() {
-      return fallback;
-    },
-    get children() {
-      return [children];
-    }
+    "fallback": fallback,
+    "children": [children]
   }));
   return _$el;
 })();
 const element = _createComponent$(StreamingErrorBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Protected Streaming Content"]
-});"
-`;
-
-exports[`jsx SSR transform > should work with streaming SSR and error boundaries 2`] = `
-"import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-error-boundary></div>"),
-  _$tmpl2 = _template$("<div>Error occurred!</div>");
-const StreamingErrorBoundary = ({
-  children,
-  fallback
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], _createComponent$(ErrorBoundary, {
-    get fallback() {
-      return fallback;
-    },
-    get children() {
-      return [children];
-    }
-  }));
-  return _$el;
-})();
-const element = _createComponent$(StreamingErrorBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
-  "children": ["Protected Content"]
 });"
 `;
 
@@ -496,9 +443,7 @@ const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   return _$el;
 })());
 const element = _createComponent$(StreamingForwardRef, {
-  get ref() {
-    return React.createRef();
-  },
+  "ref": React.createRef(),
   "children": ["Streaming Forward Ref Content"]
 });"
 `;
@@ -533,12 +478,10 @@ const StreamingLazy = ({
 })();
 StreamingLazy._lazy = true;
 const element = _createComponent$(_Suspense$, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Lazy Content"]
 });"
 `;
@@ -593,19 +536,11 @@ const StreamingContexts = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], _createComponent$(ThemeContext.Provider, {
-    get value() {
-      return theme;
-    },
-    get children() {
-      return [_createComponent$(UserContext.Provider, {
-        get value() {
-          return user;
-        },
-        get children() {
-          return [children];
-        }
-      })];
-    }
+    "value": theme,
+    "children": [_createComponent$(UserContext.Provider, {
+      "value": user,
+      "children": [children]
+    })]
   }));
   return _$el;
 })();
@@ -662,9 +597,7 @@ const StreamingRef = ({
   return _$el;
 })();
 const element = _createComponent$(StreamingRef, {
-  get ref() {
-    return React.createRef();
-  },
+  "ref": React.createRef(),
   "children": ["Streaming Ref Content"]
 });"
 `;
@@ -680,22 +613,16 @@ const StreamingSuspense = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], _createComponent$(_Suspense$, {
-    get fallback() {
-      return fallback;
-    },
-    get children() {
-      return [children];
-    }
+    "fallback": fallback,
+    "children": [children]
   }));
   return _$el;
 })();
 const element = _createComponent$(StreamingSuspense, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Streaming Content"]
 });"
 `;
@@ -711,22 +638,16 @@ const StreamingSuspenseBoundary = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], _createComponent$(_Suspense$, {
-    get fallback() {
-      return fallback;
-    },
-    get children() {
-      return [children];
-    }
+    "fallback": fallback,
+    "children": [children]
   }));
   return _$el;
 })();
 const element = _createComponent$(StreamingSuspenseBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Suspense Content"]
 });"
 `;

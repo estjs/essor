@@ -67,17 +67,13 @@ exports[`should work with jsx client transform > should work with concurrent mod
 "import { createComponent as _createComponent$, Suspense as _Suspense$, template as _template$ } from "essor";
 const _$tmpl = _template$("<div>Loading...</div>");
 const element = _createComponent$(ConcurrentMode, {
-  get children() {
-    return [_createComponent$(_Suspense$, {
-      get fallback() {
-        return (() => {
-          const _$el = _$tmpl();
-          return _$el;
-        })();
-      },
-      "children": ["Concurrent Mode Suspended Content"]
-    })];
-  }
+  "children": [_createComponent$(_Suspense$, {
+    "fallback": (() => {
+      const _$el = _$tmpl();
+      return _$el;
+    })(),
+    "children": ["Concurrent Mode Suspended Content"]
+  })]
 });"
 `;
 
@@ -138,11 +134,9 @@ const MemoComponent = ({
 MemoComponent._memo = true;
 const element = _createComponent$(ThemeContext.Provider, {
   "value": "dark",
-  get children() {
-    return [_createComponent$(MemoComponent, {
-      "theme": "dark"
-    })];
-  }
+  "children": [_createComponent$(MemoComponent, {
+    "theme": "dark"
+  })]
 });"
 `;
 
@@ -247,12 +241,10 @@ const ErrorBoundary = ({
   return _$el;
 })();
 const element = _createComponent$(ErrorBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Protected Content"]
 });"
 `;
@@ -288,9 +280,7 @@ const ForwardRefMemoComponent = React.memo(React.forwardRef((props, ref) => (() 
 })()));
 const element = _createComponent$(ForwardRefMemoComponent, {
   "value": 42,
-  get ref() {
-    return React.createRef();
-  }
+  "ref": React.createRef()
 });"
 `;
 
@@ -332,9 +322,7 @@ const Children = ({
   })();
 };
 const element = _createComponent$(_Fragment$, {
-  get children() {
-    return [val, _createComponent$(Children, {}), "First", "Second"];
-  }
+  "children": [val, _createComponent$(Children, {}), "First", "Second"]
 });"
 `;
 
@@ -351,12 +339,10 @@ const Head = ({
   return _$el;
 })();
 const element = _createComponent$(Head, {
-  get children() {
-    return ["Page Title", (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })()];
-  }
+  "children": ["Page Title", (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
@@ -443,32 +429,22 @@ const cla = class {
 };
 const element = _createComponent$(ThemeContext.Provider, {
   "value": "dark",
-  get children() {
-    return [_createComponent$(UserContext.Provider, {
-      "value": {
-        name: 'John'
-      },
-      get v1() {
-        return undefined;
-      },
-      "v2": null,
-      "v3": true,
-      "v4": false,
-      "v5": 1,
-      "v6": 1.1,
-      "v7": "1",
-      get v8() {
-        return Symbol('1');
-      },
-      get v9() {
-        return cla;
-      },
-      get v10() {
-        return new Date();
-      },
-      "children": ["Nested Context Content"]
-    })];
-  }
+  "children": [_createComponent$(UserContext.Provider, {
+    "value": {
+      name: 'John'
+    },
+    "v1": undefined,
+    "v2": null,
+    "v3": true,
+    "v4": false,
+    "v5": 1,
+    "v6": 1.1,
+    "v7": "1",
+    "v8": Symbol('1'),
+    "v9": cla,
+    "v10": new Date(),
+    "children": ["Nested Context Content"]
+  })]
 });"
 `;
 
@@ -566,9 +542,7 @@ const Portal = ({
 })();
 const element = _createComponent$(_Portal$, {
   "target": "modal",
-  get ref() {
-    return React.createRef();
-  },
+  "ref": React.createRef(),
   "children": ["Modal Content with Ref"]
 });"
 `;
@@ -614,17 +588,13 @@ exports[`should work with jsx client transform > should work with strict mode an
 "import { createComponent as _createComponent$, template as _template$ } from "essor";
 const _$tmpl = _template$("<div>Error occurred!</div>");
 const element = _createComponent$(StrictMode, {
-  get children() {
-    return [_createComponent$(ErrorBoundary, {
-      get fallback() {
-        return (() => {
-          const _$el = _$tmpl();
-          return _$el;
-        })();
-      },
-      "children": ["Strict Mode Protected Content"]
-    })];
-  }
+  "children": [_createComponent$(ErrorBoundary, {
+    "fallback": (() => {
+      const _$el = _$tmpl();
+      return _$el;
+    })(),
+    "children": ["Strict Mode Protected Content"]
+  })]
 });"
 `;
 
@@ -633,23 +603,17 @@ exports[`should work with jsx client transform > should work with suspense and e
 const _$tmpl = _template$("<div>Error occurred!</div>"),
   _$tmpl2 = _template$("<div>Loading...</div>");
 const element = _createComponent$(ErrorBoundary, {
-  get fallback() {
-    return (() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })();
-  },
-  get children() {
-    return [_createComponent$(_Suspense$, {
-      get fallback() {
-        return (() => {
-          const _$el2 = _$tmpl2();
-          return _$el2;
-        })();
-      },
-      "children": ["Protected and Suspended Content"]
-    })];
-  }
+  "fallback": (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })(),
+  "children": [_createComponent$(_Suspense$, {
+    "fallback": (() => {
+      const _$el2 = _$tmpl2();
+      return _$el2;
+    })(),
+    "children": ["Protected and Suspended Content"]
+  })]
 });"
 `;
 
@@ -667,12 +631,10 @@ const LazyComponent = ({
 })();
 LazyComponent._lazy = true;
 const element = _createComponent$(_Suspense$, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Lazy Content"]
 });"
 `;
@@ -692,12 +654,10 @@ const Suspense = ({
   return _$el;
 })();
 const element = _createComponent$(_Suspense$, {
-  get fallback() {
-    return (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })();
-  },
+  "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
   "children": ["Content"]
 });"
 `;

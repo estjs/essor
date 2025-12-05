@@ -1,4 +1,4 @@
-import { isArray, isString, isUndefined, warn } from '@estjs/shared';
+import { isArray, isString, warn } from '@estjs/shared';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
 import { onMount } from '../lifecycle';
@@ -25,7 +25,7 @@ export interface PortalProps {
  */
 export function Portal(props: PortalProps): Comment | string {
   // Check if we're in SSR mode (no document)
-  if (isUndefined(document)) {
+  if (typeof document === 'undefined') {
     const children = props.children;
     if (!children) return '';
     const childArray = isArray(children) ? children : [children];
@@ -34,6 +34,8 @@ export function Portal(props: PortalProps): Comment | string {
   }
   // Create placeholder comment for parent tree
   const placeholder = document.createComment('portal');
+  // Mark as portal for isPortal check
+  (placeholder as any)[COMPONENT_TYPE.PORTAL] = true;
 
   onMount(() => {
     // Get target element
@@ -45,7 +47,7 @@ export function Portal(props: PortalProps): Comment | string {
       if (__DEV__) {
         warn(`[Portal] Target element not found: ${props.target}`);
       }
-      return document.createComment('portal-no-target');
+      return;
     }
 
     const children = props.children;

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { addEventListener, insert, mapNodes } from '../src/binding';
+import { addEventListener, bindElement, insert, mapNodes } from '../src/binding';
 import { cleanupContext, createContext, popContextStack, pushContextStack } from '../src/context';
 import { createTestRoot, resetEnvironment } from './test-utils';
 
@@ -205,6 +205,129 @@ describe('binding utilities', () => {
       const nodes = mapNodes(template.cloneNode(true), [1]);
       expect(nodes).toHaveLength(1);
       expect(nodes[0].nodeName).toBe('SPAN');
+    });
+  });
+
+  describe('bindElement', () => {
+    it('binds checkbox input', () => {
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      const setter = vi.fn();
+
+      bindElement(input, 'checked', false, setter);
+
+      input.checked = true;
+      input.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(true);
+
+      input.checked = false;
+      input.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(false);
+    });
+
+    it('binds radio input', () => {
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.value = 'option1';
+      const setter = vi.fn();
+
+      bindElement(input, 'checked', '', setter);
+
+      input.checked = true;
+      input.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('option1');
+
+      input.checked = false;
+      input.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('');
+    });
+
+    it('binds file input', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      const setter = vi.fn();
+
+      bindElement(input, 'files', null, setter);
+
+      // Mock files property since we can't easily set it programmatically in jsdom
+      Object.defineProperty(input, 'files', {
+        value: ['file1'],
+        writable: true,
+      });
+
+      input.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(['file1']);
+    });
+
+    it('binds number input', () => {
+      const input = document.createElement('input');
+      input.type = 'number';
+      const setter = vi.fn();
+
+      bindElement(input, 'value', '', setter);
+
+      input.value = '123';
+      input.dispatchEvent(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('123');
+    });
+
+    it('binds select element (single)', () => {
+      const select = document.createElement('select');
+      const option1 = document.createElement('option');
+      option1.value = 'a';
+      const option2 = document.createElement('option');
+      option2.value = 'b';
+      select.appendChild(option1);
+      select.appendChild(option2);
+
+      const setter = vi.fn();
+      bindElement(select, 'value', '', setter);
+
+      select.value = 'b';
+      select.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith('b');
+    });
+
+    it('binds select element (multiple)', () => {
+      const select = document.createElement('select');
+      select.multiple = true;
+      const option1 = document.createElement('option');
+      option1.value = 'a';
+      const option2 = document.createElement('option');
+      option2.value = 'b';
+      select.appendChild(option1);
+      select.appendChild(option2);
+
+      const setter = vi.fn();
+      bindElement(select, 'value', [], setter);
+
+      option1.selected = true;
+      option2.selected = true;
+      select.dispatchEvent(new Event('change'));
+      expect(setter).toHaveBeenCalledWith(['a', 'b']);
+    });
+
+    it('binds textarea', () => {
+      const textarea = document.createElement('textarea');
+      const setter = vi.fn();
+
+      bindElement(textarea, 'value', '', setter);
+
+      textarea.value = 'text';
+      textarea.dispatchEvent(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('text');
+    });
+
+    it('binds text input (default)', () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      const setter = vi.fn();
+
+      bindElement(input, 'value', '', setter);
+
+      input.value = 'hello';
+      input.dispatchEvent(new Event('input'));
+      expect(setter).toHaveBeenCalledWith('hello');
     });
   });
 });

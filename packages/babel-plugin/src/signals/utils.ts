@@ -126,7 +126,7 @@ export function checkHasJSXReturn(
  * @returns true if the member expression accesses the specified property
  */
 export function isMemberAccessingProperty(node: t.MemberExpression, propertyName: string): boolean {
-  if (t.isIdentifier(node.property) && node.property.name === propertyName) {
+  if (!node.computed && t.isIdentifier(node.property) && node.property.name === propertyName) {
     return true;
   }
 

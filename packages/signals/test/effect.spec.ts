@@ -1,8 +1,9 @@
-import { type MemoizedEffectFn, effect, memoEffect, signal } from '../src';
+import { effect, isEffect, memoEffect, signal } from '../src';
 
 describe('effect', () => {
   it('should run the effect function', () => {
     let testValue = 0;
+    // ... (omitting unchanged lines for brevity in thought, but tool needs exact context or I can use multi_replace)
     effect(
       () => {
         testValue = 10;
@@ -101,6 +102,61 @@ describe('effect', () => {
     name.value = 'Changed';
     expect(mockEffect).toHaveBeenCalledTimes(1);
   });
+
+  it('should pause and resume', () => {
+    const count = signal(0);
+    const fn = vi.fn();
+    const runner = effect(() => {
+      fn(count.value);
+    });
+
+    expect(fn).toHaveBeenCalledTimes(1);
+
+    runner.effect.pause();
+    count.value = 1;
+    expect(fn).toHaveBeenCalledTimes(1); // Should not run
+
+    count.value = 2;
+    expect(fn).toHaveBeenCalledTimes(1); // Should not run
+
+    runner.effect.resume();
+    expect(fn).toHaveBeenCalledTimes(2); // Should run once with latest value
+    expect(fn).toHaveBeenLastCalledWith(2);
+  });
+
+  it('should handle stop idempotency', () => {
+    const runner = effect(() => { });
+    runner.stop();
+    expect(() => runner.stop()).not.toThrow();
+  });
+
+  it('should handle error in reactive update', () => {
+    const count = signal(0);
+    effect(() => {
+      if (count.value > 0) {
+        throw new Error('Update Error');
+      }
+    });
+
+    expect(() => {
+      count.value = 1;
+    }).toThrow('Update Error');
+  });
+
+  it('should throw if initial execution fails', () => {
+    expect(() => {
+      effect(() => {
+        throw new Error('Fail');
+      });
+    }).toThrow('Fail');
+  });
+
+  it('should isEffect check', () => {
+    const runner = effect(() => { });
+    expect(isEffect(runner.effect)).toBe(true);
+    expect(isEffect({})).toBe(false);
+    expect(isEffect(null)).toBe(false);
+  });
 });
 
 describe('memoEffect', () => {
@@ -127,7 +183,7 @@ describe('memoEffect', () => {
       const counter = signal(1);
       const states: Array<{ value: number }> = [];
 
-      const effectFn: MemoizedEffectFn<{ value: number }> = prev => {
+      const effectFn: MemoEffectFn<{ value: number }> = prev => {
         states.push({ ...prev });
         const current = counter.value;
         return { value: current };
@@ -172,7 +228,7 @@ describe('memoEffect', () => {
         updateCount: number;
       };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: MemoEffectFn<State> = prev => {
         return {
           lastWidth: width.value,
           lastHeight: height.value,
@@ -208,7 +264,7 @@ describe('memoEffect', () => {
 
       type State = { v1?: string; v2?: string; v3?: string };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: MemoEffectFn<State> = prev => {
         const current = {
           v1: value1.value,
           v2: value2.value,
@@ -276,7 +332,7 @@ describe('memoEffect', () => {
         lastTitle?: string;
       };
 
-      const effectFn: MemoizedEffectFn<State> = prev => {
+      const effectFn: MemoEffectFn<State> = prev => {
         const currentWidth = width.value;
         const currentWidthPx = `${currentWidth}px`;
         const currentTitle = `Width: ${currentWidth}`;
@@ -327,7 +383,7 @@ describe('memoEffect', () => {
 
   describe('error handling tests', () => {
     it('should handle errors in effect function', () => {
-      const errorFn: MemoizedEffectFn<{ count: number }> = prev => {
+      const errorFn: MemoEffectFn<{ count: number }> = prev => {
         if (prev.count > 2) {
           throw new Error('Test error');
         }
@@ -361,7 +417,7 @@ describe('memoEffect', () => {
 
     type State = { e?: number; t?: string; a?: string };
 
-    const effectFn: MemoizedEffectFn<State> = prev => {
+    const effectFn: MemoEffectFn<State> = prev => {
       const v1 = editorWidth.value;
       const v2 = `${editorWidth.value}%`;
       const v3 = `${100 - editorWidth.value}%`;

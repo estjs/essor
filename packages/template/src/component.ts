@@ -94,6 +94,10 @@ export class Component {
     // render the component
     let result = this.component(this.reactiveProps);
 
+    if (isFunction(result)) {
+      result = (result as Function)(this.reactiveProps) as Node;
+    }
+
     // Unwrap signals and computed values
     if (isSignal<Node>(result) || isComputed<Node>(result)) {
       result = result.value;

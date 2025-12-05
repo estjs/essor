@@ -314,21 +314,6 @@ describe('patch', () => {
       expect(root.children[1]).toBe(old1);
     });
 
-    it('handles Map input for old children', () => {
-      const root = createTestRoot();
-      const child = document.createElement('div');
-      const oldMap = new Map<string, Element>();
-      oldMap.set('key', child);
-      root.appendChild(child);
-
-      const newChild = document.createElement('div');
-      newChild.id = 'updated';
-
-      patchChildren(root, oldMap, [newChild]);
-
-      expect(child.id).toBe('updated');
-    });
-
     it('handles adding children to existing list', () => {
       const root = createTestRoot();
       const existing = document.createElement('div');

@@ -45,7 +45,7 @@ export {
 } from './reactive';
 
 // ==================== Batch API ====================
-export { batch, startBatch, endBatch, isBatching } from './batch';
+export { batch, startBatch, endBatch, isBatching, getBatchDepth } from './batch';
 
 // ==================== Scheduler API ====================
 export {
