@@ -1,7 +1,8 @@
-import { error, isHTMLElement, isNaN, isNull, isString, isSymbol, warn } from '@estjs/shared';
+import { error, isFalsy, isHTMLElement, isNumber, isString, isSymbol, warn } from '@estjs/shared';
 import { isComponent } from './component';
 import type { AnyNode } from './types';
 
+/** Maximum allowed key length before truncation */
 const MAX_KEY_LENGTH = 1000;
 
 export type NodeKey = string | number | symbol;
@@ -11,6 +12,7 @@ const componentKeyPrefixCache = new WeakMap<Function, string>();
 
 /**
  * Generates a stable key prefix for a component type.
+ *
  * @param type - The component function
  * @returns The generated key prefix
  */
@@ -26,126 +28,127 @@ export function getComponentKey(type: Function): string {
 }
 
 /**
- * Simple string hash function (DJB2 variant)
+ * DJB2 hash variant - fast string hashing.
+ * Limited to first 100 chars for performance.
+ *
  * @param str - The input string
- * @returns The hash code
+ * @returns The hash code (always positive)
  */
 function simpleHash(str: string): number {
   let hash = 0;
-  const len = Math.min(str.length, 100);
+  const len = str.length < 100 ? str.length : 100;
   for (let i = 0; i < len; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash = Math.trunc(hash);
+    hash = Math.trunc((hash << 5) - hash + str.charCodeAt(i));
   }
-  return Math.abs(hash);
+  return hash < 0 ? -hash : hash;
 }
 
-// Symbol ID counter
+/** Counter for generating unique IDs for local symbols */
 let symbolIdCounter = 0;
 
-function getSymbolId(): string {
-  return `${symbolIdCounter++}`;
-}
-
 /**
- * Aggressively optimized key normalization
- * Inlined common paths for maximum performance
+ * Normalize any key value to a string.
+ * Optimized with inline type checks for hot path performance.
+ *
+ * @param key - The key value to normalize
+ * @returns Normalized string key or undefined for null/undefined
  */
 export function normalizeKey(key: any): string | undefined {
-  // Null check - most critical fast path
-  if (isNull(key)) {
+  if (isFalsy(key)) {
     return undefined;
   }
 
-  if (__DEV__) {
-    // NaN check
-    if (typeof key === 'number') {
-      if (isNaN(key)) {
+  if (isString(key)) {
+    if (key.length <= MAX_KEY_LENGTH) {
+      return key;
+    }
+    if (__DEV__) {
+      warn(
+        `[Key System] Key length exceeds ${MAX_KEY_LENGTH} characters. ` +
+        'Consider using a shorter identifier.',
+      );
+    }
+    return `${key.slice(0, MAX_KEY_LENGTH - 10)}_${simpleHash(key).toString(36)}`;
+  }
+
+  if (isNumber(key)) {
+    if (__DEV__) {
+      if (key !== key) {
         warn('[Key System] NaN cannot be used as a key');
         return undefined;
       }
-      // Infinity check
       if (!Number.isFinite(key)) {
         warn('[Key System] Infinity cannot be used as a key');
         return undefined;
       }
     }
+    return String(key);
   }
 
-  // String fast path (most common ~60% of cases)
-  if (isString(key)) {
-    const len = key.length;
-    if (len > MAX_KEY_LENGTH) {
-      if (__DEV__) {
-        warn(
-          `[Key System] Key length exceeds ${MAX_KEY_LENGTH} characters. ` +
-          `This may impact performance. Consider using a shorter identifier.`,
-        );
-      }
-      return `${key.slice(0, MAX_KEY_LENGTH - 10)}_${simpleHash(key).toString(36)}`;
-    }
-    return key;
-  }
-
-  // Symbol
+  // Symbol path
   if (isSymbol(key)) {
     const globalKey = Symbol.keyFor(key);
     if (globalKey) {
       return `_s.${globalKey}`;
     }
     const desc = key.description;
-    if (desc) {
-      return `_s.${desc}`;
-    }
-    return getSymbolId();
+    return desc ? `_s.${desc}` : `${symbolIdCounter++}`;
   }
 
   return String(key);
 }
 
 /**
- * Fast type checking without function call overhead
- * This is used in hot paths where performance is critical
+ * Check if two nodes have the same type for reconciliation.
+ * Used in hot paths - optimized for minimal branching.
+ *
+ * @param a - First node
+ * @param b - Second node
+ * @returns True if nodes are the same type
  */
 export function isSameNodeType(a: AnyNode, b: AnyNode): boolean {
   const aIsComponent = isComponent(a);
   const bIsComponent = isComponent(b);
 
+  // Both components - compare component function
   if (aIsComponent && bIsComponent) {
     return a.component === b.component;
   }
 
+  // Mixed types - never the same
   if (aIsComponent !== bIsComponent) {
     return false;
   }
 
+  // Both DOM nodes - compare nodeType and tagName
   const aNode = a as Node;
   const bNode = b as Node;
 
-  if (aNode.nodeType !== bNode.nodeType) {
-    return false;
-  }
-
-  if (aNode.nodeType === Node.ELEMENT_NODE) {
-    return (aNode as Element).tagName === (bNode as Element).tagName;
-  }
-
-  return true;
+  return (
+    aNode.nodeType === bNode.nodeType &&
+    (aNode.nodeType !== Node.ELEMENT_NODE ||
+      (aNode as Element).tagName === (bNode as Element).tagName)
+  );
 }
 
-/** Symbol for storing keys on DOM nodes - direct property access */
-const NODE_KEY_SYMBOL = Symbol('est.key');
+/** Symbol for storing keys on DOM nodes */
+const NODE_KEY_SYMBOL = Symbol('essor.key');
 
 /**
- * Sets a key on a DOM node using Symbol property
- * Direct property access is ~40% faster than WeakMap
+ * Set a key on a DOM node using Symbol property.
+ * Symbol properties are ~40% faster than WeakMap access.
+ *
+ * @param node - The node to set key on
+ * @param key - The key value (will be normalized)
  */
 export function setNodeKey(node: AnyNode, key: NodeKey | undefined): void {
+  // Skip components - they manage their own keys
   if (isComponent(node)) {
     return;
   }
 
-  if (!node || node.nodeType === Node.DOCUMENT_NODE) {
+  // Validate node
+  if (!node || (node as Node).nodeType === Node.DOCUMENT_NODE) {
     if (__DEV__) {
       warn('[Key System] Cannot set key on invalid node');
     }
@@ -153,72 +156,69 @@ export function setNodeKey(node: AnyNode, key: NodeKey | undefined): void {
   }
 
   const normalizedKey = normalizeKey(key);
-
-  if (normalizedKey === undefined) {
-    // @ts-ignore - using Symbol as property
-    delete node[NODE_KEY_SYMBOL];
+  if (isFalsy(normalizedKey)) {
+    delete (node as any)[NODE_KEY_SYMBOL];
   } else {
-    node[NODE_KEY_SYMBOL] = normalizedKey;
+    (node as any)[NODE_KEY_SYMBOL] = normalizedKey;
   }
 }
 
 /**
- * Gets the key from a node or component
- * Optimized for inline usage in hot paths
+ * Get the key from a node or component.
+ * Optimized for inline usage in hot paths.
+ *
+ * @param node - The node to get key from
+ * @returns The key string or undefined
  */
 export function getNodeKey(node: AnyNode): string | undefined {
-  if (!node) {
-    return undefined;
-  }
-
-  if (isComponent(node)) {
-    return node.key;
-  }
-
-  const val = node[NODE_KEY_SYMBOL];
-  return val;
+  if (!node) return undefined;
+  return isComponent(node) ? node.key : (node as any)[NODE_KEY_SYMBOL];
 }
 
 /**
- * Gets the node's key or returns a fallback key based on index
- * Pure function, no side effects
+ * Get node's key or return an index-based fallback.
+ * Fallback keys start with '.' to distinguish from user keys.
+ *
+ * @param node - The node to get key from
+ * @param fallbackIndex - Index to use if no key exists
+ * @returns The key or fallback string
  */
 export function getKeyOrFallback(node: AnyNode, fallbackIndex: number): string {
-  const existingKey = getNodeKey(node);
-  if (existingKey) {
-    return existingKey;
-  }
-  return `.${fallbackIndex}`;
+  return getNodeKey(node) || `.${fallbackIndex}`;
 }
 
 /**
- * Validates that child keys are unique (Development only)
+ * Validate that child keys are unique (Development only).
+ * Logs errors for duplicate keys to help debugging.
+ *
+ * @param children - Array of child nodes
+ * @param parent - Optional parent node for error context
  */
 export function validateKeys(children: AnyNode[], parent?: Node): void {
   if (!__DEV__) return;
 
   const keySet = new Set<string>();
-  const duplicates = new Set<string>();
+  const duplicates: string[] = [];
+  const len = children.length;
 
-  for (const [i, child] of children.entries()) {
-    const key = getKeyOrFallback(child, i);
+  for (let i = 0; i < len; i++) {
+    const key = getKeyOrFallback(children[i], i);
 
-    // Skip auto-generated fallback keys
-    if (key.startsWith('.')) continue;
+    // Skip auto-generated fallback keys (start with '.')
+    if (key[0] === '.') continue;
 
     if (keySet.has(key)) {
-      duplicates.add(key);
+      duplicates.push(key);
     } else {
       keySet.add(key);
     }
   }
 
-  if (duplicates.size > 0) {
+  if (duplicates.length > 0) {
     const parentTag = isHTMLElement(parent) ? parent.tagName.toLowerCase() : 'unknown';
-
     error(
-      `Duplicate keys detected in <${parentTag}>: [${Array.from(duplicates).join(', ')}]\n` +
-      `Keys must be unique among siblings.`,
+      `Duplicate keys detected in <${parentTag}>: [${duplicates.join(', ')}]\n` +
+      'Keys must be unique among siblings.',
     );
   }
 }
