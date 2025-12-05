@@ -1,14 +1,14 @@
 # @estjs/signals
 
-A high-performance, fine-grained reactivity library for **Essor**. It can also be used as a standalone library for managing state in any JavaScript application.
+为 **Essor** 打造的高性能、细粒度响应式库。它也可以作为独立的库，用于管理任何 JavaScript 应用中的状态。
 
-## Installation
+## 安装
 
 ```bash
 npm install @estjs/signals
 ```
 
-## Usage
+## 使用
 
 ```ts
 import { computed, effect, signal } from '@estjs/signals';
@@ -20,10 +20,10 @@ effect(() => {
   console.log(`Count: ${count.value}, Double: ${double.value}`);
 });
 
-count.value++; // Logs: Count: 1, Double: 2
+count.value++; // 输出: Count: 1, Double: 2
 ```
 
 
-## License
+## 许可证
 
 MIT

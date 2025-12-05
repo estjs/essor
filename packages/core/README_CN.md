@@ -1,14 +1,14 @@
 # @estjs/core
 
-The core runtime for the **Essor** framework. It provides the application initialization logic and integrates the reactivity system with the rendering engine.
+**Essor** 框架的核心运行时。它提供了应用初始化逻辑，并将响应式系统与渲染引擎集成在一起。
 
-## Installation
+## 安装
 
 ```bash
 npm install essor
 ```
 
-## Usage
+## 使用
 
 ```ts
 import { createApp, signal } from 'essor';
@@ -22,6 +22,6 @@ createApp(App, document.body);
 ```
 
 
-## License
+## 许可证
 
 MIT

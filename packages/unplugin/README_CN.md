@@ -1,14 +1,14 @@
 # unplugin-essor
 
-The unplugin wrapper for **Essor**. It allows you to use the Essor Babel plugin with various build tools like Vite, Webpack, Rollup, and more.
+**Essor** 的 unplugin 封装。它允许你在 Vite、Webpack、Rollup 等多种构建工具中使用 Essor Babel 插件。
 
-## Installation
+## 安装
 
 ```bash
 npm install -D unplugin-essor
 ```
 
-## Usage
+## 使用
 
 ### Vite
 
@@ -32,6 +32,6 @@ module.exports = {
 };
 ```
 
-## License
+## 许可证
 
 MIT
