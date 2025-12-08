@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.14](https://github.com/estjs/essor/compare/v0.0.1...v0.0.14) `2025-12-08`
+
+
+### Features
+
+* lock standard-changelog version ([3d35a67](https://github.com/estjs/essor/commit/3d35a67636bbee8fcfa9c03ba7be94406ce69d69))
+
+
+
+
 ## [0.0.6-beta.1](https://github.com/estjs/essor/compare/d50d95d69e00a72ce9925469920cf7bea94c77cc...v0.0.6-beta.1) `2024-05-05`
 
 
