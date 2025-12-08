@@ -8,6 +8,22 @@ docClass: timeline
 ## [0.0.14](https://github.com/estjs/essor/compare/v0.0.1...v0.0.14) `2025-12-08`
 
 
+### Bug Fixes
+
+* fix code lint error ([a4c6574](https://github.com/estjs/essor/commit/a4c65746c55c63d48fe4a2a54205271a73e127a4))
+* fix type ([31d0826](https://github.com/estjs/essor/commit/31d08264d44e2be20807b174ec23c1579bd316bc))
+
+
+### Features
+
+* **ci:** update test ci node version to 22 ([7cc487b](https://github.com/estjs/essor/commit/7cc487b1dbf0b4d2b63249c5624c8b7f356480cb))
+
+
+
+
+## [0.0.14](https://github.com/estjs/essor/compare/v0.0.1...v0.0.14) `2025-12-08`
+
+
 
 
 ## [0.0.14](https://github.com/estjs/essor/compare/v0.0.1...v0.0.14) `2025-12-08`
