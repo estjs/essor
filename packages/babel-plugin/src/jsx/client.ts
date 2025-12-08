@@ -39,7 +39,10 @@ interface ReactiveOperation {
   nodeIndex: number;
   attrName: string;
   attrValue: t.Expression;
-  setFunction: t.Identifier;
+  setFunction: {
+    name: string;
+    value: t.Identifier;
+  };
   propKey: string;
 }
 
@@ -149,16 +152,6 @@ function generatePropKey(attrName: string = 'attr'): string {
   setContext({ ...getContext(), operationIndex: operationIndex + 1 });
   setContext({ ...getContext(), operationIndex: operationIndex + 1 });
   return `${baseKey}${operationIndex}`;
-}
-
-function isMapCall(node: t.Node): boolean {
-  return (
-    t.isCallExpression(node) &&
-    t.isMemberExpression(node.callee) &&
-    t.isIdentifier(node.callee.property) &&
-    node.callee.property.name === 'map' &&
-    node.arguments.length === 1
-  );
 }
 
 /**
@@ -612,7 +605,7 @@ function generateDynamicPropsCode(
 
         // Process by attribute name classification
         // Type guard: attrValue must be Expression for dynamic props
-        if (!t.isExpression(attrValue)) {
+        if (!t.isExpression(attrValue as t.Node)) {
           continue;
         }
 
@@ -620,7 +613,7 @@ function generateDynamicPropsCode(
           // Handle event attributes (onClick, onMouseOver, etc.)
           addEventListenerStatement(
             attrName,
-            attrValue,
+            attrValue as t.Expression,
             nodesId,
             parentIndexPosition,
             statements,
@@ -630,7 +623,7 @@ function generateDynamicPropsCode(
           // Non-reactive attributes, set directly
           generateSpecificAttributeCode(
             attrName,
-            attrValue,
+            attrValue as t.Expression,
             nodesId,
             parentIndexPosition,
             statements,
@@ -985,7 +978,6 @@ function generateDynamic(node: TreeNode) {
  */
 function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: TreeNode): void {
   const { children, props, operations } = dynamicCollection;
-  const { state, path } = getContext();
 
   switch (node.type) {
     case NODE_TYPE.COMPONENT: {
@@ -1011,6 +1003,7 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
         const firstChild = node.children[0];
         // Handle JavaScript expression nodes
         if (isObject(firstChild) && t.isNode(firstChild) && t.isExpression(firstChild)) {
+          // TODO: maybe support map
           // if (isMapCall(firstChild)) {
           //   const mapCall = firstChild as t.CallExpression;
           //   const list = (mapCall.callee as t.MemberExpression).object;

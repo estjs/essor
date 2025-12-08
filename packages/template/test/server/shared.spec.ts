@@ -78,7 +78,9 @@ describe('server/shared', () => {
 
     it('prefixes data-idx attributes', () => {
       const html = '<div><span data-idx="0">child</span></div>';
-      expect(addAttributes(html, '1')).toBe('<div data-hk="1"><span data-idx="1-0">child</span></div>');
+      expect(addAttributes(html, '1')).toBe(
+        '<div data-hk="1"><span data-idx="1-0">child</span></div>',
+      );
     });
 
     it('prefixes comment markers', () => {

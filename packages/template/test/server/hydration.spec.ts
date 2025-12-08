@@ -96,7 +96,7 @@ describe('server/hydration', () => {
   describe('hydrate', () => {
     it('hydrates component', () => {
       const mountSpy = vi.fn();
-      const Component = () => () => { };
+      const Component = () => () => {};
 
       const createComponentSpy = vi.spyOn(ComponentModule, 'createComponent');
       createComponentSpy.mockReturnValue({ mount: mountSpy } as any);
@@ -109,7 +109,7 @@ describe('server/hydration', () => {
     it('handles string selector', () => {
       container.id = 'app';
       const mountSpy = vi.fn();
-      const Component = () => () => { };
+      const Component = () => () => {};
 
       const createComponentSpy = vi.spyOn(ComponentModule, 'createComponent');
       createComponentSpy.mockReturnValue({ mount: mountSpy } as any);
@@ -120,7 +120,7 @@ describe('server/hydration', () => {
     });
 
     it('returns undefined if container not found', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const Component = () => ({ mount: vi.fn() });
 
       const result = hydrate(Component, '#non-existent');
@@ -130,7 +130,7 @@ describe('server/hydration', () => {
     });
 
     it('handles errors during hydration', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const Component = () => {
         throw new Error('Setup error');
       };

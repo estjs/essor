@@ -816,6 +816,20 @@ export function normalizeProps(raw: Record<string, unknown>): Record<string, unk
 
   return normalized;
 }
+/**
+ * Check if node is a map call expression
+ * @param node - The node to check
+ * @returns `true` if node is a map call expression, `false` otherwise
+ */
+export function isMapCall(node: t.Node): boolean {
+  return (
+    t.isCallExpression(node) &&
+    t.isMemberExpression(node.callee) &&
+    t.isIdentifier(node.callee.property) &&
+    node.callee.property.name === 'map' &&
+    node.arguments.length === 1
+  );
+}
 
 /**
  * Create props object expression
@@ -945,7 +959,10 @@ export function convertValueToASTNode(
 /**
  * Get the setting function corresponding to the attribute
  */
-export function getSetFunctionForAttribute(attrName?: string) {
+export function getSetFunctionForAttribute(attrName?: string): {
+  name: string;
+  value: t.Identifier;
+} {
   const { state } = getContext();
   switch (attrName) {
     case CLASS_NAME:

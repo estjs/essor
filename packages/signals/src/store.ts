@@ -264,10 +264,10 @@ function createClassStore<S extends State>(
 type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
   | (new () => S)
   | ({
-    state: S;
-    getters?: G;
-    actions?: A;
-  } & ThisType<S & GetterValues<G> & A & StoreActions<S>>);
+      state: S;
+      getters?: G;
+      actions?: A;
+    } & ThisType<S & GetterValues<G> & A & StoreActions<S>>);
 
 /**
  * Creates a new store with the given definition.

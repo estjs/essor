@@ -18,7 +18,6 @@ import {
   serializeAttributes,
 } from '../src/jsx/shared';
 import { resetContext, setContext } from '../src/jsx/context';
-import { createTree } from '../src/jsx/tree';
 import { transformProgram } from '../src/program';
 import { createImportIdentifiers } from '../src/import';
 import { NODE_TYPE } from '../src/jsx/constants';
@@ -69,7 +68,6 @@ describe('jsx shared helpers', () => {
     } as any;
 
     transformProgram.enter(jsxPath.scope.path as any, state);
-    const tree = createTree(jsxPath); // to set context dependency
     setContext({ path: jsxPath, state, operationIndex: 0 });
     const propsExpr = createPropsObjectExpression(
       { class: 'x', data: t.identifier('value') },
@@ -92,14 +90,13 @@ describe('jsx shared helpers', () => {
           path.stop();
         },
       });
-      const state = {
+      const state: any = {
         opts: { mode: 'client' },
         imports: createImportIdentifiers(programPath),
         declarations: [],
         events: new Set<string>(),
       };
-      programPath.state = state;
-      return { programPath, state };
+      return { state };
     })();
 
     setContext({ state, path: null as any, operationIndex: 0 });

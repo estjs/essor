@@ -46,13 +46,13 @@ describe('key system', () => {
     });
 
     it('handles NaN in dev mode', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       expect(normalizeKey(Number.NaN)).toBeUndefined();
       warnSpy.mockRestore();
     });
 
     it('handles Infinity in dev mode', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       expect(normalizeKey(Infinity)).toBeUndefined();
       expect(normalizeKey(-Infinity)).toBeUndefined();
       warnSpy.mockRestore();
@@ -139,7 +139,7 @@ describe('key system', () => {
     });
 
     it('skips setting key on document node', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       setNodeKey(document as any, 'key');
       warnSpy.mockRestore();
     });
@@ -278,7 +278,7 @@ describe('key system', () => {
       setNodeKey(child1, 'same');
       setNodeKey(child2, 'same');
 
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       validateKeys([child1, child2], root);
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
@@ -290,7 +290,7 @@ describe('key system', () => {
       const child2 = document.createElement('span');
       // No keys set, will use fallback
 
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       validateKeys([child1, child2], root);
       expect(errorSpy).not.toHaveBeenCalled();
       errorSpy.mockRestore();
@@ -316,7 +316,7 @@ describe('key system', () => {
       setNodeKey(child1, 'dup');
       setNodeKey(child2, 'dup');
 
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       validateKeys([child1, child2], root);
       expect(errorSpy.mock.calls[0][0]).toContain('div');
       errorSpy.mockRestore();

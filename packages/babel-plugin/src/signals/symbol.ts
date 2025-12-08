@@ -276,7 +276,10 @@ function shouldProcessIdentifier(
   if (t.isLabeledStatement(parent) && parent.label === currentNode) {
     return false;
   }
-  if ((t.isBreakStatement(parent) || t.isContinueStatement(parent)) && parent.label === currentNode) {
+  if (
+    (t.isBreakStatement(parent) || t.isContinueStatement(parent)) &&
+    parent.label === currentNode
+  ) {
     return false;
   }
 

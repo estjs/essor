@@ -74,7 +74,7 @@ export function endBatch(): void {
   if (__DEV__ && batchDepth === 0) {
     warn(
       '[Batch] endBatch() called without matching startBatch(). ' +
-      'This may indicate unbalanced batch calls in your code.',
+        'This may indicate unbalanced batch calls in your code.',
     );
     return;
   }
@@ -92,7 +92,7 @@ export function endBatch(): void {
     if (__DEV__ && batchDepth !== 0) {
       error(
         '[Batch] Batch depth is not zero after endBatch(). ' +
-        `Current depth: ${batchDepth}. This indicates a bug in batch management.`,
+          `Current depth: ${batchDepth}. This indicates a bug in batch management.`,
       );
     }
   }

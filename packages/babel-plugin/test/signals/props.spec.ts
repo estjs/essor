@@ -171,7 +171,7 @@ describe('signals/props', () => {
   // });
 
   it('warns about signal prefix in props', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Mock __DEV__ global
     (global as any).__DEV__ = true;
 

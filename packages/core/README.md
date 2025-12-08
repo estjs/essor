@@ -10,7 +10,7 @@ npm install essor
 
 ## Usage
 
-```ts
+```tsx
 import { createApp, signal } from 'essor';
 
 function App() {

@@ -69,7 +69,7 @@ export function createResource<T>(
     error.value = null;
 
     const promise = fetcher();
-    currentPromise = promise.then(() => { }); // We need a promise that resolves when data is ready
+    currentPromise = promise.then(() => {}); // We need a promise that resolves when data is ready
 
     try {
       const result = await promise;

@@ -164,7 +164,8 @@ declare global {
       [Key in keyof ExplicitProperties]?: ExplicitProperties<T>[Key];
     };
     interface DOMAttributes<T>
-      extends CustomAttributes<T>,
+      extends
+        CustomAttributes<T>,
         PropAttributes<T>,
         OnCaptureAttributes<T>,
         CustomEventHandlersCamelCase<T>,
@@ -1358,11 +1359,13 @@ declare global {
       'writing-mode'?: 'lr-tb' | 'rl-tb' | 'tb-rl' | 'lr' | 'rl' | 'tb' | 'inherit';
     }
     interface AnimationElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         ConditionalProcessingSVGAttributes {}
     interface ContainerElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
@@ -1376,8 +1379,7 @@ declare global {
           | 'color-rendering'
         > {}
     interface FilterPrimitiveElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        Pick<PresentationSVGAttributes, 'color-interpolation-filters'> {
+      extends estSVGAttributes<T>, Pick<PresentationSVGAttributes, 'color-interpolation-filters'> {
       x?: number | string;
       y?: number | string;
       width?: number | string;
@@ -1396,16 +1398,15 @@ declare global {
       preserveAspectRatio?: SVGPreserveAspectRatio;
     }
     interface GradientElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        ExternalResourceSVGAttributes,
-        StylableSVGAttributes {
+      extends estSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes {
       gradientUnits?: SVGUnits;
       gradientTransform?: string;
       spreadMethod?: 'pad' | 'reflect' | 'repeat';
       href?: string;
     }
     interface GraphicsElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'clip-rule'
@@ -1421,12 +1422,12 @@ declare global {
         > {}
     interface LightSourceElementSVGAttributes<T> extends estSVGAttributes<T> {}
     interface NewViewportSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        Pick<PresentationSVGAttributes, 'overflow' | 'clip'> {
+      extends estSVGAttributes<T>, Pick<PresentationSVGAttributes, 'overflow' | 'clip'> {
       viewBox?: string;
     }
     interface ShapeElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'color'
@@ -1445,7 +1446,8 @@ declare global {
           | 'pathLength'
         > {}
     interface TextContentElementSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         Pick<
           PresentationSVGAttributes,
           | 'font-family'
@@ -1482,14 +1484,16 @@ declare global {
       zoomAndPan?: 'disable' | 'magnify';
     }
     interface AnimateSVGAttributes<T>
-      extends AnimationElementSVGAttributes<T>,
+      extends
+        AnimationElementSVGAttributes<T>,
         AnimationAttributeTargetSVGAttributes,
         AnimationTimingSVGAttributes,
         AnimationValueSVGAttributes,
         AnimationAdditionSVGAttributes,
         Pick<PresentationSVGAttributes, 'color-interpolation' | 'color-rendering'> {}
     interface AnimateMotionSVGAttributes<T>
-      extends AnimationElementSVGAttributes<T>,
+      extends
+        AnimationElementSVGAttributes<T>,
         AnimationTimingSVGAttributes,
         AnimationValueSVGAttributes,
         AnimationAdditionSVGAttributes {
@@ -1499,7 +1503,8 @@ declare global {
       origin?: 'default';
     }
     interface AnimateTransformSVGAttributes<T>
-      extends AnimationElementSVGAttributes<T>,
+      extends
+        AnimationElementSVGAttributes<T>,
         AnimationAttributeTargetSVGAttributes,
         AnimationTimingSVGAttributes,
         AnimationValueSVGAttributes,
@@ -1507,7 +1512,8 @@ declare global {
       type?: 'translate' | 'scale' | 'rotate' | 'skewX' | 'skewY';
     }
     interface CircleSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         StylableSVGAttributes,
@@ -1517,7 +1523,8 @@ declare global {
       r?: number | string;
     }
     interface ClipPathSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1526,14 +1533,16 @@ declare global {
       clipPathUnits?: SVGUnits;
     }
     interface DefsSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         TransformableSVGAttributes {}
     interface DescSVGAttributes<T> extends estSVGAttributes<T>, StylableSVGAttributes {}
     interface EllipseSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1545,24 +1554,28 @@ declare global {
       ry?: number | string;
     }
     interface FeBlendSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         DoubleInputFilterSVGAttributes,
         StylableSVGAttributes {
       mode?: 'normal' | 'multiply' | 'screen' | 'darken' | 'lighten';
     }
     interface FeColorMatrixSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {
       type?: 'matrix' | 'saturate' | 'hueRotate' | 'luminanceToAlpha';
       values?: string;
     }
     interface FeComponentTransferSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {}
     interface FeCompositeSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         DoubleInputFilterSVGAttributes,
         StylableSVGAttributes {
       operator?: 'over' | 'in' | 'out' | 'atop' | 'xor' | 'arithmetic';
@@ -1572,7 +1585,8 @@ declare global {
       k4?: number | string;
     }
     interface FeConvolveMatrixSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {
       order?: number | string;
@@ -1586,7 +1600,8 @@ declare global {
       preserveAlpha?: 'true' | 'false';
     }
     interface FeDiffuseLightingSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'lighting-color'> {
@@ -1595,7 +1610,8 @@ declare global {
       kernelUnitLength?: number | string;
     }
     interface FeDisplacementMapSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         DoubleInputFilterSVGAttributes,
         StylableSVGAttributes {
       scale?: number | string;
@@ -1607,7 +1623,8 @@ declare global {
       elevation?: number | string;
     }
     interface FeDropShadowSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {
@@ -1616,7 +1633,8 @@ declare global {
       stdDeviation?: number | string;
     }
     interface FeFloodSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'flood-color' | 'flood-opacity'> {}
     interface FeFuncSVGAttributes<T> extends estSVGAttributes<T> {
@@ -1629,33 +1647,35 @@ declare global {
       offset?: number | string;
     }
     interface FeGaussianBlurSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {
       stdDeviation?: number | string;
     }
     interface FeImageSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
       preserveAspectRatio?: SVGPreserveAspectRatio;
       href?: string;
     }
     interface FeMergeSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
-        StylableSVGAttributes {}
+      extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {}
     interface FeMergeNodeSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        SingleInputFilterSVGAttributes {}
+      extends estSVGAttributes<T>, SingleInputFilterSVGAttributes {}
     interface FeMorphologySVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {
       operator?: 'erode' | 'dilate';
       radius?: number | string;
     }
     interface FeOffsetSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {
       dx?: number | string;
@@ -1667,7 +1687,8 @@ declare global {
       z?: number | string;
     }
     interface FeSpecularLightingSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'lighting-color'> {
@@ -1687,12 +1708,12 @@ declare global {
       limitingConeAngle?: number | string;
     }
     interface FeTileSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
+      extends
+        FilterPrimitiveElementSVGAttributes<T>,
         SingleInputFilterSVGAttributes,
         StylableSVGAttributes {}
     interface FeTurbulanceSVGAttributes<T>
-      extends FilterPrimitiveElementSVGAttributes<T>,
-        StylableSVGAttributes {
+      extends FilterPrimitiveElementSVGAttributes<T>, StylableSVGAttributes {
       baseFrequency?: number | string;
       numOctaves?: number | string;
       seed?: number | string;
@@ -1700,9 +1721,7 @@ declare global {
       type?: 'fractalNoise' | 'turbulence';
     }
     interface FilterSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        ExternalResourceSVGAttributes,
-        StylableSVGAttributes {
+      extends estSVGAttributes<T>, ExternalResourceSVGAttributes, StylableSVGAttributes {
       filterUnits?: SVGUnits;
       primitiveUnits?: SVGUnits;
       x?: number | string;
@@ -1712,7 +1731,8 @@ declare global {
       filterRes?: number | string;
     }
     interface ForeignObjectSVGAttributes<T>
-      extends NewViewportSVGAttributes<T>,
+      extends
+        NewViewportSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1724,14 +1744,16 @@ declare global {
       height?: number | string;
     }
     interface GSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         TransformableSVGAttributes,
         Pick<PresentationSVGAttributes, 'display' | 'visibility'> {}
     interface ImageSVGAttributes<T>
-      extends NewViewportSVGAttributes<T>,
+      extends
+        NewViewportSVGAttributes<T>,
         GraphicsElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         StylableSVGAttributes,
@@ -1745,7 +1767,8 @@ declare global {
       href?: string;
     }
     interface LineSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1764,7 +1787,8 @@ declare global {
       y2?: number | string;
     }
     interface MarkerSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         FitToViewBoxSVGAttributes,
@@ -1777,7 +1801,8 @@ declare global {
       orient?: string;
     }
     interface MaskSVGAttributes<T>
-      extends Omit<ContainerElementSVGAttributes<T>, 'opacity' | 'filter'>,
+      extends
+        Omit<ContainerElementSVGAttributes<T>, 'opacity' | 'filter'>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes {
@@ -1791,7 +1816,8 @@ declare global {
     interface MetadataSVGAttributes<T> extends estSVGAttributes<T> {}
     interface MPathSVGAttributes<T> extends estSVGAttributes<T> {}
     interface PathSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1802,7 +1828,8 @@ declare global {
       pathLength?: number | string;
     }
     interface PatternSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1818,7 +1845,8 @@ declare global {
       href?: string;
     }
     interface PolygonSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1828,7 +1856,8 @@ declare global {
       points?: string;
     }
     interface PolylineSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1845,7 +1874,8 @@ declare global {
       fy?: number | string;
     }
     interface RectSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ShapeElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1859,17 +1889,17 @@ declare global {
       ry?: number | string;
     }
     interface SetSVGAttributes<T>
-      extends estSVGAttributes<T>,
-        StylableSVGAttributes,
-        AnimationTimingSVGAttributes {}
+      extends estSVGAttributes<T>, StylableSVGAttributes, AnimationTimingSVGAttributes {}
     interface StopSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         StylableSVGAttributes,
         Pick<PresentationSVGAttributes, 'color' | 'stop-color' | 'stop-opacity'> {
       offset?: number | string;
     }
     interface SvgSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         NewViewportSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1888,14 +1918,16 @@ declare global {
       xmlns?: string;
     }
     interface SwitchSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
         TransformableSVGAttributes,
         Pick<PresentationSVGAttributes, 'display' | 'visibility'> {}
     interface SymbolSVGAttributes<T>
-      extends ContainerElementSVGAttributes<T>,
+      extends
+        ContainerElementSVGAttributes<T>,
         NewViewportSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1910,7 +1942,8 @@ declare global {
       y?: number | string;
     }
     interface TextSVGAttributes<T>
-      extends TextContentElementSVGAttributes<T>,
+      extends
+        TextContentElementSVGAttributes<T>,
         GraphicsElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
@@ -1926,7 +1959,8 @@ declare global {
       lengthAdjust?: 'spacing' | 'spacingAndGlyphs';
     }
     interface TextPathSVGAttributes<T>
-      extends TextContentElementSVGAttributes<T>,
+      extends
+        TextContentElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1940,7 +1974,8 @@ declare global {
       href?: string;
     }
     interface TSpanSVGAttributes<T>
-      extends TextContentElementSVGAttributes<T>,
+      extends
+        TextContentElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1957,7 +1992,8 @@ declare global {
       lengthAdjust?: 'spacing' | 'spacingAndGlyphs';
     }
     interface UseSVGAttributes<T>
-      extends GraphicsElementSVGAttributes<T>,
+      extends
+        GraphicsElementSVGAttributes<T>,
         ConditionalProcessingSVGAttributes,
         ExternalResourceSVGAttributes,
         StylableSVGAttributes,
@@ -1969,7 +2005,8 @@ declare global {
       href?: string;
     }
     interface ViewSVGAttributes<T>
-      extends estSVGAttributes<T>,
+      extends
+        estSVGAttributes<T>,
         ExternalResourceSVGAttributes,
         FitToViewBoxSVGAttributes,
         ZoomAndPanSVGAttributes {
@@ -2167,8 +2204,6 @@ declare global {
       view: ViewSVGAttributes<SVGViewElement>;
     }
     interface IntrinsicElements
-      extends HTMLElementTags,
-        HTMLElementDeprecatedTags,
-        SVGElementTags {}
+      extends HTMLElementTags, HTMLElementDeprecatedTags, SVGElementTags {}
   }
 }

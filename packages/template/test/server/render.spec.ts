@@ -25,7 +25,7 @@ describe('server/render', () => {
     });
 
     it('returns empty string and logs error if component is not a function', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       expect(renderToString(null as any)).toBe('');
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -44,7 +44,7 @@ describe('server/render', () => {
     });
 
     it('returns empty string and logs error if component is not a function', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       expect(createSSGComponent(null as any)).toBe('');
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();

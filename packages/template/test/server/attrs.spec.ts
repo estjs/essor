@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { signal, computed } from '@estjs/signals';
+import { computed, signal } from '@estjs/signals';
 import {
   normalizeClassName,
   normalizeProps,
@@ -21,7 +21,7 @@ describe('server/attrs', () => {
 
     it('normalizes array style', () => {
       expect(normalizeStyle([{ color: 'red' }, 'font-size: 14px'])).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '14px',
       });
     });
@@ -42,14 +42,14 @@ describe('server/attrs', () => {
   describe('parseStyleString', () => {
     it('parses simple style string', () => {
       expect(parseStyleString('color: red; font-size: 14px;')).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '14px',
       });
     });
 
     it('removes comments', () => {
       expect(parseStyleString('color: red; /* comment */ font-size: 14px;')).toEqual({
-        color: 'red',
+        'color': 'red',
         'font-size': '14px',
       });
     });
@@ -62,7 +62,7 @@ describe('server/attrs', () => {
   describe('styleObjectToString', () => {
     it('converts object to string', () => {
       expect(styleObjectToString({ color: 'red', fontSize: '14px' })).toBe(
-        'color:red;font-size:14px;'
+        'color:red;font-size:14px;',
       );
     });
 
@@ -108,7 +108,7 @@ describe('server/attrs', () => {
       const normalized = normalizeProps(props);
       expect(normalized).toEqual({
         class: 'foo bar',
-        style: { color: 'red', 'font-size': '14px' },
+        style: { 'color': 'red', 'font-size': '14px' },
         id: 'test',
       });
     });
@@ -138,7 +138,7 @@ describe('server/attrs', () => {
     });
 
     it('ignores event listeners', () => {
-      expect(setSSGAttr('onClick', () => { }, '1')).toBe('');
+      expect(setSSGAttr('onClick', () => {}, '1')).toBe('');
     });
 
     it('unwraps signals', () => {

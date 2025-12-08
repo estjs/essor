@@ -95,7 +95,7 @@ describe('useBatch', () => {
   });
 
   it('should warn on unbalanced batch calls in dev', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     // Manually call endBatch without startBatch
     endBatch();

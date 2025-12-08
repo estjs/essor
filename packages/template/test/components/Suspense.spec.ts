@@ -148,7 +148,7 @@ describe('suspense component', () => {
       };
 
       // Suppress console warning
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       mount(app, container);
 
@@ -170,7 +170,7 @@ describe('suspense component', () => {
         });
       };
 
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       mount(app, container);
 
@@ -195,7 +195,7 @@ describe('suspense component', () => {
       expect(isSuspense({})).toBe(false);
       expect(isSuspense(null)).toBe(false);
       expect(isSuspense(undefined)).toBe(false);
-      expect(isSuspense(() => { })).toBe(false);
+      expect(isSuspense(() => {})).toBe(false);
     });
   });
 

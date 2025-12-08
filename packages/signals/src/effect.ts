@@ -25,12 +25,12 @@ import type { FlushTiming } from './scheduler';
  */
 export type Unwrap<T> =
   T extends Signal<infer V>
-  ? V
-  : T extends Computed<infer V>
-  ? V
-  : T extends Reactive<infer V extends object>
-  ? V
-  : T;
+    ? V
+    : T extends Computed<infer V>
+      ? V
+      : T extends Reactive<infer V extends object>
+        ? V
+        : T;
 
 /**
  * Effect function type
@@ -413,13 +413,13 @@ export class EffectImpl<T = any> implements ReactiveNode {
       if (this.depLink) {
         error(
           '[Effect] Cleanup verification failed: depLink not cleared. ' +
-          'This indicates a memory leak in the dependency tracking system.',
+            'This indicates a memory leak in the dependency tracking system.',
         );
       }
       if (this.subLink) {
         error(
           '[Effect] Cleanup verification failed: subLink not cleared. ' +
-          'This indicates a memory leak in the subscription system.',
+            'This indicates a memory leak in the subscription system.',
         );
       }
     }
@@ -477,7 +477,7 @@ export function effect<T = any>(fn: EffectFunction<T>, options?: EffectOptions):
     if (__DEV__) {
       error(
         '[Effect] Effect failed during initial execution and has been stopped. ' +
-        'Fix the error in your effect function.',
+          'Fix the error in your effect function.',
         _error,
       );
     }

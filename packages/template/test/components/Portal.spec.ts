@@ -67,7 +67,7 @@ describe('portal', () => {
   });
 
   it('handles missing target element with warning', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const context = createContext(null);
     pushContextStack(context);
 

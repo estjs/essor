@@ -125,7 +125,7 @@ describe('effect', () => {
   });
 
   it('should handle stop idempotency', () => {
-    const runner = effect(() => { });
+    const runner = effect(() => {});
     runner.stop();
     expect(() => runner.stop()).not.toThrow();
   });
@@ -152,7 +152,7 @@ describe('effect', () => {
   });
 
   it('should isEffect check', () => {
-    const runner = effect(() => { });
+    const runner = effect(() => {});
     expect(isEffect(runner.effect)).toBe(true);
     expect(isEffect({})).toBe(false);
     expect(isEffect(null)).toBe(false);

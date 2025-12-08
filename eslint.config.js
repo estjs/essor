@@ -8,6 +8,7 @@ export default estjs(
       'unicorn/prefer-dom-node-append': 'off',
       'unicorn/no-lonely-if': 'off',
       'unicorn/no-new-array': 'off',
+      'unicorn/filename-case': 'off',
     },
     typescript: {
       '@typescript-eslint/no-this-alias': 'off',
