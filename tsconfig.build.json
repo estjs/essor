@@ -4,5 +4,5 @@
     "declaration": true,
     "stripInternal": true
   },
-  "exclude": ["node_modules", "dist", "./dist/**/*", "docs", "examples", "**/test/**/*"]
+  "exclude": ["**/node_modules/**", "dist", "./dist/**/*", "docs", "examples", "**/test/**/*"]
 }

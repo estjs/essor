@@ -217,11 +217,11 @@ export function textTrim(node: t.JSXText): string {
  */
 export function isValidChild(path: NodePath<JSXChild>): boolean {
   const regex = /^\s*$/;
-  if (path.isStringLiteral && path.isStringLiteral()) {
-    return !regex.test(path.node.value);
+  if (t.isStringLiteral(path.node)) {
+    return !regex.test((path.node as t.StringLiteral).value);
   }
-  if (path.isJSXText && path.isJSXText()) {
-    return !regex.test(path.node.value);
+  if (t.isJSXText(path.node)) {
+    return !regex.test((path.node as t.JSXText).value);
   }
   return Object.keys(path.node).length > 0; // For other types of nodes, consider valid if they have content
 }
@@ -508,16 +508,16 @@ export function serializeAttributes(attributes: Record<string, unknown> | undefi
       delete attributes[attrName];
     }
     // Process conditional expressions - let unified architecture handle
-    else if (t.isConditionalExpression(attrValue)) {
+    else if (t.isConditionalExpression(attrValue as t.Node)) {
       // Store conditional expressions directly, let unified memoizedEffect architecture handle
       // This way all reactive attributes will be handled uniformly in generateDynamicPropsCode
       attributes[attrName] = attrValue;
     }
     // Process object expressions
-    else if (t.isObjectExpression(attrValue)) {
+    else if (t.isObjectExpression(attrValue as t.ObjectExpression)) {
       const result = processObjectExpression(
         attrName,
-        attrValue,
+        attrValue as t.ObjectExpression,
         attributes,
         attrName === CLASS_NAME || attrName === STYLE_NAME,
       );
@@ -694,7 +694,7 @@ export function processTextElementAddComment(node: TreeNode): void {
     return;
   }
 
-  const children = node.children;
+  const children = node.children as TreeNode[];
   const childrenLength = children.length;
 
   // Recursively process all child nodes first
