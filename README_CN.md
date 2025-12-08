@@ -68,10 +68,10 @@ npm run dev
 
 ## 📚 文档
 
-- [官方文档](https://essor.estjs.dev)
-- [API 参考](https://essor.estjs.dev/api)
+- [文档](https://https://essor.netlify.app/)
+- [API 参考](https://https://essor.netlify.app/api)
 - [示例](./examples)
-- [在线演示](https://playground.estjs.dev)
+- [在线演示](https://https://essor-playground.netlify.app/)
 
 ## 🎯 示例
 

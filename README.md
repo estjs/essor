@@ -68,10 +68,10 @@ npm run dev
 
 ## 📚 Documentation
 
-- [Official Documentation](https://essor.estjs.dev)
-- [API Reference](https://essor.estjs.dev/api)
+- [Documentation](https://essor.netlify.app/)
+- [API Reference](https://essor.netlify.app/api)
 - [Examples](./examples)
-- [Online Playground](https://playground.estjs.dev)
+- [Online Playground](https://essor-playground.netlify.app/)
 
 ## 🎯 Examples
 
