@@ -1,8 +1,22 @@
-import { includeBooleanAttr, isBooleanAttr, isSpecialBooleanAttr, isSymbol } from '@estjs/shared';
-import { KEY_PROP, REF_KEY, SVG_NAMESPACE, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../constants';
+import {
+  includeBooleanAttr,
+  isBooleanAttr,
+  isObject,
+  isSpecialBooleanAttr,
+  isSymbol,
+  warn,
+} from '@estjs/shared';
+import {
+  KEY_PROP,
+  REF_KEY,
+  SPREAD_NAME,
+  SVG_NAMESPACE,
+  XLINK_NAMESPACE,
+  XMLNS_NAMESPACE,
+} from '../constants';
 import { setNodeKey } from '../key';
 
-export type AttrValue = string | boolean | number | null | undefined;
+export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 
 export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrValue) {
   if (key === REF_KEY) {
@@ -17,7 +31,17 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     }
     return;
   }
-
+  if (key === SPREAD_NAME) {
+    if (__DEV__) {
+      if (!isObject(next)) {
+        warn('spread attribute must be an object');
+      }
+    }
+    Object.keys(next as Record<string, unknown>).forEach(k => {
+      patchAttr(el, k, prev?.[k], next?.[k]);
+    });
+    return;
+  }
   const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
   const isXlink = elementIsSVG && key.startsWith('xlink:');
   const isXmlns = elementIsSVG && key.startsWith('xmlns:');
