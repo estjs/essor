@@ -1,8 +1,10 @@
+import { error } from 'node:console';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
+import type { ComponentProps } from '../component';
 import type { AnyNode } from '../types';
 
-export interface FragmentProps {
+export interface FragmentProps extends ComponentProps {
   children?: AnyNode | AnyNode[];
   key?: string;
 }
@@ -21,18 +23,30 @@ export interface FragmentProps {
  * </Fragment>
  * ```
  */
-export function Fragment(props: FragmentProps): DocumentFragment | string {
-  // Check if we're in SSR mode (no document)
-  if (typeof document === 'undefined') {
-    const children = props.children;
-    if (!children) return '';
-    const childArray = Array.isArray(children) ? children : [children];
-    // In SSR, convert children to string
-    return childArray.map(child => String(child || '')).join('');
+export function Fragment(props?: FragmentProps): DocumentFragment {
+  if (__DEV__) {
+    if (!props) {
+      error('Fragment component requires props');
+      return document.createDocumentFragment();
+    }
+    if (!props.children) {
+      error('Fragment component requires children');
+      return document.createDocumentFragment();
+    }
   }
 
+  // TODO:
+  // Check i  f we're in SSR mode (no document)
+  // if (typeof document === 'undefined') {
+  //   const children = props.children;
+  //   if (!children) return '';
+  //   const childArray = Array.isArray(children) ? children : [children];
+  //   // In SSR, convert children to string
+  //   return childArray.map(child => String(child || '')).join('');
+  // }
+
   const fragment = document.createDocumentFragment();
-  const children = props.children;
+  const children = props!.children;
 
   if (children) {
     const childArray = Array.isArray(children) ? children : [children];

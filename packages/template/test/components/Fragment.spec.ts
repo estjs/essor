@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Fragment, isFragment } from '../../src/components/Fragment';
 import { mount } from '../test-utils';
+import { createComponent } from '../../src';
 
 describe('fragment component', () => {
   let container;
@@ -19,7 +20,7 @@ describe('fragment component', () => {
   it('should render children elements without introducing extra DOM nodes', () => {
     // Render multiple child elements using Fragment
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: [document.createElement('div'), document.createElement('span')],
       });
     };
@@ -33,7 +34,7 @@ describe('fragment component', () => {
 
   it('should handle empty children', () => {
     const app = () => {
-      return Fragment({ children: null });
+      return createComponent(Fragment, { children: [] });
     };
 
     mount(app, container);
@@ -49,7 +50,7 @@ describe('fragment component', () => {
         ? [document.createElement('div'), document.createElement('p')]
         : null;
 
-      return Fragment({ children });
+      return createComponent(Fragment, { children });
     };
 
     // Initial render
@@ -75,7 +76,7 @@ describe('fragment component', () => {
 
   it('should handle nested Fragments', () => {
     const app = () => {
-      const innerFragment = Fragment({
+      const innerFragment = createComponent(Fragment, {
         children: document.createElement('button'),
       });
 
@@ -93,7 +94,7 @@ describe('fragment component', () => {
 
   it('should work with text nodes', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: [
           document.createTextNode('Hello'),
           document.createElement('span'),
@@ -111,7 +112,7 @@ describe('fragment component', () => {
 
   it('should handle single child element', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: document.createElement('p'),
       });
     };
@@ -124,7 +125,7 @@ describe('fragment component', () => {
 
   it('should handle single text node', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: document.createTextNode('Single text'),
       });
     };
@@ -137,7 +138,7 @@ describe('fragment component', () => {
 
   it('should handle mixed content with null and undefined', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: [
           document.createElement('div'),
           null,
@@ -157,7 +158,7 @@ describe('fragment component', () => {
 
   it('should handle undefined children prop', () => {
     const app = () => {
-      return Fragment({});
+      return createComponent(Fragment, {});
     };
 
     mount(app, container);
@@ -171,7 +172,7 @@ describe('fragment component', () => {
       div.className = 'test-class';
       div.dataset.test = 'value';
 
-      return Fragment({
+      return createComponent(Fragment, {
         children: div,
       });
     };
@@ -186,15 +187,15 @@ describe('fragment component', () => {
 
   it('should handle deeply nested Fragments', () => {
     const app = () => {
-      const level3 = Fragment({
+      const level3 = createComponent(Fragment, {
         children: document.createElement('span'),
       });
 
-      const level2 = Fragment({
+      const level2 = createComponent(Fragment, {
         children: [document.createElement('p'), level3],
       });
 
-      const level1 = Fragment({
+      const level1 = createComponent(Fragment, {
         children: [document.createElement('div'), level2],
       });
 
@@ -216,7 +217,7 @@ describe('fragment component', () => {
         return el;
       });
 
-      return Fragment({ children });
+      return createComponent(Fragment, { children });
     };
 
     mount(app, container);
@@ -228,7 +229,7 @@ describe('fragment component', () => {
 
   it('should handle Fragment with key prop', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: document.createElement('div'),
         key: 'test-key',
       });
@@ -247,16 +248,16 @@ describe('fragment component', () => {
   });
 
   it('should return DocumentFragment instance', () => {
-    const result = Fragment({
+    const result = createComponent(Fragment, {
       children: document.createElement('div'),
     });
-
-    expect(result).toBeInstanceOf(DocumentFragment);
+    const resultDom = result.mount(container);
+    expect(resultDom).toBeInstanceOf(DocumentFragment);
   });
 
   it('should handle empty array children', () => {
     const app = () => {
-      return Fragment({
+      return createComponent(Fragment, {
         children: [],
       });
     };
@@ -273,7 +274,7 @@ describe('fragment component', () => {
       const button = document.createElement('button');
       const input = document.createElement('input');
 
-      return Fragment({
+      return createComponent(Fragment, {
         children: [div, span, button, input],
       });
     };
@@ -289,7 +290,7 @@ describe('fragment component', () => {
   it('should normalize primitive children', () => {
     const app = () => {
       // Fragment should handle primitive values through normalizeNode
-      return Fragment({
+      return createComponent(Fragment, {
         children: [
           document.createTextNode('Hello'),
           document.createTextNode(' '),
