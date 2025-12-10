@@ -1,4 +1,4 @@
-import { error } from 'node:console';
+import { error } from '@estjs/shared';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
 import type { ComponentProps } from '../component';
