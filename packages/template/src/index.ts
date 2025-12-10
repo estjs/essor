@@ -18,6 +18,8 @@ export { addEventListener, bindElement, insert, mapNodes } from './binding';
 
 export { delegateEvents } from './events';
 
+export { omitProps } from './utils';
+
 export * from './operations';
 export * from './components';
 export * from './server';

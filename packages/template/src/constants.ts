@@ -12,6 +12,10 @@ export const UPDATE_PREFIX = 'update';
  * children property name
  */
 export const CHILDREN_PROP = 'children';
+/**
+ * Key name for the Spread attribute
+ */
+export const SPREAD_NAME = '_$spread$';
 
 /**
  * used to get the DOM element reference
