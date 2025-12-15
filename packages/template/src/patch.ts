@@ -132,12 +132,9 @@ export function patchChildren(
 
   // ===== FAST PATH 1: Mount all (no old children) =====
   if (oldLength === 0) {
-    // Batch insert using DocumentFragment for better performance
-    const fragment = document.createDocumentFragment();
     for (let i = 0; i < newLength; i++) {
-      insertNode(fragment, newChildren[i]);
+      insertNode(parent, newChildren[i], anchor);
     }
-    insertNode(parent, fragment, anchor);
     return newChildren;
   }
 

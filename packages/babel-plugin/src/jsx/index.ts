@@ -28,7 +28,6 @@ const getRenderingStrategy = (mode: RenderMode) => {
 
   return strategy;
 };
-
 /**
  * Main JSX transformation function that converts JSX elements and fragments
  * into optimized runtime calls based on the configured render mode.

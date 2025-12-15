@@ -121,22 +121,6 @@ describe('binding utilities', () => {
       expect(root.textContent).toBe('firstsecond');
     });
 
-    it('preserves nodes on cleanup when preserveOnCleanup is true', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      insert(root, () => document.createTextNode('preserved'), undefined, {
-        preserveOnCleanup: true,
-      });
-      popContextStack();
-
-      expect(root.textContent).toBe('preserved');
-
-      cleanupContext(context);
-      expect(root.textContent).toBe('preserved');
-    });
-
     it('handles reactive updates', () => {
       const context = createContext(null);
       const root = createTestRoot();

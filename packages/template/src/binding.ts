@@ -134,32 +134,33 @@ export interface InsertOptions {
  */
 export function insert(
   parent: Node,
-  nodeFactory: Function | Node | string,
+  nodeFactory: (() => Node | AnyNode[]) | Node | string | AnyNode[],
   before?: Node,
-  options?: InsertOptions,
-): void {
+) {
   if (!parent) return;
 
   const context = getActiveContext();
-  if (!context) return;
 
   let renderedNodes: AnyNode[] = [];
 
   // Create effect for reactive updates
   const cleanup = effect(() => {
     const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-    const nodes = coerceArray(rawNodes).map(normalizeNode) as AnyNode[];
+    const nodes = coerceArray(rawNodes as unknown)
+      .map(item => (isFunction(item) ? item() : item))
+      .flatMap(normalizeNode) as AnyNode[];
+
     renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
   });
 
+  if (!context) return;
   // Register cleanup function
   context.cleanup.add(() => {
     cleanup();
-    if (!options?.preserveOnCleanup) {
-      renderedNodes.forEach(node => removeNode(node));
-    }
+    renderedNodes.forEach(node => removeNode(node));
     renderedNodes.length = 0;
   });
+  return renderedNodes;
 }
 /**
  * Map nodes from template by indexes

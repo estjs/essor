@@ -204,9 +204,9 @@ describe('fragment component', () => {
 
     mount(app, container);
 
-    expect(container.querySelector('div')).not.toBeNull();
-    expect(container.querySelector('p')).not.toBeNull();
-    expect(container.querySelector('span')).not.toBeNull();
+    (expect(container.querySelector('div')).toMatchInlineSnapshot(`<div />`),
+      expect(container.querySelector('p')).toMatchInlineSnapshot(`<p />`));
+    expect(container.querySelector('span')).toMatchInlineSnapshot(`<span />`);
   });
 
   it('should handle large number of children', () => {
@@ -223,8 +223,8 @@ describe('fragment component', () => {
     mount(app, container);
 
     expect(container.children.length).toBe(100);
-    expect(container.firstChild?.textContent).toBe('Item 0');
-    expect(container.lastChild?.textContent).toBe('Item 99');
+    expect(container.firstElementChild?.textContent).toBe('Item 0');
+    expect(container.lastElementChild?.textContent).toBe('Item 99');
   });
 
   it('should handle Fragment with key prop', () => {
@@ -245,14 +245,6 @@ describe('fragment component', () => {
     expect(isFragment({})).toBe(false);
     expect(isFragment(null)).toBe(false);
     expect(isFragment(undefined)).toBe(false);
-  });
-
-  it('should return DocumentFragment instance', () => {
-    const result = createComponent(Fragment, {
-      children: document.createElement('div'),
-    });
-    const resultDom = result.mount(container);
-    expect(resultDom).toBeInstanceOf(DocumentFragment);
   });
 
   it('should handle empty array children', () => {

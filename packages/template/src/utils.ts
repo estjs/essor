@@ -82,7 +82,7 @@ export function removeNode(node: AnyNode): void {
  * @param child Child node
  * @param before Reference node for insertion
  */
-export function insertNode(parent: Node, child: AnyNode, before: AnyNode | null = null): void {
+export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): void {
   if (!parent || !child) return;
 
   try {
@@ -130,9 +130,9 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
 /**
  * Get the first DOM node from a node or component
  */
-export function getFirstDOMNode(node: AnyNode): Node | null {
+export function getFirstDOMNode(node: AnyNode): Node | undefined {
   if (!node) {
-    return null;
+    return;
   }
 
   if (isComponent(node)) {
@@ -189,6 +189,7 @@ export function normalizeNode(node: unknown): Node {
   if (isHTMLElement(node)) {
     return node;
   }
+
   // Handle primitives with memoization
   if (isPrimitive(node)) {
     const textContent = isFalsy(node) ? '' : String(node);

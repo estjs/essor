@@ -1,12 +1,10 @@
 import { error } from '@estjs/shared';
-import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
-import type { ComponentProps } from '../component';
+import type { ComponentProps, componentResultNodeType } from '../component';
 import type { AnyNode } from '../types';
 
 export interface FragmentProps extends ComponentProps {
   children?: AnyNode | AnyNode[];
-  key?: string;
 }
 
 /**
@@ -23,15 +21,15 @@ export interface FragmentProps extends ComponentProps {
  * </Fragment>
  * ```
  */
-export function Fragment(props?: FragmentProps): DocumentFragment {
+export function Fragment(props?: FragmentProps) {
   if (__DEV__) {
     if (!props) {
       error('Fragment component requires props');
-      return document.createDocumentFragment();
+      return [];
     }
     if (!props.children) {
       error('Fragment component requires children');
-      return document.createDocumentFragment();
+      return [];
     }
   }
 
@@ -45,23 +43,7 @@ export function Fragment(props?: FragmentProps): DocumentFragment {
   //   return childArray.map(child => String(child || '')).join('');
   // }
 
-  const fragment = document.createDocumentFragment();
-  const children = props!.children;
-
-  if (children) {
-    const childArray = Array.isArray(children) ? children : [children];
-    childArray.forEach(child => {
-      if (child != null) {
-        // Skip null/undefined
-        const normalized = normalizeNode(child);
-        if (normalized) {
-          insertNode(fragment, normalized);
-        }
-      }
-    });
-  }
-
-  return fragment;
+  return props?.children as componentResultNodeType;
 }
 
 Fragment[COMPONENT_TYPE.FRAGMENT] = true;

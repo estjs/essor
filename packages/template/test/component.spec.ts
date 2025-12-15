@@ -659,9 +659,9 @@ describe('component', () => {
 
       await instance.destroy();
 
-      expect((instance as any).renderedNode).toBeNull();
-      expect((instance as any).parentNode).toBeNull();
-      expect((instance as any).beforeNode).toBeNull();
+      expect((instance as any).renderedNode).toBeUndefined();
+      expect((instance as any).parentNode).toBeUndefined();
+      expect((instance as any).beforeNode).toBeUndefined();
       expect((instance as any).reactiveProps).toEqual({});
       expect(instance.props).toBeUndefined();
     });
@@ -792,7 +792,7 @@ describe('component', () => {
       const instance = createComponent(TestComp);
       await instance.mount(root);
 
-      expect(instance.firstChild).toBeNull();
+      expect(instance.firstChild).toBeUndefined();
     });
 
     it('maintains component key throughout lifecycle', async () => {
@@ -863,13 +863,13 @@ describe('component', () => {
       const TestComp = () => document.createElement('div');
       const instance = createComponent(TestComp);
 
-      expect(instance.firstChild).toBeNull();
+      expect(instance.firstChild).toBeUndefined();
 
       await instance.mount(root);
       expect(instance.firstChild).toBeTruthy();
 
       await instance.destroy();
-      expect(instance.firstChild).toBeNull();
+      expect(instance.firstChild).toBeUndefined();
     });
   });
 });

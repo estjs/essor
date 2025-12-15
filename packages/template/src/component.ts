@@ -1,5 +1,14 @@
 import { type Computed, type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
-import { error, hasChanged, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
+import {
+  coerceArray,
+  error,
+  hasChanged,
+  isArray,
+  isFunction,
+  isHTMLElement,
+  isObject,
+  startsWith,
+} from '@estjs/shared';
 import {
   type Context,
   createContext,
@@ -10,26 +19,31 @@ import {
 } from './context';
 import { LIFECYCLE, triggerLifecycleHook } from './lifecycle';
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
-import { addEventListener } from './binding';
+import { addEventListener, insert } from './binding';
 import { getComponentKey, normalizeKey } from './key';
-import { insertNode, removeNode, replaceNode, shallowCompare } from './utils';
+import { getFirstDOMNode, insertNode, removeNode, shallowCompare } from './utils';
+import type { AnyNode } from './types';
 
-// TODO: support Promise<Node> ?
-export type ComponentFn = (props?: ComponentProps) => Node | Signal<Node> | Computed<Node>;
+// Component result can be a single node, signal/computed, an array, or a Component
+export type componentResultNodeType = AnyNode | Signal<AnyNode> | Computed<AnyNode> | AnyNode[];
+export type ComponentFn = (props?: ComponentProps) => componentResultNodeType;
 export type ComponentProps = Record<string, unknown>;
 
 export class Component {
-  // component rendered node
-  protected renderedNode: Node | null = null;
+  // component rendered nodes (supports arrays and fragments)
+  protected renderedNodes: AnyNode[] = [];
+
+  // end anchor for DOM insertion positioning (empty text node)
+  protected endAnchor: Text | null = null;
 
   // component context
   protected componentContext: Context | null = null;
 
   // component parent node
-  protected parentNode: Node | null = null;
+  protected parentNode: Node | undefined = undefined;
 
   // component before node
-  protected beforeNode: Node | null = null;
+  protected beforeNode: Node | undefined = undefined;
 
   // component props
   private reactiveProps: Record<string, any> = {};
@@ -53,8 +67,16 @@ export class Component {
     return this.state === COMPONENT_STATE.MOUNTED;
   }
 
-  get firstChild(): Node | null {
-    return this.renderedNode ?? null;
+  get firstChild(): Node | undefined {
+    // Get the first meaningful DOM node from rendered nodes
+    // Skip empty text nodes (anchors or null renders)
+    for (const node of this.renderedNodes) {
+      const dom = getFirstDOMNode(node);
+      if (dom) {
+        return dom;
+      }
+    }
+    return undefined;
   }
 
   constructor(
@@ -69,46 +91,47 @@ export class Component {
     if (this.props) {
       for (const key in this.props) {
         const val = this.props[key];
-        if (isObject(val) && val !== null) {
-          this._propSnapshots[key] = Array.isArray(val) ? [...val] : { ...val };
+        if (isObject(val)) {
+          this._propSnapshots[key] = isArray(val) ? [...val] : { ...val };
         }
       }
     }
   }
 
-  mount(parentNode: Node, beforeNode?: Node | null): Node | null | Promise<Node | null> {
+  mount(parentNode: Node, beforeNode?: Node): AnyNode[] {
     this.parentNode = parentNode;
-    this.beforeNode = beforeNode || null;
+    this.beforeNode = beforeNode;
     this.state = COMPONENT_STATE.MOUNTING;
 
-    // if the component is already mount, insert the rendered node
-    if (this.renderedNode) {
-      insertNode(parentNode, this.renderedNode, beforeNode);
-      return this.renderedNode;
+    // if the component already has rendered nodes, re-insert them
+    if (this.renderedNodes.length > 0) {
+      for (const node of this.renderedNodes) {
+        insertNode(parentNode, node, beforeNode);
+      }
+      this.state = COMPONENT_STATE.MOUNTED;
+      return this.renderedNodes;
     }
 
     // context
-    this.componentContext = createContext(this.parentContext);
+    this.componentContext = createContext(this.parentContext || getActiveContext());
     pushContextStack(this.componentContext);
 
     // render the component
     let result = this.component(this.reactiveProps);
 
+    // unwrap function (render function pattern)
     if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps) as Node;
+      result = (result as Function)(this.reactiveProps);
     }
 
-    // Unwrap signals and computed values
-    if (isSignal<Node>(result) || isComputed<Node>(result)) {
+    // unwrap signals and computed values
+    if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
       result = result.value;
     }
 
-    this.renderedNode = result;
+    this.renderedNodes = insert(parentNode, result as any, beforeNode) ?? [];
 
-    // insert the rendered node
-    insertNode(parentNode, this.renderedNode, beforeNode);
-
-    // apply props
+    // apply props (events, refs)
     this.applyProps(this.props || {});
 
     // update marks
@@ -119,7 +142,8 @@ export class Component {
     // trigger mount hook
     triggerLifecycleHook(LIFECYCLE.mount);
 
-    return this.renderedNode;
+    popContextStack();
+    return this.renderedNodes;
   }
 
   update(prevNode: Component): Component {
@@ -133,7 +157,8 @@ export class Component {
     this.parentNode = prevNode.parentNode;
     this.beforeNode = prevNode.beforeNode;
     this.componentContext = prevNode.componentContext;
-    this.renderedNode = prevNode.renderedNode;
+    this.renderedNodes = prevNode.renderedNodes;
+    this.endAnchor = prevNode.endAnchor;
     this.state = prevNode.state;
     this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
     this._propSnapshots = prevNode._propSnapshots;
@@ -145,14 +170,12 @@ export class Component {
         const newValue = this.props[key];
         const oldValue = this.reactiveProps[key];
 
-        if (isObject(newValue) && newValue !== null) {
+        if (isObject(newValue)) {
           // For objects: compare with snapshot
           const snapshot = this._propSnapshots[key];
           if (!snapshot || !shallowCompare(newValue, snapshot)) {
             // Content changed (or new prop) -> Force update
-            const newSnapshot = Array.isArray(newValue)
-              ? newValue.slice()
-              : Object.assign({}, newValue);
+            const newSnapshot = isArray(newValue) ? newValue.slice() : Object.assign({}, newValue);
             this.reactiveProps[key] = newSnapshot;
             this._propSnapshots[key] = newSnapshot;
           }
@@ -190,33 +213,41 @@ export class Component {
       return;
     }
 
-    // Re-render
-    const prevNode = this.renderedNode;
-    let newNode: Node | Promise<Node>;
-
     try {
       // Create new context for re-render
       if (this.componentContext) {
         pushContextStack(this.componentContext);
       }
 
-      newNode = (this.component as Function)(this.reactiveProps);
+      // Re-render the component
+      let result = (this.component as Function)(this.reactiveProps);
 
-      if (isFunction(newNode)) {
-        newNode = (newNode as Function)(this.reactiveProps) as Node;
+      // Unwrap function (render function pattern)
+      if (isFunction(result)) {
+        result = (result as Function)(this.reactiveProps);
       }
 
       // Unwrap signals and computed values
-      if (isSignal<Node>(newNode) || isComputed<Node>(newNode)) {
-        newNode = newNode.value;
+      if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
+        result = result.value;
       }
 
-      if (prevNode && newNode && prevNode !== newNode) {
-        // Replace node
-        if (this.parentNode) {
-          replaceNode(this.parentNode, newNode as Node, prevNode as Node);
-          this.renderedNode = newNode as Node;
+      // Normalize to array
+      const newNodes = coerceArray(result) as AnyNode[];
+
+      // Replace old nodes with new ones (complete re-render)
+      if (this.parentNode && this.endAnchor) {
+        // Remove old rendered nodes
+        for (const node of this.renderedNodes) {
+          removeNode(node);
         }
+
+        // Insert new nodes before anchor
+        for (const node of newNodes) {
+          insertNode(this.parentNode, node, this.endAnchor);
+        }
+
+        this.renderedNodes = newNodes;
       }
 
       // Trigger update lifecycle
@@ -254,15 +285,21 @@ export class Component {
       popContextStack();
     }
 
-    const rendered = this.renderedNode;
-    if (rendered) {
-      removeNode(rendered);
+    // Remove all rendered nodes
+    for (const node of this.renderedNodes) {
+      removeNode(node);
+    }
+
+    // Remove end anchor
+    if (this.endAnchor?.parentNode) {
+      this.endAnchor.remove();
     }
 
     // Reset all component properties
-    this.renderedNode = null;
-    this.parentNode = null;
-    this.beforeNode = null;
+    this.renderedNodes = [];
+    this.endAnchor = null;
+    this.parentNode = undefined;
+    this.beforeNode = undefined;
     this.reactiveProps = {};
     this.props = undefined;
     this.state = COMPONENT_STATE.DESTROYED;
@@ -274,18 +311,21 @@ export class Component {
       return;
     }
 
+    // Get first element for event handling and refs
+    const firstElement = this.firstChild;
+
     // iterate over all properties and apply them
     for (const [propName, propValue] of Object.entries(props)) {
-      if (startsWith(propName, EVENT_PREFIX) && this.renderedNode) {
+      if (startsWith(propName, EVENT_PREFIX) && firstElement) {
         // event handling: extract the event name after on
         const eventName = propName.slice(2).toLowerCase();
 
-        if (isHTMLElement(this.renderedNode)) {
-          addEventListener(this.renderedNode, eventName, propValue as EventListener);
+        if (isHTMLElement(firstElement)) {
+          addEventListener(firstElement, eventName, propValue as EventListener);
         }
       } else if (propName === REF_KEY && isSignal(propValue)) {
         // handle reference: store the DOM reference into the signal value
-        propValue.value = this.renderedNode;
+        propValue.value = firstElement;
       }
     }
 

@@ -1,6 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
 import { isSVGTag, isSelfClosingTag, warn } from '@estjs/shared';
-import { BIND_REG, BUILT_IN_COMPONENTS, NODE_TYPE, SPREAD_NAME, UPDATE_PREFIX } from './constants';
+import { BIND_REG, NODE_TYPE, SPREAD_NAME, UPDATE_PREFIX } from './constants';
 import { getAttrName, getTagName, isComponentName, optimizeChildNodes, textTrim } from './shared';
 import type { JSXChild, JSXElement } from '../types';
 
@@ -206,20 +206,20 @@ let treeIndex = 1;
  */
 export function createTree(path: NodePath<JSXElement>, parentNode?: TreeNode): TreeNode {
   const treeNode = createDefaultTree();
+  const tagName = getTagName(path.node);
 
+  treeNode.tag = tagName;
+  treeNode.type = determineNodeType(tagName);
+  treeNode.selfClosing = isSelfClosingTag(tagName);
   if (parentNode) {
-    // Child node processing: only non-component nodes get indices
-    const nodeInfo = path.node as JSXElement;
-    const isBuiltInComponent = BUILT_IN_COMPONENTS.includes(parentNode.tag!);
-
-    const isComponentOrFragment = isComponentName(getTagName(nodeInfo));
-
-    if (!isComponentOrFragment && !isBuiltInComponent) {
+    const parentIsComponent = parentNode.type === NODE_TYPE.COMPONENT;
+    if (parentIsComponent) {
+      treeIndex = 1;
+      treeNode.index = treeIndex;
+    } else if (treeNode.type !== NODE_TYPE.COMPONENT) {
       treeNode.index = ++treeIndex;
     }
-    if (isBuiltInComponent) {
-      treeIndex = 1;
-    }
+
     treeNode.parentIndex = treeIndex;
   } else {
     // Root node processing: mark as root node and reset counter
@@ -272,12 +272,6 @@ export function createTree(path: NodePath<JSXElement>, parentNode?: TreeNode): T
  * @internal
  */
 function processJSXElement(path: NodePath<JSXElement>, treeNode: TreeNode): TreeNode {
-  const tagName = getTagName(path.node);
-
-  treeNode.tag = tagName;
-  treeNode.type = determineNodeType(tagName);
-  treeNode.selfClosing = isSelfClosingTag(tagName);
-
   // Process JSX attributes and properties,fragment not have props
   if (!path.isJSXFragment()) {
     treeNode.props = processProps(path);
