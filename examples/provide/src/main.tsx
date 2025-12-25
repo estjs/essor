@@ -1,15 +1,15 @@
-import { type InjectionKey, provide, reactive } from 'essor';
-import InjectComponent from './inject';
+import { createApp } from 'essor';
+import { DynamicProvider } from './Dynamic';
+import { SignalProvider } from './Signal';
 
-export const ProvideKey: InjectionKey<{ count: number }> = Symbol('ProvideKey');
 function App() {
-  const value = reactive({ count: 0 });
-  provide(ProvideKey, value);
-
-  setInterval(() => {
-    value.count++;
-  }, 600);
-
-  return <InjectComponent />;
+  return (
+    <>
+      <SignalProvider />
+      <br />
+      <DynamicProvider />
+    </>
+  );
 }
-(<App />).mount(document.querySelector('#app')!);
+
+createApp(App, '#app');

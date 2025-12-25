@@ -40,6 +40,14 @@
       "types": "./dist/essor.d.ts",
       "require": "./dist/essor.cjs.js",
       "import": "./dist/essor.esm.js"
+    },
+    "./jsx-runtime": {
+      "types": "./types/jsx.d.ts",
+      "default": "./dist/essor.esm.js"
+    },
+    "./jsx-dev-runtime": {
+      "types": "./types/jsx.d.ts",
+      "default": "./dist/essor.esm.js"
     }
   },
   "typesVersions": {
