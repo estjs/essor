@@ -209,7 +209,7 @@ function patchKeyedChildren(
   parent: Node,
   oldChildren: AnyNode[],
   newChildren: AnyNode[],
-  anchor?: Node | null,
+  anchor?: Node,
 ): AnyNode[] {
   let oldStartIdx = 0;
   let newStartIdx = 0;
@@ -312,7 +312,7 @@ function patchUnknownSequence(
   oldEndIdx: number,
   newStartIdx: number,
   newEndIdx: number,
-  anchor?: Node | null,
+  anchor?: Node,
 ): void {
   // Cache length calculation
   const newLength = newEndIdx - newStartIdx + 1;

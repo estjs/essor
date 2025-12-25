@@ -2,6 +2,7 @@ import { isArray, isString, warn } from '@estjs/shared';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
 import { onMount } from '../lifecycle';
+import { onCleanup } from '../scope';
 import type { AnyNode } from '../types';
 
 export interface PortalProps {
@@ -37,32 +38,43 @@ export function Portal(props: PortalProps): Comment | string {
   // Mark as portal for isPortal check
   (placeholder as any)[COMPONENT_TYPE.PORTAL] = true;
 
-  onMount(() => {
-    // Get target element
-    const targetElement = isString(props.target)
-      ? document.querySelector(props.target)
-      : props.target;
+  const children = props.children;
+  if (children) {
+    const childArray = isArray(children) ? children : [children];
+    const nodes: (Node | string)[] = [];
 
-    if (!targetElement) {
-      if (__DEV__) {
-        warn(`[Portal] Target element not found: ${props.target}`);
+    onMount(() => {
+      // Get target element
+      const targetElement = isString(props.target)
+        ? document.querySelector(props.target)
+        : props.target;
+
+      if (!targetElement) {
+        if (__DEV__) {
+          warn(`[Portal] Target element not found: ${props.target}`);
+        }
+        return;
       }
-      return;
-    }
 
-    const children = props.children;
-    if (children) {
-      const childArray = isArray(children) ? children : [children];
       childArray.forEach(child => {
         if (child != null) {
           const normalized = normalizeNode(child);
           if (normalized) {
             insertNode(targetElement, normalized);
+            nodes.push(normalized);
           }
         }
       });
-    }
-  });
+
+      onCleanup(() => {
+        nodes.forEach(node => {
+          if (typeof node !== 'string' && node.parentNode === targetElement) {
+            targetElement.removeChild(node);
+          }
+        });
+      });
+    });
+  }
 
   return placeholder;
 }

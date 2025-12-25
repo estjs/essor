@@ -115,11 +115,6 @@ export function isSameNodeType(a: AnyNode, b: AnyNode): boolean {
     return a.component === b.component;
   }
 
-  // Mixed types - never the same
-  if (aIsComponent !== bIsComponent) {
-    return false;
-  }
-
   // Both DOM nodes - compare nodeType and tagName
   const aNode = a as Node;
   const bNode = b as Node;

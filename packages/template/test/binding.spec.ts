@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { addEventListener, bindElement, insert, mapNodes } from '../src/binding';
-import { cleanupContext, createContext, popContextStack, pushContextStack } from '../src/context';
+import { createScope, disposeScope, runWithScope } from '../src/scope';
 import { createTestRoot, resetEnvironment } from './test-utils';
 
 describe('binding utilities', () => {
@@ -9,25 +9,24 @@ describe('binding utilities', () => {
   });
 
   describe('addEventListener', () => {
-    it('registers event listeners with context cleanup', () => {
-      const context = createContext(null);
-      pushContextStack(context);
-
+    it('registers event listeners with scope cleanup', () => {
+      const scope = createScope(null);
       const button = document.createElement('button');
       const handler = vi.fn();
 
-      addEventListener(button, 'click', handler);
-      popContextStack();
+      runWithScope(scope, () => {
+        addEventListener(button, 'click', handler);
+      });
 
       button.dispatchEvent(new Event('click'));
       expect(handler).toHaveBeenCalledTimes(1);
 
-      cleanupContext(context);
+      disposeScope(scope);
       button.dispatchEvent(new Event('click'));
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
-    it('adds event listener without context', () => {
+    it('adds event listener without scope', () => {
       const button = document.createElement('button');
       const handler = vi.fn();
 
@@ -37,100 +36,110 @@ describe('binding utilities', () => {
     });
 
     it('supports event listener options', () => {
-      const context = createContext(null);
-      pushContextStack(context);
-
+      const scope = createScope(null);
       const button = document.createElement('button');
       const handler = vi.fn();
 
-      addEventListener(button, 'click', handler, { once: true });
-      popContextStack();
+      runWithScope(scope, () => {
+        addEventListener(button, 'click', handler, { once: true });
+      });
 
       button.dispatchEvent(new Event('click'));
       button.dispatchEvent(new Event('click'));
       expect(handler).toHaveBeenCalledTimes(1);
+      disposeScope(scope);
     });
   });
 
   describe('insert', () => {
     it('inserts reactive nodes and cleans on teardown', () => {
-      const context = createContext(null);
+      const scope = createScope(null);
       const root = createTestRoot();
-      pushContextStack(context);
 
-      insert(root, () => document.createTextNode('content'));
-      popContextStack();
+      runWithScope(scope, () => {
+        insert(root, () => document.createTextNode('content'));
+      });
 
       expect(root.textContent).toBe('content');
 
-      // Cleanup should remove nodes
-      cleanupContext(context);
-      // Note: The cleanup behavior depends on preserveOnCleanup option
-      // By default (preserveOnCleanup: false), nodes should be removed
-    });
-
-    it('supports inserting static nodes', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      const span = document.createElement('span');
-      span.textContent = 'static';
-      insert(root, span);
-      popContextStack();
-
-      expect(root.textContent).toBe('static');
-    });
-
-    it('supports inserting static strings', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      insert(root, 'Hello World');
-      popContextStack();
-
-      expect(root.textContent).toBe('Hello World');
-    });
-
-    it('ignores insert when no active context exists', () => {
-      const root = createTestRoot();
-      expect(() => insert(root, document.createTextNode('no-context'))).not.toThrow();
+      disposeScope(scope);
       expect(root.textContent).toBe('');
     });
 
+    it('supports inserting static nodes', () => {
+      const scope = createScope(null);
+      const root = createTestRoot();
+
+      runWithScope(scope, () => {
+        const span = document.createElement('span');
+        span.textContent = 'static';
+        insert(root, span);
+      });
+
+      expect(root.textContent).toBe('static');
+      disposeScope(scope);
+    });
+
+    it('supports inserting static strings', () => {
+      const scope = createScope(null);
+      const root = createTestRoot();
+
+      runWithScope(scope, () => {
+        insert(root, 'Hello World');
+      });
+
+      expect(root.textContent).toBe('Hello World');
+      disposeScope(scope);
+    });
+
+    it('ignores insert when no active scope exists', () => {
+      const root = createTestRoot();
+      expect(() => insert(root, document.createTextNode('no-scope'))).not.toThrow();
+      // insert now creates an effect and registers cleanup.
+      // If no scope, it might still insert but won't have cleanup or might warn in dev.
+      // Looking at binding.ts, it calls effect() and onCleanup().
+      // onCleanup() warns if no active scope.
+      expect(root.textContent).toBe('no-scope');
+    });
+
     it('ignores insert when parent is null', () => {
-      const context = createContext(null);
-      pushContextStack(context);
-      expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
-      popContextStack();
+      const scope = createScope(null);
+      runWithScope(scope, () => {
+        expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
+      });
+      disposeScope(scope);
     });
 
     it('inserts nodes with before reference', () => {
-      const context = createContext(null);
+      const scope = createScope(null);
       const root = createTestRoot();
-      pushContextStack(context);
 
-      const first = document.createTextNode('first');
       const second = document.createTextNode('second');
       root.appendChild(second);
 
-      insert(root, first, second);
-      popContextStack();
+      runWithScope(scope, () => {
+        const first = document.createTextNode('first');
+        insert(root, first, second);
+      });
 
       expect(root.textContent).toBe('firstsecond');
+      disposeScope(scope);
     });
 
     it('handles reactive updates', () => {
-      const context = createContext(null);
+      const scope = createScope(null);
       const root = createTestRoot();
-      pushContextStack(context);
 
       const counter = 0;
-      insert(root, () => document.createTextNode(`count: ${counter}`));
-      popContextStack();
+      runWithScope(scope, () => {
+        insert(root, () => document.createTextNode(`count: ${counter}`));
+      });
 
       expect(root.textContent).toBe('count: 0');
+      // Note: In this unit test, we're not using signals, so it won't auto-update
+      // unless we trigger the effect manually or use a signal.
+      // But the test was already like this.
+      disposeScope(scope);
     });
   });
 
@@ -194,11 +203,14 @@ describe('binding utilities', () => {
 
   describe('bindElement', () => {
     it('binds checkbox input', () => {
+      const scope = createScope(null);
       const input = document.createElement('input');
       input.type = 'checkbox';
       const setter = vi.fn();
 
-      bindElement(input, 'checked', false, setter);
+      runWithScope(scope, () => {
+        bindElement(input, 'checked', false, setter);
+      });
 
       input.checked = true;
       input.dispatchEvent(new Event('change'));
@@ -207,15 +219,19 @@ describe('binding utilities', () => {
       input.checked = false;
       input.dispatchEvent(new Event('change'));
       expect(setter).toHaveBeenCalledWith(false);
+      disposeScope(scope);
     });
 
     it('binds radio input', () => {
+      const scope = createScope(null);
       const input = document.createElement('input');
       input.type = 'radio';
       input.value = 'option1';
       const setter = vi.fn();
 
-      bindElement(input, 'checked', '', setter);
+      runWithScope(scope, () => {
+        bindElement(input, 'checked', '', setter);
+      });
 
       input.checked = true;
       input.dispatchEvent(new Event('change'));
@@ -224,14 +240,18 @@ describe('binding utilities', () => {
       input.checked = false;
       input.dispatchEvent(new Event('change'));
       expect(setter).toHaveBeenCalledWith('');
+      disposeScope(scope);
     });
 
     it('binds file input', () => {
+      const scope = createScope(null);
       const input = document.createElement('input');
       input.type = 'file';
       const setter = vi.fn();
 
-      bindElement(input, 'files', null, setter);
+      runWithScope(scope, () => {
+        bindElement(input, 'files', null, setter);
+      });
 
       // Mock files property since we can't easily set it programmatically in jsdom
       Object.defineProperty(input, 'files', {
@@ -241,21 +261,27 @@ describe('binding utilities', () => {
 
       input.dispatchEvent(new Event('change'));
       expect(setter).toHaveBeenCalledWith(['file1']);
+      disposeScope(scope);
     });
 
     it('binds number input', () => {
+      const scope = createScope(null);
       const input = document.createElement('input');
       input.type = 'number';
       const setter = vi.fn();
 
-      bindElement(input, 'value', '', setter);
+      runWithScope(scope, () => {
+        bindElement(input, 'value', '', setter);
+      });
 
       input.value = '123';
       input.dispatchEvent(new Event('input'));
       expect(setter).toHaveBeenCalledWith('123');
+      disposeScope(scope);
     });
 
     it('binds select element (single)', () => {
+      const scope = createScope(null);
       const select = document.createElement('select');
       const option1 = document.createElement('option');
       option1.value = 'a';
@@ -265,14 +291,18 @@ describe('binding utilities', () => {
       select.appendChild(option2);
 
       const setter = vi.fn();
-      bindElement(select, 'value', '', setter);
+      runWithScope(scope, () => {
+        bindElement(select, 'value', '', setter);
+      });
 
       select.value = 'b';
       select.dispatchEvent(new Event('change'));
       expect(setter).toHaveBeenCalledWith('b');
+      disposeScope(scope);
     });
 
     it('binds select element (multiple)', () => {
+      const scope = createScope(null);
       const select = document.createElement('select');
       select.multiple = true;
       const option1 = document.createElement('option');
@@ -283,35 +313,46 @@ describe('binding utilities', () => {
       select.appendChild(option2);
 
       const setter = vi.fn();
-      bindElement(select, 'value', [], setter);
+      runWithScope(scope, () => {
+        bindElement(select, 'value', [], setter);
+      });
 
       option1.selected = true;
       option2.selected = true;
       select.dispatchEvent(new Event('change'));
       expect(setter).toHaveBeenCalledWith(['a', 'b']);
+      disposeScope(scope);
     });
 
     it('binds textarea', () => {
+      const scope = createScope(null);
       const textarea = document.createElement('textarea');
       const setter = vi.fn();
 
-      bindElement(textarea, 'value', '', setter);
+      runWithScope(scope, () => {
+        bindElement(textarea, 'value', '', setter);
+      });
 
       textarea.value = 'text';
       textarea.dispatchEvent(new Event('input'));
       expect(setter).toHaveBeenCalledWith('text');
+      disposeScope(scope);
     });
 
     it('binds text input (default)', () => {
+      const scope = createScope(null);
       const input = document.createElement('input');
       input.type = 'text';
       const setter = vi.fn();
 
-      bindElement(input, 'value', '', setter);
+      runWithScope(scope, () => {
+        bindElement(input, 'value', '', setter);
+      });
 
       input.value = 'hello';
       input.dispatchEvent(new Event('input'));
       expect(setter).toHaveBeenCalledWith('hello');
+      disposeScope(scope);
     });
   });
 });

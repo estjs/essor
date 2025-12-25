@@ -1,12 +1,6 @@
 export { template, createApp } from './renderer';
 
-export {
-  Component,
-  createComponent,
-  isComponent,
-  type ComponentFn,
-  type ComponentProps,
-} from './component';
+export { Component, createComponent, isComponent } from './component';
 
 export { onMount, onDestroy, onUpdate } from './lifecycle';
 
@@ -23,3 +17,4 @@ export { omitProps } from './utils';
 export * from './operations';
 export * from './components';
 export * from './server';
+export * from './types';

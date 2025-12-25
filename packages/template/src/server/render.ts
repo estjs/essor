@@ -1,7 +1,6 @@
 import { error, isFunction } from '@estjs/shared';
 import { addAttributes, convertToString, resetHydrationKey } from './shared';
-import type { ComponentFn, ComponentProps } from '../component';
-
+import type { ComponentFn, ComponentProps } from '../types';
 /**
  *
  *  ssg compile

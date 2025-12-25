@@ -8,8 +8,13 @@ import {
   registerLifecycleHook,
   triggerLifecycleHook,
 } from '../src/lifecycle';
-import { createContext, popContextStack, pushContextStack } from '../src/context';
+import { createScope, setActiveScope } from '../src/scope';
 import { resetEnvironment } from './test-utils';
+
+// Helper functions for backward compatibility in tests
+const createContext = createScope;
+const pushContextStack = (scope: any) => setActiveScope(scope);
+const popContextStack = () => setActiveScope(null);
 
 describe('lifecycle management', () => {
   beforeEach(() => {
@@ -36,7 +41,7 @@ describe('lifecycle management', () => {
       const hook = vi.fn();
       registerLifecycleHook(LIFECYCLE.mount, hook);
 
-      expect(context.mount.has(hook)).toBe(true);
+      expect(context.onMount?.has(hook)).toBe(true);
       popContextStack();
     });
 
@@ -47,7 +52,7 @@ describe('lifecycle management', () => {
       const hook = vi.fn();
       registerLifecycleHook(LIFECYCLE.update, hook);
 
-      expect(context.update.has(hook)).toBe(true);
+      expect(context.onUpdate?.has(hook)).toBe(true);
       popContextStack();
     });
 
@@ -58,13 +63,13 @@ describe('lifecycle management', () => {
       const hook = vi.fn();
       registerLifecycleHook(LIFECYCLE.destroy, hook);
 
-      expect(context.destroy.has(hook)).toBe(true);
+      expect(context.onDestroy?.has(hook)).toBe(true);
       popContextStack();
     });
 
     it('executes mount hook immediately if context is already mount', () => {
       const context = createContext(null);
-      context.isMount = true;
+      context.isMounted = true;
       pushContextStack(context);
 
       const hook = vi.fn();
@@ -76,7 +81,7 @@ describe('lifecycle management', () => {
 
     it('handles errors in immediately executed mount hooks', () => {
       const context = createContext(null);
-      context.isMount = true;
+      context.isMounted = true;
       pushContextStack(context);
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -316,15 +321,15 @@ describe('lifecycle management', () => {
       onUpdate(vi.fn());
       onDestroy(vi.fn());
 
-      expect(context.mount.size).toBeGreaterThan(0);
-      expect(context.update.size).toBeGreaterThan(0);
-      expect(context.destroy.size).toBeGreaterThan(0);
+      expect(context.onMount?.size ?? 0).toBeGreaterThan(0);
+      expect(context.onUpdate?.size ?? 0).toBeGreaterThan(0);
+      expect(context.onDestroy?.size ?? 0).toBeGreaterThan(0);
 
       cleanupLifecycle(context);
 
-      expect(context.mount.size).toBe(0);
-      expect(context.update.size).toBe(0);
-      expect(context.destroy.size).toBe(0);
+      expect(context.onMount?.size ?? 0).toBe(0);
+      expect(context.onUpdate?.size ?? 0).toBe(0);
+      expect(context.onDestroy?.size ?? 0).toBe(0);
 
       popContextStack();
     });
@@ -335,11 +340,11 @@ describe('lifecycle management', () => {
 
       onMount(vi.fn());
 
-      expect(context.mount.size).toBeGreaterThan(0);
+      expect(context.onMount?.size ?? 0).toBeGreaterThan(0);
 
       cleanupLifecycle();
 
-      expect(context.mount.size).toBe(0);
+      expect(context.onMount?.size ?? 0).toBe(0);
 
       popContextStack();
     });
@@ -357,9 +362,9 @@ describe('lifecycle management', () => {
 
       cleanupLifecycle(context);
 
-      expect(context.mount.size).toBe(0);
-      expect(context.update.size).toBe(0);
-      expect(context.destroy.size).toBe(0);
+      expect(context.onMount?.size ?? 0).toBe(0);
+      expect(context.onUpdate?.size ?? 0).toBe(0);
+      expect(context.onDestroy?.size ?? 0).toBe(0);
 
       popContextStack();
     });

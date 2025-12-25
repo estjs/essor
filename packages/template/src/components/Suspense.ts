@@ -1,10 +1,10 @@
 import { isArray, isPromise, isUndefined, warn } from '@estjs/shared';
 import { provide } from '../provide';
-import { getActiveContext } from '../context';
 import { isComponent } from '../component';
 import { insertNode, normalizeNode } from '../utils';
 import { COMPONENT_TYPE } from '../constants';
 import { onDestroy } from '../lifecycle';
+import { getActiveScope } from '../scope';
 import type { AnyNode } from '../types';
 
 export interface SuspenseProps {
@@ -128,14 +128,14 @@ export function Suspense(props: SuspenseProps): Node | string {
 
     if (children == null) return;
 
-    const currentContext = getActiveContext();
+    const currentScope = getActiveScope();
     const childArray = isArray(children) ? children : [children];
     childArray.forEach(child => {
       if (child != null) {
         // Reparent component to current context to ensure it can access SuspenseContext
         // This is necessary because children are created in the parent scope
         if (isComponent(child)) {
-          (child as any).parentContext = currentContext;
+          (child as any).parentContext = currentScope;
         }
 
         const normalized = normalizeNode(child);

@@ -1,6 +1,5 @@
 import { coerceArray, isFunction } from '@estjs/shared';
 import { effect } from '@estjs/signals';
-import { getActiveContext } from './context';
 import {
   isHtmlInputElement,
   isHtmlSelectElement,
@@ -9,10 +8,10 @@ import {
   removeNode,
 } from './utils';
 import { patchChildren } from './patch';
+import { onCleanup } from './scope';
 import type { AnyNode } from './types';
-
 /**
- * Add event listener with automatic cleanup on context destruction
+ * Add event listener with automatic cleanup on scope destruction
  */
 export function addEventListener(
   element: Element,
@@ -22,12 +21,10 @@ export function addEventListener(
 ): void {
   element.addEventListener(event, handler, options);
 
-  const context = getActiveContext();
-  if (context) {
-    context.cleanup.add(() => {
-      element.removeEventListener(event, handler, options);
-    });
-  }
+  // Register cleanup in current scope using onCleanup
+  onCleanup(() => {
+    element.removeEventListener(event, handler, options);
+  });
 }
 
 /**
@@ -139,8 +136,6 @@ export function insert(
 ) {
   if (!parent) return;
 
-  const context = getActiveContext();
-
   let renderedNodes: AnyNode[] = [];
 
   // Create effect for reactive updates
@@ -152,14 +147,12 @@ export function insert(
 
     renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
   });
-
-  if (!context) return;
-  // Register cleanup function
-  context.cleanup.add(() => {
+  onCleanup(() => {
     cleanup();
     renderedNodes.forEach(node => removeNode(node));
     renderedNodes.length = 0;
   });
+
   return renderedNodes;
 }
 /**

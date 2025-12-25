@@ -120,8 +120,11 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
   if (!parent || !newNode || !oldNode || newNode === oldNode) return;
 
   try {
-    insertNode(parent, newNode, oldNode as Node);
+    const beforeNode: AnyNode | undefined = isComponent(oldNode)
+      ? oldNode.beforeNode
+      : oldNode.nextSibling!;
     removeNode(oldNode);
+    insertNode(parent, newNode, beforeNode);
   } catch (_error) {
     error('Failed to replace node:', _error);
   }

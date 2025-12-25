@@ -1,7 +1,6 @@
-import { type Computed, type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
+import { isComputed, isSignal, shallowReactive } from '@estjs/signals';
 import {
   coerceArray,
-  error,
   hasChanged,
   isArray,
   isFunction,
@@ -9,41 +8,26 @@ import {
   isObject,
   startsWith,
 } from '@estjs/shared';
-import {
-  type Context,
-  createContext,
-  destroyContext,
-  getActiveContext,
-  popContextStack,
-  pushContextStack,
-} from './context';
-import { LIFECYCLE, triggerLifecycleHook } from './lifecycle';
+import { type Scope, createScope, disposeScope, getActiveScope, runWithScope } from './scope';
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
 import { addEventListener, insert } from './binding';
 import { getComponentKey, normalizeKey } from './key';
 import { getFirstDOMNode, insertNode, removeNode, shallowCompare } from './utils';
-import type { AnyNode } from './types';
-
-// Component result can be a single node, signal/computed, an array, or a Component
-export type componentResultNodeType = AnyNode | Signal<AnyNode> | Computed<AnyNode> | AnyNode[];
-export type ComponentFn = (props?: ComponentProps) => componentResultNodeType;
-export type ComponentProps = Record<string, unknown>;
+import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
+import type { AnyNode, ComponentFn, ComponentProps } from './types';
 
 export class Component {
   // component rendered nodes (supports arrays and fragments)
   protected renderedNodes: AnyNode[] = [];
 
-  // end anchor for DOM insertion positioning (empty text node)
-  protected endAnchor: Text | null = null;
-
-  // component context
-  protected componentContext: Context | null = null;
+  // component scope (unified context management)
+  protected scope: Scope | null = null;
 
   // component parent node
   protected parentNode: Node | undefined = undefined;
 
   // component before node
-  protected beforeNode: Node | undefined = undefined;
+  public beforeNode: Node | undefined = undefined;
 
   // component props
   private reactiveProps: Record<string, any> = {};
@@ -54,10 +38,8 @@ export class Component {
   // component state
   protected state: number = COMPONENT_STATE.INITIAL;
 
-  // component context
-  protected context: Context | null = null;
-  // component parent context
-  protected parentContext: Context | null = null;
+  // parent scope captured at construction time
+  protected parentScope: Scope | null = null;
 
   // component type
   // @ts-ignore
@@ -85,7 +67,8 @@ export class Component {
   ) {
     this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
     this.reactiveProps = shallowReactive({ ...(this.props || {}) });
-    this.parentContext = getActiveContext();
+    // Capture parent scope at construction time for correct hierarchy
+    this.parentScope = getActiveScope();
 
     // Init snapshots for object props
     if (this.props) {
@@ -112,37 +95,46 @@ export class Component {
       return this.renderedNodes;
     }
 
-    // context
-    this.componentContext = createContext(this.parentContext || getActiveContext());
-    pushContextStack(this.componentContext);
+    // Create scope with correct parent (captured at construction or current active)
+    const parent = this.parentScope ?? getActiveScope();
+    this.scope = createScope(parent);
 
-    // render the component
-    let result = this.component(this.reactiveProps);
+    // Run component within its scope
+    const renderedNodes = runWithScope(this.scope, () => {
+      // render the component
+      let result = this.component(this.reactiveProps);
 
-    // unwrap function (render function pattern)
-    if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps);
-    }
+      // unwrap function (render function pattern)
+      if (isFunction(result)) {
+        result = (result as Function)(this.reactiveProps);
+      }
 
-    // unwrap signals and computed values
-    if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
-      result = result.value;
-    }
+      // unwrap signals and computed values
+      if (isSignal<Element>(result) || isComputed<Element>(result)) {
+        result = result.value;
+      }
 
-    this.renderedNodes = insert(parentNode, result as any, beforeNode) ?? [];
+      const nodes = insert(parentNode, result as any, beforeNode) ?? [];
 
-    // apply props (events, refs)
-    this.applyProps(this.props || {});
+      return nodes;
+    });
+
+    this.renderedNodes = renderedNodes;
+
+    // apply props (events, refs) - must be after renderedNodes is set
+    // so that this.firstChild returns the correct element
+    runWithScope(this.scope, () => {
+      this.applyProps(this.props || {});
+    });
 
     // update marks
     this.state = COMPONENT_STATE.MOUNTED;
-    if (this.componentContext) {
-      this.componentContext.isMount = true;
-    }
-    // trigger mount hook
-    triggerLifecycleHook(LIFECYCLE.mount);
 
-    popContextStack();
+    // Trigger scope mount hooks (unified lifecycle system)
+    if (this.scope) {
+      triggerMountHooks(this.scope);
+    }
+
     return this.renderedNodes;
   }
 
@@ -156,14 +148,14 @@ export class Component {
     // Take previous node's properties and reactive state
     this.parentNode = prevNode.parentNode;
     this.beforeNode = prevNode.beforeNode;
-    this.componentContext = prevNode.componentContext;
+    this.scope = prevNode.scope; // Reuse existing scope
+    this.parentScope = prevNode.parentScope;
     this.renderedNodes = prevNode.renderedNodes;
-    this.endAnchor = prevNode.endAnchor;
     this.state = prevNode.state;
     this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
     this._propSnapshots = prevNode._propSnapshots;
 
-    // Smart update: shallow compare object props to detect mutations
+    // shallow compare object props to detect mutations
     if (this.props) {
       for (const key in this.props) {
         if (key === 'key') continue;
@@ -198,67 +190,76 @@ export class Component {
       this.mount(this.parentNode, this.beforeNode);
     }
 
-    // if the component is mount and has context, apply new props and trigger update lifecycle
-    if (this.componentContext) {
-      pushContextStack(this.componentContext);
-      this.applyProps(this.props || {});
-      triggerLifecycleHook(LIFECYCLE.update);
-      popContextStack();
+    // if the component is mount and has scope, apply new props and trigger update lifecycle
+    if (this.scope) {
+      runWithScope(this.scope, () => {
+        this.applyProps(this.props || {});
+      });
+      // Trigger scope update hooks (unified lifecycle system)
+      triggerUpdateHooks(this.scope);
     }
 
     return this;
   }
-  async forceUpdate() {
-    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.componentContext) {
+
+  async forceUpdate(): Promise<void> {
+    await Promise.resolve();
+    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.scope) {
       return;
     }
 
+    const originalNodes = [...this.renderedNodes];
+
     try {
-      // Create new context for re-render
-      if (this.componentContext) {
-        pushContextStack(this.componentContext);
-      }
+      runWithScope(this.scope, () => {
+        // Re-render the component
+        let result = (this.component as Function)(this.reactiveProps);
 
-      // Re-render the component
-      let result = (this.component as Function)(this.reactiveProps);
-
-      // Unwrap function (render function pattern)
-      if (isFunction(result)) {
-        result = (result as Function)(this.reactiveProps);
-      }
-
-      // Unwrap signals and computed values
-      if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
-        result = result.value;
-      }
-
-      // Normalize to array
-      const newNodes = coerceArray(result) as AnyNode[];
-
-      // Replace old nodes with new ones (complete re-render)
-      if (this.parentNode && this.endAnchor) {
-        // Remove old rendered nodes
-        for (const node of this.renderedNodes) {
-          removeNode(node);
+        // Unwrap function (render function pattern)
+        if (isFunction(result)) {
+          result = (result as Function)(this.reactiveProps);
         }
 
-        // Insert new nodes before anchor
-        for (const node of newNodes) {
-          insertNode(this.parentNode, node, this.endAnchor);
+        // Unwrap signals and computed values
+        if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
+          result = result.value;
         }
 
-        this.renderedNodes = newNodes;
-      }
+        // Normalize to array
+        const newNodes = coerceArray(result) as AnyNode[];
 
-      // Trigger update lifecycle
-      await triggerLifecycleHook(LIFECYCLE.update);
-    } catch (_error) {
-      error('Force update failed:', _error);
-      throw _error;
-    } finally {
-      if (this.componentContext) {
-        popContextStack();
+        // Replace old nodes with new ones (complete re-render)
+        if (this.parentNode) {
+          let anchor: Node | undefined = this.beforeNode;
+          if (!anchor && this.renderedNodes.length > 0) {
+            const lastNode = this.renderedNodes[this.renderedNodes.length - 1];
+            const lastDom = getFirstDOMNode(lastNode);
+            if (lastDom) {
+              anchor = lastDom.nextSibling as Node | undefined;
+            }
+          }
+
+          // Remove old rendered nodes
+          for (const node of this.renderedNodes) {
+            removeNode(node);
+          }
+
+          // Insert new nodes before anchor
+          for (const node of newNodes) {
+            insertNode(this.parentNode, node, anchor);
+          }
+
+          this.renderedNodes = newNodes;
+        }
+      });
+
+      if (this.scope) {
+        triggerUpdateHooks(this.scope);
       }
+    } catch (error) {
+      // Rollback
+      this.renderedNodes = originalNodes;
+      throw error;
     }
   }
 
@@ -273,16 +274,12 @@ export class Component {
 
     this.state = COMPONENT_STATE.DESTROYING;
 
-    const context = this.componentContext;
-    if (context) {
-      pushContextStack(context);
-
-      // Trigger destroyed lifecycle
-      triggerLifecycleHook(LIFECYCLE.destroy);
-      destroyContext(context);
-      this.componentContext = null;
-
-      popContextStack();
+    const scope = this.scope;
+    if (scope) {
+      // Dispose scope (handles cleanup, destroy hooks, and children)
+      // The disposeScope function triggers destroy hooks internally
+      disposeScope(scope);
+      this.scope = null;
     }
 
     // Remove all rendered nodes
@@ -290,16 +287,11 @@ export class Component {
       removeNode(node);
     }
 
-    // Remove end anchor
-    if (this.endAnchor?.parentNode) {
-      this.endAnchor.remove();
-    }
-
     // Reset all component properties
     this.renderedNodes = [];
-    this.endAnchor = null;
     this.parentNode = undefined;
     this.beforeNode = undefined;
+    this.parentScope = null;
     this.reactiveProps = {};
     this.props = undefined;
     this.state = COMPONENT_STATE.DESTROYED;

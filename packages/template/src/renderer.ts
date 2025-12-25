@@ -1,5 +1,6 @@
 import { error, isString } from '@estjs/shared';
-import { type ComponentFn, createComponent } from './component';
+import { createComponent } from './component';
+import type { ComponentFn } from './types';
 
 /**
  * Create a template factory function from HTML string

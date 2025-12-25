@@ -1,10 +1,9 @@
 import { error } from '@estjs/shared';
 import { COMPONENT_TYPE } from '../constants';
-import type { ComponentProps, componentResultNodeType } from '../component';
-import type { AnyNode } from '../types';
+import type { AnyNode, ComponentProps } from '../types';
 
 export interface FragmentProps extends ComponentProps {
-  children?: AnyNode | AnyNode[];
+  children: AnyNode | AnyNode[];
 }
 
 /**
@@ -43,7 +42,7 @@ export function Fragment(props?: FragmentProps) {
   //   return childArray.map(child => String(child || '')).join('');
   // }
 
-  return props?.children as componentResultNodeType;
+  return props?.children as Element;
 }
 
 Fragment[COMPONENT_TYPE.FRAGMENT] = true;
