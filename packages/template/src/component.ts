@@ -1,13 +1,5 @@
 import { isComputed, isSignal, shallowReactive } from '@estjs/signals';
-import {
-  coerceArray,
-  hasChanged,
-  isArray,
-  isFunction,
-  isHTMLElement,
-  isObject,
-  startsWith,
-} from '@estjs/shared';
+import { coerceArray, isFunction, isHTMLElement, isObject, startsWith } from '@estjs/shared';
 import { type Scope, createScope, disposeScope, getActiveScope, runWithScope } from './scope';
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
 import { addEventListener, insert } from './binding';
@@ -31,7 +23,6 @@ export class Component {
 
   // component props
   private reactiveProps: Record<string, any> = {};
-  private _propSnapshots: Record<string, any> = {};
 
   // component key
   public readonly key: string | undefined;
@@ -66,19 +57,11 @@ export class Component {
     public props: ComponentProps | undefined,
   ) {
     this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
+
     this.reactiveProps = shallowReactive({ ...(this.props || {}) });
+
     // Capture parent scope at construction time for correct hierarchy
     this.parentScope = getActiveScope();
-
-    // Init snapshots for object props
-    if (this.props) {
-      for (const key in this.props) {
-        const val = this.props[key];
-        if (isObject(val)) {
-          this._propSnapshots[key] = isArray(val) ? [...val] : { ...val };
-        }
-      }
-    }
   }
 
   mount(parentNode: Node, beforeNode?: Node): AnyNode[] {
@@ -153,35 +136,27 @@ export class Component {
     this.renderedNodes = prevNode.renderedNodes;
     this.state = prevNode.state;
     this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
-    this._propSnapshots = prevNode._propSnapshots;
 
-    // shallow compare object props to detect mutations
     if (this.props) {
       for (const key in this.props) {
         if (key === 'key') continue;
+
         const newValue = this.props[key];
         const oldValue = this.reactiveProps[key];
 
-        if (isObject(newValue)) {
-          // For objects: compare with snapshot
-          const snapshot = this._propSnapshots[key];
-          if (!snapshot || !shallowCompare(newValue, snapshot)) {
-            // Content changed (or new prop) -> Force update
-            const newSnapshot = isArray(newValue) ? newValue.slice() : Object.assign({}, newValue);
-            this.reactiveProps[key] = newSnapshot;
-            this._propSnapshots[key] = newSnapshot;
-          }
-          // If content same -> Do nothing (skip update)
-        } else {
-          // For primitives: standard check
-          if (hasChanged(newValue, oldValue)) {
-            this.reactiveProps[key] = newValue;
-            // Clear snapshot if it existed (type change)
-            if (this._propSnapshots[key]) {
-              delete this._propSnapshots[key];
-            }
+        // 1. reference same
+        if (Object.is(oldValue, newValue)) {
+          continue;
+        }
+        // 2. object shallow compare
+        if (isObject(oldValue) && isObject(newValue)) {
+          if (shallowCompare(oldValue, newValue)) {
+            continue;
           }
         }
+
+        // 3. update reactiveProps
+        this.reactiveProps[key] = newValue;
       }
     }
 
