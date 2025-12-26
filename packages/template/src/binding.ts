@@ -8,7 +8,7 @@ import {
   removeNode,
 } from './utils';
 import { patchChildren } from './patch';
-import { onCleanup } from './scope';
+import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
 import type { AnyNode } from './types';
 /**
  * Add event listener with automatic cleanup on scope destruction
@@ -135,18 +135,34 @@ export function insert(
   before?: Node,
 ) {
   if (!parent) return;
+  // Capture owner scope at call time - this is critical for correct context inheritance
+  // When dynamic components are created inside effects, they need to inherit from
+  // the scope that was active when insert() was called, not when the effect runs
+  const ownerScope: Scope | null = getActiveScope();
 
   let renderedNodes: AnyNode[] = [];
 
+  // Track if this is the first run (for hydration)
   // Create effect for reactive updates
   const cleanup = effect(() => {
-    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-    const nodes = coerceArray(rawNodes as unknown)
-      .map(item => (isFunction(item) ? item() : item))
-      .flatMap(normalizeNode) as AnyNode[];
+    const executeUpdate = () => {
+      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+      const nodes = coerceArray(rawNodes as unknown)
+        .map(item => (isFunction(item) ? item() : item))
+        .flatMap(i => i)
+        .map(normalizeNode) as AnyNode[];
 
-    renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+      renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+    };
+
+    // If we have an owner scope, run within it to maintain context hierarchy
+    if (ownerScope && !ownerScope.isDestroyed) {
+      runWithScope(ownerScope, executeUpdate);
+    } else {
+      executeUpdate();
+    }
   });
+
   onCleanup(() => {
     cleanup();
     renderedNodes.forEach(node => removeNode(node));
