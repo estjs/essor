@@ -263,19 +263,13 @@ _delegateEvents$(["click"]);"
 `;
 
 exports[`should work with jsx client transform > should work with forwardRef and memo 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div>Forward Ref Memo:</div>");
 const ForwardRefMemoComponent = React.memo(React.forwardRef((props, ref) => (() => {
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], () => props.value);
-  _memoEffect$(_p$ => {
-    var _v$0 = ref;
-    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
-    return _p$;
-  }, {
-    r0: undefined
-  });
+  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
   return _$el;
 })()));
 const element = _createComponent$(ForwardRefMemoComponent, {
@@ -285,7 +279,7 @@ const element = _createComponent$(ForwardRefMemoComponent, {
 `;
 
 exports[`should work with jsx client transform > should work with forwardRef components 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div></div>");
 const ForwardRefComponent = ({
   children
@@ -293,13 +287,7 @@ const ForwardRefComponent = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], () => children);
-  _memoEffect$(_p$ => {
-    var _v$0 = ref;
-    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
-    return _p$;
-  }, {
-    r0: undefined
-  });
+  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
   return _$el;
 })();
 const element = _createComponent$(ForwardRefComponent, {
@@ -528,15 +516,13 @@ const Portal = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], () => children);
+  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
   _memoEffect$(_p$ => {
-    var _v$0 = ref,
-      _v$1 = target;
-    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
-    _v$1 !== _p$.d1 && _patchAttr$(_$nodes[0], "data-portal-target", _p$.d1, _p$.d1 = _v$1);
+    var _v$0 = target;
+    _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-portal-target", _p$.d0, _p$.d0 = _v$0);
     return _p$;
   }, {
-    r0: undefined,
-    d1: undefined
+    d0: undefined
   });
   return _$el;
 })();
@@ -548,13 +534,15 @@ const element = _createComponent$(_Portal$, {
 `;
 
 exports[`should work with jsx client transform > should work with refs 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$ } from "essor";
+"import { template as _template$, mapNodes as _mapNodes$ } from "essor";
 const _$tmpl = _template$("<div>Reference Element</div>");
 const myRef = {
   current: null
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  typeof myRef === "function" ? myRef(_$nodes[0]) : myRef.value = _$nodes[0];
   return _$el;
 })();"
 `;

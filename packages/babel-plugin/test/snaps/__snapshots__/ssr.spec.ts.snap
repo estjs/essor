@@ -427,19 +427,13 @@ const element = _createComponent$(StreamingError, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and forwardRef 1`] = `
-"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-forward></div>");
 const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], () => props.children);
-  _memoEffect$(_p$ => {
-    var _v$0 = ref;
-    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
-    return _p$;
-  }, {
-    r0: undefined
-  });
+  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
   return _$el;
 })());
 const element = _createComponent$(StreamingForwardRef, {
@@ -579,7 +573,7 @@ const element = _createComponent$(StreamingPortal, {
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and refs 1`] = `
-"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+"import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-ref></div>");
 const StreamingRef = ({
   children
@@ -587,13 +581,7 @@ const StreamingRef = ({
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
   _insert$(_$nodes[0], () => children);
-  _memoEffect$(_p$ => {
-    var _v$0 = ref;
-    _v$0 !== _p$.r0 && _patchAttr$(_$nodes[0], "ref", _p$.r0, _p$.r0 = _v$0);
-    return _p$;
-  }, {
-    r0: undefined
-  });
+  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
   return _$el;
 })();
 const element = _createComponent$(StreamingRef, {

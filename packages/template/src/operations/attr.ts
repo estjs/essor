@@ -8,7 +8,6 @@ import {
 } from '@estjs/shared';
 import {
   KEY_PROP,
-  REF_KEY,
   SPREAD_NAME,
   SVG_NAMESPACE,
   XLINK_NAMESPACE,
@@ -19,10 +18,6 @@ import { setNodeKey } from '../key';
 export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 
 export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrValue) {
-  if (key === REF_KEY) {
-    (prev as any).value = el;
-    return;
-  }
   if (key === KEY_PROP) {
     if (next == null) {
       setNodeKey(el, undefined);

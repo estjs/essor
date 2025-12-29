@@ -62,6 +62,7 @@ export const FRAGMENT_NAME = 'Fragment';
  */
 export const CHILDREN_NAME = 'children';
 
+export const REF_KEY = 'ref';
 /**
  * Key name for the Spread attribute
  */

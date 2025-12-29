@@ -17,6 +17,7 @@ import {
   CREATE_COMPONENT_NAME,
   EVENT_ATTR_NAME,
   NODE_TYPE,
+  REF_KEY,
   SPREAD_NAME,
   STYLE_NAME,
   UPDATE_PREFIX,
@@ -246,6 +247,38 @@ function generateIndexMap({
   return indexMap;
 }
 
+// typeof value === "function" ? value(_el$) : value.value = _el$;
+export function createRefStatement(
+  nodesId: t.Identifier,
+  nodeIndex: number,
+  value: t.Expression,
+): t.ExpressionStatement {
+  // Get the target DOM element: nodes[nodeIndex]
+  const elementRef = t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true);
+
+  // Create: typeof value === "function"
+  const typeofCheck = t.binaryExpression(
+    '===',
+    t.unaryExpression('typeof', value),
+    t.stringLiteral('function'),
+  );
+
+  // Create: value(element) - function call
+  const functionCall = t.callExpression(value, [elementRef]);
+
+  // Create: value.value = element - assignment expression
+  const assignmentExpr = t.assignmentExpression(
+    '=',
+    t.memberExpression(value, t.identifier('value')),
+    elementRef,
+  );
+
+  // Create: typeof value === "function" ? value(element) : value.value = element
+  const conditionalExpr = t.conditionalExpression(typeofCheck, functionCall, assignmentExpr);
+
+  return t.expressionStatement(conditionalExpr);
+}
+
 /**
  * Create attribute setting statement
 
@@ -372,6 +405,10 @@ function generateSpecificAttributeCode(
       );
       break;
 
+    case REF_KEY:
+      statements.push(createRefStatement(nodesId, nodeIndex, attributeValue));
+      break;
+
     case STYLE_NAME:
       addImport(importMap.patchStyle);
       statements.push(
@@ -481,8 +518,8 @@ export function createInsertArguments(
     // CallExpression not be use call function
     // Content lazy function: () => dynamicContent (implements on-demand calculation)
     t.isCallExpression(dynamicContent.node) ||
-    t.isArrowFunctionExpression(dynamicContent.node) ||
-    t.isFunctionExpression(dynamicContent.node)
+      t.isArrowFunctionExpression(dynamicContent.node) ||
+      t.isFunctionExpression(dynamicContent.node)
       ? dynamicContent.node
       : t.arrowFunctionExpression([], dynamicContent.node),
   ];
@@ -1078,9 +1115,10 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
             t.isNode(attrValue) &&
             isDynamicExpression(attrValue) &&
             !startsWith(attrName, `${UPDATE_PREFIX}:`) &&
-            !startsWith(attrName, EVENT_ATTR_NAME);
-          // support bind:value
+            !startsWith(attrName, EVENT_ATTR_NAME) &&
+            attrName !== REF_KEY;
 
+          // support bind:value
           if (startsWith(attrName, `${UPDATE_PREFIX}:`)) {
             const name = attrName.split(':')[1];
             const setFunction = getSetFunctionForAttribute();
