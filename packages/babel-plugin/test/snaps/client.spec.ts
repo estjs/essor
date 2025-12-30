@@ -657,4 +657,21 @@ describe('should work with jsx client transform', () => {
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('handles signal variables in JSX expressions', () => {
+    expect(
+      transformCode(
+        `const $count = signal(0);
+       <div>{$count}</div>;`,
+      ),
+    ).toMatchSnapshot();
+  });
+  it('handles signal variables in JSX props', () => {
+    expect(
+      transformCode(
+        `const $value = signal('test');
+     const fn = ()=>  <div class={$value}></div>;`,
+      ),
+    ).toMatchSnapshot();
+  });
 });

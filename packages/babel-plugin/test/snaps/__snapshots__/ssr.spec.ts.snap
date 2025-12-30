@@ -697,7 +697,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with class and style attributes 1`] = `
-"import { patchClass as _patchClass$, patchStyle as _patchStyle$, getElement as _template$ } from "essor";
+"import { patchClass as _patchClass$, patchStyle as _patchStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const style = {
@@ -706,16 +706,35 @@ const style = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = hasClass ? 'myClass' : '',
+      _v$1 = style;
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$1 !== _p$.s1 && _patchStyle$(_$nodes[0], _p$.s1, _p$.s1 = _v$1);
+    return _p$;
+  }, {
+    c0: undefined,
+    s1: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`jsx SSR transform > transforms JSX element with conditional attributes 1`] = `
-"import { patchClass as _patchClass$, getElement as _template$ } from "essor";
+"import { patchClass as _patchClass$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = hasClass ? 'myClass' : 'otherClass';
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
   return _$el;
 })();"
 `;
@@ -830,7 +849,7 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > transforms JSX element with spread attributes 1`] = `
-"import { patchAttr as _patchAttr$, getElement as _template$ } from "essor";
+"import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const props = {
   id: 'myId',
@@ -838,12 +857,20 @@ const props = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = props;
+    _v$0 !== _p$._0 && _patchAttr$(_$nodes[0], "_$spread$", _p$._0, _p$._0 = _v$0);
+    return _p$;
+  }, {
+    _0: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`jsx SSR transform > transforms JSX element with style attribute 1`] = `
-"import { patchStyle as _patchStyle$, getElement as _template$ } from "essor";
+"import { patchStyle as _patchStyle$, getElement as _template$, mapSSRNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const style = {
   color: 'red',
@@ -851,6 +878,14 @@ const style = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = style;
+    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
+    return _p$;
+  }, {
+    s0: undefined
+  });
   return _$el;
 })();"
 `;

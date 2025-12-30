@@ -184,6 +184,14 @@ export function symbolIdentifier(path: NodePath<t.Identifier>): void {
   if (isAlreadyValueAccess(path)) {
     return;
   }
+
+  // This prevents transforming cases like `__props.$value` into `__props.$value.value`
+  // which would create an invalid nested structure
+  const parent = path.parent;
+  if (t.isMemberExpression(parent) && parent.property === path.node) {
+    return;
+  }
+
   // Transform: $count → $count.value
   path.replaceWith(t.memberExpression(t.identifier(name), t.identifier('value')));
 }

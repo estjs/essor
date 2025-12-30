@@ -10,7 +10,6 @@ import {
 } from '@estjs/shared';
 import { types as t } from '@babel/core';
 import { addImport, importMap } from '../import';
-import { isSignal } from '../signals/symbol';
 import {
   BUILT_IN_COMPONENTS,
   CLASS_NAME,
@@ -87,7 +86,11 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
       ]),
     );
   }
-  if (dynamicCollection.children.length || dynamicCollection.props.length) {
+  if (
+    dynamicCollection.children.length ||
+    dynamicCollection.props.length ||
+    dynamicCollection.operations.length
+  ) {
     // Import mapNodes
     addImport(importMap.mapNodes);
 
@@ -700,12 +703,7 @@ function generateUnifiedMemoizedEffect(
 
   // Create variable declarations
   const variableDeclarations = reactiveOperations.map((op, index) => {
-    let attrValue = op.attrValue;
-    // check symbol name
-    // TODO:
-    if (t.isIdentifier(op.attrValue) && isSignal(op.attrValue.name)) {
-      attrValue = t.memberExpression(attrValue, t.identifier('value'));
-    }
+    const attrValue = op.attrValue;
     return t.variableDeclarator(t.identifier(`_v$${index}`), attrValue);
   });
 

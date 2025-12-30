@@ -1,5 +1,35 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`should work with jsx client transform > handles signal variables in JSX expressions 1`] = `
+"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+const _$tmpl = _template$("<div></div>");
+const $count = signal(0);
+(() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _insert$(_$nodes[0], () => $count.value);
+  return _$el;
+})();"
+`;
+
+exports[`should work with jsx client transform > handles signal variables in JSX props 1`] = `
+"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
+const _$tmpl = _template$("<div></div>");
+const $value = signal('test');
+const fn = () => (() => {
+  const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = $value.value;
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
+  return _$el;
+})();"
+`;
+
 exports[`should work with jsx client transform > should work with CSS Variables transform to inline style 1`] = `
 "import { template as _template$ } from "essor";
 const _$tmpl = _template$("<div  style=\\"--color: red;\\">Hello, World!</div>");
@@ -117,7 +147,7 @@ const element = _createComponent$(ThemeContext.Provider, {
 `;
 
 exports[`should work with jsx client transform > should work with context and memo combination 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, createComponent as _createComponent$ } from "essor";
+"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div>Memo Content</div>");
 const ThemeContext = {
   Provider: ({
@@ -129,6 +159,14 @@ const MemoComponent = ({
   theme
 }) => (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = theme;
+    _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-theme", _p$.d0, _p$.d0 = _v$0);
+    return _p$;
+  }, {
+    d0: undefined
+  });
   return _$el;
 })();
 MemoComponent._memo = true;
@@ -155,7 +193,7 @@ const element = _createComponent$(ThemeContext.Provider, {
 `;
 
 exports[`should work with jsx client transform > should work with custom hooks in components 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, createComponent as _createComponent$ } from "essor";
+"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div>Hook Content</div>");
 const useCustomHook = () => ({
   value: 'custom'
@@ -166,6 +204,14 @@ const Component = () => {
   } = useCustomHook();
   return (() => {
     const _$el = _$tmpl();
+    const _$nodes = _mapNodes$(_$el, [1]);
+    _memoEffect$(_p$ => {
+      var _v$0 = value;
+      _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-hook", _p$.d0, _p$.d0 = _v$0);
+      return _p$;
+    }, {
+      d0: undefined
+    });
     return _$el;
   })();
 };
@@ -173,17 +219,25 @@ const element = _createComponent$(Component, {});"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic class names 1`] = `
-"import { patchClass as _patchClass$, template as _template$ } from "essor";
+"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Dynamic Class</div>");
 const isActive = true;
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = isActive ? 'active' : '';
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic style transform to inline style 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$ } from "essor";
+"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const color = "red";
 const style = {
@@ -192,16 +246,35 @@ const style = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = style;
+    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
+    return _p$;
+  }, {
+    s0: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic styles 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$ } from "essor";
+"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Dynamic Style</div>");
 const color = 'red';
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = {
+      color,
+      fontSize: '16px'
+    };
+    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
+    return _p$;
+  }, {
+    s0: undefined
+  });
   return _$el;
 })();"
 `;
@@ -707,7 +780,7 @@ const element = (() => {
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with class and style attributes 1`] = `
-"import { patchClass as _patchClass$, patchStyle as _patchStyle$, template as _template$ } from "essor";
+"import { patchClass as _patchClass$, patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const style = {
@@ -716,16 +789,35 @@ const style = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = hasClass ? 'myClass' : '',
+      _v$1 = style;
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$1 !== _p$.s1 && _patchStyle$(_$nodes[0], _p$.s1, _p$.s1 = _v$1);
+    return _p$;
+  }, {
+    c0: undefined,
+    s1: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with conditional attributes 1`] = `
-"import { patchClass as _patchClass$, template as _template$ } from "essor";
+"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const hasClass = true;
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = hasClass ? 'myClass' : 'otherClass';
+    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    return _p$;
+  }, {
+    c0: undefined
+  });
   return _$el;
 })();"
 `;
@@ -800,7 +892,7 @@ const element = (() => {
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with spread attributes 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$ } from "essor";
+"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const props = {
   id: 'myId',
@@ -808,12 +900,20 @@ const props = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = props;
+    _v$0 !== _p$._0 && _patchAttr$(_$nodes[0], "_$spread$", _p$._0, _p$._0 = _v$0);
+    return _p$;
+  }, {
+    _0: undefined
+  });
   return _$el;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with style attribute 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$ } from "essor";
+"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div>Hello, World!</div>");
 const style = {
   color: 'red',
@@ -821,6 +921,14 @@ const style = {
 };
 const element = (() => {
   const _$el = _$tmpl();
+  const _$nodes = _mapNodes$(_$el, [1]);
+  _memoEffect$(_p$ => {
+    var _v$0 = style;
+    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
+    return _p$;
+  }, {
+    s0: undefined
+  });
   return _$el;
 })();"
 `;

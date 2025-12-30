@@ -59,6 +59,17 @@ export interface DynamicCollection {
     /** Parent node index */
     parentIndex: number | null;
   }>;
+  /** Reactive operations list */
+  operations: Array<{
+    nodeIndex: number;
+    attrName: string;
+    attrValue: any;
+    setFunction: {
+      name: string;
+      value: any;
+    };
+    propKey: string;
+  }>;
 }
 
 /**
@@ -624,9 +635,10 @@ export function collectNodeIndexMap(
     props: Record<string, unknown>;
     parentIndex: number | null;
   }>,
+  extraIndices: number[] = [],
 ): number[] {
   // Use Set for automatic de-duplication
-  const indexSet = new Set<number>();
+  const indexSet = new Set<number>(extraIndices);
 
   const childrenLength = dynamicChildren.length;
   for (let i = 0; i < childrenLength; i++) {

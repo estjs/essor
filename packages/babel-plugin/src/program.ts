@@ -1,6 +1,14 @@
 import { type NodePath, types as t } from '@babel/core';
 import { addImport, clearImport, createImport, createImportIdentifiers, importMap } from './import';
 import { DEFAULT_OPTIONS } from './constants';
+import {
+  replaceSymbol,
+  symbolArrayPattern,
+  symbolAssignment,
+  symbolIdentifier,
+  symbolObjectPattern,
+  symbolUpdate,
+} from './signals/symbol';
 import type { PluginState } from './types';
 
 // ============================================
@@ -50,6 +58,17 @@ export function createImportIdentifier(path: babel.NodePath, importName: string)
   return importId;
 }
 
+/**
+ * Helper function to automatically set state for visitor paths.
+ * This ensures that paths created by traverse() inherit the parent state.
+ */
+function withState<T>(visitor: (path: NodePath<T>) => void, parentState: any) {
+  return (path: NodePath<T>) => {
+    path.state = parentState;
+    visitor(path);
+  };
+}
+
 export const transformProgram = {
   enter: (path: NodePath<t.Program>, state) => {
     const opts = { ...DEFAULT_OPTIONS, ...state.opts };
@@ -67,6 +86,20 @@ export const transformProgram = {
       filename: state.filename,
       events: new Set(), // Track delegated events for optimization
     };
+
+    //  Transform signals BEFORE JSX transformation
+    // This ensures that when JSX transformer extracts expression.node,
+    // signal variables have already been transformed to access .value
+    const parentState = path.state;
+
+    path.traverse({
+      VariableDeclarator: withState(replaceSymbol, parentState), // let $x = 0 → let $x = signal(0)
+      Identifier: withState(symbolIdentifier, parentState), // $x → $x.value
+      AssignmentExpression: withState(symbolAssignment, parentState), // $x = 1 → $x.value = 1
+      UpdateExpression: withState(symbolUpdate, parentState), // $x++ → $x.value++
+      ObjectPattern: withState(symbolObjectPattern, parentState), // { $x } → handle nested patterns
+      ArrayPattern: withState(symbolArrayPattern, parentState), // [$x] → handle nested patterns
+    });
   },
 
   // eslint-disable-next-line unused-imports/no-unused-vars
