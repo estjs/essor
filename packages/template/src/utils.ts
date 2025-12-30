@@ -122,7 +122,7 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
   try {
     const beforeNode: AnyNode | undefined = isComponent(oldNode)
       ? oldNode.beforeNode
-      : oldNode.nextSibling!;
+      : (oldNode as Node).nextSibling!;
     removeNode(oldNode);
     insertNode(parent, newNode, beforeNode);
   } catch (_error) {
@@ -142,7 +142,11 @@ export function getFirstDOMNode(node: AnyNode): Node | undefined {
     return node.firstChild;
   }
 
-  return node;
+  if (isPrimitive(node)) {
+    return undefined;
+  }
+
+  return node as Node;
 }
 
 /**
@@ -168,6 +172,10 @@ export function isSameNode(a: AnyNode, b: AnyNode): boolean {
 
   if (aIsComponent !== bIsComponent) {
     return false;
+  }
+
+  if (isPrimitive(a) || isPrimitive(b)) {
+    return a === b;
   }
 
   const aNode = a as Node;

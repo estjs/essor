@@ -42,7 +42,7 @@
       "import": "./dist/essor.esm.js"
     },
     "./jsx-runtime": {
-      "types": "./types/jsx.d.ts",
+      "types": "./jsx-runtime.d.ts",
       "default": "./dist/essor.esm.js"
     },
     "./jsx-dev-runtime": {

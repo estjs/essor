@@ -2,17 +2,13 @@
   "compilerOptions": {
     "target": "es2016",
     "jsx": "preserve",
-    "lib": [
-      "ES2022",
-      "DOM"
-    ],
+    "jsxImportSource": "essor",
+    "lib": ["ES2022", "DOM"],
     "experimentalDecorators": true,
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "types": [
-      "vitest/globals"
-    ],
+    "types": ["vitest/globals"],
     "strict": true,
     "strictPropertyInitialization": false,
     "noImplicitAny": false,
@@ -23,9 +19,5 @@
     "skipDefaultLibCheck": true,
     "skipLibCheck": true
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "./dist/**/*"
-  ]
+  "exclude": ["node_modules", "dist", "./dist/**/*"]
 }

@@ -20,20 +20,20 @@ export interface FragmentProps extends ComponentProps {
  * </Fragment>
  * ```
  */
-export function Fragment(props?: FragmentProps) {
+export function Fragment(props?: FragmentProps): AnyNode {
   if (__DEV__) {
     if (!props) {
       error('Fragment component requires props');
-      return [];
+      return null;
     }
     if (!props.children) {
       error('Fragment component requires children');
-      return [];
+      return null;
     }
   }
 
   // TODO:
-  // Check i  f we're in SSR mode (no document)
+  // Check if we're in SSR mode (no document)
   // if (typeof document === 'undefined') {
   //   const children = props.children;
   //   if (!children) return '';

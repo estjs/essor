@@ -1,12 +1,12 @@
-import { createApp, signal } from 'essor';
+import { createApp } from 'essor';
 
-function App() {
-  const value = signal('Hello, World!');
-
+export function App() {
+  const $value = 'hello world';
   return (
-    <>
-      <p>{value.value}</p>
-    </>
+    <div>
+      <p>{$value}</p>
+      <input type="text" bind:value={$value} />
+    </div>
   );
 }
 

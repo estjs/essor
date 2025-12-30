@@ -3,3 +3,4 @@ packages:
   - examples/*
   - docs
   - benchmark
+  - playground

@@ -1,3 +1,5 @@
+import { createApp } from 'essor';
+
 function App() {
   const $list: string[] = [];
   let $val = '';
@@ -39,4 +41,4 @@ function App() {
     </div>
   );
 }
-(<App />).mount(document.querySelector('#app')!);
+createApp(App, '#app');

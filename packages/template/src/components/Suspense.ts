@@ -50,7 +50,7 @@ export interface SuspenseContextType {
  * </Suspense>
  * ```
  */
-export function Suspense(props: SuspenseProps): Node | string {
+export function Suspense(props: SuspenseProps): AnyNode {
   // Check if we're in SSR mode (no document)
   if (isUndefined(document)) {
     // In SSR, return fallback as string if available
