@@ -1,7 +1,7 @@
 import { createApp } from 'essor';
 
 export function App() {
-  const $value = 'hello world!';
+  const $value = 'Hello, World!';
   return (
     <div>
       <p>{$value}</p>
