@@ -5,6 +5,19 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.15-beta.5](https://github.com/estjs/essor/compare/v0.0.1...v0.0.15-beta.5) `2025-12-31`
+
+
+### Bug Fixes
+
+* **babel-plugin:** fix tmpl inset index ([e6033ab](https://github.com/estjs/essor/commit/e6033abb7ec43c50e3fcfc79c6e9570212afda77))
+* **core:** include jsx-runtime.d.ts file ([5f6d3d6](https://github.com/estjs/essor/commit/5f6d3d652ff513f643854aee08f0e5f9879d07c2))
+* fix release gh-release content auth ([880f0cf](https://github.com/estjs/essor/commit/880f0cfbbb37e848e3d1b61589cc2042a3c66c92))
+* **template:** delete debugger console ([30212bb](https://github.com/estjs/essor/commit/30212bb22374ebdf66acd21115d2ee31813c921b))
+
+
+
+
 
 
 
