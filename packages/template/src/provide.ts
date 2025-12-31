@@ -43,7 +43,6 @@ export function provide<T>(key: InjectionKey<T> | string | number, value: T): vo
  */
 export function inject<T>(key: InjectionKey<T> | string | number, defaultValue?: T): T {
   const scope = getActiveScope();
-  console.log(scope);
 
   if (!scope) {
     if (__DEV__) {
@@ -56,8 +55,6 @@ export function inject<T>(key: InjectionKey<T> | string | number, defaultValue?:
   let current: Scope | null = scope;
   while (current) {
     if (current.provides) {
-      console.log(current.provides);
-
       const value = current.provides.get(key);
       if (value) {
         return value as T;
