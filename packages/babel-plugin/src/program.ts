@@ -109,9 +109,7 @@ export const transformProgram = {
     // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
     // Find optimal insertion point after imports but before other code
-    const insertIndex = path.node.body.findIndex(
-      node => !t.isImportDeclaration(node) && !t.isExportDeclaration(node),
-    );
+    const insertIndex = path.node.body.findIndex(node => !t.isImportDeclaration(node));
 
     // Insert template declarations for reactive components
     if (declarations?.length) {
