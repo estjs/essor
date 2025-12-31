@@ -15,6 +15,7 @@
   "funding": "https://github.com/sponsors/estjs",
   "files": [
     "dist",
+    "jsx-runtime.d.ts",
     "types"
   ],
   "main": "./dist/essor.esm.js",
