@@ -8,6 +8,11 @@ docClass: timeline
 ## [0.0.15-beta.5](https://github.com/estjs/essor/compare/v0.0.1...v0.0.15-beta.5) `2025-12-31`
 
 
+
+
+## [0.0.15-beta.5](https://github.com/estjs/essor/compare/v0.0.1...v0.0.15-beta.5) `2025-12-31`
+
+
 ### Bug Fixes
 
 * **babel-plugin:** fix tmpl inset index ([e6033ab](https://github.com/estjs/essor/commit/e6033abb7ec43c50e3fcfc79c6e9570212afda77))
