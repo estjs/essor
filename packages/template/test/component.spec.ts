@@ -669,7 +669,8 @@ describe('component', () => {
       expect((instance as any).parentNode).toBeUndefined();
       expect((instance as any).beforeNode).toBeUndefined();
       expect((instance as any).reactiveProps).toEqual({});
-      expect(instance.props).toBeUndefined();
+      // set default value {}
+      expect(instance.props).toEqual({});
     });
   });
 
