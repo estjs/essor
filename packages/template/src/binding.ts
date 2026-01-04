@@ -129,11 +129,7 @@ export interface InsertOptions {
  * insert(container, "Hello World", null); // Direct string support
  * ```
  */
-export function insert(
-  parent: Node,
-  nodeFactory: (() => Node | AnyNode[]) | Node | string | AnyNode[],
-  before?: Node,
-) {
+export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
   // Capture owner scope at call time - this is critical for correct context inheritance
   // When dynamic components are created inside effects, they need to inherit from

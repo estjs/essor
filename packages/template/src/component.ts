@@ -8,7 +8,7 @@ import { getFirstDOMNode, insertNode, removeNode, shallowCompare } from './utils
 import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
 
-export class Component {
+export class Component<P extends ComponentProps = ComponentProps> {
   // component rendered nodes (supports arrays and fragments)
   protected renderedNodes: AnyNode[] = [];
 
@@ -21,8 +21,8 @@ export class Component {
   // component before node
   public beforeNode: Node | undefined = undefined;
 
-  // component props
-  private reactiveProps: Record<string, any> = {};
+  // component reactive props
+  private reactiveProps: P = {} as P;
 
   // component key
   public readonly key: string | undefined;
@@ -53,12 +53,12 @@ export class Component {
   }
 
   constructor(
-    public component: ComponentFn,
-    public props: ComponentProps | undefined,
+    public component: ComponentFn<P>,
+    public props: P = {} as P,
   ) {
-    this.key = props?.key ? normalizeKey(props.key) : getComponentKey(component);
+    this.key = props.key ? normalizeKey(props.key) : getComponentKey(component);
 
-    this.reactiveProps = shallowReactive({ ...(this.props || {}) });
+    this.reactiveProps = shallowReactive({ ...(props || {}) }) as P;
 
     // Capture parent scope at construction time for correct hierarchy
     this.parentScope = getActiveScope();
@@ -107,7 +107,7 @@ export class Component {
     // apply props (events, refs) - must be after renderedNodes is set
     // so that this.firstChild returns the correct element
     runWithScope(this.scope, () => {
-      this.applyProps(this.props || {});
+      this.applyProps(this.props || ({} as P));
     });
 
     // update marks
@@ -121,7 +121,7 @@ export class Component {
     return this.renderedNodes;
   }
 
-  update(prevNode: Component): Component {
+  update(prevNode: Component<any>): Component<P> {
     // if key is different, mount the component
     if (this.key !== prevNode.key) {
       this.mount(prevNode.parentNode!, prevNode.beforeNode);
@@ -135,7 +135,7 @@ export class Component {
     this.parentScope = prevNode.parentScope;
     this.renderedNodes = prevNode.renderedNodes;
     this.state = prevNode.state;
-    this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
+    this.reactiveProps = prevNode.reactiveProps as P; // Reuse same reactive object
 
     if (this.props) {
       for (const key in this.props) {
@@ -168,7 +168,7 @@ export class Component {
     // if the component is mount and has scope, apply new props and trigger update lifecycle
     if (this.scope) {
       runWithScope(this.scope, () => {
-        this.applyProps(this.props || {});
+        this.applyProps(this.props || ({} as P));
       });
       // Trigger scope update hooks (unified lifecycle system)
       triggerUpdateHooks(this.scope);
@@ -267,12 +267,12 @@ export class Component {
     this.parentNode = undefined;
     this.beforeNode = undefined;
     this.parentScope = null;
-    this.reactiveProps = {};
-    this.props = undefined;
+    this.reactiveProps = {} as P;
+    this.props = {} as P;
     this.state = COMPONENT_STATE.DESTROYED;
   }
 
-  applyProps(props: ComponentProps): void {
+  applyProps(props: P): void {
     // check if props is defined
     if (!props) {
       return;
@@ -316,9 +316,12 @@ export function isComponent(node: unknown): node is Component {
  * @param {ComponentProps} props - the component props
  * @returns {Component} the component
  */
-export function createComponent(componentFn: ComponentFn, props?: ComponentProps): Component {
+export function createComponent<P extends ComponentProps>(
+  componentFn: ComponentFn<P>,
+  props?: P,
+): Component<P> {
   if (isComponent(componentFn)) {
-    return componentFn;
+    return componentFn as unknown as Component<P>;
   }
   return new Component(componentFn, props);
 }

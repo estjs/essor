@@ -35,7 +35,7 @@ describe('component', () => {
       const root = createTestRoot();
       const clickHandler = vi.fn();
 
-      const Button = (props: any) => {
+      const Button = (props: { label: string; onClick: () => void }) => {
         const button = document.createElement('button');
         button.textContent = props.label;
         return button;
@@ -130,7 +130,7 @@ describe('component', () => {
     });
   });
 
-  // TODO: not support async component
+  // TODO: need support async component
   describe.skip('asynchronous component mounting', () => {
     it('triggers mounted lifecycle hook for async component', async () => {
       const root = createTestRoot();
@@ -885,12 +885,9 @@ describe('component', () => {
 
   /**
    * Scope Property Tests
-   *
-   * These tests verify the single scope property implementation
-   * as per Requirements 11.1, 11.2, 11.3
    */
-  describe('scope property (Requirements 11.1, 11.2, 11.3)', () => {
-    it('component has single scope property after mount (Requirement 11.1)', async () => {
+  describe('scope property', () => {
+    it('component has single scope property after mount', async () => {
       const root = createTestRoot();
       const TestComp = () => document.createElement('div');
 
@@ -905,7 +902,7 @@ describe('component', () => {
       expect(scope?.isDestroyed).toBe(false);
     });
 
-    it('scope is created with correct parent during mount (Requirement 11.2)', async () => {
+    it('scope is created with correct parent during mount', async () => {
       const root = createTestRoot();
       const parentKey = Symbol('parent');
       let childScope: Scope | null = null;
@@ -934,7 +931,7 @@ describe('component', () => {
       expect(root.textContent).toContain('parent-value');
     });
 
-    it('scope is reused on component update (Requirement 11.3)', async () => {
+    it('scope is reused on component update', async () => {
       const root = createTestRoot();
       const TestComp = (props: any) => {
         const div = document.createElement('div');
@@ -984,7 +981,7 @@ describe('component', () => {
       let capturedChildScope: Scope | null = null;
 
       const Child = () => {
-        capturedChildScope = getActiveScope();
+        capturedChildScope = getActiveScope()!;
         return document.createElement('span');
       };
 

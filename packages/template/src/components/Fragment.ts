@@ -3,7 +3,7 @@ import { COMPONENT_TYPE } from '../constants';
 import type { AnyNode, ComponentProps } from '../types';
 
 export interface FragmentProps extends ComponentProps {
-  children: AnyNode | AnyNode[];
+  children?: AnyNode | AnyNode[];
 }
 
 /**

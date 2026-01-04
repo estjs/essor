@@ -1,6 +1,6 @@
 import { error, isString } from '@estjs/shared';
 import { createComponent } from './component';
-import type { ComponentFn } from './types';
+import type { ComponentFn, ComponentProps } from './types';
 
 /**
  * Create a template factory function from HTML string
@@ -57,7 +57,10 @@ export function template(html: string) {
  * const app = createApp(App, container);
  * ```
  */
-export function createApp(component: ComponentFn, target: string | Element) {
+export function createApp<P extends ComponentProps = {}>(
+  component: ComponentFn<P>,
+  target: string | Element,
+) {
   const container = isString(target)
     ? document.querySelector(target as string)
     : (target as Element);

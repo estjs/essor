@@ -1,8 +1,9 @@
+import type { Computed, Signal } from '@estjs/signals';
 import type { Component } from './component';
 
 export type AnyNode =
   | Node
-  | Component
+  | Component<any>
   | Element
   | string
   | number
@@ -10,8 +11,10 @@ export type AnyNode =
   | null
   | undefined
   | AnyNode[]
-  | (() => AnyNode);
+  | (() => AnyNode)
+  | Signal<AnyNode>
+  | Computed<AnyNode>;
 // Component props
 export type ComponentProps = Record<string, unknown>;
 
-export type ComponentFn = (props?: ComponentProps) => AnyNode;
+export type ComponentFn<P = ComponentProps> = (props: P) => AnyNode;
