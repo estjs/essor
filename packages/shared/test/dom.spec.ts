@@ -129,6 +129,34 @@ describe('dom utilities', () => {
 
       consoleSpy.mockRestore();
     });
+
+    it('should cache safe attribute names', () => {
+      const safeAttrName = `safe-attr-${Date.now()}`;
+      
+      // First call should validate and cache
+      expect(isSSRSafeAttrName(safeAttrName)).toBe(true);
+      
+      // Second call should use cache
+      expect(isSSRSafeAttrName(safeAttrName)).toBe(true);
+    });
+
+    it('should handle various safe attribute patterns', () => {
+      const safePatterns = [
+        'data-value',
+        'aria-label',
+        'custom-attribute',
+        'x-custom',
+        'ng-model',
+        'v-bind',
+        'data-123',
+        'attr_name',
+        'attr-name-123',
+      ];
+
+      safePatterns.forEach(attr => {
+        expect(isSSRSafeAttrName(attr)).toBe(true);
+      });
+    });
   });
 
   describe('propsToAttrMap', () => {

@@ -64,6 +64,28 @@ describe('base Utils', () => {
         expect(isExclude(key, exclude as ExcludeType)).toBe(expected);
       });
     });
+
+    it('should handle symbol keys with array exclude', () => {
+      const sym = Symbol('test');
+      expect(isExclude(sym, [sym])).toBe(true);
+      expect(isExclude(sym, [])).toBe(false);
+    });
+
+    it('should handle symbol keys with function exclude', () => {
+      const sym = Symbol('test');
+      expect(isExclude(sym, (key) => key === sym)).toBe(true);
+      expect(isExclude(sym, (key) => key !== sym)).toBe(false);
+    });
+
+    it('should return false for invalid exclude types', () => {
+      // Test with non-array, non-function exclude values
+      // @ts-expect-error - testing invalid input
+      expect(isExclude('test', 'invalid')).toBe(false);
+      // @ts-expect-error - testing invalid input
+      expect(isExclude('test', 123)).toBe(false);
+      // @ts-expect-error - testing invalid input
+      expect(isExclude('test', {})).toBe(false);
+    });
   });
 
   describe('hasChanged', () => {
@@ -184,6 +206,33 @@ describe('base Utils', () => {
         expect(isOn(key)).toBe(expected);
       });
     });
+
+    it('should handle all uppercase letters A-Z', () => {
+      const uppercaseLetters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+      for (const letter of uppercaseLetters) {
+        expect(isOn(`on${letter}`)).toBe(true);
+      }
+    });
+
+    it('should reject lowercase letters after "on"', () => {
+      const lowercaseLetters = 'abcdefghijklmnopqrstuvwxyz';
+      for (const letter of lowercaseLetters) {
+        expect(isOn(`on${letter}`)).toBe(false);
+      }
+    });
+
+    it('should reject special characters after "on"', () => {
+      const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
+      for (const char of specialChars) {
+        expect(isOn(`on${char}`)).toBe(false);
+      }
+    });
+
+    it('should handle edge cases with short strings', () => {
+      expect(isOn('o')).toBe(false);
+      expect(isOn('on')).toBe(false);
+      expect(isOn('onA')).toBe(true);
+    });
   });
 
   describe('_toString', () => {
@@ -277,6 +326,36 @@ describe('base Utils', () => {
       } else if (typeof global !== 'undefined') {
         expect(globalObject).toBe(global);
       }
+    });
+
+    it('should cache the global object on subsequent calls', () => {
+      const first = getGlobalThis();
+      const second = getGlobalThis();
+      expect(first).toBe(second);
+    });
+
+    it('should return globalThis when available', () => {
+      const globalObject = getGlobalThis();
+      // globalThis is the standard way to access the global object
+      if (typeof globalThis !== 'undefined') {
+        expect(globalObject).toBe(globalThis);
+      }
+    });
+
+    it('should return window in browser environment', () => {
+      const globalObject = getGlobalThis();
+      // In JSDOM environment, window should be available
+      expect(globalObject).toBe(window);
+      expect(globalObject).toBe(globalThis);
+    });
+
+    it('should handle multiple calls efficiently', () => {
+      // Call multiple times to ensure caching works
+      const results = Array.from({ length: 10 }, () => getGlobalThis());
+      // All results should be the same object
+      results.forEach(result => {
+        expect(result).toBe(results[0]);
+      });
     });
   });
 });

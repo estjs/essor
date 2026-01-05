@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   LIFECYCLE,
   cleanupLifecycle,
+  createLifecycleContext,
   onDestroy,
   onMount,
   onUpdate,
@@ -430,6 +431,111 @@ describe('lifecycle management', () => {
 
       expect(order).toEqual([1, 2, 3]);
       popContextStack();
+    });
+
+    it('handles destroyed scope in triggerMountHooks', () => {
+      const context = createContext(null);
+      context.isDestroyed = true;
+      pushContextStack(context);
+
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.mount, hook);
+
+      triggerLifecycleHook(LIFECYCLE.mount);
+
+      expect(hook).not.toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('handles destroyed scope in triggerUpdateHooks', () => {
+      const context = createContext(null);
+      context.isDestroyed = true;
+      pushContextStack(context);
+
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.update, hook);
+
+      triggerLifecycleHook(LIFECYCLE.update);
+
+      expect(hook).not.toHaveBeenCalled();
+      popContextStack();
+    });
+
+    it('handles errors in update hooks', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorHook = vi.fn(() => {
+        throw new Error('Update hook error');
+      });
+      const successHook = vi.fn();
+
+      registerLifecycleHook(LIFECYCLE.update, errorHook);
+      registerLifecycleHook(LIFECYCLE.update, successHook);
+
+      triggerLifecycleHook(LIFECYCLE.update);
+
+      expect(errorHook).toHaveBeenCalled();
+      expect(successHook).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+      popContextStack();
+    });
+
+    it('handles errors in destroy hooks', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const errorHook = vi.fn(() => {
+        throw new Error('Destroy hook error');
+      });
+      const successHook = vi.fn();
+
+      registerLifecycleHook(LIFECYCLE.destroy, errorHook);
+      registerLifecycleHook(LIFECYCLE.destroy, successHook);
+
+      triggerLifecycleHook(LIFECYCLE.destroy);
+
+      expect(errorHook).toHaveBeenCalled();
+      expect(successHook).toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+      popContextStack();
+    });
+
+    it('logs error when registering update hook outside context', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.update, hook);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it('logs error when registering destroy hook outside context', () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const hook = vi.fn();
+      registerLifecycleHook(LIFECYCLE.destroy, hook);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe('deprecated functions', () => {
+    it('createLifecycleContext creates lifecycle hooks object', () => {
+      const context = createLifecycleContext();
+
+      expect(context).toHaveProperty('mount');
+      expect(context).toHaveProperty('destroy');
+      expect(context).toHaveProperty('update');
+      expect(context.mount).toBeInstanceOf(Set);
+      expect(context.destroy).toBeInstanceOf(Set);
+      expect(context.update).toBeInstanceOf(Set);
     });
   });
 });

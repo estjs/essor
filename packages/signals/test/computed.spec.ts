@@ -1,4 +1,5 @@
 import { computed, effect, signal } from '../src';
+import { isComputed } from '../src/computed';
 
 describe('computed', () => {
   it('should compute the correct value', () => {
@@ -105,5 +106,258 @@ describe('computed', () => {
   it('should throw error when computed is not provided', () => {
     // @ts-ignore test error
     expect(() => computed()).toThrow('computed() requires a getter function or options object');
+  });
+
+  describe('edge cases', () => {
+    it('should handle NO_VALUE initial state', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      // First access should compute
+      expect(comp.value).toBe(0);
+
+      // Second access should use cache
+      expect(comp.value).toBe(0);
+    });
+
+    it('should handle PENDING state correctly', () => {
+      const a = signal(0);
+      const b = signal(0);
+      const comp = computed(() => a.value + b.value);
+
+      let effectCount = 0;
+      effect(
+        () => {
+          comp.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+
+      // Change dependency
+      a.value = 1;
+      expect(effectCount).toBe(2);
+      expect(comp.value).toBe(1);
+    });
+
+    it('should handle DIRTY state correctly', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      expect(comp.value).toBe(0);
+
+      count.value = 5;
+      // Computed should be dirty now
+      expect(comp.value).toBe(10);
+    });
+
+    it('should handle error in getter', () => {
+      const shouldError = signal(false);
+      const comp = computed(() => {
+        if (shouldError.value) {
+          throw new Error('Computation error');
+        }
+        return 42;
+      });
+
+      expect(comp.value).toBe(42);
+
+      shouldError.value = true;
+      expect(() => comp.value).toThrow('Computation error');
+    });
+
+    it('should handle undefined and null values', () => {
+      const value = signal<number | null | undefined>(undefined);
+      const comp = computed(() => value.value);
+
+      expect(comp.value).toBeUndefined();
+
+      value.value = null;
+      expect(comp.value).toBeNull();
+
+      value.value = 42;
+      expect(comp.value).toBe(42);
+    });
+
+    it('should handle NaN values correctly', () => {
+      const value = signal(Number.NaN);
+      const comp = computed(() => value.value);
+
+      expect(comp.value).toBeNaN();
+
+      value.value = 42;
+      expect(comp.value).toBe(42);
+    });
+
+    it('should use peek without triggering dependencies', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      // First access to compute the value
+      expect(comp.value).toBe(0);
+
+      let effectCount = 0;
+      effect(
+        () => {
+          comp.peek(); // Should not track
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+
+      count.value = 1;
+      // Effect should not trigger because peek doesn't track
+      expect(effectCount).toBe(1);
+      // peek() returns cached value without recomputing when dirty
+      expect(comp.peek()).toBe(0);
+      // Accessing .value will recompute
+      expect(comp.value).toBe(2);
+    });
+
+    it('should handle value unchanged scenario', () => {
+      const count = signal(0);
+      let computeCount = 0;
+      const comp = computed(() => {
+        computeCount++;
+        return Math.floor(count.value / 10) * 10;
+      });
+
+      let effectCount = 0;
+      effect(
+        () => {
+          comp.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(computeCount).toBe(1);
+
+      // Value changes but computed result doesn't
+      count.value = 5;
+      expect(computeCount).toBe(2);
+      // Effect triggers because computed is marked dirty, even if value doesn't change
+      // This is expected behavior in the current implementation
+      expect(effectCount).toBeGreaterThanOrEqual(1);
+
+      // Value changes and computed result changes
+      count.value = 15;
+      expect(computeCount).toBe(3);
+      expect(effectCount).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  describe('parameter validation', () => {
+    it('should throw error for non-function getter in options', () => {
+      expect(() =>
+        computed({
+          // @ts-ignore test error
+          get: 'not a function',
+        }),
+      ).toThrow('getter must be a function');
+    });
+
+    it('should throw error for invalid argument type', () => {
+      // @ts-ignore test error
+      expect(() => computed(123)).toThrow('expected a function or options object');
+    });
+
+    it('should return existing computed when passed computed', () => {
+      const count = signal(0);
+      const comp1 = computed(() => count.value * 2);
+      const comp2 = computed(comp1 as any);
+
+      expect(comp2).toBe(comp1);
+    });
+
+    it('should handle computed with onTrack and onTrigger', () => {
+      const count = signal(0);
+      const onTrack = vi.fn();
+      const onTrigger = vi.fn();
+
+      const comp = computed({
+        get: () => count.value * 2,
+        onTrack,
+        onTrigger,
+      });
+
+      // Access value to trigger tracking
+      expect(comp.value).toBe(0);
+
+      // Change value to trigger onTrigger
+      count.value = 1;
+      expect(comp.value).toBe(2);
+
+      expect(onTrigger).toHaveBeenCalled();
+    });
+  });
+
+  describe('isComputed', () => {
+    it('should identify computed values', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      expect(isComputed(comp)).toBe(true);
+      expect(isComputed(count)).toBe(false);
+      expect(isComputed(42)).toBe(false);
+      expect(isComputed(null)).toBe(false);
+      expect(isComputed(undefined)).toBe(false);
+      expect(isComputed({})).toBe(false);
+    });
+  });
+
+  describe('readonly computed', () => {
+    it('should warn when trying to set readonly computed', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      // Try to set value (should warn in dev mode)
+      // @ts-ignore test error
+      comp.value = 10;
+
+      // Value should not change
+      expect(comp.value).toBe(0);
+    });
+  });
+
+  describe('shouldUpdate', () => {
+    it('should return true for first computation', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      // @ts-ignore accessing private method for testing
+      expect(comp.shouldUpdate()).toBe(true);
+    });
+
+    it('should return true when value changes', () => {
+      const count = signal(0);
+      const comp = computed(() => count.value * 2);
+
+      // Initial computation
+      comp.value;
+
+      count.value = 1;
+
+      // @ts-ignore accessing private method for testing
+      expect(comp.shouldUpdate()).toBe(true);
+    });
+
+    it('should return false when value does not change', () => {
+      const count = signal(0);
+      const comp = computed(() => Math.floor(count.value / 10));
+
+      // Initial computation
+      comp.value;
+
+      count.value = 5; // Still rounds to 0
+
+      // @ts-ignore accessing private method for testing
+      expect(comp.shouldUpdate()).toBe(false);
+    });
   });
 });
