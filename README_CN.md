@@ -4,7 +4,7 @@
 
 ![Essor Logo](logo.svg)
 
-**🚀 基于 Signal 的现代前端框架，无虚拟 DOM，极致性能**
+**🚀 就是 JavaScript - 快速上手，极致性能，无需学习复杂概念**
 
 [![npm version](https://img.shields.io/npm/v/essor.svg)](https://www.npmjs.com/package/essor)
 [![npm downloads](https://img.shields.io/npm/dm/essor.svg)](https://www.npmjs.com/package/essor)

@@ -3,7 +3,7 @@
   "version": "0.0.15-beta.6",
   "private": "true",
   "packageManager": "pnpm@10.27.0",
-  "description": "",
+  "description": "Next Generation Frontend Framework",
   "type": "module",
   "keywords": [
     "signal",

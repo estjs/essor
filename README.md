@@ -4,7 +4,7 @@
 
 ![Essor Logo](logo.svg)
 
-**🚀 Modern frontend framework based on signals, no virtual DOM, ultimate performance**
+**🚀 It's just JavaScript - Instant start, ultimate performance, no complex concepts**
 
 [![npm version](https://img.shields.io/npm/v/essor.svg)](https://www.npmjs.com/package/essor)
 [![npm downloads](https://img.shields.io/npm/dm/essor.svg)](https://www.npmjs.com/package/essor)
