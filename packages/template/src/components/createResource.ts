@@ -68,10 +68,9 @@ export function createResource<T>(
     state.value = 'pending';
     error.value = null;
 
-    const promise = fetcher();
-    currentPromise = promise.then(() => {}); // We need a promise that resolves when data is ready
-
     try {
+      const promise = fetcher();
+      currentPromise = promise.then(() => {}).catch(() => {}); // Ensure promise is handled
       const result = await promise;
 
       // Only update if this is still the latest fetch

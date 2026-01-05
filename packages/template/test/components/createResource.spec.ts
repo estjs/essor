@@ -83,9 +83,11 @@ describe('createResource', () => {
         expect(resource.loading.value).toBe(true);
         expect(resource.state.value).toBe('pending');
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        // Wait for the error to be caught and processed
+        await vi.waitFor(() => {
+          expect(resource.error.value).toBeInstanceOf(Error);
+        });
 
-        expect(resource.error.value).toBeInstanceOf(Error);
         expect(resource.error.value?.message).toBe('Fetch failed');
         expect(resource.state.value).toBe('errored');
         expect(resource.loading.value).toBe(false);
@@ -97,9 +99,11 @@ describe('createResource', () => {
         const fetcher = () => Promise.reject('string error');
         const [resource] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        // Wait for the error to be caught and processed
+        await vi.waitFor(() => {
+          expect(resource.error.value).toBeInstanceOf(Error);
+        });
 
-        expect(resource.error.value).toBeInstanceOf(Error);
         expect(resource.error.value?.message).toBe('string error');
         expect(resource.state.value).toBe('errored');
       });
@@ -117,9 +121,10 @@ describe('createResource', () => {
 
         const [resource, { refetch }] = createResource(fetcher);
 
-        // Wait for initial error
-        await new Promise(resolve => setTimeout(resolve, 10));
-        expect(resource.error.value).not.toBe(null);
+        // Wait for initial error to be caught and processed
+        await vi.waitFor(() => {
+          expect(resource.error.value).not.toBe(null);
+        });
         expect(resource.state.value).toBe('errored');
 
         // Refetch with success
@@ -165,9 +170,10 @@ describe('createResource', () => {
 
         expect(resource.loading.value).toBe(true);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
-
-        expect(resource.loading.value).toBe(false);
+        // Wait for the error to be caught and processed
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
       });
     });
 
@@ -301,7 +307,7 @@ describe('createResource', () => {
         expect(resource()).toBe('success');
         expect(resource.error.value).toBe(null);
 
-        // Wait for first fetch to reject
+        // Wait for first fetch to reject (it will be caught internally)
         await new Promise(resolve => setTimeout(resolve, 60));
 
         // Error should still be null
