@@ -576,4 +576,304 @@ describe('patch', () => {
       expect(oldNode.dataset.html).toBe('<script>alert("xss")</script>');
     });
   });
+    describe(' LIS algorithm correctness', () => {
+    /**
+     * Helper function to verify that the returned indices form a valid increasing subsequence
+     */
+    function isValidIncreasingSubsequence(arr: number[], indices: number[]): boolean {
+      if (indices.length === 0) return true;
+      
+      // Check indices are in bounds and in order
+      for (let i = 0; i < indices.length; i++) {
+        if (indices[i] < 0 || indices[i] >= arr.length) {
+          return false;
+        }
+        if (i > 0 && indices[i] <= indices[i - 1]) {
+          return false;
+        }
+      }
+      
+      // Check values form an increasing sequence (and skip zeros)
+      for (let i = 0; i < indices.length; i++) {
+        const value = arr[indices[i]];
+        if (value === 0) {
+          return false; // Should not include zero values
+        }
+        if (i > 0 && arr[indices[i]] <= arr[indices[i - 1]]) {
+          return false;
+        }
+      }
+      
+      return true;
+    }
+
+    /**
+     * Helper function to compute the length of the longest increasing subsequence
+     * using a naive O(n^2) algorithm for verification
+     */
+    function naiveLISLength(arr: number[]): number {
+      const nonZeroIndices: number[] = [];
+      for (let i = 0; i < arr.length; i++) {
+        if (arr[i] !== 0) {
+          nonZeroIndices.push(i);
+        }
+      }
+      
+      if (nonZeroIndices.length === 0) return 0;
+      
+      const dp: number[] = new Array(nonZeroIndices.length).fill(1);
+      
+      for (let i = 1; i < nonZeroIndices.length; i++) {
+        for (let j = 0; j < i; j++) {
+          if (arr[nonZeroIndices[j]] < arr[nonZeroIndices[i]]) {
+            dp[i] = Math.max(dp[i], dp[j] + 1);
+          }
+        }
+      }
+      
+      return Math.max(...dp);
+    }
+
+    it('should return valid increasing subsequence for random arrays', () => {
+      // Test with various array patterns
+      const testArrays = [
+        [5, 2, 8, 6, 3, 6, 9, 7],
+        [10, 9, 2, 5, 3, 7, 101, 18],
+        [0, 1, 0, 3, 0, 2, 3],
+        [1, 3, 6, 7, 9, 4, 10, 5, 6],
+        [5, 4, 3, 2, 1],
+        [1, 2, 3, 4, 5],
+        [],
+        [42],
+        [0, 0, 0],
+        [1, 1, 1, 1],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        
+        // Property 1: Result should be a valid increasing subsequence
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+        
+        // Property 2: Result length should match the optimal LIS length
+        const expectedLength = naiveLISLength(arr);
+        expect(result.length).toBe(expectedLength);
+      });
+    });
+
+    it('should handle arrays with Int32Array input', () => {
+      const testArrays = [
+        [5, 2, 8, 6, 3, 6, 9, 7],
+        [10, 9, 2, 5, 3, 7, 101, 18],
+        [1, 3, 6, 7, 9, 4, 10, 5, 6],
+        [],
+        [42],
+      ];
+
+      testArrays.forEach((arr) => {
+        const int32Arr = new Int32Array(arr);
+        const result = getSequence(int32Arr);
+        
+        // Should produce same result as regular array
+        const regularResult = getSequence(arr);
+        expect(result).toEqual(regularResult);
+        
+        // Should still be valid
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+      });
+    });
+
+    it('should correctly ignore zero values (unmapped elements)', () => {
+      const testArrays = [
+        [0, 2, 0, 3, 0, 4],
+        [1, 0, 2, 0, 3],
+        [0, 0, 1, 0, 2, 0],
+        [0, 5, 0, 3, 0, 7, 0],
+        [0, 0, 0],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        
+        // No index in result should point to a zero value
+        for (const idx of result) {
+          expect(arr[idx]).not.toBe(0);
+        }
+        
+        // Should still be valid increasing subsequence
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+      });
+    });
+
+    it('should handle edge case: empty array', () => {
+      const result = getSequence([]);
+      expect(result).toEqual([]);
+    });
+
+    it('should handle edge case: single element arrays', () => {
+      const testCases = [
+        { value: 0, expected: [] },
+        { value: 1, expected: [0] },
+        { value: 42, expected: [0] },
+        { value: 100, expected: [0] },
+      ];
+
+      testCases.forEach(({ value, expected }) => {
+        const result = getSequence([value]);
+        expect(result).toEqual(expected);
+      });
+    });
+
+    it('should handle arrays with all zeros', () => {
+      const testArrays = [
+        [0],
+        [0, 0],
+        [0, 0, 0],
+        [0, 0, 0, 0, 0],
+        new Array(10).fill(0),
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        // All zeros should result in empty sequence
+        expect(result).toEqual([]);
+      });
+    });
+
+    it('should handle already sorted arrays', () => {
+      const testArrays = [
+        [1, 2, 3, 4, 5],
+        [1, 3, 5, 7, 9],
+        [10, 20, 30, 40],
+        [1],
+        [1, 2],
+        [],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        
+        // For strictly increasing array, LIS should be the entire array
+        expect(result.length).toBe(arr.length);
+        
+        // Indices should be [0, 1, 2, ..., n-1]
+        const expectedIndices = Array.from({ length: arr.length }, (_, i) => i);
+        expect(result).toEqual(expectedIndices);
+      });
+    });
+
+    it('should handle reverse sorted arrays', () => {
+      const testArrays = [
+        [5, 4, 3, 2, 1],
+        [10, 9, 8, 7, 6, 5],
+        [100, 50, 25, 10],
+        [3, 2, 1],
+        [2, 1],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        
+        // For strictly decreasing array, LIS length should be 1
+        expect(result.length).toBe(1);
+        
+        // Should be a valid subsequence
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+      });
+    });
+
+    it('should handle arrays with duplicate values', () => {
+      const testArrays = [
+        [1, 2, 2, 3],
+        [5, 5, 5, 5],
+        [1, 1, 2, 2, 3, 3],
+        [10, 5, 10, 5, 10],
+        [1, 2, 1, 2, 1, 2],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result = getSequence(arr);
+        
+        // Should be valid increasing subsequence (strictly increasing)
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+        
+        // Verify length matches optimal
+        const expectedLength = naiveLISLength(arr);
+        expect(result.length).toBe(expectedLength);
+      });
+    });
+
+    it('should handle mixed patterns with zeros', () => {
+      const testCases = [
+        {
+          increasing: [1, 2, 3],
+          zeros: [0, 0],
+          random: [5, 2, 8],
+        },
+        {
+          increasing: [10, 20, 30],
+          zeros: [0],
+          random: [15, 25],
+        },
+        {
+          increasing: [1, 3, 5],
+          zeros: [0, 0, 0],
+          random: [2, 4, 6],
+        },
+      ];
+
+      testCases.forEach(({ increasing, zeros, random }) => {
+        // Interleave the arrays
+        const arr = [...increasing, ...zeros, ...random];
+        const result = getSequence(arr);
+        
+        // Should be valid
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+        
+        // Should not include any zeros
+        for (const idx of result) {
+          expect(arr[idx]).not.toBe(0);
+        }
+      });
+    });
+
+    it('should be deterministic for the same input', () => {
+      const testArrays = [
+        [5, 2, 8, 6, 3, 6, 9, 7],
+        [10, 9, 2, 5, 3, 7, 101, 18],
+        [1, 3, 6, 7, 9, 4, 10, 5, 6],
+        [0, 1, 0, 3, 0, 2, 3],
+      ];
+
+      testArrays.forEach((arr) => {
+        const result1 = getSequence(arr);
+        const result2 = getSequence(arr);
+        
+        // Same input should produce same output
+        expect(result1).toEqual(result2);
+      });
+    });
+
+    it('should handle large arrays efficiently', () => {
+      // Generate some larger test arrays
+      const testArrays = [
+        Array.from({ length: 100 }, (_, i) => i % 50),
+        Array.from({ length: 150 }, (_, i) => 150 - i),
+        Array.from({ length: 200 }, (_, i) => (i * 7) % 100),
+      ];
+
+      testArrays.forEach((arr) => {
+        const startTime = performance.now();
+        const result = getSequence(arr);
+        const endTime = performance.now();
+        
+        // Should complete in reasonable time (< 100ms for arrays up to 200 elements)
+        expect(endTime - startTime).toBeLessThan(100);
+        
+        // Should still be valid
+        expect(isValidIncreasingSubsequence(arr, result)).toBe(true);
+      });
+    });
+  });
 });
+

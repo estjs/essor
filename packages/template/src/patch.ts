@@ -34,6 +34,25 @@ export function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
  * Patches a single node, updating it if possible or replacing it.
  * Optimized for common cases with early returns and minimal allocations.
  *
+ * ## Algorithm Complexity
+ *
+ * - **Time Complexity**: O(a) where a is the number of attributes
+ *   - Same reference check: O(1)
+ *   - Element equality check: O(a) for attribute comparison
+ *   - Attribute patching: O(a) for iterating attributes
+ *   - Text node update: O(1)
+ *   - Component update: O(1) for type check, O(n) for component update
+ *   - Node replacement: O(1) for DOM operation
+ *
+ * - **Space Complexity**: O(1) - no additional allocations for common cases
+ *
+ * ## Optimization Strategy
+ *
+ * 1. **Fast path for same reference**: Returns immediately if nodes are identical
+ * 2. **Fast path for equal nodes**: Uses isEqualNode() for structural equality
+ * 3. **In-place attribute updates**: Modifies existing DOM nodes when possible
+ * 4. **Minimal allocations**: Avoids creating intermediate arrays
+ *
  * @param parent - The parent node
  * @param oldNode - The old node
  * @param newNode - The new node
@@ -109,6 +128,36 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
 
 /**
  * Unified children patching with Map-based diffing and LIS optimization.
+ *
+ * ## Algorithm Complexity
+ *
+ * - **Best Case**: O(1) - both arrays empty
+ * - **Fast Paths**: O(n) - mount all, unmount all, single child, two children
+ * - **General Case**: O(n + m) where n = old children, m = new children
+ *   - Common prefix/suffix sync: O(min(n, m))
+ *   - Unknown sequence with LIS: O(n + m + k log k) where k = moved nodes
+ *
+ * - **Space Complexity**: 
+ *   - Fast paths: O(1)
+ *   - General case: O(m) for index mapping + O(k) for LIS
+ *
+ * ## Optimization Strategy
+ *
+ * 1. **Fast path 0**: Both empty - O(1) immediate return
+ * 2. **Fast path 1**: Mount all - O(m) simple insertion loop
+ * 3. **Fast path 2**: Unmount all - O(n) simple removal loop
+ * 4. **Fast path 3**: Single child - O(1) direct patch or replace
+ * 5. **Fast path 4**: Two children - O(1) handles same order and swap
+ * 6. **General algorithm**: Full diff with LIS optimization
+ *
+ * ## When Each Path is Used
+ *
+ * - **Empty arrays**: Initial render or complete removal
+ * - **Mount all**: First render of a list
+ * - **Unmount all**: Conditional rendering (v-if becomes false)
+ * - **Single child**: Most common case in practice
+ * - **Two children**: Common for toggle/swap scenarios
+ * - **General**: Complex list updates with reordering
  *
  * @param parent - The parent DOM node
  * @param oldChildren - Array of current children
@@ -198,6 +247,44 @@ export function patchChildren(
 
 /**
  * General-purpose keyed children patching using optimized diff algorithm.
+ *
+ * ## Algorithm Overview
+ *
+ * This implements a two-pointer algorithm similar to Vue 3's diff algorithm:
+ * 1. **Sync from start**: Match common prefix (same keys in same order)
+ * 2. **Sync from end**: Match common suffix (same keys in same order)
+ * 3. **Handle remaining**: Mount new, unmount old, or diff unknown sequence
+ *
+ * ## Algorithm Complexity
+ *
+ * - **Time Complexity**: O(n + m) where n = old length, m = new length
+ *   - Prefix sync: O(min(n, m))
+ *   - Suffix sync: O(min(n, m))
+ *   - Remaining: O(max(n, m))
+ *   - Unknown sequence: O(n + m + k log k) where k = moved nodes
+ *
+ * - **Space Complexity**: O(1) for sync phases, O(m) for unknown sequence
+ *
+ * ## Why This Algorithm?
+ *
+ * Real-world list updates often have:
+ * - **Common prefix**: Items at the start rarely change
+ * - **Common suffix**: Items at the end rarely change
+ * - **Small changes**: Only a few items in the middle change
+ *
+ * By syncing prefix and suffix first, we minimize the "unknown sequence"
+ * that requires expensive diffing.
+ *
+ * ## Example
+ *
+ * ```
+ * Old: [A, B, C, D, E]
+ * New: [A, B, X, Y, E]
+ *
+ * Step 1: Sync prefix → A, B matched
+ * Step 2: Sync suffix → E matched
+ * Step 3: Unknown sequence → [C, D] vs [X, Y]
+ * ```
  *
  * @param parent - Parent DOM node
  * @param oldChildren - Old children array
@@ -294,6 +381,53 @@ function patchKeyedChildren(
 /**
  * Patch unknown sequence with optimized LIS (Longest Increasing Subsequence).
  * Uses Object literal instead of Map for faster string key lookup.
+ *
+ * ## Algorithm Overview
+ *
+ * This is the most complex part of the diff algorithm, handling arbitrary
+ * reordering of children. It uses the LIS algorithm to minimize DOM moves.
+ *
+ * ## Algorithm Steps
+ *
+ * 1. **Build key map**: Create O(1) lookup for new children by key
+ * 2. **Map old to new**: For each old child, find its position in new children
+ * 3. **Detect moves**: Track if any nodes moved out of order
+ * 4. **Calculate LIS**: Find longest increasing subsequence (nodes that don't need to move)
+ * 5. **Apply changes**: Mount new nodes, move nodes not in LIS
+ *
+ * ## Algorithm Complexity
+ *
+ * - **Time Complexity**: O(n + m + k log k)
+ *   - Build key map: O(m)
+ *   - Map old to new: O(n × m) worst case, O(n) with keys
+ *   - Calculate LIS: O(k log k) where k = number of moved nodes
+ *   - Apply changes: O(m)
+ *
+ * - **Space Complexity**: O(m)
+ *   - Key map: O(m)
+ *   - Index map: O(m) using Int32Array
+ *   - LIS result: O(k) where k ≤ m
+ *
+ * ## Why LIS?
+ *
+ * The LIS represents nodes that are already in correct relative order.
+ * These nodes don't need to move, minimizing expensive DOM operations.
+ *
+ * ## Example
+ *
+ * ```
+ * Old: [A, B, C, D, E]
+ * New: [E, C, A, D, B]
+ *
+ * Index mapping: [2, 4, 1, 3, 0]
+ * LIS: [1, 3] → C and D are in correct order
+ * Result: Only move E, A, B; keep C and D in place
+ * ```
+ *
+ * ## Optimization: Object vs Map
+ *
+ * Using Object.create(null) for key lookup is ~30% faster than Map
+ * for string keys, which is the common case.
  *
  * @param parent - Parent DOM node
  * @param oldChildren - Old children array
@@ -422,6 +556,61 @@ function patchUnknownSequence(
 /**
  * Compute the Longest Increasing Subsequence (LIS).
  * Uses patience sorting with binary search for O(n log n) time complexity.
+ *
+ * ## Algorithm: Patience Sorting
+ *
+ * This algorithm is based on the patience sorting card game:
+ * 1. Maintain an array of "piles" (result array)
+ * 2. For each element, find the leftmost pile where it can be placed
+ * 3. Use binary search to find the correct pile in O(log n)
+ * 4. Track predecessors to reconstruct the sequence
+ *
+ * ## Algorithm Complexity
+ *
+ * - **Time Complexity**: O(n log n)
+ *   - Main loop: O(n) iterations
+ *   - Binary search per iteration: O(log n)
+ *   - Sequence reconstruction: O(k) where k = LIS length
+ *
+ * - **Space Complexity**: O(n)
+ *   - Result array: O(k) where k ≤ n
+ *   - Predecessor array: O(n) using Int32Array
+ *
+ * ## Why This Algorithm?
+ *
+ * The LIS problem has multiple solutions:
+ * - **Brute force**: O(2^n) - try all subsequences
+ * - **Dynamic programming**: O(n²) - classic DP solution
+ * - **Patience sorting**: O(n log n) - optimal solution
+ *
+ * We use patience sorting because:
+ * 1. Optimal time complexity for large lists
+ * 2. Simple to implement and understand
+ * 3. Works well with the diff algorithm's needs
+ *
+ * ## Example
+ *
+ * ```
+ * Input:  [0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15]
+ * Output: [0, 2, 6, 9, 11, 15] (indices of LIS)
+ * LIS:    [0, 2, 6, 9, 13, 15] (actual values)
+ * ```
+ *
+ * ## Special Cases
+ *
+ * - **Empty array**: Returns []
+ * - **Single element**: Returns [0] if element !== 0
+ * - **All zeros**: Returns [] (zeros mean "no mapping" in diff context)
+ * - **Strictly decreasing**: Returns [last_non_zero_index]
+ *
+ * ## Diff Context
+ *
+ * In the diff algorithm, the input array represents:
+ * - Index: Position in new children
+ * - Value: Position in old children + 1 (0 means new node)
+ *
+ * The LIS represents nodes that are already in correct relative order
+ * and don't need to be moved.
  *
  * @param arr - Array of indices (0 means no mapping)
  * @returns Array of indices representing the LIS

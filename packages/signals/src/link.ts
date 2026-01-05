@@ -188,6 +188,17 @@ export function getIsUntracking(): boolean {
   return isUntracking;
 }
 
+/**
+ * Link a dependency node to a subscriber node
+ *
+ * This function establishes a bidirectional link between a dependency (e.g., Signal)
+ * and a subscriber (e.g., Effect or Computed). It's called automatically when a
+ * reactive value is accessed during effect/computed execution.
+ *
+ * @param depNode - The dependency node (data source)
+ * @param subNode - The subscriber node (data consumer)
+ * @returns The link connecting the two nodes, or undefined if in untrack mode
+ */
 export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): Link | undefined {
   // If in untrack mode, don't establish any dependencies
   // This is used by untrack() to access reactive values without creating dependencies
@@ -279,6 +290,13 @@ export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): 
 
 /**
  * Remove a dependency link
+ *
+ * This function removes a link from the dependency graph, updating all pointers
+ * in both the subscriber's dependency chain and the dependency's subscriber chain.
+ *
+ * @param linkNode - The link to remove
+ * @param subNode - The subscriber node (defaults to linkNode.subNode)
+ * @returns The next link in the dependency chain (for iteration)
  */
 export function unlinkReactiveNode(
   linkNode: Link,

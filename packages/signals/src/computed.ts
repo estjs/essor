@@ -211,9 +211,10 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
       // Execute computation
       const newValue = this.getter();
 
-      // Cache current flags for efficient bitwise operations
+      // Cache current flags and subLink for efficient bitwise operations and reduced property access
       const flags = this.flag;
-      // Pre-calculate the mask for clearing DIRTY and PENDING flags
+      const subs = this.subLink;
+      // Pre-calculate the mask for clearing DIRTY and PENDING flags in single operation
       const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
 
       // - If no previous value, always consider it changed
@@ -240,8 +241,9 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
 
         // Notify subscribers only when value actually changed
         // This prevents unnecessary propagation
-        if (this.subLink) {
-          shallowPropagate(this.subLink);
+        // Use cached subLink to avoid property access
+        if (subs) {
+          shallowPropagate(subs);
         }
       } else {
         // Value unchanged, only clear flags using cached flags
@@ -249,12 +251,21 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
         this.flag = flags & clearMask;
       }
     } catch (_error) {
-      // On error, ensure flags are cleared to prevent stuck dirty state
-      this.flag &= ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
+      // On error, ensure DIRTY and PENDING flags are cleared first to prevent stuck state
+      const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
+      this.flag &= clearMask;
+      
+      // Then set DIRTY flag to ensure next access will retry computation
+      this.flag |= ReactiveFlags.DIRTY;
 
       if (__DEV__) {
         error(
-          '[Computed] Error occurred while computing value. ' +
+          '[Computed] Error occurred while computing value.\n' +
+            'The computed will retry on next access.\n' +
+            'Common causes:\n' +
+            '  - Accessing undefined properties\n' +
+            '  - Circular dependencies\n' +
+            '  - Exceptions in getter function\n' +
             'Check your getter function for errors.',
           _error,
         );

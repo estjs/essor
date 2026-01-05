@@ -123,6 +123,15 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
   const subscriptions = new Set<StoreCallback<S>>();
   const actionCallbacks = new Set<StoreCallback<S>>();
 
+  /**
+   * Helper function to notify all subscribers and action callbacks.
+   * This reduces code duplication in patch$ and reset$ methods.
+   */
+  const notifySubscribers = (state: S): void => {
+    subscriptions.forEach(callback => callback(state));
+    actionCallbacks.forEach(callback => callback(state));
+  };
+
   const defaultActions: StoreActions<S> = {
     patch$(payload: PatchPayload<S>) {
       if (__DEV__ && !payload) {
@@ -135,9 +144,8 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
         Object.assign(reactiveState, payload);
       });
 
-      // Notify subscribers
-      subscriptions.forEach(callback => callback(reactiveState));
-      actionCallbacks.forEach(callback => callback(reactiveState));
+      // Notify all subscribers
+      notifySubscribers(reactiveState);
     },
 
     subscribe$(callback: StoreCallback<S>) {
@@ -166,9 +174,8 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
         Object.assign(reactiveState, initState);
       });
 
-      // Notify subscribers
-      subscriptions.forEach(callback => callback(reactiveState));
-      actionCallbacks.forEach(callback => callback(reactiveState));
+      // Notify all subscribers
+      notifySubscribers(reactiveState);
     },
   };
 
@@ -183,8 +190,30 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     for (const key in getters) {
       const getter = getters[key];
       if (getter) {
+        // Development mode: Track getter access frequency to warn about inefficient usage
+        let accessCount = 0;
+        let lastWarnTime = 0;
+        
         Object.defineProperty(store, key, {
           get() {
+            // Development mode: Warn if getter is accessed too frequently
+            if (__DEV__) {
+              accessCount++;
+              const now = Date.now();
+              // Warn if accessed more than 100 times in 1 second
+              if (accessCount > 100 && now - lastWarnTime > 1000) {
+                warn(
+                  `Getter '${key}' has been accessed ${accessCount} times. ` +
+                    'Consider caching the result if the value is used frequently. ' +
+                    'Note: Getters are computed properties that recalculate on every access.',
+                );
+                lastWarnTime = now;
+                accessCount = 0;
+              }
+            }
+            
+            // Create a new computed on every access to ensure we get the latest value
+            // This is necessary because store properties may not be fully reactive
             return computed(() => getter.call(store, reactiveState)).value;
           },
           enumerable: true,

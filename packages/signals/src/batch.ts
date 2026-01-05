@@ -1,4 +1,4 @@
-import { error, warn } from '@estjs/shared';
+import { warn } from '@estjs/shared';
 import { flushJobs } from './scheduler';
 /**
  * Batch update depth
@@ -60,7 +60,7 @@ export function startBatch(): void {
  * End batch update
  *
  * Decreases batch depth.
- * When depth reaches zero, flush all queued Effects and clean up.
+ * When depth reaches zero, flush all queued Effects.
  *
  * ## Cleanup Process
  *
@@ -69,32 +69,31 @@ export function startBatch(): void {
  * 2. Job queue is automatically cleared by flushJobs()
  * 3. Temporary flags (QUEUED, DIRTY) are cleared by effect execution
  *
+ * ## Development Mode Checks
+ *
+ * In development mode, this function performs additional validation:
+ * - Detects unbalanced batch calls (endBatch without startBatch)
+ * - Prevents batchDepth from becoming negative
+ * - Provides clear error messages to help debug batch management issues
  */
 export function endBatch(): void {
+  // Development mode: Check for unbalanced batch calls
   if (__DEV__ && batchDepth === 0) {
     warn(
       '[Batch] endBatch() called without matching startBatch(). ' +
-        'This may indicate unbalanced batch calls in your code.',
+        'This indicates unbalanced batch calls in your code. ' +
+        'Make sure every startBatch() has a corresponding endBatch(), ' +
+        'or use the batch() function which handles this automatically.',
     );
     return;
   }
 
-  // Decrement and check in one operation
-  if (--batchDepth === 0) {
-    // Outermost batch ended, execute all Effects
-    // flushJobs() will:
-    // 1. Execute all queued effects
-    // 2. Clear the job queue (Set.clear())
-    // 3. Reset the flush pending flag
-    flushJobs();
+  // Decrement batch depth
+  batchDepth--;
 
-    // Development mode verification
-    if (__DEV__ && batchDepth !== 0) {
-      error(
-        '[Batch] Batch depth is not zero after endBatch(). ' +
-          `Current depth: ${batchDepth}. This indicates a bug in batch management.`,
-      );
-    }
+  // When outermost batch ends, flush all queued effects
+  if (batchDepth === 0) {
+    flushJobs();
   }
 }
 

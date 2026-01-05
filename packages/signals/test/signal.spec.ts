@@ -610,3 +610,231 @@ describe('branch Switching', () => {
     expect(renderCount).toBe(4);
   });
 });
+
+describe('signal optimization - on-demand _oldValue creation', () => {
+  it('should not create _oldValue property until first update', () => {
+    const s = signal(10);
+    
+    // Access the internal implementation to check _oldValue property
+    const impl = s as any;
+    
+    // _oldValue should not exist initially
+    expect('_oldValue' in impl).toBe(false);
+    
+    // First update should create _oldValue
+    s.value = 20;
+    expect('_oldValue' in impl).toBe(true);
+    expect(impl._oldValue).toBe(10);
+  });
+
+  it('should create _oldValue on first value change', () => {
+    const s = signal({ count: 0 });
+    const impl = s as any;
+    
+    // _oldValue should not exist initially
+    expect('_oldValue' in impl).toBe(false);
+    
+    // Setting to a different value should create _oldValue
+    s.value = { count: 1 };
+    expect('_oldValue' in impl).toBe(true);
+  });
+
+  it('should not create _oldValue when setting same value', () => {
+    const s = signal(10);
+    const impl = s as any;
+    
+    // Setting the same value should not create _oldValue
+    s.value = 10;
+    expect('_oldValue' in impl).toBe(false);
+  });
+});
+
+describe('signal edge cases', () => {
+  it('should handle undefined value correctly', () => {
+    const s = signal<number | undefined>(undefined);
+    expect(s.value).toBeUndefined();
+    expect(s.peek()).toBeUndefined();
+    
+    // Update to a defined value
+    s.value = 42;
+    expect(s.value).toBe(42);
+    
+    // Update back to undefined
+    s.value = undefined;
+    expect(s.value).toBeUndefined();
+  });
+
+  it('should handle null value correctly', () => {
+    const s = signal<number | null>(null);
+    expect(s.value).toBeNull();
+    expect(s.peek()).toBeNull();
+    
+    // Update to a non-null value
+    s.value = 42;
+    expect(s.value).toBe(42);
+    
+    // Update back to null
+    s.value = null;
+    expect(s.value).toBeNull();
+  });
+
+  it('should handle NaN value correctly', () => {
+    const s = signal(NaN);
+    expect(Number.isNaN(s.value)).toBe(true);
+    expect(Number.isNaN(s.peek())).toBe(true);
+    
+    // Object.is(NaN, NaN) is true, so setting NaN again should NOT trigger update
+    let effectCount = 0;
+    effect(() => {
+      s.value;
+      effectCount++;
+    });
+    
+    expect(effectCount).toBe(1);
+    
+    // Setting NaN again should NOT trigger because Object.is(NaN, NaN) === true
+    s.value = NaN;
+    expect(effectCount).toBe(1);
+    expect(Number.isNaN(s.value)).toBe(true);
+    
+    // Setting to a different value should trigger
+    s.value = 42;
+    expect(effectCount).toBe(2);
+    expect(s.value).toBe(42);
+  });
+
+  it('should handle transition between undefined, null, and values', () => {
+    const s = signal<number | null | undefined>(undefined);
+    let effectCount = 0;
+    
+    effect(() => {
+      s.value;
+      effectCount++;
+    });
+    
+    expect(effectCount).toBe(1);
+    expect(s.value).toBeUndefined();
+    
+    // undefined -> null
+    s.value = null;
+    expect(effectCount).toBe(2);
+    expect(s.value).toBeNull();
+    
+    // null -> 0
+    s.value = 0;
+    expect(effectCount).toBe(3);
+    expect(s.value).toBe(0);
+    
+    // 0 -> undefined
+    s.value = undefined;
+    expect(effectCount).toBe(4);
+    expect(s.value).toBeUndefined();
+  });
+
+  it('should handle empty string vs undefined', () => {
+    const s = signal<string | undefined>('');
+    expect(s.value).toBe('');
+    
+    s.value = undefined;
+    expect(s.value).toBeUndefined();
+    
+    s.value = '';
+    expect(s.value).toBe('');
+  });
+
+  it('should handle 0 vs null vs undefined', () => {
+    const s = signal<number | null | undefined>(0);
+    expect(s.value).toBe(0);
+    
+    s.value = null;
+    expect(s.value).toBeNull();
+    
+    s.value = undefined;
+    expect(s.value).toBeUndefined();
+    
+    s.value = 0;
+    expect(s.value).toBe(0);
+  });
+});
+
+describe('signal nested unwrapping', () => {
+  it('should unwrap nested signal in constructor', () => {
+    const inner = signal(42);
+    const outer = signal(inner);
+    
+    // Should unwrap and get the value, not the signal itself
+    expect(outer.value).toBe(42);
+    expect(typeof outer.value).toBe('number');
+  });
+
+  it('should unwrap nested signal when setting value', () => {
+    const s = signal(10);
+    const nested = signal(20);
+    
+    // Setting a signal as value should unwrap it
+    s.value = nested as any;
+    expect(s.value).toBe(20);
+    expect(typeof s.value).toBe('number');
+  });
+
+  it('should unwrap deeply nested signals', () => {
+    const level1 = signal(100);
+    const level2 = signal(level1);
+    const level3 = signal(level2);
+    
+    // All levels should unwrap to the final value
+    expect(level1.value).toBe(100);
+    expect(level2.value).toBe(100);
+    expect(level3.value).toBe(100);
+  });
+
+  it('should unwrap signal with object value', () => {
+    const inner = signal({ count: 42 });
+    const outer = signal(inner);
+    
+    expect(outer.value).toEqual({ count: 42 });
+    expect(typeof outer.value).toBe('object');
+  });
+
+  it('should unwrap signal with array value', () => {
+    const inner = signal([1, 2, 3]);
+    const outer = signal(inner);
+    
+    expect(outer.value).toEqual([1, 2, 3]);
+    expect(Array.isArray(outer.value)).toBe(true);
+  });
+
+  it('should unwrap signal in update function', () => {
+    const s = signal(10);
+    const nested = signal(20);
+    
+    // Update function returning a signal should unwrap it
+    s.update(() => nested as any);
+    expect(s.value).toBe(20);
+  });
+
+  it('should maintain reactivity after unwrapping', () => {
+    const inner = signal(42);
+    const outer = signal(inner);
+    
+    let effectCount = 0;
+    effect(() => {
+      outer.value;
+      effectCount++;
+    });
+    
+    expect(effectCount).toBe(1);
+    
+    // Updating outer should trigger effect
+    outer.value = 100;
+    expect(effectCount).toBe(2);
+    expect(outer.value).toBe(100);
+  });
+
+  it('should handle shallow signal unwrapping', () => {
+    const inner = signal({ nested: { value: 42 } });
+    const outer = shallowSignal(inner);
+    
+    expect(outer.value).toEqual({ nested: { value: 42 } });
+  });
+});

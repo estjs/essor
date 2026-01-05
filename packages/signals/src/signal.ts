@@ -80,7 +80,9 @@ export class SignalImpl<T> implements ReactiveNode {
   subLinkTail?: Link | undefined;
   flag: ReactiveFlags = ReactiveFlags.MUTABLE; // Initial state is "mutable"
 
-  private _oldValue: T; // Store old value for comparison
+  // Optimization: _oldValue is only created when needed for comparison
+  // This reduces memory usage for signals that don't need change detection
+  private _oldValue?: T; // Store old value for comparison (created on-demand)
   private _rawValue: T; // Store raw (non-proxied) new value
 
   _value: T; // Store current value (may be a reactive proxy)
@@ -97,7 +99,9 @@ export class SignalImpl<T> implements ReactiveNode {
    * @param shallow - Whether only the top level should be reactive
    */
   constructor(value?: T, shallow = false) {
-    this._oldValue = this._rawValue = value as T;
+    // Optimization: Don't initialize _oldValue in constructor
+    // It will be created on-demand in shouldUpdate()
+    this._rawValue = value as T;
     // In shallow mode, wrap objects/arrays/collections in shallow reactive proxy
     // In deep mode, wrap objects in deep reactive proxy
     if (shallow) {
@@ -119,7 +123,9 @@ export class SignalImpl<T> implements ReactiveNode {
       linkReactiveNode(this, sub);
     }
 
-    if (this.flag & ReactiveFlags.DIRTY && this.shouldUpdate()) {
+    // Optimization: Cache flag and subLink to local variables to reduce property access
+    const flags = this.flag;
+    if (flags & ReactiveFlags.DIRTY && this.shouldUpdate()) {
       // Cache subLink locally to avoid repeated property access
       const subs = this.subLink;
       if (subs) {
@@ -150,11 +156,18 @@ export class SignalImpl<T> implements ReactiveNode {
       return;
     }
 
-    // Mark as dirty using bitwise OR
-    this.flag |= ReactiveFlags.DIRTY;
+    // Optimization: Store old raw value before updating (on-demand)
+    // Only create _oldValue property when we actually need to track changes
+    if (!('_oldValue' in this)) {
+      this._oldValue = this._rawValue;
+    }
+
+    // Optimization: Cache flag to local variable and use bitwise OR for flag update
+    const flags = this.flag;
+    this.flag = flags | ReactiveFlags.DIRTY;
     this._rawValue = value;
 
-    // Cache shallow flag locally to avoid repeated property access
+    // Optimization: Cache shallow flag locally to avoid repeated property access
     const shallow = this[SignalFlags.IS_SHALLOW];
 
     // In shallow mode, wrap in shallow reactive proxy; in deep mode, wrap in deep reactive proxy
@@ -164,7 +177,7 @@ export class SignalImpl<T> implements ReactiveNode {
       this._value = (isObject(value) ? reactive(value as object) : value) as T;
     }
 
-    // Cache subLink locally to avoid repeated property access
+    // Optimization: Cache subLink locally to avoid repeated property access
     const subs = this.subLink;
     if (subs) {
       propagate(subs); // Propagate notification
@@ -175,8 +188,20 @@ export class SignalImpl<T> implements ReactiveNode {
   shouldUpdate(): boolean {
     // Clear "dirty" flag using bitwise AND with NOT
     this.flag &= ~ReactiveFlags.DIRTY;
-    // Compare old value with new raw value, and update old value
-    return hasChanged(this._oldValue, (this._oldValue = this._rawValue));
+    
+    // Optimization: _oldValue is created on-demand in the setter
+    // If it doesn't exist yet, this is the first update, so return true
+    if (!('_oldValue' in this)) {
+      return true;
+    }
+    
+    // Compare old value with new raw value
+    const changed = hasChanged(this._oldValue, this._rawValue);
+    
+    // Update _oldValue for next comparison
+    this._oldValue = this._rawValue;
+    
+    return changed;
   }
 
   // Get current value without triggering dependency tracking
