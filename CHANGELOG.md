@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.15-beta.6](https://github.com/estjs/essor/compare/v0.0.1...v0.0.15-beta.6) `2025-12-31`
+
+
+### Features
+
+* add tsconfig declarationMap ([8c31090](https://github.com/estjs/essor/commit/8c31090d249ba06a0614dda2dec399e2844346cf))
+
+
+
+
 ## [0.0.15-beta.5](https://github.com/estjs/essor/compare/v0.0.1...v0.0.15-beta.5) `2025-12-31`
 
 
