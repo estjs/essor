@@ -1,3 +1,4 @@
+/* eslint-disable unused-imports/no-unused-vars */
 import { describe, expect, it } from 'vitest';
 import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
@@ -6,10 +7,10 @@ import * as t from '@babel/types';
 import {
   isSignal,
   replaceSymbol,
+  symbolArrayPattern,
   symbolAssignment,
   symbolIdentifier,
   symbolObjectPattern,
-  symbolArrayPattern,
   symbolUpdate,
 } from '../../src/signals/symbol';
 
@@ -680,7 +681,22 @@ describe('signals/symbol', () => {
     });
 
     it('handles compound assignment operators', () => {
-      const operators = ['-=', '*=', '/=', '%=', '**=', '&=', '|=', '^=', '<<=', '>>=', '>>>=', '&&=', '||=', '??='];
+      const operators = [
+        '-=',
+        '*=',
+        '/=',
+        '%=',
+        '**=',
+        '&=',
+        '|=',
+        '^=',
+        '<<=',
+        '>>=',
+        '>>>=',
+        '&&=',
+        '||=',
+        '??=',
+      ];
       operators.forEach(op => {
         const code = `$count ${op} 1;`;
         const output = runTransform(code, {

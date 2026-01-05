@@ -972,13 +972,13 @@ describe('reactive - edge cases', () => {
     it('should handle very deeply nested objects (10+ levels)', () => {
       const deepObj: any = { level: 0 };
       let current = deepObj;
-      
+
       // Create 15 levels of nesting
       for (let i = 1; i <= 15; i++) {
         current.nested = { level: i };
         current = current.nested;
       }
-      
+
       const state = reactive(deepObj);
       const mockFn = vi.fn(() => {
         let curr = state;
@@ -987,17 +987,17 @@ describe('reactive - edge cases', () => {
         }
         return curr.level;
       });
-      
+
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       // Modify deeply nested value
       let curr: any = state;
       for (let i = 0; i < 15; i++) {
         curr = curr.nested;
       }
       curr.level = 999;
-      
+
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
 
@@ -1014,12 +1014,12 @@ describe('reactive - edge cases', () => {
 
       const mockFn = vi.fn(() => state.level1.level2.level3.items.length);
       effect(mockFn);
-      
+
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       // Modify nested array by pushing
       state.level1.level2.level3.items.push(4);
-      
+
       expect(mockFn).toHaveBeenCalledTimes(2);
       expect(state.level1.level2.level3.items.length).toBe(4);
     });
@@ -1029,20 +1029,18 @@ describe('reactive - edge cases', () => {
         users: [
           {
             name: 'Alice',
-            posts: [
-              { title: 'Post 1', comments: [{ text: 'Comment 1' }] },
-            ],
+            posts: [{ title: 'Post 1', comments: [{ text: 'Comment 1' }] }],
           },
         ],
       });
 
       const mockFn = vi.fn(() => state.users[0].posts[0].comments[0].text);
       effect(mockFn);
-      
+
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.users[0].posts[0].comments[0].text = 'Updated Comment';
-      
+
       expect(mockFn).toHaveBeenCalledTimes(2);
       expect(state.users[0].posts[0].comments[0].text).toBe('Updated Comment');
     });
@@ -1052,9 +1050,9 @@ describe('reactive - edge cases', () => {
     it('should handle circular references in objects', () => {
       const obj: any = { name: 'root' };
       obj.self = obj; // Circular reference
-      
+
       const state = reactive(obj);
-      
+
       expect(state.name).toBe('root');
       expect(state.self).toBe(state); // Should reference the same reactive proxy
       expect(isReactive(state.self)).toBe(true);
@@ -1063,16 +1061,16 @@ describe('reactive - edge cases', () => {
     it('should handle circular references with effects', () => {
       const obj: any = { value: 1 };
       obj.circular = obj;
-      
+
       const state = reactive(obj);
       const mockFn = vi.fn(() => state.value);
       effect(mockFn);
-      
+
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.value = 2;
       expect(mockFn).toHaveBeenCalledTimes(2);
-      
+
       // Access through circular reference
       state.circular.value = 3;
       expect(mockFn).toHaveBeenCalledTimes(3);
@@ -1082,9 +1080,9 @@ describe('reactive - edge cases', () => {
     it('should handle circular references in arrays', () => {
       const arr: any[] = [1, 2, 3];
       arr.push(arr); // Circular reference
-      
+
       const state = reactive(arr);
-      
+
       expect(state[0]).toBe(1);
       expect(state[3]).toBe(state); // Should reference the same reactive proxy
       expect(isReactive(state[3])).toBe(true);
@@ -1095,9 +1093,9 @@ describe('reactive - edge cases', () => {
       const objB: any = { name: 'B' };
       objA.ref = objB;
       objB.ref = objA;
-      
+
       const stateA = reactive(objA);
-      
+
       expect(stateA.name).toBe('A');
       expect(stateA.ref.name).toBe('B');
       expect(stateA.ref.ref).toBe(stateA);
@@ -1110,9 +1108,9 @@ describe('reactive - edge cases', () => {
       const child1: any = { type: 'child1', parent };
       const child2: any = { type: 'child2', parent };
       parent.children.push(child1, child2);
-      
+
       const state = reactive(parent);
-      
+
       expect(state.children[0].parent).toBe(state);
       expect(state.children[1].parent).toBe(state);
       expect(isReactive(state.children[0])).toBe(true);
@@ -1123,16 +1121,16 @@ describe('reactive - edge cases', () => {
     it('should handle Date objects', () => {
       const date = new Date('2024-01-01');
       const state = reactive({ date, timestamp: date.getTime() });
-      
+
       // Date objects become reactive proxies, which can break their methods
       // So we test that the reference is reactive, not the Date methods
       expect(state.date).toBeInstanceOf(Date);
-      
+
       // Changing the date reference should trigger effects
       const mockFn = vi.fn(() => state.timestamp);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       const newDate = new Date('2024-12-31');
       state.date = newDate;
       state.timestamp = newDate.getTime();
@@ -1142,16 +1140,16 @@ describe('reactive - edge cases', () => {
     it('should handle RegExp objects', () => {
       const regex = /test/gi;
       const state = reactive({ pattern: regex, source: regex.source });
-      
+
       // RegExp objects become reactive proxies, which can break their methods
       // So we test that the reference is reactive
       expect(state.pattern).toBeInstanceOf(RegExp);
-      
+
       // Changing the regex reference should trigger effects
       const mockFn = vi.fn(() => state.source);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       const newRegex = /new/i;
       state.pattern = newRegex;
       state.source = newRegex.source;
@@ -1161,14 +1159,14 @@ describe('reactive - edge cases', () => {
     it('should handle Error objects', () => {
       const error = new Error('Test error');
       const state = reactive({ error });
-      
+
       expect(state.error).toBeInstanceOf(Error);
       expect(state.error.message).toBe('Test error');
-      
+
       const mockFn = vi.fn(() => state.error);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.error = new Error('New error');
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -1176,15 +1174,15 @@ describe('reactive - edge cases', () => {
     it('should handle Promise objects', () => {
       const promise = Promise.resolve(42);
       const state = reactive({ promise, status: 'pending' });
-      
+
       // Promise objects become reactive proxies
       expect(state.promise).toBeInstanceOf(Promise);
-      
+
       // Changing the promise reference should trigger effects
       const mockFn = vi.fn(() => state.status);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.promise = Promise.resolve(100);
       state.status = 'resolved';
       expect(mockFn).toHaveBeenCalledTimes(2);
@@ -1193,14 +1191,14 @@ describe('reactive - edge cases', () => {
     it('should handle typed arrays', () => {
       const uint8 = new Uint8Array([1, 2, 3]);
       const state = reactive({ buffer: uint8 });
-      
+
       expect(state.buffer).toBeInstanceOf(Uint8Array);
       expect(state.buffer[0]).toBe(1);
-      
+
       const mockFn = vi.fn(() => state.buffer);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.buffer = new Uint8Array([4, 5, 6]);
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -1208,15 +1206,15 @@ describe('reactive - edge cases', () => {
     it('should handle ArrayBuffer objects', () => {
       const buffer = new ArrayBuffer(8);
       const state = reactive({ buffer, size: buffer.byteLength });
-      
+
       // ArrayBuffer objects become reactive proxies
       expect(state.buffer).toBeInstanceOf(ArrayBuffer);
-      
+
       // Changing the buffer reference should trigger effects
       const mockFn = vi.fn(() => state.size);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       const newBuffer = new ArrayBuffer(16);
       state.buffer = newBuffer;
       state.size = newBuffer.byteLength;
@@ -1227,16 +1225,16 @@ describe('reactive - edge cases', () => {
     it('should handle objects with null prototype', () => {
       const obj = Object.create(null);
       obj.key = 'value';
-      
+
       const state = reactive(obj);
-      
+
       expect(state.key).toBe('value');
       expect(isReactive(state)).toBe(true);
-      
+
       const mockFn = vi.fn(() => state.key);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.key = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -1244,17 +1242,17 @@ describe('reactive - edge cases', () => {
     it('should handle frozen objects', () => {
       const frozen = Object.freeze({ value: 1 });
       const state = reactive({ frozen });
-      
+
       // The frozen object itself cannot be modified
       expect(() => {
         (state.frozen as any).value = 2;
       }).toThrow();
-      
+
       // But the reference to it can be changed
       const mockFn = vi.fn(() => state.frozen);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.frozen = Object.freeze({ value: 3 });
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -1262,11 +1260,11 @@ describe('reactive - edge cases', () => {
     it('should handle sealed objects', () => {
       const sealed = Object.seal({ value: 1 });
       const state = reactive({ sealed });
-      
+
       // Can modify existing properties
       state.sealed.value = 2;
       expect(state.sealed.value).toBe(2);
-      
+
       // Cannot add new properties
       expect(() => {
         (state.sealed as any).newProp = 3;
@@ -1281,17 +1279,17 @@ describe('reactive - edge cases', () => {
         [sym2]: 'value2',
         regular: 'regular',
       };
-      
+
       const state = reactive(obj);
-      
+
       expect(state[sym1]).toBe('value1');
       expect(state[sym2]).toBe('value2');
       expect(state.regular).toBe('regular');
-      
+
       const mockFn = vi.fn(() => state[sym1]);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state[sym1] = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -1306,15 +1304,15 @@ describe('reactive - edge cases', () => {
           internalValue = val;
         },
       };
-      
+
       const state = reactive(obj);
-      
+
       expect(state.value).toBe(10);
-      
+
       const mockFn = vi.fn(() => state.value);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       state.value = 20;
       expect(state.value).toBe(20);
       expect(internalValue).toBe(20);
@@ -1324,14 +1322,14 @@ describe('reactive - edge cases', () => {
     it('should handle empty objects and arrays', () => {
       const emptyObj = reactive({});
       const emptyArr = reactive([]);
-      
+
       expect(isReactive(emptyObj)).toBe(true);
       expect(isReactive(emptyArr)).toBe(true);
-      
+
       // Should be able to add properties
       (emptyObj as any).newProp = 'value';
       expect((emptyObj as any).newProp).toBe('value');
-      
+
       emptyArr.push(1);
       expect(emptyArr[0]).toBe(1);
     });
@@ -1344,15 +1342,15 @@ describe('reactive - edge cases', () => {
         writable: true,
         configurable: true,
       });
-      
+
       const state = reactive(obj);
-      
+
       expect((state as any).hidden).toBe('secret');
-      
+
       const mockFn = vi.fn(() => (state as any).hidden);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
+
       (state as any).hidden = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
     });

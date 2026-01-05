@@ -5,11 +5,11 @@ import { setNodeKey } from '../src/key';
 import {
   getFirstDOMNode,
   insertNode,
+  isHtmLTextElement,
   isHtmlFormElement,
   isHtmlInputElement,
   isHtmlSelectElement,
   isHtmlTextAreaElement,
-  isHtmLTextElement,
   isSameNode,
   normalizeNode,
   omitProps,
@@ -382,7 +382,7 @@ describe('isSameNode', () => {
   });
 });
 
-describe('HTML element type guards', () => {
+describe('hTML element type guards', () => {
   it('should identify HTMLInputElement', () => {
     const input = document.createElement('input');
     const div = document.createElement('div');

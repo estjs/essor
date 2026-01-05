@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computed, effect, signal } from '../src';
-import { clearPropagationFlags, enqueueEffect, shallowPropagate } from '../src/propagation';
+import { clearPropagationFlags, enqueueEffect } from '../src/propagation';
 import { ReactiveFlags } from '../src/constants';
 import type { Effect } from '../src/propagation';
 

@@ -73,8 +73,8 @@ describe('base Utils', () => {
 
     it('should handle symbol keys with function exclude', () => {
       const sym = Symbol('test');
-      expect(isExclude(sym, (key) => key === sym)).toBe(true);
-      expect(isExclude(sym, (key) => key !== sym)).toBe(false);
+      expect(isExclude(sym, key => key === sym)).toBe(true);
+      expect(isExclude(sym, key => key !== sym)).toBe(false);
     });
 
     it('should return false for invalid exclude types', () => {

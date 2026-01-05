@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchAttr } from '../../src/operations/attr';
-import { XLINK_NAMESPACE, XMLNS_NAMESPACE, KEY_PROP, SPREAD_NAME } from '../../src/constants';
+import { KEY_PROP, SPREAD_NAME, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../../src/constants';
 
 describe('attributes module', () => {
   let element: HTMLElement;
@@ -151,7 +151,7 @@ describe('attributes module', () => {
       }).toThrow();
     });
 
-    describe('KEY_PROP handling', () => {
+    describe('kEY_PROP handling', () => {
       it('should set node key when KEY_PROP has a value', () => {
         patchAttr(element, KEY_PROP, null, 'my-key');
         // The key should be set on the element (stored in a Symbol property)
@@ -189,12 +189,12 @@ describe('attributes module', () => {
       });
     });
 
-    describe('SPREAD_NAME handling', () => {
+    describe('sPREAD_NAME handling', () => {
       it('should spread object properties as attributes', () => {
         const attrs = {
           'data-foo': 'bar',
           'data-baz': 'qux',
-          id: 'test-id',
+          'id': 'test-id',
         };
 
         patchAttr(element, SPREAD_NAME, null, attrs);
@@ -275,7 +275,7 @@ describe('attributes module', () => {
       });
     });
 
-    describe('URL attribute security', () => {
+    describe('uRL attribute security', () => {
       it('should block javascript: URLs in href', () => {
         const setSpy = vi.spyOn(element, 'setAttribute');
         patchAttr(element, 'href', null, 'javascript:alert("xss")');
@@ -329,7 +329,7 @@ describe('attributes module', () => {
       });
     });
 
-    describe('SVG element attributes', () => {
+    describe('sVG element attributes', () => {
       it('should use setAttribute for SVG elements', () => {
         const setSpy = vi.spyOn(svgElement, 'setAttribute');
         patchAttr(svgElement, 'viewBox', null, '0 0 100 100');

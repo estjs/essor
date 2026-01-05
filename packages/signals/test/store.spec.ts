@@ -1,8 +1,8 @@
-import { createStore, effect, signal, computed } from '../src';
+import { computed, createStore, effect, signal } from '../src';
 
 /**
  * Store Test Suite
- * 
+ *
  * Test Organization:
  * 1. Basic Functionality - Creation and basic operations
  * 2. Built-in Methods - patch$, subscribe$, reset$, etc.
@@ -12,8 +12,8 @@ import { createStore, effect, signal, computed } from '../src';
  * 6. Complex Scenarios - Nested state and complex operations
  */
 
-describe('Store - Basic Functionality', () => {
-  describe('Object-based Store', () => {
+describe('store - Basic Functionality', () => {
+  describe('object-based Store', () => {
     it('should create store with state, getters and actions', () => {
       const useStore = createStore({
         state: { count: 0 },
@@ -27,10 +27,10 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.state.count).toBe(0);
       expect(store.doubleCount).toBe(0);
-      
+
       store.increment();
       expect(store.state.count).toBe(1);
       expect(store.doubleCount).toBe(2);
@@ -41,7 +41,7 @@ describe('Store - Basic Functionality', () => {
         state: { value: 'test' },
       });
       const store = useStore();
-      
+
       expect(store.value).toBe('test');
       expect(store.state.value).toBe('test');
     });
@@ -55,7 +55,7 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.count).toBe(0);
       expect(store.name).toBe('test');
       expect(store.active).toBe(true);
@@ -73,13 +73,13 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.user.name).toBe('John');
       expect(store.user.address.city).toBe('NYC');
     });
   });
 
-  describe('Class-based Store', () => {
+  describe('class-based Store', () => {
     it('should create store from class', () => {
       class TestStore {
         count = 0;
@@ -95,17 +95,17 @@ describe('Store - Basic Functionality', () => {
 
       const useStore = createStore(TestStore);
       const store = useStore();
-      
+
       expect(store.count).toBe(0);
       expect(store.doubleCount).toBe(0);
-      
+
       store.increment();
       expect(store.count).toBe(1);
       expect(store.doubleCount).toBe(2);
     });
   });
 
-  describe('Getters', () => {
+  describe('getters', () => {
     it('should reactively compute getter values', () => {
       const useStore = createStore({
         state: { count: 0 },
@@ -114,7 +114,7 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.doubled).toBe(0);
       store.state.count = 5;
       expect(store.doubled).toBe(10);
@@ -129,7 +129,7 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.doubled).toBe(20);
       expect(store.tripled).toBe(30);
     });
@@ -142,14 +142,14 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.fullName).toBe('John Doe');
       store.state.firstName = 'Jane';
       expect(store.fullName).toBe('Jane Doe');
     });
   });
 
-  describe('Actions', () => {
+  describe('actions', () => {
     it('should execute actions with correct context', () => {
       const useStore = createStore({
         state: { count: 0 },
@@ -163,10 +163,10 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       store.increment();
       expect(store.state.count).toBe(1);
-      
+
       store.add(5);
       expect(store.state.count).toBe(6);
     });
@@ -182,7 +182,7 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       store.setPosition(10, 20);
       expect(store.state.x).toBe(10);
       expect(store.state.y).toBe(20);
@@ -198,7 +198,7 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       const result = store.getDoubled();
       expect(result).toBe(10);
     });
@@ -214,21 +214,21 @@ describe('Store - Basic Functionality', () => {
         },
       });
       const store = useStore();
-      
+
       await store.fetchData();
       expect(store.state.data).toBe('fetched');
     });
   });
 });
 
-describe('Store - Built-in Methods', () => {
+describe('store - Built-in Methods', () => {
   describe('patch$', () => {
     it('should correctly update state', () => {
       const useStore = createStore({
         state: { value: 0 },
       });
       const store = useStore();
-      
+
       store.patch$({ value: 42 });
       expect(store.state.value).toBe(42);
     });
@@ -238,7 +238,7 @@ describe('Store - Built-in Methods', () => {
         state: { count: 0, name: 'old', active: false },
       });
       const store = useStore();
-      
+
       store.patch$({ count: 10, name: 'new', active: true });
       expect(store.state.count).toBe(10);
       expect(store.state.name).toBe('new');
@@ -250,7 +250,7 @@ describe('Store - Built-in Methods', () => {
         state: { count: 0, name: 'test' },
       });
       const store = useStore();
-      
+
       store.patch$({ count: 5 });
       expect(store.state.count).toBe(5);
       expect(store.state.name).toBe('test');
@@ -263,7 +263,7 @@ describe('Store - Built-in Methods', () => {
         },
       });
       const store = useStore();
-      
+
       store.patch$({ user: { name: 'Jane', age: 25 } });
       expect(store.state.user.name).toBe('Jane');
       expect(store.state.user.age).toBe(25);
@@ -275,10 +275,10 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.patch$({ count: 5 });
-      
+
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 5 }));
     });
@@ -291,10 +291,10 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.patch$({ value: 42 });
-      
+
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
     });
 
@@ -304,7 +304,7 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.patch$({ value: 42 });
       expect(callback).toHaveBeenCalledTimes(1);
@@ -321,11 +321,11 @@ describe('Store - Built-in Methods', () => {
       const store = useStore();
       const callback1 = vitest.fn();
       const callback2 = vitest.fn();
-      
+
       store.subscribe$(callback1);
       store.subscribe$(callback2);
       store.patch$({ value: 42 });
-      
+
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).toHaveBeenCalledTimes(1);
     });
@@ -336,7 +336,7 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       expect(() => store.unsubscribe$(callback)).not.toThrow();
     });
   });
@@ -348,10 +348,10 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.onAction$(callback);
       store.patch$({ value: 42 });
-      
+
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
     });
 
@@ -366,10 +366,10 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.onAction$(callback);
       store.increment();
-      
+
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
@@ -380,11 +380,11 @@ describe('Store - Built-in Methods', () => {
       const store = useStore();
       const subscribeCallback = vitest.fn();
       const actionCallback = vitest.fn();
-      
+
       store.subscribe$(subscribeCallback);
       store.onAction$(actionCallback);
       store.patch$({ value: 42 });
-      
+
       expect(subscribeCallback).toHaveBeenCalledTimes(1);
       expect(actionCallback).toHaveBeenCalledTimes(1);
     });
@@ -396,10 +396,10 @@ describe('Store - Built-in Methods', () => {
         state: { value: 0 },
       });
       const store = useStore();
-      
+
       store.patch$({ value: 42 });
       store.reset$();
-      
+
       expect(store.state.value).toBe(0);
     });
 
@@ -408,10 +408,10 @@ describe('Store - Built-in Methods', () => {
         state: { count: 0, name: 'initial', active: false },
       });
       const store = useStore();
-      
+
       store.patch$({ count: 10, name: 'changed', active: true });
       store.reset$();
-      
+
       expect(store.state.count).toBe(0);
       expect(store.state.name).toBe('initial');
       expect(store.state.active).toBe(false);
@@ -423,11 +423,11 @@ describe('Store - Built-in Methods', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.patch$({ value: 42 });
       callback.mockClear();
-      
+
       store.reset$();
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 0 }));
@@ -435,19 +435,19 @@ describe('Store - Built-in Methods', () => {
   });
 });
 
-describe('Store - Reactivity Integration', () => {
-  describe('Integration with effect', () => {
+describe('store - Reactivity Integration', () => {
+  describe('integration with effect', () => {
     it('should work with effect', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
       const store = useStore();
       let effectCount = 0;
-      
+
       effect(() => {
         effectCount = store.state.count * 2;
       });
-      
+
       expect(effectCount).toBe(0);
       store.state.count = 5;
       expect(effectCount).toBe(10);
@@ -459,11 +459,11 @@ describe('Store - Reactivity Integration', () => {
       });
       const store = useStore();
       let effectCount = 0;
-      
+
       effect(() => {
         effectCount = store.state.count;
       });
-      
+
       expect(effectCount).toBe(0);
       store.patch$({ count: 5 });
       expect(effectCount).toBe(5);
@@ -475,45 +475,45 @@ describe('Store - Reactivity Integration', () => {
       });
       const store = useStore();
       let effectCount = 0;
-      
+
       effect(() => {
         effectCount = store.state.count;
       });
-      
+
       store.patch$({ count: 10 });
       expect(effectCount).toBe(10);
-      
+
       store.reset$();
       expect(effectCount).toBe(0);
     });
   });
 
-  describe('Integration with computed', () => {
+  describe('integration with computed', () => {
     it('should work with computed', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
       const store = useStore();
       const doubled = computed(() => store.state.count * 2);
-      
+
       expect(doubled.value).toBe(0);
       store.state.count = 5;
       expect(doubled.value).toBe(10);
     });
   });
 
-  describe('Integration with signal', () => {
+  describe('integration with signal', () => {
     it('should work with signal', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
       const store = useStore();
       const externalSignal = signal(0);
-      
+
       effect(() => {
         externalSignal.value = store.state.count * 2;
       });
-      
+
       expect(externalSignal.value).toBe(0);
       store.state.count = 5;
       expect(externalSignal.value).toBe(10);
@@ -521,14 +521,14 @@ describe('Store - Reactivity Integration', () => {
   });
 });
 
-describe('Store - Edge Cases', () => {
-  describe('State Edge Cases', () => {
+describe('store - Edge Cases', () => {
+  describe('state Edge Cases', () => {
     it('should handle empty state object', () => {
       const useStore = createStore({
         state: {},
       });
       const store = useStore();
-      
+
       expect(store.state).toEqual({});
     });
 
@@ -537,7 +537,7 @@ describe('Store - Edge Cases', () => {
         state: { value: null as string | null },
       });
       const store = useStore();
-      
+
       expect(store.state.value).toBeNull();
     });
 
@@ -546,7 +546,7 @@ describe('Store - Edge Cases', () => {
         state: { value: undefined as string | undefined },
       });
       const store = useStore();
-      
+
       expect(store.state.value).toBeUndefined();
     });
 
@@ -555,7 +555,7 @@ describe('Store - Edge Cases', () => {
         state: { items: [1, 2, 3] },
       });
       const store = useStore();
-      
+
       expect(store.state.items).toEqual([1, 2, 3]);
       store.state.items.push(4);
       expect(store.state.items).toEqual([1, 2, 3, 4]);
@@ -567,7 +567,7 @@ describe('Store - Edge Cases', () => {
         state: { createdAt: date },
       });
       const store = useStore();
-      
+
       // Date object is stored but wrapped in proxy
       expect(store.state.createdAt).toBeDefined();
       expect(store.state.createdAt).not.toBeNull();
@@ -579,7 +579,7 @@ describe('Store - Edge Cases', () => {
         state: { data: map },
       });
       const store = useStore();
-      
+
       // Map functionality works even when wrapped in proxy
       expect(store.state.data.get('key')).toBe('value');
       expect(store.state.data.size).toBe(1);
@@ -591,14 +591,14 @@ describe('Store - Edge Cases', () => {
         state: { items: set },
       });
       const store = useStore();
-      
+
       // Set functionality works even when wrapped in proxy
       expect(store.state.items.has(2)).toBe(true);
       expect(store.state.items.size).toBe(3);
     });
   });
 
-  describe('Getter Edge Cases', () => {
+  describe('getter Edge Cases', () => {
     it('should handle getter returning null', () => {
       const useStore = createStore({
         state: { value: null as string | null },
@@ -607,7 +607,7 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.getValue).toBeNull();
     });
 
@@ -619,7 +619,7 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.getValue).toBeUndefined();
     });
 
@@ -631,7 +631,7 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.status).toBe('low');
       store.state.count = 15;
       expect(store.status).toBe('high');
@@ -647,12 +647,12 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       expect(() => store.throwError).toThrow('Getter error');
     });
   });
 
-  describe('Action Edge Cases', () => {
+  describe('action Edge Cases', () => {
     it('should handle action throwing error', () => {
       const useStore = createStore({
         state: { count: 0 },
@@ -663,7 +663,7 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       expect(() => store.throwError()).toThrow('Action error');
     });
 
@@ -677,7 +677,7 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       store.increment();
       expect(store.state.count).toBe(1);
     });
@@ -692,10 +692,10 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       store.add();
       expect(store.state.count).toBe(1);
-      
+
       store.add(5);
       expect(store.state.count).toBe(6);
     });
@@ -711,25 +711,25 @@ describe('Store - Edge Cases', () => {
         },
       });
       const store = useStore();
-      
+
       store.update(10, 'updated');
       expect(store.state.count).toBe(10);
       expect(store.state.name).toBe('updated');
     });
   });
 
-  describe('Subscription Edge Cases', () => {
+  describe('subscription Edge Cases', () => {
     it('should handle duplicate subscription of same callback', () => {
       const useStore = createStore({
         state: { value: 0 },
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.subscribe$(callback);
       store.patch$({ value: 42 });
-      
+
       // Set only stores unique callbacks
       expect(callback).toHaveBeenCalledTimes(1);
     });
@@ -742,7 +742,7 @@ describe('Store - Edge Cases', () => {
       const errorCallback = () => {
         throw new Error('Callback error');
       };
-      
+
       store.subscribe$(errorCallback);
       expect(() => store.patch$({ value: 42 })).toThrow('Callback error');
     });
@@ -753,25 +753,25 @@ describe('Store - Edge Cases', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
       store.patch$({});
-      
+
       expect(callback).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('Multiple Store Instances', () => {
+  describe('multiple Store Instances', () => {
     it('should create store instances sharing state', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
       const store1 = useStore();
       const store2 = useStore();
-      
+
       store1.state.count = 5;
       store2.state.count = 10;
-      
+
       // Note: Store instances share the same reactive state by design
       expect(store1.state.count).toBe(10);
       expect(store2.state.count).toBe(10);
@@ -785,33 +785,33 @@ describe('Store - Edge Cases', () => {
       const store2 = useStore();
       const callback1 = vitest.fn();
       const callback2 = vitest.fn();
-      
+
       store1.subscribe$(callback1);
       store2.subscribe$(callback2);
       store1.patch$({ count: 5 });
-      
+
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).not.toHaveBeenCalled();
     });
   });
 });
 
-describe('Store - Performance & Optimization', () => {
-  describe('Batch Updates', () => {
+describe('store - Performance & Optimization', () => {
+  describe('batch Updates', () => {
     it('should batch process multiple patch calls', () => {
       const useStore = createStore({
         state: { count: 0, name: 'test' },
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
-      
+
       // Multiple patches should each trigger callback
       store.patch$({ count: 1 });
       store.patch$({ count: 2 });
       store.patch$({ name: 'updated' });
-      
+
       expect(callback).toHaveBeenCalledTimes(3);
     });
 
@@ -821,19 +821,19 @@ describe('Store - Performance & Optimization', () => {
       });
       const store = useStore();
       const callback = vitest.fn();
-      
+
       store.subscribe$(callback);
-      
+
       for (let i = 0; i < 100; i++) {
         store.patch$({ count: i });
       }
-      
+
       expect(callback).toHaveBeenCalledTimes(100);
       expect(store.state.count).toBe(99);
     });
   });
 
-  describe('Getter Caching', () => {
+  describe('getter Caching', () => {
     it('should recompute getter when dependencies change', () => {
       const useStore = createStore({
         state: { count: 0 },
@@ -842,7 +842,7 @@ describe('Store - Performance & Optimization', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.doubled).toBe(0);
       store.state.count = 5;
       expect(store.doubled).toBe(10);
@@ -858,7 +858,7 @@ describe('Store - Performance & Optimization', () => {
         },
       });
       const store = useStore();
-      
+
       // Multiple accesses should work correctly
       for (let i = 0; i < 100; i++) {
         expect(store.doubled).toBe(0);
@@ -867,8 +867,8 @@ describe('Store - Performance & Optimization', () => {
   });
 });
 
-describe('Store - Complex Scenarios', () => {
-  describe('Nested State Management', () => {
+describe('store - Complex Scenarios', () => {
+  describe('nested State Management', () => {
     it('should handle deeply nested state updates', () => {
       const useStore = createStore({
         state: {
@@ -882,7 +882,7 @@ describe('Store - Complex Scenarios', () => {
         },
       });
       const store = useStore();
-      
+
       store.state.level1.level2.level3.value = 42;
       expect(store.state.level1.level2.level3.value).toBe(42);
     });
@@ -892,13 +892,13 @@ describe('Store - Complex Scenarios', () => {
         state: { items: [1, 2, 3] },
       });
       const store = useStore();
-      
+
       store.items.push(4);
       expect(store.items).toEqual([1, 2, 3, 4]);
-      
+
       store.items.pop();
       expect(store.items).toEqual([1, 2, 3]);
-      
+
       store.items[0] = 10;
       expect(store.items).toEqual([10, 2, 3]);
     });
@@ -908,18 +908,18 @@ describe('Store - Complex Scenarios', () => {
         state: { user: { name: 'John', age: 30, city: 'NYC' } },
       });
       const store = useStore();
-      
+
       store.patch$({
         user: { ...store.state.user, age: 31 },
       });
-      
+
       expect(store.state.user.name).toBe('John');
       expect(store.state.user.age).toBe(31);
       expect(store.state.user.city).toBe('NYC');
     });
   });
 
-  describe('Complex Getters', () => {
+  describe('complex Getters', () => {
     it('should handle getter depending on multiple state properties', () => {
       const useStore = createStore({
         state: { firstName: 'John', lastName: 'Doe', age: 30 },
@@ -928,7 +928,7 @@ describe('Store - Complex Scenarios', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.fullInfo).toBe('John Doe, 30 years old');
       store.state.firstName = 'Jane';
       expect(store.fullInfo).toBe('Jane Doe, 30 years old');
@@ -943,17 +943,17 @@ describe('Store - Complex Scenarios', () => {
         },
       });
       const store = useStore();
-      
+
       expect(store.evenNumbers).toEqual([2, 4]);
       expect(store.sum).toBe(15);
-      
+
       store.numbers.push(6);
       expect(store.evenNumbers).toEqual([2, 4, 6]);
       expect(store.sum).toBe(21);
     });
   });
 
-  describe('Complex Actions', () => {
+  describe('complex Actions', () => {
     it('should handle action with complex logic', () => {
       const useStore = createStore({
         state: { items: [] as number[], total: 0 },
@@ -965,11 +965,11 @@ describe('Store - Complex Scenarios', () => {
         },
       });
       const store = useStore();
-      
+
       store.addItem(10);
       expect(store.state.items).toEqual([10]);
       expect(store.state.total).toBe(10);
-      
+
       store.addItem(20);
       expect(store.state.items).toEqual([10, 20]);
       expect(store.state.total).toBe(30);
@@ -989,26 +989,26 @@ describe('Store - Complex Scenarios', () => {
         },
       });
       const store = useStore();
-      
+
       for (let i = 0; i < 15; i++) {
         store.incrementIfPossible();
       }
-      
+
       expect(store.state.count).toBe(10);
     });
   });
 
-  describe('Subscription Patterns', () => {
+  describe('subscription Patterns', () => {
     it('should handle subscriber modifying state', () => {
       const useStore = createStore({
         state: { count: 0, doubled: 0 },
       });
       const store = useStore();
-      
+
       store.subscribe$(state => {
         state.doubled = state.count * 2;
       });
-      
+
       store.patch$({ count: 5 });
       expect(store.state.doubled).toBe(10);
     });
@@ -1018,11 +1018,11 @@ describe('Store - Complex Scenarios', () => {
         state: { value: 0 },
       });
       const store = useStore();
-      
+
       const results: number[] = [];
       store.subscribe$(state => results.push(state.value * 2));
       store.subscribe$(state => results.push(state.value * 3));
-      
+
       store.patch$({ value: 5 });
       expect(results).toEqual([10, 15]);
     });

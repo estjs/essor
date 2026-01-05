@@ -3,7 +3,7 @@ import { parse } from '@babel/parser';
 import traverse from '@babel/traverse';
 import generate from '@babel/generator';
 import * as t from '@babel/types';
-import { transformProgram, createImportIdentifier } from '../src/program';
+import { createImportIdentifier, transformProgram } from '../src/program';
 import { addImport, clearImport } from '../src/import';
 import type { PluginState } from '../src/types';
 
@@ -114,12 +114,12 @@ describe('transformProgram visitor', () => {
 describe('createImportIdentifier', () => {
   it('should create new import when not exists', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
-    
+
     const importId = createImportIdentifier(programPath, 'refresh');
-    
+
     expect(importId).toBeDefined();
     expect(t.isIdentifier(importId)).toBe(true);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('import');
     expect(code).toContain('refresh');
@@ -127,14 +127,16 @@ describe('createImportIdentifier', () => {
   });
 
   it('should reuse existing import when already imported', () => {
-    const { programPath, ast } = buildProgram('import { refresh } from "/@essor-refresh"; const x = 1;');
-    
+    const { programPath, ast } = buildProgram(
+      'import { refresh } from "/@essor-refresh"; const x = 1;',
+    );
+
     const importId1 = createImportIdentifier(programPath, 'refresh');
     const importId2 = createImportIdentifier(programPath, 'refresh');
-    
+
     // Should return the same identifier
     expect(importId1.name).toBe(importId2.name);
-    
+
     // Should not create duplicate imports
     const code = generate(ast).code;
     const importCount = (code.match(/import.*refresh.*from.*\/@essor-refresh/g) || []).length;
@@ -143,12 +145,12 @@ describe('createImportIdentifier', () => {
 
   it('should handle multiple different imports', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
-    
+
     const refresh = createImportIdentifier(programPath, 'refresh');
     const register = createImportIdentifier(programPath, 'register');
-    
+
     expect(refresh.name).not.toBe(register.name);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('refresh');
     expect(code).toContain('register');
@@ -156,13 +158,13 @@ describe('createImportIdentifier', () => {
 
   it('should insert import at the top of program', () => {
     const { programPath, ast } = buildProgram('const x = 1; const y = 2;');
-    
+
     createImportIdentifier(programPath, 'refresh');
-    
+
     const code = generate(ast).code;
     const importIndex = code.indexOf('import');
     const constIndex = code.indexOf('const x');
-    
+
     expect(importIndex).toBeLessThan(constIndex);
   });
 });
@@ -175,9 +177,9 @@ describe('transformProgram - signal transformation', () => {
   it('should transform signal variables in enter phase', () => {
     const { programPath, ast } = buildProgram('let $count = 0; console.log($count);');
     const initialState = createState('client', false);
-    
+
     transformProgram.enter(programPath, initialState);
-    
+
     const code = generate(ast).code;
     // Signal variables should be transformed
     expect(code).toContain('signal');
@@ -187,9 +189,9 @@ describe('transformProgram - signal transformation', () => {
   it('should transform signal assignments', () => {
     const { programPath, ast } = buildProgram('let $count = 0; $count = 5;');
     const initialState = createState('client', false);
-    
+
     transformProgram.enter(programPath, initialState);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('.value = 5');
   });
@@ -197,9 +199,9 @@ describe('transformProgram - signal transformation', () => {
   it('should transform signal update expressions', () => {
     const { programPath, ast } = buildProgram('let $count = 0; $count++;');
     const initialState = createState('client', false);
-    
+
     transformProgram.enter(programPath, initialState);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('.value++');
   });
@@ -207,9 +209,9 @@ describe('transformProgram - signal transformation', () => {
   it('should handle signal object patterns', () => {
     const { programPath, ast } = buildProgram('const { $x } = obj;');
     const initialState = createState('client', false);
-    
+
     transformProgram.enter(programPath, initialState);
-    
+
     // Should process object patterns without errors
     expect(() => generate(ast)).not.toThrow();
   });
@@ -217,9 +219,9 @@ describe('transformProgram - signal transformation', () => {
   it('should handle signal array patterns', () => {
     const { programPath, ast } = buildProgram('const [$x] = arr;');
     const initialState = createState('client', false);
-    
+
     transformProgram.enter(programPath, initialState);
-    
+
     // Should process array patterns without errors
     expect(() => generate(ast)).not.toThrow();
   });
@@ -234,19 +236,19 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('import React from "react"; const x = 1;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     const pluginState = programPath.state as PluginState;
     pluginState.declarations.push(
       t.variableDeclarator(t.identifier('_tmpl$'), t.numericLiteral(42)),
     );
-    
+
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     const importIndex = code.indexOf('import React');
     const tmplIndex = code.indexOf('const _tmpl$ = 42');
     const xIndex = code.indexOf('const x = 1');
-    
+
     expect(importIndex).toBeLessThan(tmplIndex);
     expect(tmplIndex).toBeLessThan(xIndex);
   });
@@ -255,14 +257,14 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     const pluginState = programPath.state as PluginState;
     pluginState.declarations.push(
       t.variableDeclarator(t.identifier('_tmpl$'), t.numericLiteral(99)),
     );
-    
+
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('const _tmpl$ = 99');
   });
@@ -271,10 +273,10 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     // declarations array is empty
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     expect(code).not.toContain('_tmpl$');
   });
@@ -283,14 +285,14 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('const view = <div/>;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     const pluginState = programPath.state as PluginState;
     pluginState.events?.add('click');
     pluginState.events?.add('input');
     pluginState.events?.add('change');
-    
+
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('delegateEvents');
     expect(code).toContain('"click"');
@@ -302,10 +304,10 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     // events set is empty
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     expect(code).not.toContain('delegateEvents');
   });
@@ -314,13 +316,13 @@ describe('transformProgram - exit phase', () => {
     const { programPath, ast } = buildProgram('const x = 1;');
     const initialState = createState('client', false);
     transformProgram.enter(programPath, initialState);
-    
+
     // Add some imports
     addImport('template');
     addImport('insert');
-    
+
     transformProgram.exit(programPath);
-    
+
     const code = generate(ast).code;
     expect(code).toContain('import');
     expect(code).toContain('essor');

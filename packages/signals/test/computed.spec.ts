@@ -167,7 +167,7 @@ describe('computed', () => {
 
       shouldError.value = true;
       expect(() => comp.value).toThrow('Computation error');
-      
+
       // Verify that next access retries the computation
       shouldError.value = false;
       expect(comp.value).toBe(42); // Should successfully recompute
@@ -201,7 +201,7 @@ describe('computed', () => {
 
       // @ts-ignore accessing private property for testing
       const flags = comp.flag;
-      
+
       // Verify DIRTY flag is set (for retry) but PENDING is cleared
       expect(flags & ReactiveFlags.DIRTY).toBeTruthy();
       expect(flags & ReactiveFlags.PENDING).toBe(0);
@@ -210,7 +210,7 @@ describe('computed', () => {
     it('should retry computation on next access after error', () => {
       let attemptCount = 0;
       const shouldError = signal(true);
-      
+
       const comp = computed(() => {
         attemptCount++;
         if (shouldError.value) {
@@ -234,7 +234,7 @@ describe('computed', () => {
     it('should handle multiple consecutive errors', () => {
       let errorCount = 0;
       const maxErrors = 3;
-      
+
       const comp = computed(() => {
         errorCount++;
         if (errorCount <= maxErrors) {
@@ -257,7 +257,7 @@ describe('computed', () => {
       const dep1 = signal(1);
       const dep2 = signal(2);
       const shouldError = signal(false);
-      
+
       const comp = computed(() => {
         const val1 = dep1.value;
         if (shouldError.value) {
@@ -317,8 +317,8 @@ describe('computed', () => {
         try {
           effectValue = comp.value;
           effectError = null;
-        } catch (e) {
-          effectError = e as Error;
+        } catch (error) {
+          effectError = error as Error;
         }
       });
 

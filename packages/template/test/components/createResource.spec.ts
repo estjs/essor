@@ -250,7 +250,7 @@ describe('createResource', () => {
     it('should only use result from latest fetch', async () => {
       await runWithScope(scope, async () => {
         let fetchCount = 0;
-        let resolvers: Array<(value: string) => void> = [];
+        const resolvers: Array<(value: string) => void> = [];
         const fetcher = () => {
           fetchCount++;
           return new Promise<string>(resolve => {
@@ -282,6 +282,8 @@ describe('createResource', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
 
         expect(resource()).toBe('second'); // Should still be 'second'
+
+        expect(fetchCount).toBe(2);
       });
     });
 

@@ -193,7 +193,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
         // Development mode: Track getter access frequency to warn about inefficient usage
         let accessCount = 0;
         let lastWarnTime = 0;
-        
+
         Object.defineProperty(store, key, {
           get() {
             // Development mode: Warn if getter is accessed too frequently
@@ -211,7 +211,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
                 accessCount = 0;
               }
             }
-            
+
             // Create a new computed on every access to ensure we get the latest value
             // This is necessary because store properties may not be fully reactive
             return computed(() => getter.call(store, reactiveState)).value;

@@ -254,7 +254,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
       // On error, ensure DIRTY and PENDING flags are cleared first to prevent stuck state
       const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
       this.flag &= clearMask;
-      
+
       // Then set DIRTY flag to ensure next access will retry computation
       this.flag |= ReactiveFlags.DIRTY;
 

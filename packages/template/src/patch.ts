@@ -137,7 +137,7 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
  *   - Common prefix/suffix sync: O(min(n, m))
  *   - Unknown sequence with LIS: O(n + m + k log k) where k = moved nodes
  *
- * - **Space Complexity**: 
+ * - **Space Complexity**:
  *   - Fast paths: O(1)
  *   - General case: O(m) for index mapping + O(k) for LIS
  *

@@ -132,10 +132,10 @@ describe('dom utilities', () => {
 
     it('should cache safe attribute names', () => {
       const safeAttrName = `safe-attr-${Date.now()}`;
-      
+
       // First call should validate and cache
       expect(isSSRSafeAttrName(safeAttrName)).toBe(true);
-      
+
       // Second call should use cache
       expect(isSSRSafeAttrName(safeAttrName)).toBe(true);
     });

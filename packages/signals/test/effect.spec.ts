@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { effect, isEffect, memoEffect, signal, batch, stop } from '../src';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { batch, effect, isEffect, memoEffect, signal, stop } from '../src';
 
 describe('effect', () => {
   describe('basic functionality', () => {
@@ -359,7 +359,7 @@ describe('effect', () => {
 
     it('should maintain dirty flag after error', () => {
       const count = signal(0);
-      let shouldThrow = true;
+      const shouldThrow = true;
 
       const runner = effect(() => {
         if (shouldThrow && count.value > 0) {
@@ -379,7 +379,6 @@ describe('effect', () => {
     it('should handle errors in nested effects', () => {
       const outer = signal(0);
       const outerFn = vi.fn();
-      let innerRunner: any;
 
       const outerRunner = effect(() => {
         outerFn(outer.value);
@@ -417,7 +416,7 @@ describe('effect', () => {
 
     it('should handle errors with custom scheduler', () => {
       const count = signal(0);
-      const scheduler = vi.fn((eff) => {
+      const scheduler = vi.fn(eff => {
         eff.run();
       });
 
@@ -531,9 +530,12 @@ describe('effect', () => {
       const count = signal(0);
       const fn = vi.fn();
 
-      const runner = effect(() => {
-        fn(count.value);
-      }, { flush: 'sync' });
+      const runner = effect(
+        () => {
+          fn(count.value);
+        },
+        { flush: 'sync' },
+      );
 
       expect(fn).toHaveBeenCalledTimes(1);
       expect(fn).toHaveBeenCalledWith(0);
@@ -548,13 +550,16 @@ describe('effect', () => {
     it('should handle scheduler option as function', () => {
       const count = signal(0);
       const fn = vi.fn();
-      const schedulerFn = vi.fn((eff) => {
+      const schedulerFn = vi.fn(eff => {
         setTimeout(() => eff.run(), 0);
       });
 
-      const runner = effect(() => {
-        fn(count.value);
-      }, { scheduler: schedulerFn });
+      const runner = effect(
+        () => {
+          fn(count.value);
+        },
+        { scheduler: schedulerFn },
+      );
 
       expect(fn).toHaveBeenCalledTimes(1);
 
@@ -590,15 +595,21 @@ describe('effect', () => {
       const count = signal(0);
       const syncFn = vi.fn();
       const customFn = vi.fn();
-      const customScheduler = vi.fn((eff) => eff.run());
+      const customScheduler = vi.fn(eff => eff.run());
 
-      const syncRunner = effect(() => {
-        syncFn(count.value);
-      }, { flush: 'sync' });
+      const syncRunner = effect(
+        () => {
+          syncFn(count.value);
+        },
+        { flush: 'sync' },
+      );
 
-      const customRunner = effect(() => {
-        customFn(count.value);
-      }, { scheduler: customScheduler });
+      const customRunner = effect(
+        () => {
+          customFn(count.value);
+        },
+        { scheduler: customScheduler },
+      );
 
       expect(syncFn).toHaveBeenCalledTimes(1);
       expect(customFn).toHaveBeenCalledTimes(1);
@@ -787,7 +798,7 @@ describe('effect', () => {
       runner.stop();
     });
   });
-    describe(' Effect delayed execution in batch', () => {
+  describe(' Effect delayed execution in batch', () => {
     it('should delay effect execution during batch and execute once after batch ends', () => {
       // Test with multiple different scenarios
       const testCases = [
@@ -1029,7 +1040,7 @@ describe('effect', () => {
     it('should handle effects with no dependency changes in batch', () => {
       const testValues = [0, 10, -5, 100, 42];
 
-      testValues.forEach((initialValue) => {
+      testValues.forEach(initialValue => {
         const testSignal = signal(initialValue);
         const effectFn = vi.fn();
         let executionCount = 0;
@@ -1057,9 +1068,6 @@ describe('effect', () => {
     });
   });
 });
-
-
-
 
 describe('memoEffect', () => {
   beforeEach(() => {
@@ -1096,11 +1104,7 @@ describe('memoEffect', () => {
       counter.value = 2;
       counter.value = 3;
 
-      expect(states).toEqual([
-        { value: 0 },
-        { value: 1 },
-        { value: 2 },
-      ]);
+      expect(states).toEqual([{ value: 0 }, { value: 1 }, { value: 2 }]);
     });
 
     it('should re-execute when signal value changes', () => {

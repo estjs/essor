@@ -188,19 +188,19 @@ export class SignalImpl<T> implements ReactiveNode {
   shouldUpdate(): boolean {
     // Clear "dirty" flag using bitwise AND with NOT
     this.flag &= ~ReactiveFlags.DIRTY;
-    
+
     // Optimization: _oldValue is created on-demand in the setter
     // If it doesn't exist yet, this is the first update, so return true
     if (!('_oldValue' in this)) {
       return true;
     }
-    
+
     // Compare old value with new raw value
     const changed = hasChanged(this._oldValue, this._rawValue);
-    
+
     // Update _oldValue for next comparison
     this._oldValue = this._rawValue;
-    
+
     return changed;
   }
 

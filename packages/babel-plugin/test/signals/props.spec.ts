@@ -219,7 +219,9 @@ describe('signals/props', () => {
     expect(output).toContain(`user: {`);
     expect(output).toContain(`name: 'John'`);
     expect(output).toContain(`age: 30`);
-    expect(output).toContain(`return <div>{${TRANSFORM_PROPERTY_NAME}.user.name} {${TRANSFORM_PROPERTY_NAME}.user.age}</div>;`);
+    expect(output).toContain(
+      `return <div>{${TRANSFORM_PROPERTY_NAME}.user.name} {${TRANSFORM_PROPERTY_NAME}.user.age}</div>;`,
+    );
   });
 
   it('handles deeply nested destructuring with defaults', () => {
@@ -231,7 +233,9 @@ describe('signals/props', () => {
     const output = runTransform(code);
     expect(output).toContain(`${TRANSFORM_PROPERTY_NAME} = {`);
     expect(output).toContain(`color: 'blue'`);
-    expect(output).toContain(`return <div>{${TRANSFORM_PROPERTY_NAME}.settings.theme.color}</div>;`);
+    expect(output).toContain(
+      `return <div>{${TRANSFORM_PROPERTY_NAME}.settings.theme.color}</div>;`,
+    );
   });
 
   it('handles mixed properties with nested defaults', () => {
@@ -244,7 +248,9 @@ describe('signals/props', () => {
     expect(output).toContain(`${TRANSFORM_PROPERTY_NAME} = {`);
     expect(output).toContain(`name: 'Guest'`);
     expect(output).toContain(`count: 0`);
-    expect(output).toContain(`return <div>{${TRANSFORM_PROPERTY_NAME}.title} {${TRANSFORM_PROPERTY_NAME}.user.name} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`);
+    expect(output).toContain(
+      `return <div>{${TRANSFORM_PROPERTY_NAME}.title} {${TRANSFORM_PROPERTY_NAME}.user.name} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`,
+    );
   });
 
   it('handles empty object as default value', () => {
@@ -304,7 +310,9 @@ describe('signals/props', () => {
     const output = runTransform(code);
     expect(output).toContain(`${TRANSFORM_PROPERTY_NAME} = {`);
     expect(output).toContain(`count: 0`);
-    expect(output).toContain(`return <div>{${TRANSFORM_PROPERTY_NAME}.name} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`);
+    expect(output).toContain(
+      `return <div>{${TRANSFORM_PROPERTY_NAME}.name} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`,
+    );
   });
 
   it('handles rest with multiple regular properties', () => {
@@ -314,8 +322,12 @@ describe('signals/props', () => {
       }
     `;
     const output = runTransform(code);
-    expect(output).toContain(`const rest = omitProps(${TRANSFORM_PROPERTY_NAME}, ["title", "subtitle", "count"]);`);
-    expect(output).toContain(`return <div {...rest}>{${TRANSFORM_PROPERTY_NAME}.title} {${TRANSFORM_PROPERTY_NAME}.subtitle} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`);
+    expect(output).toContain(
+      `const rest = omitProps(${TRANSFORM_PROPERTY_NAME}, ["title", "subtitle", "count"]);`,
+    );
+    expect(output).toContain(
+      `return <div {...rest}>{${TRANSFORM_PROPERTY_NAME}.title} {${TRANSFORM_PROPERTY_NAME}.subtitle} {${TRANSFORM_PROPERTY_NAME}.count}</div>;`,
+    );
   });
 
   it('handles properties with numeric default values', () => {
