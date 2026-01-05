@@ -124,7 +124,7 @@ describe('effect', () => {
     });
 
     it('should handle stop idempotency', () => {
-      const runner = effect(() => { });
+      const runner = effect(() => {});
       runner.stop();
       expect(() => runner.stop()).not.toThrow();
     });
@@ -151,7 +151,7 @@ describe('effect', () => {
     });
 
     it('should isEffect check', () => {
-      const runner = effect(() => { });
+      const runner = effect(() => {});
       expect(isEffect(runner.effect)).toBe(true);
       expect(isEffect({})).toBe(false);
       expect(isEffect(null)).toBe(false);
@@ -242,7 +242,7 @@ describe('effect', () => {
   describe('boundary cases - effect cleanup', () => {
     it('should call onStop callback when effect is stopped', () => {
       const onStop = vi.fn();
-      const runner = effect(() => { }, { onStop });
+      const runner = effect(() => {}, { onStop });
 
       expect(onStop).not.toHaveBeenCalled();
       runner.stop();
@@ -266,7 +266,7 @@ describe('effect', () => {
 
     it('should handle multiple stop calls gracefully', () => {
       const onStop = vi.fn();
-      const runner = effect(() => { }, { onStop });
+      const runner = effect(() => {}, { onStop });
 
       runner.stop();
       expect(onStop).toHaveBeenCalledTimes(1);
@@ -405,7 +405,7 @@ describe('effect', () => {
         throw new Error('Stop error');
       });
 
-      const runner = effect(() => { }, { onStop });
+      const runner = effect(() => {}, { onStop });
 
       expect(() => {
         runner.stop();
@@ -456,7 +456,7 @@ describe('effect', () => {
     });
 
     it('should handle empty effect function', () => {
-      const runner = effect(() => { });
+      const runner = effect(() => {});
       expect(runner).toBeDefined();
       expect(runner.effect.active).toBe(true);
       runner.stop();
