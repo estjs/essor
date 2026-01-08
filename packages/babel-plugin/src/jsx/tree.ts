@@ -364,8 +364,17 @@ function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
         }
       }
     } else if (t.isJSXSpreadAttribute(attribute.node)) {
-      // Spread attribute: <div {...props}>
-      props[SPREAD_NAME] = attribute.get('argument').node;
+      // Spread attribute: <div {...props}> or multiple spread attributes
+      const spreadNode = attribute.get('argument').node;
+      if (props[SPREAD_NAME]) {
+        if (Array.isArray(props[SPREAD_NAME])) {
+          (props[SPREAD_NAME] as any[]).push(spreadNode);
+        } else {
+          props[SPREAD_NAME] = [props[SPREAD_NAME], spreadNode];
+        }
+      } else {
+        props[SPREAD_NAME] = spreadNode;
+      }
     }
   });
 

@@ -78,15 +78,17 @@ describe('jsx shared helpers', () => {
     expect(deepCheckObjectDynamic(dynamicObj)).toBe(true);
   });
 
-  it('normalizes props and merges class/style strings', () => {
+  it('normalizes props and class/style strings', () => {
     const normalized = normalizeProps({ class: 'a', className: 'b', style: 'color:red;' });
-    expect(normalized.class).toBe('a b');
+    expect(normalized.class).toBe('a');
+    // with component not transform className to class ,just in dom element transform
+    expect(normalized.className).toBe('b');
     expect(normalized.style).toBe('color:red;');
 
     // Test with dynamic class expression (last one wins)
     const dynamicClass = t.identifier('dynamicClass');
     const normalizedDynamic = normalizeProps({ className: dynamicClass });
-    expect(normalizedDynamic.class).toBe(dynamicClass); // Dynamic expression
+    expect(normalizedDynamic.className).toBe(dynamicClass); // Dynamic expression
 
     // Test with dynamic style expression
     const dynamicStyle = t.identifier('dynamicStyle');

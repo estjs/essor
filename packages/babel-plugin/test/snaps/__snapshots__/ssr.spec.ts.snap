@@ -20,8 +20,8 @@ const StyledComponent = ({
   return _$el;
 })();
 const element = _createComponent$(StyledComponent, {
-  "children": ["Styled Content"],
-  "class": "generated-class"
+  "className": "generated-class",
+  "children": ["Styled Content"]
 });"
 `;
 

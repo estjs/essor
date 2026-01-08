@@ -13,6 +13,7 @@ import {
 import {
   CHILDREN_NAME,
   CLASS_NAME,
+  CLASS_NAME_NAME,
   FRAGMENT_NAME,
   NODE_TYPE,
   SPREAD_NAME,
@@ -495,7 +496,7 @@ export function serializeAttributes(attributes: Record<string, unknown> | undefi
   // Process all attributes
   for (const [attrName, attrValue] of Object.entries(attributes)) {
     // Process class attribute
-    if (attrName === CLASS_NAME && isString(attrValue)) {
+    if ((attrName === CLASS_NAME || attrName === CLASS_NAME_NAME) && isString(attrValue)) {
       classNames += ` ${attrValue}`;
       delete attributes[attrName];
     }
@@ -784,7 +785,7 @@ function shouldInsertComment(children: (TreeNode | string | JSXChild)[], idx: nu
 
 /**
  * Normalize JSX props into a single flat record.
- * 1. Multiple occurrences of `class` / `className` / `style` are merged into a single string (static) or array (dynamic).
+ * 1. Multiple occurrences of `class` / `style` are merged into a single string (static) or array (dynamic).
  * 2. Collect multiple object spreads as unified `SPREAD_NAME` record to avoid extra traversal.
  */
 export function normalizeProps(raw: Record<string, unknown>): Record<string, unknown> {
@@ -794,8 +795,7 @@ export function normalizeProps(raw: Record<string, unknown>): Record<string, unk
   const styleBuffer: string[] = [];
 
   for (const [key, value] of Object.entries(raw)) {
-    // Handle both 'class' and 'className' (React compatibility)
-    if (key === CLASS_NAME || key === 'className') {
+    if (key === CLASS_NAME) {
       if (isString(value)) classBuffer.push(value);
       else {
         // If there's already a dynamic class expression, keep the last one
@@ -813,7 +813,11 @@ export function normalizeProps(raw: Record<string, unknown>): Record<string, unk
     if (key === SPREAD_NAME) {
       // If spread already exists, merge directly as array
       if (!normalized[SPREAD_NAME]) normalized[SPREAD_NAME] = [];
-      (normalized[SPREAD_NAME] as unknown[]).push(value);
+      if (isArray(value)) {
+        (normalized[SPREAD_NAME] as unknown[]).push(...value);
+      } else {
+        (normalized[SPREAD_NAME] as unknown[]).push(value);
+      }
       continue;
     }
 
@@ -864,12 +868,16 @@ export function createPropsObjectExpression(
     if (propName === CHILDREN_NAME && (!propValue || (isArray(propValue) && !propValue.length))) {
       continue;
     }
-    const astValue = convertValueToASTNode(propValue as any, transformJSX);
-
     // Process spread attribute
     if (propName === SPREAD_NAME) {
-      objectProperties.push(t.spreadElement(astValue));
+      if (isArray(propValue)) {
+        propValue.forEach(val => {
+          const astValue = convertValueToASTNode(val, transformJSX);
+          objectProperties.push(t.spreadElement(astValue));
+        });
+      }
     } else {
+      const astValue = convertValueToASTNode(propValue as any, transformJSX);
       // Check if dynamic and not a function
       // if (isDynamicExpression(astValue) && !t.isFunction(astValue)) {
       //   objectProperties.push(

@@ -72,6 +72,16 @@ describe('should work with jsx client transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('transforms Component props with spread attributes', () => {
+    const inputCode = `
+      const props = { id: 'myId', class: 'myClass' };
+      const otherProps = {props:"other"}
+      const element = <Component {...props} other="other" {...otherProps} />;
+    `;
+
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
   it('transforms JSX element with conditional attributes', () => {
     const inputCode = `
       const hasClass = true;
@@ -673,5 +683,14 @@ describe('should work with jsx client transform', () => {
      const fn = ()=>  <div class={$value}></div>;`,
       ),
     ).toMatchSnapshot();
+  });
+
+  it('should work with className and className merge', () => {
+    const inputCode = `
+      const element = (
+        <div className="base" class="extra">Content</div>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
   });
 });

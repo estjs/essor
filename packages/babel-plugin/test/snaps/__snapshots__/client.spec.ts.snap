@@ -58,6 +58,15 @@ const value = 1;
 })();"
 `;
 
+exports[`should work with jsx client transform > should work with className and className merge 1`] = `
+"import { template as _template$ } from "essor";
+const _$tmpl = _template$("<div  class=\\"base extra\\">Content</div>");
+const element = (() => {
+  const _$el = _$tmpl();
+  return _$el;
+})();"
+`;
+
 exports[`should work with jsx client transform > should work with comment in JSX 1`] = `
 "import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, bindElement as _bindElement$, memoEffect as _memoEffect$ } from "essor";
 const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
@@ -720,6 +729,22 @@ const element = _createComponent$(_Suspense$, {
     return _$el2;
   })(),
   "children": ["Content"]
+});"
+`;
+
+exports[`should work with jsx client transform > transforms Component props with spread attributes 1`] = `
+"import { createComponent as _createComponent$ } from "essor";
+const props = {
+  id: 'myId',
+  class: 'myClass'
+};
+const otherProps = {
+  props: "other"
+};
+const element = _createComponent$(Component, {
+  ...props,
+  ...otherProps,
+  "other": "other"
 });"
 `;
 

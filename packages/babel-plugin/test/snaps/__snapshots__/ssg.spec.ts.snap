@@ -8,8 +8,8 @@ const StyledComponent = ({
   children
 }) => _render$(_tmpl$, _getHydrationKey$(), _patchAttr$("class", _escapeHTML$(className), false), children);
 const element = _createComponent$(StyledComponent, {
-  "children": ["Styled Content"],
-  "class": "generated-class"
+  "className": "generated-class",
+  "children": ["Styled Content"]
 });"
 `;
 

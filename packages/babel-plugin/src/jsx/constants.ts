@@ -37,6 +37,8 @@ export enum ELEMENT_FLAGS {
  */
 export const CLASS_NAME = 'class';
 
+export const CLASS_NAME_NAME = 'className';
+
 /**
  * Key name for the Style attribute
  */
