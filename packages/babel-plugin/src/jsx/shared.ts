@@ -918,7 +918,14 @@ export function convertValueToASTNode(
   }
 
   if (isObject(value)) {
-    if (isTreeNode(value) && hasPureStringChildren(value)) {
+    if (
+      isTreeNode(value) &&
+      (value.type === NODE_TYPE.TEXT ||
+        (value.type === NODE_TYPE.COMPONENT &&
+          value.tag === FRAGMENT_NAME &&
+          (!value.props || Object.keys(value.props).length === 0))) &&
+      hasPureStringChildren(value)
+    ) {
       const stringContent = extractStringChildren(value);
       return t.stringLiteral(stringContent);
     }

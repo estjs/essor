@@ -693,4 +693,44 @@ describe('should work with jsx client transform', () => {
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+  it('should correctly compile Fragment with element children', () => {
+    const code = `
+      import { useRouter } from 'essor-router';
+    const value = "string value"
+      export default function Home() {
+        const router = useRouter();
+
+        const onClick = () => {
+          router.push('/about');
+        };
+
+        const onRandomClick = () => {
+          router.push('/random');
+        };
+
+        return (
+          <>
+          pure string
+          {'string value'}
+          {value}
+          {1}
+          {undefined}
+          {null}
+          {false}
+          {true}
+          {Symbol()}
+            <div onClick={onClick} class="home">
+              to about
+            </div>
+
+            <div onClick={onRandomClick} class="random">
+              random router
+            </div>
+          </>
+        );
+      }
+    `;
+
+    expect(transformCode(code)).toMatchSnapshot();
+  });
 });

@@ -108,7 +108,8 @@ const element = (() => {
 `;
 
 exports[`jsx SSR transform > should work with context in SSR 1`] = `
-"import { createComponent as _createComponent$ } from "essor";
+"import { createComponent as _createComponent$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<div  data-theme=\\"dark\\">Themed Content</div>");
 const ThemeContext = {
   Provider: ({
     value,
@@ -117,7 +118,10 @@ const ThemeContext = {
 };
 const element = _createComponent$(ThemeContext.Provider, {
   "value": "dark",
-  "children": ["Themed Content"]
+  "children": [(() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })()]
 });"
 `;
 
@@ -141,7 +145,8 @@ const element = _createComponent$(DataComponent, {
 
 exports[`jsx SSR transform > should work with error handling in SSR 1`] = `
 "import { createComponent as _createComponent$, getElement as _template$ } from "essor";
-const _$tmpl = _template$("<div>Error Page</div>");
+const _$tmpl = _template$("<div>Protected Content</div>"),
+  _$tmpl2 = _template$("<div>Error Page</div>");
 const ErrorBoundary = ({
   fallback,
   children
@@ -154,10 +159,13 @@ const ErrorBoundary = ({
 };
 const element = _createComponent$(ErrorBoundary, {
   "fallback": (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })(),
+  "children": [(() => {
     const _$el = _$tmpl();
     return _$el;
-  })(),
-  "children": ["Protected Content"]
+  })()]
 });"
 `;
 
@@ -177,7 +185,8 @@ _delegateEvents$(["click"]);"
 exports[`jsx SSR transform > should work with head management in SSR 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<head  data-ssr></head>"),
-  _$tmpl2 = _template$("<meta  name=\\"description\\" content=\\"Page description\\"/>");
+  _$tmpl2 = _template$("<title>Page Title</title>"),
+  _$tmpl3 = _template$("<meta  name=\\"description\\" content=\\"Page description\\"/>");
 const Head = ({
   children
 }) => (() => {
@@ -187,9 +196,12 @@ const Head = ({
   return _$el;
 })();
 const element = _createComponent$(Head, {
-  "children": ["Page Title", (() => {
+  "children": [(() => {
     const _$el2 = _$tmpl2();
     return _$el2;
+  })(), (() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
   })()]
 });"
 `;
@@ -291,7 +303,8 @@ const element = _createComponent$(StreamingComponent, {
 
 exports[`jsx SSR transform > should work with streaming SSR and context 1`] = `
 "import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-context></div>");
+const _$tmpl = _template$("<div  data-streaming-context></div>"),
+  _$tmpl2 = _template$("<div>Streaming Context Content</div>");
 const StreamingContext = ({
   value,
   children
@@ -306,7 +319,10 @@ const StreamingContext = ({
 })();
 const element = _createComponent$(StreamingContext, {
   "value": "dark",
-  "children": ["Streaming Context Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
@@ -333,7 +349,8 @@ const element = _createComponent$(StreamingHook, {});"
 exports[`jsx SSR transform > should work with streaming SSR and data fetching 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-data></div>"),
-  _$tmpl2 = _template$("<div>Loading data...</div>");
+  _$tmpl2 = _template$("<div>Loading data...</div>"),
+  _$tmpl3 = _template$("<div>Data Content</div>");
 const StreamingData = ({
   data,
   children
@@ -350,7 +367,10 @@ const element = _createComponent$(StreamingData, {
   "data": {
     key: 'value'
   },
-  "children": ["Data Content"]
+  "children": [(() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })()]
 });"
 `;
 
@@ -380,7 +400,8 @@ const element = _createComponent$(_Suspense$, {
 exports[`jsx SSR transform > should work with streaming SSR and error boundaries 1`] = `
 "import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-error></div>"),
-  _$tmpl2 = _template$("<div>Error occurred!</div>");
+  _$tmpl2 = _template$("<div>Protected Streaming Content</div>"),
+  _$tmpl3 = _template$("<div>Error occurred!</div>");
 const StreamingErrorBoundary = ({
   children,
   fallback
@@ -395,17 +416,21 @@ const StreamingErrorBoundary = ({
 })();
 const element = _createComponent$(StreamingErrorBoundary, {
   "fallback": (() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })(),
+  "children": [(() => {
     const _$el2 = _$tmpl2();
     return _$el2;
-  })(),
-  "children": ["Protected Streaming Content"]
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and error handling 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-error></div>"),
-  _$tmpl2 = _template$("<div>Error:</div>");
+  _$tmpl2 = _template$("<div>Error:</div>"),
+  _$tmpl3 = _template$("<div>Streaming Content</div>");
 const StreamingError = ({
   error,
   children
@@ -422,13 +447,17 @@ const StreamingError = ({
 })();
 const element = _createComponent$(StreamingError, {
   "error": null,
-  "children": ["Streaming Content"]
+  "children": [(() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and forwardRef 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-forward></div>");
+const _$tmpl = _template$("<div  data-streaming-forward></div>"),
+  _$tmpl2 = _template$("<div>Streaming Forward Ref Content</div>");
 const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   const _$el = _$tmpl();
   const _$nodes = _mapNodes$(_$el, [1]);
@@ -438,13 +467,17 @@ const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
 })());
 const element = _createComponent$(StreamingForwardRef, {
   "ref": React.createRef(),
-  "children": ["Streaming Forward Ref Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and hydration 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-hydration></div>");
+const _$tmpl = _template$("<div  data-streaming-hydration></div>"),
+  _$tmpl2 = _template$("<div  data-hydrate=\\"true\\">Hydration Content</div>");
 const StreamingHydration = ({
   children
 }) => (() => {
@@ -454,7 +487,10 @@ const StreamingHydration = ({
   return _$el;
 })();
 const element = _createComponent$(StreamingHydration, {
-  "children": ["Hydration Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
@@ -476,14 +512,17 @@ const element = _createComponent$(_Suspense$, {
     const _$el2 = _$tmpl2();
     return _$el2;
   })(),
-  "children": ["Lazy Content"]
+  "children": [_createComponent$(StreamingLazy, {
+    "children": ["Lazy Content"]
+  })]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and loading states 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-loading></div>"),
-  _$tmpl2 = _template$("<div>Loading...</div>");
+  _$tmpl2 = _template$("<div>Loading...</div>"),
+  _$tmpl3 = _template$("<div>Loaded Content</div>");
 const StreamingLoading = ({
   isLoading,
   children
@@ -498,7 +537,10 @@ const StreamingLoading = ({
 })();
 const element = _createComponent$(StreamingLoading, {
   "isLoading": false,
-  "children": ["Loaded Content"]
+  "children": [(() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })()]
 });"
 `;
 
@@ -521,7 +563,8 @@ const element = _createComponent$(StreamingMemo, {
 
 exports[`jsx SSR transform > should work with streaming SSR and multiple contexts 1`] = `
 "import { createComponent as _createComponent$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-contexts></div>");
+const _$tmpl = _template$("<div  data-streaming-contexts></div>"),
+  _$tmpl2 = _template$("<div>Multiple Contexts Content</div>");
 const StreamingContexts = ({
   theme,
   user,
@@ -543,13 +586,17 @@ const element = _createComponent$(StreamingContexts, {
   "user": {
     name: 'John'
   },
-  "children": ["Multiple Contexts Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and portals 1`] = `
 "import { patchAttr as _patchAttr$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-portal></div>");
+const _$tmpl = _template$("<div  data-streaming-portal></div>"),
+  _$tmpl2 = _template$("<div>Streaming Portal Content</div>");
 const StreamingPortal = ({
   target,
   children
@@ -568,13 +615,17 @@ const StreamingPortal = ({
 })();
 const element = _createComponent$(StreamingPortal, {
   "target": "modal",
-  "children": ["Streaming Portal Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and refs 1`] = `
 "import { getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-streaming-ref></div>");
+const _$tmpl = _template$("<div  data-streaming-ref></div>"),
+  _$tmpl2 = _template$("<div>Streaming Ref Content</div>");
 const StreamingRef = ({
   children
 }, ref) => (() => {
@@ -586,14 +637,18 @@ const StreamingRef = ({
 })();
 const element = _createComponent$(StreamingRef, {
   "ref": React.createRef(),
-  "children": ["Streaming Ref Content"]
+  "children": [(() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and suspense 1`] = `
 "import { createComponent as _createComponent$, Suspense as _Suspense$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming></div>"),
-  _$tmpl2 = _template$("<div>Loading...</div>");
+  _$tmpl2 = _template$("<div>Streaming Content</div>"),
+  _$tmpl3 = _template$("<div>Loading...</div>");
 const StreamingSuspense = ({
   children,
   fallback
@@ -608,17 +663,21 @@ const StreamingSuspense = ({
 })();
 const element = _createComponent$(StreamingSuspense, {
   "fallback": (() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })(),
+  "children": [(() => {
     const _$el2 = _$tmpl2();
     return _$el2;
-  })(),
-  "children": ["Streaming Content"]
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > should work with streaming SSR and suspense boundaries 1`] = `
 "import { createComponent as _createComponent$, Suspense as _Suspense$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
 const _$tmpl = _template$("<div  data-streaming-suspense></div>"),
-  _$tmpl2 = _template$("<div>Loading...</div>");
+  _$tmpl2 = _template$("<div>Suspense Content</div>"),
+  _$tmpl3 = _template$("<div>Loading...</div>");
 const StreamingSuspenseBoundary = ({
   children,
   fallback
@@ -633,30 +692,49 @@ const StreamingSuspenseBoundary = ({
 })();
 const element = _createComponent$(StreamingSuspenseBoundary, {
   "fallback": (() => {
+    const _$el3 = _$tmpl3();
+    return _$el3;
+  })(),
+  "children": [(() => {
     const _$el2 = _$tmpl2();
     return _$el2;
-  })(),
-  "children": ["Suspense Content"]
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > transforms JSX element with JSX fragment 1`] = `
-"import { createComponent as _createComponent$, Fragment as _Fragment$ } from "essor";
+"import { createComponent as _createComponent$, Fragment as _Fragment$, getElement as _template$ } from "essor";
+const _$tmpl = _template$("<p>Paragraph 1</p>"),
+  _$tmpl2 = _template$("<p>Paragraph 2</p>");
 const element = _createComponent$(_Fragment$, {
-  "children": ["Paragraph 1", "Paragraph 2"]
+  "children": [(() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })(), (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })()]
 });"
 `;
 
 exports[`jsx SSR transform > transforms JSX element with JSX fragment as children 1`] = `
 "import { createComponent as _createComponent$, Fragment as _Fragment$, getElement as _template$, mapSSRNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div></div>");
+const _$tmpl = _template$("<p>Paragraph 1</p>"),
+  _$tmpl2 = _template$("<p>Paragraph 2</p>"),
+  _$tmpl3 = _template$("<div></div>");
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], _createComponent$(_Fragment$, {
-    "children": ["Paragraph 1", "Paragraph 2"]
+  const _$el3 = _$tmpl3();
+  const _$nodes3 = _mapNodes$(_$el3, [1]);
+  _insert$(_$nodes3[0], _createComponent$(_Fragment$, {
+    "children": [(() => {
+      const _$el = _$tmpl();
+      return _$el;
+    })(), (() => {
+      const _$el2 = _$tmpl2();
+      return _$el2;
+    })()]
   }));
-  return _$el;
+  return _$el3;
 })();"
 `;
 

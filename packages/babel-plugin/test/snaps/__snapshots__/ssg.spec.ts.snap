@@ -52,7 +52,9 @@ const element = _render$(_tmpl$, _getHydrationKey$(), isVisible && _render$(_tmp
 `;
 
 exports[`jsx SSG transform > should work with context in SSR 1`] = `
-"import { createSSGComponent as _createComponent$ } from "essor";
+"import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+const _tmpl$ = ["<div data-idx=\\"1\\" data-theme=\\"dark\\">Themed Content</div>"],
+  _tmpl$2 = ["<div data-idx=\\"1\\" data-theme=\\"dark\\">Themed Content</div>"];
 const ThemeContext = {
   Provider: ({
     value,
@@ -61,7 +63,7 @@ const ThemeContext = {
 };
 const element = _createComponent$(ThemeContext.Provider, {
   "value": "dark",
-  "children": ["Themed Content"]
+  "children": [_render$(_tmpl$2, _getHydrationKey$())]
 });"
 `;
 
@@ -80,7 +82,9 @@ const element = _createComponent$(DataComponent, {
 
 exports[`jsx SSG transform > should work with error handling in SSR 1`] = `
 "import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
-const _tmpl$ = ["<div data-idx=\\"1\\">Error Page</div>"];
+const _tmpl$ = ["<div data-idx=\\"1\\">Protected Content</div>"],
+  _tmpl$2 = ["<div data-idx=\\"1\\">Protected Content</div>"],
+  _tmpl$3 = ["<div data-idx=\\"1\\">Error Page</div>"];
 const ErrorBoundary = ({
   fallback,
   children
@@ -92,8 +96,8 @@ const ErrorBoundary = ({
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  "fallback": _render$(_tmpl$, _getHydrationKey$()),
-  "children": ["Protected Content"]
+  "fallback": _render$(_tmpl$3, _getHydrationKey$()),
+  "children": [_render$(_tmpl$2, _getHydrationKey$())]
 });"
 `;
 
@@ -107,13 +111,15 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 exports[`jsx SSG transform > should work with head management in SSR 1`] = `
 "import { template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createComponent$ } from "essor";
 const _tmpl$ = ["<head data-idx=\\"1\\" data-ssr>", "</head>"],
-  _tmpl$2 = ["<meta data-idx=\\"1\\" name=\\"description\\" content=\\"Page description\\"/>"],
-  _tmpl$3 = ["<meta data-idx=\\"1\\" name=\\"description\\" content=\\"Page description\\"/>"];
+  _tmpl$2 = ["<title data-idx=\\"1\\">Page Title</title>"],
+  _tmpl$3 = ["<meta data-idx=\\"1\\" name=\\"description\\" content=\\"Page description\\"/>"],
+  _tmpl$4 = ["<title data-idx=\\"1\\">Page Title</title>"],
+  _tmpl$5 = ["<meta data-idx=\\"1\\" name=\\"description\\" content=\\"Page description\\"/>"];
 const Head = ({
   children
 }) => _render$(_tmpl$, _getHydrationKey$(), children);
 const element = _createComponent$(Head, {
-  "children": ["Page Title", _render$(_tmpl$3, _getHydrationKey$())]
+  "children": [_render$(_tmpl$4, _getHydrationKey$()), _render$(_tmpl$5, _getHydrationKey$())]
 });"
 `;
 
@@ -396,17 +402,23 @@ const element = _createComponent$(StreamingComponent, {
 `;
 
 exports[`jsx SSG transform > transforms JSX element with JSX fragment 1`] = `
-"import { createSSGComponent as _createComponent$ } from "essor";
+"import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+const _tmpl$ = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
+  _tmpl$2 = ["<p data-idx=\\"1\\">Paragraph 2</p>"],
+  _tmpl$3 = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
+  _tmpl$4 = ["<p data-idx=\\"1\\">Paragraph 2</p>"];
 const element = _createComponent$(Fragment, {
-  "children": ["Paragraph 1", "Paragraph 2"]
+  "children": [_render$(_tmpl$3, _getHydrationKey$()), _render$(_tmpl$4, _getHydrationKey$())]
 });"
 `;
 
 exports[`jsx SSG transform > transforms JSX element with JSX fragment as children 1`] = `
 "import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
-const _tmpl$ = ["<div data-idx=\\"1\\">", "</div>"];
-const element = _render$(_tmpl$, _getHydrationKey$(), _createComponent$(Fragment, {
-  "children": ["Paragraph 1", "Paragraph 2"]
+const _tmpl$ = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
+  _tmpl$2 = ["<p data-idx=\\"1\\">Paragraph 2</p>"],
+  _tmpl$3 = ["<div data-idx=\\"1\\">", "</div>"];
+const element = _render$(_tmpl$3, _getHydrationKey$(), _createComponent$(Fragment, {
+  "children": [_render$(_tmpl$, _getHydrationKey$()), _render$(_tmpl$2, _getHydrationKey$())]
 }));"
 `;
 
