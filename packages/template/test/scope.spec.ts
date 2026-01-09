@@ -135,6 +135,31 @@ describe('scope System', () => {
 
       expect(getActiveScope()).toBeNull();
     });
+    it('should run scope with deep function', () => {
+      const scope = createScope();
+
+      function a() {
+        const b = () => {
+          expect(getActiveScope()).toBe(scope);
+
+          function c() {
+            expect(getActiveScope()).toBe(scope);
+          }
+          return c;
+        };
+
+        b()();
+        expect(getActiveScope()).toBe(scope);
+
+        return () => {
+          expect(getActiveScope()).toBe(scope);
+        };
+      }
+
+      runWithScope(scope, () => {
+        a()();
+      });
+    });
   });
 
   describe('cleanup & Disposal', () => {
@@ -221,8 +246,8 @@ describe('scope System', () => {
 
       runWithScope(scope, () => {
         provide('key', 'value');
-        onCleanup(() => {});
-        registerMountHook(() => {});
+        onCleanup(() => { });
+        registerMountHook(() => { });
       });
 
       expect(scope.provides?.size).toBeGreaterThan(0);
@@ -246,7 +271,7 @@ describe('scope System', () => {
       const successCleanup = vi.fn();
 
       // Mock console.error to avoid noise in test output
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
 
       runWithScope(scope, () => {
         onCleanup(errorCleanup);
@@ -327,6 +352,32 @@ describe('scope System', () => {
 
       runWithScope(scope, () => {
         expect(inject(key)).toBeUndefined();
+      });
+    });
+
+    it('should run scope with deep function init', () => {
+      const key = Symbol('test');
+
+      function optionConfig() {
+        function init() {
+          provide(key, 'test');
+        }
+        return {
+          init,
+        };
+      }
+
+      const config = optionConfig();
+
+      function Component(props) {
+        props.config.init();
+        const injectValue = inject(key);
+        expect(injectValue).toBe('test');
+      }
+      const scope = createScope();
+
+      runWithScope(scope, () => {
+        Component({ config });
       });
     });
   });
