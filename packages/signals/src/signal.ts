@@ -143,7 +143,7 @@ export class SignalImpl<T> implements ReactiveNode {
       if (__DEV__) {
         warn(
           'Setting a signal value to another signal is not recommended. ' +
-            'The value will be unwrapped automatically.',
+          'The value will be unwrapped automatically.',
         );
       }
       value = (value as Signal<T>).peek() as T;
@@ -276,11 +276,6 @@ export function signal<T>(value?: T): Signal<T> {
 export function shallowSignal<T>(value?: T): Signal<T> {
   // If the value is a signal, extract its value
   if (isSignal(value)) {
-    if (__DEV__) {
-      warn(
-        'Creating a shallow signal with another signal is not recommended. The value will be unwrapped.',
-      );
-    }
     value = value.peek() as T;
   }
   return new SignalImpl(value, true);

@@ -1,4 +1,4 @@
-import { hasChanged, info } from '@estjs/shared';
+import { hasChanged } from '@estjs/shared';
 import { SIGNAL_KEY, SignalFlags } from './constants';
 import { shallowPropagate, track, trigger } from './link';
 import { type Signal, SignalImpl, isSignal } from './signal';
@@ -83,16 +83,10 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
  */
 export function ref<T>(value: T = undefined as unknown as T): Ref<T> {
   if (isRef(value)) {
-    if (__DEV__) {
-      info('Creating a ref with another ref is not recommended. The value will be unwrapped.');
-    }
     return value as Ref<T>;
   }
 
   if (isSignal(value)) {
-    if (__DEV__) {
-      info('Creating a ref with a signal is not recommended. The value will be unwrapped.');
-    }
     return new RefImpl(value.peek() as T);
   }
 

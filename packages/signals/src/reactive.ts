@@ -8,7 +8,6 @@ import {
   isStringNumber,
   isWeakMap,
   isWeakSet,
-  warn,
 } from '@estjs/shared';
 import {
   ARRAY_ITERATE_KEY,
@@ -767,24 +766,13 @@ export function isReactive(target: unknown): boolean {
  * ```
  */
 export function reactive<T extends object>(target: T): T {
-  // Guard: If already reactive, return directly to prevent double wrapping
+  //If already reactive, return directly to prevent double wrapping
   if (isReactive(target)) {
-    if (__DEV__) {
-      warn(
-        '[Reactive] Target is already reactive. Returning existing reactive proxy to avoid double wrapping.',
-      );
-    }
     return target;
   }
 
-  // Guard: If target is a signal, warn and unwrap it
+  //  If target is a signal, warn and unwrap it
   if (isSignal(target)) {
-    if (__DEV__) {
-      warn(
-        '[Reactive] Creating a reactive proxy from a signal is not recommended. ' +
-          'Use the signal directly or access its value property.',
-      );
-    }
     // Return the signal as-is since signals are already reactive
     return target;
   }
@@ -806,32 +794,13 @@ export function reactive<T extends object>(target: T): T {
  * ```
  */
 export function shallowReactive<T extends object>(target: T): T {
-  // Guard: If already reactive, check if it's shallow
+  //  If already reactive, check if it's shallow
   if (isReactive(target)) {
-    if (__DEV__) {
-      if (isShallow(target)) {
-        warn(
-          '[ShallowReactive] Target is already a shallow reactive proxy. ' +
-            'Returning existing proxy to avoid double wrapping.',
-        );
-      } else {
-        warn(
-          '[ShallowReactive] Target is already a deep reactive proxy. ' +
-            'Cannot convert deep reactive to shallow reactive. Returning existing proxy.',
-        );
-      }
-    }
     return target;
   }
 
-  // Guard: If target is a signal, warn and unwrap it
+  // If target is a signal, warn and unwrap it
   if (isSignal(target)) {
-    if (__DEV__) {
-      warn(
-        '[ShallowReactive] Creating a reactive proxy from a signal is not recommended. ' +
-          'Use the signal directly or access its value property.',
-      );
-    }
     // Return the signal as-is since signals are already reactive
     return target;
   }
