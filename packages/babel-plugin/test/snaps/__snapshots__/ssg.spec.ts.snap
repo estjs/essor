@@ -407,7 +407,7 @@ const _tmpl$ = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
   _tmpl$2 = ["<p data-idx=\\"1\\">Paragraph 2</p>"],
   _tmpl$3 = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
   _tmpl$4 = ["<p data-idx=\\"1\\">Paragraph 2</p>"];
-const element = _createComponent$(Fragment, {
+const element = _createComponent$(_Fragment$, {
   "children": [_render$(_tmpl$3, _getHydrationKey$()), _render$(_tmpl$4, _getHydrationKey$())]
 });"
 `;

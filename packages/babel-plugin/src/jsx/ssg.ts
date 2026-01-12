@@ -45,10 +45,10 @@ export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode
     if (isBuiltIn) {
       addImport(importMap[treeNode.tag!]);
     }
-
+    const argTag = isBuiltIn ? state.imports[treeNode.tag!] : t.identifier(treeNode.tag!);
     addImport(importMap.createComponent);
     return t.callExpression(state.imports.createComponent, [
-      t.identifier(treeNode.tag as string),
+      argTag,
       createPropsObjectExpression(componentProps, transformJSXToSSG),
     ]);
   }
