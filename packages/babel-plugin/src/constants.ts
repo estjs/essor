@@ -60,7 +60,7 @@ export const SSG_IMPORTS_MAPS = {
 // Server-side Rendering API
 export const SSR_IMPORTS_MAPS = {
   mapNodes: 'mapSSRNodes',
-  template: 'getElement',
+  template: 'getRenderedElement',
 } as const;
 
 // transform property name

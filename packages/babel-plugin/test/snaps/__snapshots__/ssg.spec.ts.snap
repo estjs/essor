@@ -402,7 +402,7 @@ const element = _createComponent$(StreamingComponent, {
 `;
 
 exports[`jsx SSG transform > transforms JSX element with JSX fragment 1`] = `
-"import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { createSSGComponent as _createComponent$, template as _template$, render as _render$, getHydrationKey as _getHydrationKey$, Fragment as _Fragment$ } from "essor";
 const _tmpl$ = ["<p data-idx=\\"1\\">Paragraph 1</p>"],
   _tmpl$2 = ["<p data-idx=\\"1\\">Paragraph 2</p>"],
   _tmpl$3 = ["<p data-idx=\\"1\\">Paragraph 1</p>"],

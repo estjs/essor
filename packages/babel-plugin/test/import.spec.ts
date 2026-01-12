@@ -104,7 +104,7 @@ describe('import utilities', () => {
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
     const imported = specifiers.map(spec => (spec as t.ImportSpecifier).imported.name);
     expect(imported).toContain('mapSSRNodes');
-    expect(imported).toContain('getElement');
+    expect(imported).toContain('getRenderedElement');
   });
 
   it('throws informative error when identifier is missing', () => {

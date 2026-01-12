@@ -1,7 +1,13 @@
 import { type NodePath, types as t } from '@babel/core';
 import { isObject, isPrimitive, isString, isSymbol } from '@estjs/shared';
 import { addImport, importMap } from '../import';
-import { EVENT_ATTR_NAME, FRAGMENT_NAME, NODE_TYPE, UPDATE_PREFIX } from './constants';
+import {
+  BUILT_IN_COMPONENTS,
+  EVENT_ATTR_NAME,
+  FRAGMENT_NAME,
+  NODE_TYPE,
+  UPDATE_PREFIX,
+} from './constants';
 import { getContext } from './context';
 import { createPropsObjectExpression } from './shared';
 import { type TreeNode, isTreeNode } from './tree';
@@ -32,8 +38,13 @@ export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode
   const { templates, dynamics } = result;
 
   // Handle root component case
-  if (treeNode.type === NODE_TYPE.COMPONENT || treeNode.type === NODE_TYPE.FRAGMENT) {
+  if (treeNode.type === NODE_TYPE.COMPONENT) {
     const componentProps = { ...treeNode.props, children: treeNode.children };
+    // Built-in components
+    const isBuiltIn = BUILT_IN_COMPONENTS.includes(treeNode.tag!);
+    if (isBuiltIn) {
+      addImport(importMap[treeNode.tag!]);
+    }
 
     addImport(importMap.createComponent);
     return t.callExpression(state.imports.createComponent, [
