@@ -137,27 +137,47 @@ export class Component<P extends ComponentProps = ComponentProps> {
     this.state = prevNode.state;
     this.reactiveProps = prevNode.reactiveProps as P; // Reuse same reactive object
 
-    if (this.props) {
-      for (const key in this.props) {
-        if (key === 'key') continue;
+    // Early return if no new props to update
+    if (!this.props || Object.keys(this.props).length === 0) {
+      // still need to check mounting status
+      if (!this.isConnected && this.parentNode) {
+        this.mount(this.parentNode, this.beforeNode);
+        return this;
+      }
 
-        const newValue = this.props[key];
-        const oldValue = this.reactiveProps[key];
+      // Apply props and trigger update if mounted
+      if (this.scope) {
+        runWithScope(this.scope, () => {
+          this.applyProps(this.props || ({} as P));
+        });
+        triggerUpdateHooks(this.scope);
+      }
+      return this;
+    }
 
-        // 1. reference same
-        if (Object.is(oldValue, newValue)) {
+    // Track if any props actually changed
+    let hasChanges = false;
+
+    for (const key in this.props) {
+      if (key === 'key') continue;
+
+      const newValue = this.props[key];
+      const oldValue = this.reactiveProps[key];
+
+      // 1. reference same
+      if (Object.is(oldValue, newValue)) {
+        continue;
+      }
+      // 2. object shallow compare
+      if (isObject(oldValue) && isObject(newValue)) {
+        if (shallowCompare(oldValue, newValue)) {
           continue;
         }
-        // 2. object shallow compare
-        if (isObject(oldValue) && isObject(newValue)) {
-          if (shallowCompare(oldValue, newValue)) {
-            continue;
-          }
-        }
-
-        // 3. update reactiveProps
-        this.reactiveProps[key] = newValue;
       }
+
+      // 3. update reactiveProps
+      this.reactiveProps[key] = newValue;
+      hasChanges = true;
     }
 
     // check if the component is already mount
@@ -166,12 +186,15 @@ export class Component<P extends ComponentProps = ComponentProps> {
     }
 
     // if the component is mount and has scope, apply new props and trigger update lifecycle
-    if (this.scope) {
+    // Only trigger update hooks if props actually changed
+    if (this.scope && (hasChanges || !this.isConnected)) {
       runWithScope(this.scope, () => {
         this.applyProps(this.props || ({} as P));
       });
-      // Trigger scope update hooks (unified lifecycle system)
-      triggerUpdateHooks(this.scope);
+      // Trigger scope update hooks only if there were changes
+      if (hasChanges) {
+        triggerUpdateHooks(this.scope);
+      }
     }
 
     return this;

@@ -450,7 +450,6 @@ function patchUnknownSequence(
 ): void {
   // Cache length calculation
   const newLength = newEndIdx - newStartIdx + 1;
-  const newChildrenLen = newChildren.length;
 
   // Use Object literal for faster string key lookup
   let keyToNewIndexMap: Record<string, number> | undefined;
@@ -529,26 +528,36 @@ function patchUnknownSequence(
   const increasingNewIndexSequence = moved ? getSequence(newIndexToOldIndexMap) : [];
   let j = increasingNewIndexSequence.length - 1;
 
+  // Cache anchor nodes to avoid repeated getFirstDOMNode calls
+  let cachedAnchor: Node | undefined = anchor;
+
   // Loop backwards to ensure correct anchor calculation
   for (let i = newLength - 1; i >= 0; i--) {
     const nextIndex = newStartIdx + i;
     const nextNode = newChildren[nextIndex];
-    const nextAnchor =
-      nextIndex + 1 < newChildrenLen ? getFirstDOMNode(newChildren[nextIndex + 1]) : anchor;
 
     if (newIndexToOldIndexMap[i] === 0) {
       // New node - insert it
-      insertNode(parent, nextNode, nextAnchor);
+      insertNode(parent, nextNode, cachedAnchor);
+      // Update cached anchor for next iteration
+      cachedAnchor = getFirstDOMNode(nextNode) || cachedAnchor;
     } else if (moved) {
       // Existing node - move if not in LIS
       if (j < 0 || i !== increasingNewIndexSequence[j]) {
         const domNode = getFirstDOMNode(nextNode);
         if (domNode && domNode.parentNode === parent) {
-          insertNode(parent, domNode, nextAnchor);
+          insertNode(parent, domNode, cachedAnchor);
         }
+        // Update cached anchor
+        cachedAnchor = domNode || cachedAnchor;
       } else {
+        // Node is in LIS, update anchor but don't move
+        cachedAnchor = getFirstDOMNode(nextNode) || cachedAnchor;
         j--;
       }
+    } else {
+      // No moves, just update anchor
+      cachedAnchor = getFirstDOMNode(nextNode) || cachedAnchor;
     }
   }
 }

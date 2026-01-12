@@ -43,14 +43,19 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
 
   const isBoolean = isSpecialBooleanAttr(key) || isBooleanAttr(key);
 
+  // Early return if values are the same
   if (prev === next) {
     return;
   }
 
+  // Compute lowerKey only when needed (after early exits)
   const lowerKey = key.toLowerCase();
-  if (/^on[a-z]+/.test(lowerKey)) {
+
+  // Cache event handler check (faster than regex for common case)
+  if (lowerKey.length > 2 && lowerKey.charCodeAt(0) === 111 && lowerKey.charCodeAt(1) === 110) { // 'on'
     return;
   }
+
   if (lowerKey === 'innerhtml') {
     return;
   }

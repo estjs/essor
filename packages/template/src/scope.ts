@@ -43,9 +43,6 @@ let activeScope: Scope | null = null;
 /** Scope ID counter for unique identification */
 let scopeId = 0;
 
-/** Scope stack for nested execution contexts */
-const scopeStack: Scope[] = [];
-
 /**
  * Get the currently active scope.
  * @returns The active scope or null if none is active
@@ -104,19 +101,13 @@ export function createScope(parent: Scope | null = activeScope): Scope {
  */
 export function runWithScope<T>(scope: Scope, fn: () => T): T {
   const prevScope = activeScope;
-
-  // Push previous scope to stack if it exists
-  if (prevScope) {
-    scopeStack.push(prevScope);
-  }
-
   activeScope = scope;
 
   try {
     return fn();
   } finally {
-    // Restore previous scope
-    activeScope = scopeStack.length > 0 ? scopeStack.pop()! : prevScope;
+    // Restore previous scope directly
+    activeScope = prevScope;
   }
 }
 
@@ -133,11 +124,14 @@ export function disposeScope(scope: Scope): void {
   }
 
   // Dispose children first (depth-first)
+  // Iterate directly without copying to avoid allocation
   if (scope.children) {
-    // Copy to avoid modification during iteration
-    const children = Array.from(scope.children);
-    for (const child of children) {
-      disposeScope(child);
+    // Use while loop since children will remove themselves during dispose
+    while (scope.children.size > 0) {
+      const child = scope.children.values().next().value;
+      if (child) {
+        disposeScope(child);
+      }
     }
   }
 

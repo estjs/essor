@@ -66,11 +66,20 @@ export function normalizeClass(value: unknown): string {
 
   // Handle objects (conditional classes)
   if (isObject(value)) {
-    const result: string[] = [];
+    // Pre-count true values for efficient array allocation
+    let count = 0;
+    for (const key in value) {
+      if (value[key]) count++;
+    }
+
+    if (count === 0) return '';
+
+    const result: string[] = new Array(count);
+    let index = 0;
 
     for (const key in value) {
       if (value[key]) {
-        result.push(key);
+        result[index++] = key;
       }
     }
 
