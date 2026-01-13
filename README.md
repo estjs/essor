@@ -84,15 +84,6 @@ Check out the [examples](./examples) directory for more examples:
 - [Suspense Example](./examples/suspense) - Async components
 - [Portal Example](./examples/portal) - Portal components
 
-## 🏃‍♂️ Performance Benchmarks
-
-Essor excels in performance benchmarks:
-
-- **Rendering Performance**: 3-5x faster than React
-- **Memory Usage**: 50%+ reduction
-- **Bundle Size**: Core package only 2KB (gzipped)
-
-Check out the [benchmark](./benchmark) directory for detailed test results.
 
 ## 🤝 Contributing
 
