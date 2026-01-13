@@ -37,7 +37,8 @@ Essor is a signal-based reactive frontend framework with a monorepo structure:
 packages/
 ├── core/          # Main framework entry point, re-exports signals + template
 ├── signals/       # Reactive primitives (signals, effects, computed, reactive, store, watch)
-├── template/      # Template rendering, components, lifecycle, SSR/SSG support
+├── template/      # Template rendering, components, lifecycle, DOM operations
+├── server/        # Server-side rendering (SSR/SSG), hydration utilities
 ├── shared/        # Utility functions, type guards, DOM helpers
 ├── babel-plugin/  # JSX transformation plugin for Babel
 └── unplugin/      # Universal plugin for Vite/Webpack/Rollup integration
@@ -748,6 +749,14 @@ await refetch();
 mutate(currentPosts => [...currentPosts, newPost]);
 ```
 
+---
+
+### @estjs/server
+
+**Purpose**: Server-side rendering (SSR) and static site generation (SSG) utilities. This package was extracted from `@estjs/template` to provide dedicated server rendering capabilities.
+
+**Note**: This package re-exports everything from `@estjs/template`, so you can use it as a single import for both client and server functionality.
+
 #### Server-Side Rendering (SSR/SSG)
 
 ```typescript
@@ -756,12 +765,16 @@ import {
   render, 
   createSSGComponent,
   getHydrationKey,
+  resetHydrationKey,
   hydrate,
   mapSSRNodes,
   getRenderedElement,
   setSSGAttr,
+  normalizeProps,
+  convertToString,
+  addAttributes,
   escapeHTML
-} from '@estjs/template';
+} from '@estjs/server';
 
 // Render component to HTML string
 const html = renderToString(App, { title: 'My App' });
@@ -772,11 +785,39 @@ const componentHtml = createSSGComponent(MyComponent, { prop: 'value' });
 // Hydration on client
 hydrate(App, document.getElementById('root'));
 
-// Get hydration key for SSR
+// Get/reset hydration key for SSR
 const key = getHydrationKey();
+resetHydrationKey();  // Reset key counter
 
 // Escape HTML for safe rendering
 const safe = escapeHTML('<script>alert("xss")</script>');
+
+// Utility functions
+const str = convertToString(value);
+const attrStr = addAttributes({ class: 'btn', disabled: true });
+const props = normalizeProps(rawProps);
+```
+
+#### Key Exports
+
+```typescript
+// Rendering
+export { render, createSSGComponent, renderToString } from './render';
+
+// Hydration
+export { hydrate, mapSSRNodes, getRenderedElement } from './hydration';
+
+// Attributes
+export { setSSGAttr, normalizeProps } from './attrs';
+
+// Utilities
+export { convertToString, addAttributes, getHydrationKey, resetHydrationKey } from './utils';
+
+// Re-exported from @estjs/shared
+export { escapeHTML } from '@estjs/shared';
+
+// Re-exports all of @estjs/template
+export * from '@estjs/template';
 ```
 
 ---
@@ -813,7 +854,7 @@ isStringNumber('42');     // true
 import {
   noop, extend, hasChanged, coerceArray, hasOwn,
   startsWith, generateUniqueId, isBrowser,
-  cacheStringFunction, isOn, isExclude,
+  cacheStringFunction, isOn,
   EMPTY_OBJ, EMPTY_ARR, getGlobalThis
 } from '@estjs/shared';
 
@@ -1404,7 +1445,16 @@ it('should render correctly', () => {
   - `lifecycle.ts`: onMount, onDestroy, onUpdate hooks
   - `provide.ts`: Dependency injection system
   - `binding.ts`: Data binding and event handling
-  - `server/`: SSR/SSG rendering utilities
+
+### @estjs/server
+
+- Server-side rendering (SSR) and static site generation (SSG)
+- Hydration utilities for client-side rehydration
+- Key files:
+  - `render.ts`: renderToString, createSSGComponent
+  - `hydration.ts`: hydrate, mapSSRNodes, getRenderedElement
+  - `attrs.ts`: setSSGAttr, normalizeProps
+  - `utils.ts`: convertToString, addAttributes, getHydrationKey
 
 ### @estjs/babel-plugin
 
@@ -1597,7 +1647,7 @@ createApp(Header, '#app');
 
 ```tsx
 // server.ts
-import { renderToString } from 'essor';
+import { renderToString } from '@estjs/server';
 import App from './App';
 
 async function handleRequest(req, res) {
@@ -1619,7 +1669,7 @@ async function handleRequest(req, res) {
 }
 
 // client.ts
-import { hydrate } from 'essor';
+import { hydrate } from '@estjs/server';
 import App from './App';
 
 hydrate(App, document.getElementById('root'));
