@@ -888,7 +888,7 @@ describe('propagation', () => {
     });
   });
 
-  describe('RECURSED_CHECK flag handling', () => {
+  describe('rECURSED_CHECK flag handling', () => {
     it('should handle RECURSED_CHECK flag during propagation (Case 4)', () => {
       // Tests line 54-60: Case 4 - in recursion chain but not checked
       // This creates a scenario where RECURSED flag is set but RECURSED_CHECK is not

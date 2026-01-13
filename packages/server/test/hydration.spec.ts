@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as shared from '@estjs/shared';
 import { getRenderedElement, hydrate, mapSSRNodes } from '../src/hydration';
 import { getHydrationKey, resetHydrationKey } from '../src/';
-import * as shared from '@estjs/shared';
 
 describe('server/hydration', () => {
   let container: HTMLElement;
@@ -193,7 +193,7 @@ describe('server/hydration', () => {
   describe('hydrate', () => {
     it('hydrates component with valid container element', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       // Create a simple component that returns an element
       const Component = () => {
         const div = document.createElement('div');
@@ -202,7 +202,7 @@ describe('server/hydration', () => {
       };
 
       const result = hydrate(Component, container);
-      
+
       // Should return a component instance (not undefined)
       expect(result).toBeDefined();
       consoleSpy.mockRestore();
@@ -210,10 +210,10 @@ describe('server/hydration', () => {
 
     it('hydrates component with valid container selector', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       // Add an id to the container for selector-based lookup
       container.id = 'test-container';
-      
+
       const Component = () => {
         const div = document.createElement('div');
         div.textContent = 'Hydrated';
@@ -221,7 +221,7 @@ describe('server/hydration', () => {
       };
 
       const result = hydrate(Component, '#test-container');
-      
+
       expect(result).toBeDefined();
       consoleSpy.mockRestore();
     });
@@ -238,14 +238,14 @@ describe('server/hydration', () => {
 
     it('handles error during mounting and returns undefined', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       // Create a component that throws an error
       const ErrorComponent = () => {
         throw new Error('Mount error');
       };
 
       const result = hydrate(ErrorComponent, container);
-      
+
       expect(result).toBeUndefined();
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -253,7 +253,7 @@ describe('server/hydration', () => {
 
     it('ends hydration mode even when error occurs', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+
       // Create a component that throws an error
       const ErrorComponent = () => {
         throw new Error('Mount error');
@@ -261,7 +261,7 @@ describe('server/hydration', () => {
 
       // This should not throw - error is caught internally
       expect(() => hydrate(ErrorComponent, container)).not.toThrow();
-      
+
       consoleSpy.mockRestore();
     });
   });

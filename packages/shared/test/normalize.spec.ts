@@ -1,5 +1,4 @@
 import { describe, it } from 'vitest';
-import { normalizeProps } from '../../core/src';
 import {
   normalizeClassName,
   normalizeStyle,
@@ -51,10 +50,10 @@ describe('normalizeStyle', () => {
         { padding: '5px' },
       ]),
     ).toEqual({
-      'color': 'red',
-      'fontSize': '14px',
-      'margin': '10px',
-      'padding': '5px',
+      color: 'red',
+      fontSize: '14px',
+      margin: '10px',
+      padding: '5px',
     });
 
     // Deeply nested with empty arrays
@@ -108,9 +107,7 @@ describe('parseStyleString', () => {
   });
 
   it('handles values containing colons (data URIs)', () => {
-    expect(
-      parseStyleString('background-image: url(data:image/png;base64,iVBORw0KGgo=);'),
-    ).toEqual({
+    expect(parseStyleString('background-image: url(data:image/png;base64,iVBORw0KGgo=);')).toEqual({
       'background-image': 'url(data:image/png;base64,iVBORw0KGgo=)',
     });
   });
@@ -243,25 +240,5 @@ describe('normalizeClassName', () => {
   it('trims whitespace from string input', () => {
     expect(normalizeClassName('  foo  ')).toBe('foo');
     expect(normalizeClassName('  foo bar  ')).toBe('foo bar');
-  });
-});
-
-describe('normalizeProps', () => {
-  it('normalizes class and style', () => {
-    const props = {
-      class: ['foo', 'bar'],
-      style: [{ color: 'red' }, 'font-size: 14px'],
-      id: 'test',
-    };
-    const normalized = normalizeProps(props);
-    expect(normalized).toEqual({
-      class: 'foo bar',
-      style: { 'color': 'red', 'font-size': '14px' },
-      id: 'test',
-    });
-  });
-
-  it('returns null for null props', () => {
-    expect(normalizeProps(null)).toBeNull();
   });
 });

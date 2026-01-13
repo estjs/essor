@@ -46,7 +46,7 @@ describe('server/attrs', () => {
     });
 
     it('preserves other props unchanged', () => {
-      const props = { id: 'test', 'data-value': 123, class: ['a'] };
+      const props = { 'id': 'test', 'data-value': 123, 'class': ['a'] };
       const result = normalizeProps(props);
       expect(result?.id).toBe('test');
       expect(result?.['data-value']).toBe(123);

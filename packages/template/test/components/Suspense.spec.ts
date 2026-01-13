@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Suspense, isSuspense, SuspenseContext, type SuspenseContextType } from '../../src/components/Suspense';
+import {
+  Suspense,
+  SuspenseContext,
+  type SuspenseContextType,
+  isSuspense,
+} from '../../src/components/Suspense';
 import { inject } from '../../src/provide';
 import { createComponent } from '../../src/component';
 import { mount, unmount } from '../test-utils';
@@ -282,12 +287,12 @@ describe('suspense component', () => {
   });
 
   describe('suspense context increment/decrement', () => {
-    it('should show fallback when increment is called and show children when decrement reaches zero', async () => {
+    it('should show fallback when increment is called and show children when decrement reaches zero', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       // Create a child component that captures the suspense context
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         div.textContent = 'Child Content';
@@ -324,11 +329,11 @@ describe('suspense component', () => {
       expect(container.querySelector('.fallback')).toBeNull();
     });
 
-    it('should handle multiple increment/decrement calls', async () => {
+    it('should handle multiple increment/decrement calls', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -374,7 +379,7 @@ describe('suspense component', () => {
       });
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -416,7 +421,7 @@ describe('suspense component', () => {
       });
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -462,7 +467,7 @@ describe('suspense component', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -504,7 +509,7 @@ describe('suspense component', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -542,7 +547,7 @@ describe('suspense component', () => {
   });
 
   describe('cleanup on unmount', () => {
-    it('should clear container when component is destroyed', async () => {
+    it('should clear container when component is destroyed', () => {
       const app = () => {
         const content = document.createElement('div');
         content.className = 'content';
@@ -650,11 +655,11 @@ describe('suspense component', () => {
   });
 
   describe('fallback updates', () => {
-    it('should show fallback when showFallback is called multiple times', async () => {
+    it('should show fallback when showFallback is called multiple times', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'child-content';
         return div;
@@ -677,21 +682,21 @@ describe('suspense component', () => {
 
       // Call increment multiple times (each calls showFallback internally)
       suspenseCtx!.increment();
-      
+
       // Fallback should be shown
       expect(container.querySelector('.fallback')).not.toBeNull();
       expect(container.querySelector('.fallback')?.textContent).toBe('Loading...');
 
       // Calling increment again should not duplicate fallback
       suspenseCtx!.increment();
-      
+
       const fallbacks = container.querySelectorAll('.fallback');
       expect(fallbacks.length).toBe(1);
     });
   });
 
   describe('showChildren edge cases', () => {
-    it('should not show children when not in fallback mode', async () => {
+    it('should not show children when not in fallback mode', () => {
       const app = () => {
         const content = document.createElement('div');
         content.className = 'content';
@@ -740,11 +745,11 @@ describe('suspense component', () => {
       expect(container.querySelector('.fallback')).toBeNull();
     });
 
-    it('should show non-promise children when decrement is called', async () => {
+    it('should show non-promise children when decrement is called', () => {
       let suspenseCtx: SuspenseContextType | null = null;
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         const div = document.createElement('div');
         div.className = 'sync-child';
         return div;
@@ -775,7 +780,7 @@ describe('suspense component', () => {
   });
 
   describe('renderChildren edge cases', () => {
-    it('should handle null children in renderChildren', async () => {
+    it('should handle null children in renderChildren', () => {
       // This tests the early return in renderChildren when children is null
       const app = () => {
         return Suspense({
@@ -789,7 +794,7 @@ describe('suspense component', () => {
       expect(container.querySelector('div')).not.toBeNull();
     });
 
-    it('should handle component children with parentContext reparenting', async () => {
+    it('should handle component children with parentContext reparenting', () => {
       const ChildComponent = () => {
         const div = document.createElement('div');
         div.className = 'component-child';
@@ -818,7 +823,7 @@ describe('suspense component', () => {
       });
 
       const ChildComponent = () => {
-        suspenseCtx = inject(SuspenseContext, null) as SuspenseContextType;
+        suspenseCtx = inject(SuspenseContext, null) as unknown as SuspenseContextType;
         // Register a promise during render to trigger fallback mode
         if (suspenseCtx) {
           suspenseCtx.register(promise);

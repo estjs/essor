@@ -1,4 +1,4 @@
-import { isArray, isFunction, isString } from './is';
+import { isArray, isString } from './is';
 
 /**
  * Reference to Object.prototype.toString
@@ -149,4 +149,3 @@ export const getGlobalThis = (): unknown => {
               : {})
   );
 };
-

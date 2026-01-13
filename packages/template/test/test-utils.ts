@@ -1,6 +1,6 @@
 import babel from '@babel/core';
 import babelPlugin from 'babel-plugin-essor';
-import { createScope, runWithScope, disposeScope, type Scope } from '../src/scope';
+import { type Scope, createScope, disposeScope, runWithScope } from '../src/scope';
 
 /**
  * Mount a component to a container for testing

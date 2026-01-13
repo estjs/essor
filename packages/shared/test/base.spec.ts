@@ -2,7 +2,6 @@ import { _toString } from '../src/base';
 import {
   EMPTY_ARR,
   EMPTY_OBJ,
-  type ExcludeType,
   cacheStringFunction,
   coerceArray,
   extend,
@@ -47,8 +46,6 @@ describe('base Utils', () => {
       expect(fn('')).toBe('');
     });
   });
-
-
 
   describe('hasChanged', () => {
     const testCases = [
