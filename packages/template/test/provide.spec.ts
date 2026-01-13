@@ -1,9 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
 import { createComponent } from '../src/component';
 import { template } from '../src/renderer';
 import { insert } from '../src/binding';
 import { inject, provide } from '../src/provide';
+import { createScope, runWithScope, setActiveScope } from '../src/scope';
 
 describe('provide/Inject Update Regression', () => {
   let root: HTMLElement;
@@ -228,5 +229,186 @@ describe('provide/Inject Update Regression', () => {
     // Trigger update in Leaf
     updateSignal.value++;
     expect(root.textContent).toContain('Leaf:val1-val2-1');
+  });
+});
+
+describe('provide/inject edge cases', () => {
+  beforeEach(() => {
+    // Ensure no active scope before each test
+    setActiveScope(null);
+  });
+
+  afterEach(() => {
+    setActiveScope(null);
+  });
+
+  describe('inject default value fallback', () => {
+    it('should return default value when key is not found in scope hierarchy', () => {
+      const scope = createScope(null);
+      const key = Symbol('missing-key');
+
+      const result = runWithScope(scope, () => {
+        return inject(key, 'default-value');
+      });
+
+      expect(result).toBe('default-value');
+    });
+
+    it('should return undefined when key is not found and no default provided', () => {
+      const scope = createScope(null);
+      const key = Symbol('missing-key');
+
+      const result = runWithScope(scope, () => {
+        return inject(key);
+      });
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should return default value when scope has provides but key is missing', () => {
+      const scope = createScope(null);
+      const existingKey = Symbol('existing');
+      const missingKey = Symbol('missing');
+
+      const result = runWithScope(scope, () => {
+        provide(existingKey, 'existing-value');
+        return inject(missingKey, 'fallback');
+      });
+
+      expect(result).toBe('fallback');
+    });
+  });
+
+  describe('symbol key lookup', () => {
+    it('should find value with symbol key', () => {
+      const scope = createScope(null);
+      const symbolKey = Symbol('test-symbol');
+
+      const result = runWithScope(scope, () => {
+        provide(symbolKey, 'symbol-value');
+        return inject(symbolKey);
+      });
+
+      expect(result).toBe('symbol-value');
+    });
+
+    it('should find value with string key', () => {
+      const scope = createScope(null);
+
+      const result = runWithScope(scope, () => {
+        provide('string-key', 'string-value');
+        return inject('string-key');
+      });
+
+      expect(result).toBe('string-value');
+    });
+
+    it('should find value with number key', () => {
+      const scope = createScope(null);
+
+      const result = runWithScope(scope, () => {
+        provide(42, 'number-value');
+        return inject(42);
+      });
+
+      expect(result).toBe('number-value');
+    });
+  });
+
+  describe('provide/inject outside component', () => {
+    it('should return default value when inject is called without active scope', () => {
+      // Ensure no active scope
+      setActiveScope(null);
+
+      const result = inject(Symbol('key'), 'default');
+      expect(result).toBe('default');
+    });
+
+    it('should return undefined when inject is called without active scope and no default', () => {
+      setActiveScope(null);
+
+      const result = inject(Symbol('key'));
+      expect(result).toBeUndefined();
+    });
+
+    it('should not throw when provide is called without active scope', () => {
+      setActiveScope(null);
+
+      // Should not throw, just return early
+      expect(() => provide(Symbol('key'), 'value')).not.toThrow();
+    });
+  });
+
+  describe('nested provider shadowing', () => {
+    it('should use closest provider value when same key is provided at multiple levels', () => {
+      const parentScope = createScope(null);
+      const key = Symbol('shadowed-key');
+
+      const result = runWithScope(parentScope, () => {
+        provide(key, 'parent-value');
+
+        const childScope = createScope(parentScope);
+        return runWithScope(childScope, () => {
+          provide(key, 'child-value');
+          return inject(key);
+        });
+      });
+
+      expect(result).toBe('child-value');
+    });
+
+    it('should fall back to parent provider when child does not provide', () => {
+      const parentScope = createScope(null);
+      const key = Symbol('inherited-key');
+
+      const result = runWithScope(parentScope, () => {
+        provide(key, 'parent-value');
+
+        const childScope = createScope(parentScope);
+        return runWithScope(childScope, () => {
+          // Child does not provide, should inherit from parent
+          return inject(key);
+        });
+      });
+
+      expect(result).toBe('parent-value');
+    });
+
+    it('should traverse multiple levels to find provider', () => {
+      const rootScope = createScope(null);
+      const key = Symbol('deep-key');
+
+      const result = runWithScope(rootScope, () => {
+        provide(key, 'root-value');
+
+        const level1 = createScope(rootScope);
+        return runWithScope(level1, () => {
+          const level2 = createScope(level1);
+          return runWithScope(level2, () => {
+            const level3 = createScope(level2);
+            return runWithScope(level3, () => {
+              // Should find value from root
+              return inject(key);
+            });
+          });
+        });
+      });
+
+      expect(result).toBe('root-value');
+    });
+
+    it('should return default when no provider exists in hierarchy', () => {
+      const rootScope = createScope(null);
+      const key = Symbol('nonexistent-key');
+
+      const result = runWithScope(rootScope, () => {
+        const childScope = createScope(rootScope);
+        return runWithScope(childScope, () => {
+          return inject(key, 'default-fallback');
+        });
+      });
+
+      expect(result).toBe('default-fallback');
+    });
   });
 });

@@ -11,7 +11,6 @@ import {
   hasChanged,
   hasOwn,
   isBrowser,
-  isExclude,
   isOn,
   noop,
   startsWith,
@@ -49,44 +48,7 @@ describe('base Utils', () => {
     });
   });
 
-  describe('isExclude', () => {
-    const testCases = [
-      { key: 'a', exclude: ['a', 'b'], expected: true },
-      { key: 'c', exclude: ['a', 'b'], expected: false },
-      { key: 'test', exclude: (key: string | symbol) => key === 'test', expected: true },
-      { key: 'other', exclude: (key: string | symbol) => key === 'test', expected: false },
-      { key: 'test', exclude: undefined, expected: false },
-      { key: 'test', exclude: [], expected: false },
-    ];
 
-    testCases.forEach(({ key, exclude, expected }) => {
-      it(`should return ${expected} for key '${String(key)}' with exclude ${JSON.stringify(exclude)}`, () => {
-        expect(isExclude(key, exclude as ExcludeType)).toBe(expected);
-      });
-    });
-
-    it('should handle symbol keys with array exclude', () => {
-      const sym = Symbol('test');
-      expect(isExclude(sym, [sym])).toBe(true);
-      expect(isExclude(sym, [])).toBe(false);
-    });
-
-    it('should handle symbol keys with function exclude', () => {
-      const sym = Symbol('test');
-      expect(isExclude(sym, key => key === sym)).toBe(true);
-      expect(isExclude(sym, key => key !== sym)).toBe(false);
-    });
-
-    it('should return false for invalid exclude types', () => {
-      // Test with non-array, non-function exclude values
-      // @ts-expect-error - testing invalid input
-      expect(isExclude('test', 'invalid')).toBe(false);
-      // @ts-expect-error - testing invalid input
-      expect(isExclude('test', 123)).toBe(false);
-      // @ts-expect-error - testing invalid input
-      expect(isExclude('test', {})).toBe(false);
-    });
-  });
 
   describe('hasChanged', () => {
     const testCases = [

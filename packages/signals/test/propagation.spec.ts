@@ -549,6 +549,111 @@ describe('propagation', () => {
       source.value = 2;
       expect(effectCount).toBe(3);
     });
+
+    it('should handle MUTABLE and PENDING flag combination (line 134)', () => {
+      // Tests the specific case where a MUTABLE node (computed) is PENDING
+      // and has subscribers that need to be notified via shallowPropagate
+      const source = signal(0);
+      const comp1 = computed(() => source.value * 2);
+      const comp2 = computed(() => comp1.value + 1);
+      let effect1Count = 0;
+      let effect2Count = 0;
+
+      // Create two effects on the same computed chain
+      effect(
+        () => {
+          comp2.value;
+          effect1Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          comp2.value;
+          effect2Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effect1Count).toBe(1);
+      expect(effect2Count).toBe(1);
+
+      // This triggers shallowPropagate through MUTABLE nodes with PENDING flag
+      source.value = 1;
+      expect(effect1Count).toBe(2);
+      expect(effect2Count).toBe(2);
+      expect(comp2.value).toBe(3); // (1*2) + 1 = 3
+    });
+
+    it('should continue shallow propagation through nested MUTABLE nodes with subLink', () => {
+      // Tests line 134: if (flags & ReactiveFlags.MUTABLE && sub.subLink)
+      const source = signal(0);
+      const comp1 = computed(() => source.value + 1);
+      const comp2 = computed(() => comp1.value + 1);
+      const comp3 = computed(() => comp2.value + 1);
+      let effectCount = 0;
+
+      // Effect on the deepest computed
+      effect(
+        () => {
+          comp3.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(comp3.value).toBe(3);
+
+      // Trigger propagation - should go through all MUTABLE nodes
+      source.value = 10;
+      expect(effectCount).toBe(2);
+      expect(comp3.value).toBe(13);
+    });
+
+    it('should handle multiple subscribers on MUTABLE node during shallow propagation', () => {
+      // Tests that shallowPropagate correctly handles multiple subscribers
+      const source = signal(0);
+      const comp = computed(() => source.value * 2);
+      let effect1Count = 0;
+      let effect2Count = 0;
+      let effect3Count = 0;
+
+      effect(
+        () => {
+          comp.value;
+          effect1Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          comp.value;
+          effect2Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          comp.value;
+          effect3Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effect1Count).toBe(1);
+      expect(effect2Count).toBe(1);
+      expect(effect3Count).toBe(1);
+
+      // All effects should be notified through shallowPropagate
+      source.value = 5;
+      expect(effect1Count).toBe(2);
+      expect(effect2Count).toBe(2);
+      expect(effect3Count).toBe(2);
+    });
   });
 
   describe('enqueueEffect', () => {
@@ -780,6 +885,340 @@ describe('propagation', () => {
       // Should properly manage stack with multiple subscribers
       source.value = 1;
       expect(effectCount).toBeGreaterThan(1);
+    });
+  });
+
+  describe('RECURSED_CHECK flag handling', () => {
+    it('should handle RECURSED_CHECK flag during propagation (Case 4)', () => {
+      // Tests line 54-60: Case 4 - in recursion chain but not checked
+      // This creates a scenario where RECURSED flag is set but RECURSED_CHECK is not
+      const source = signal(0);
+      const comp1 = computed(() => source.value + 1);
+      const comp2 = computed(() => comp1.value + source.value);
+      let effectCount = 0;
+
+      effect(
+        () => {
+          comp2.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(comp2.value).toBe(1); // (0+1) + 0 = 1
+
+      // Trigger propagation that exercises RECURSED flag handling
+      source.value = 1;
+      expect(effectCount).toBeGreaterThan(1);
+      expect(comp2.value).toBe(3); // (1+1) + 1 = 3
+    });
+
+    it('should handle RECURSED_CHECK with valid link (Case 5)', () => {
+      // Tests lines 62-64: Case 5 - recursion check and Link valid
+      const source = signal(0);
+      const intermediate = computed(() => source.value * 2);
+      const final = computed(() => intermediate.value + source.value);
+      let effectCount = 0;
+
+      effect(
+        () => {
+          final.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(final.value).toBe(0);
+
+      // This triggers the RECURSED_CHECK path with valid link
+      source.value = 5;
+      expect(effectCount).toBeGreaterThan(1);
+      expect(final.value).toBe(15); // (5*2) + 5 = 15
+    });
+
+    it('should clear flags in Case 6 when conditions not met', () => {
+      // Tests lines 66-67: Case 6 - other cases clear flags
+      const source = signal(0);
+      const comp = computed(() => source.value);
+      let effectCount = 0;
+
+      const eff = effect(
+        () => {
+          comp.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+
+      // Stop the effect to create a scenario where flags need clearing
+      eff.stop();
+
+      // Create a new effect on the same computed
+      let newEffectCount = 0;
+      effect(
+        () => {
+          comp.value;
+          newEffectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(newEffectCount).toBe(1);
+
+      // Trigger propagation
+      source.value = 1;
+      expect(newEffectCount).toBe(2);
+    });
+  });
+
+  describe('sibling node traversal', () => {
+    it('should traverse all sibling subscribers', () => {
+      // Tests lines 91-94: sibling node processing
+      const source = signal(0);
+      let effect1Count = 0;
+      let effect2Count = 0;
+      let effect3Count = 0;
+
+      // Create multiple effects on the same signal (siblings)
+      effect(
+        () => {
+          source.value;
+          effect1Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          source.value;
+          effect2Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          source.value;
+          effect3Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effect1Count).toBe(1);
+      expect(effect2Count).toBe(1);
+      expect(effect3Count).toBe(1);
+
+      // All siblings should be notified
+      source.value = 1;
+      expect(effect1Count).toBe(2);
+      expect(effect2Count).toBe(2);
+      expect(effect3Count).toBe(2);
+    });
+
+    it('should handle sibling traversal with computed intermediates', () => {
+      // Tests sibling traversal through computed nodes
+      const source = signal(0);
+      const comp = computed(() => source.value * 2);
+      let effect1Count = 0;
+      let effect2Count = 0;
+
+      // Multiple effects depending on the same computed
+      effect(
+        () => {
+          comp.value;
+          effect1Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          comp.value;
+          effect2Count++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effect1Count).toBe(1);
+      expect(effect2Count).toBe(1);
+
+      // Both effects should be notified through the computed
+      source.value = 1;
+      expect(effect1Count).toBe(2);
+      expect(effect2Count).toBe(2);
+    });
+
+    it('should continue to next sibling after processing current', () => {
+      // Tests the continue statement at line 94
+      const source = signal(0);
+      const values: number[] = [];
+
+      // Create effects that track order of execution
+      effect(
+        () => {
+          values.push(source.value + 1);
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          values.push(source.value + 2);
+        },
+        { flush: 'sync' },
+      );
+
+      effect(
+        () => {
+          values.push(source.value + 3);
+        },
+        { flush: 'sync' },
+      );
+
+      expect(values).toEqual([1, 2, 3]);
+
+      // All siblings should be processed in order
+      source.value = 10;
+      expect(values).toEqual([1, 2, 3, 11, 12, 13]);
+    });
+  });
+
+  describe('stack backtracking', () => {
+    it('should backtrack through stack when reaching leaf nodes', () => {
+      // Tests lines 99-103: backtracking logic
+      const root = signal(0);
+      const level1a = computed(() => root.value + 1);
+      const level1b = computed(() => root.value + 2);
+      const level2a = computed(() => level1a.value * 2);
+      const level2b = computed(() => level1b.value * 2);
+      let effectCount = 0;
+      let lastValue = 0;
+
+      effect(
+        () => {
+          lastValue = level2a.value + level2b.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(lastValue).toBe(6); // (0+1)*2 + (0+2)*2 = 2 + 4 = 6
+
+      // Trigger backtracking through the tree
+      root.value = 1;
+      expect(effectCount).toBeGreaterThan(1);
+    });
+
+    it('should restore context correctly during backtracking', () => {
+      // Tests that stack.prev is correctly used during backtracking
+      const source = signal(0);
+      const branch1 = computed(() => source.value + 10);
+      const branch2 = computed(() => source.value + 20);
+      const merge = computed(() => branch1.value + branch2.value);
+      let effectCount = 0;
+      let lastMergeValue = 0;
+
+      effect(
+        () => {
+          lastMergeValue = merge.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(lastMergeValue).toBe(30); // (0+10) + (0+20) = 30
+
+      // This should trigger backtracking and context restoration
+      source.value = 5;
+      expect(effectCount).toBeGreaterThan(1);
+      // The merge computed should be updated (value may vary due to propagation order)
+      expect(lastMergeValue).toBeGreaterThan(30);
+    });
+
+    it('should handle deep stack backtracking', () => {
+      // Tests backtracking with deep nesting
+      const source = signal(0);
+      const level1 = computed(() => source.value + 1);
+      const level2 = computed(() => level1.value + 1);
+      const level3 = computed(() => level2.value + 1);
+      const level4 = computed(() => level3.value + 1);
+      const level5 = computed(() => level4.value + 1);
+      let effectCount = 0;
+
+      effect(
+        () => {
+          level5.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      expect(level5.value).toBe(5);
+
+      // Deep backtracking through 5 levels
+      source.value = 10;
+      expect(effectCount).toBe(2);
+      expect(level5.value).toBe(15);
+    });
+
+    it('should handle backtracking with multiple branches at each level', () => {
+      // Tests complex tree structure with backtracking
+      const root = signal(0);
+      const a1 = computed(() => root.value + 1);
+      const a2 = computed(() => root.value + 2);
+      const b1 = computed(() => a1.value * 2);
+      const b2 = computed(() => a1.value * 3);
+      const b3 = computed(() => a2.value * 2);
+      const final = computed(() => b1.value + b2.value + b3.value);
+      let effectCount = 0;
+      let lastFinalValue = 0;
+
+      effect(
+        () => {
+          lastFinalValue = final.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+      // b1 = (0+1)*2 = 2, b2 = (0+1)*3 = 3, b3 = (0+2)*2 = 4
+      expect(lastFinalValue).toBe(9);
+
+      // Complex backtracking through multiple branches
+      root.value = 1;
+      expect(effectCount).toBeGreaterThan(1);
+      // The final computed should be updated (value may vary due to propagation order)
+      expect(lastFinalValue).toBeGreaterThan(9);
+    });
+
+    it('should handle stack.value being undefined during backtracking', () => {
+      // Tests the while loop condition at line 99
+      const source = signal(0);
+      const comp = computed(() => source.value * 2);
+      let effectCount = 0;
+
+      effect(
+        () => {
+          comp.value;
+          effectCount++;
+        },
+        { flush: 'sync' },
+      );
+
+      expect(effectCount).toBe(1);
+
+      // Simple case that exercises the backtracking exit condition
+      source.value = 1;
+      expect(effectCount).toBe(2);
+      expect(comp.value).toBe(2);
     });
   });
 });

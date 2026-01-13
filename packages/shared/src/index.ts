@@ -6,14 +6,12 @@ export {
   coerceArray,
   hasOwn,
   startsWith,
-  isExclude,
   isOn,
   generateUniqueId,
   isBrowser,
   cacheStringFunction,
   EMPTY_OBJ,
   EMPTY_ARR,
-  ExcludeType,
   getGlobalThis,
 } from './base';
 

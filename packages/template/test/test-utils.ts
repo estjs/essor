@@ -1,6 +1,6 @@
 import babel from '@babel/core';
 import babelPlugin from 'babel-plugin-essor';
-import { createScope, runWithScope } from '../src/scope';
+import { createScope, runWithScope, disposeScope, type Scope } from '../src/scope';
 
 /**
  * Mount a component to a container for testing
@@ -40,10 +40,20 @@ export function transform(code: string, opts): string {
  * Mount a component to a container for testing
  * @param componentFn - Component function to mount
  * @param container - Container element to mount into
+ * @returns The scope for cleanup
  */
-export function mount(componentFn: () => any, container: HTMLElement): void {
+export function mount(componentFn: () => any, container: HTMLElement): Scope {
   const scope = createScope(null);
   runWithScope(scope, () => {
     insert(container, componentFn);
   });
+  return scope;
+}
+
+/**
+ * Unmount a component by disposing its scope
+ * @param scope - The scope returned from mount
+ */
+export function unmount(scope: Scope): void {
+  disposeScope(scope);
 }

@@ -150,17 +150,3 @@ export const getGlobalThis = (): unknown => {
   );
 };
 
-export type ExcludeType = ((key: string | symbol) => boolean) | (string | symbol)[];
-
-/**
- * Checks if a key should be excluded
- * @param {string | symbol} key - The key to check
- * @param {ExcludeType} [exclude] - The exclusion condition, can be a function or array
- * @returns {boolean} - Returns true if the key should be excluded, false otherwise
- */
-export function isExclude(key: string | symbol, exclude?: ExcludeType): boolean {
-  if (!exclude) {
-    return false;
-  }
-  return isArray(exclude) ? exclude.includes(key) : isFunction(exclude) ? exclude(key) : false;
-}
