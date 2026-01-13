@@ -1,6 +1,6 @@
 {
   "name": "@estjs/server",
-  "version": "0.0.1",
+  "version": "0.0.15-beta.9",
   "description": "Server-side rendering for Essor framework",
   "type": "module",
   "keywords": [
