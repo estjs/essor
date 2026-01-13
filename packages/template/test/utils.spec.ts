@@ -5,18 +5,13 @@ import { setNodeKey } from '../src/key';
 import {
   getFirstDOMNode,
   insertNode,
-  isHtmLTextElement,
-  isHtmlFormElement,
-  isHtmlInputElement,
-  isHtmlSelectElement,
-  isHtmlTextAreaElement,
   isSameNode,
   normalizeNode,
   omitProps,
   removeNode,
   replaceNode,
   shallowCompare,
-} from '../src/utils';
+} from '../src/';
 import { createTestRoot, resetEnvironment } from './test-utils';
 
 describe('node-operations', () => {
@@ -379,53 +374,6 @@ describe('isSameNode', () => {
     const text2 = document.createTextNode('b');
 
     expect(isSameNode(text1, text2)).toBe(true);
-  });
-});
-
-describe('hTML element type guards', () => {
-  it('should identify HTMLInputElement', () => {
-    const input = document.createElement('input');
-    const div = document.createElement('div');
-
-    expect(isHtmlInputElement(input)).toBe(true);
-    expect(isHtmlInputElement(div)).toBe(false);
-    expect(isHtmlInputElement(null)).toBe(false);
-  });
-
-  it('should identify HTMLSelectElement', () => {
-    const select = document.createElement('select');
-    const div = document.createElement('div');
-
-    expect(isHtmlSelectElement(select)).toBe(true);
-    expect(isHtmlSelectElement(div)).toBe(false);
-    expect(isHtmlSelectElement(null)).toBe(false);
-  });
-
-  it('should identify HTMLTextAreaElement', () => {
-    const textarea = document.createElement('textarea');
-    const div = document.createElement('div');
-
-    expect(isHtmlTextAreaElement(textarea)).toBe(true);
-    expect(isHtmlTextAreaElement(div)).toBe(false);
-    expect(isHtmlTextAreaElement(null)).toBe(false);
-  });
-
-  it('should identify HTMLFormElement', () => {
-    const form = document.createElement('form');
-    const div = document.createElement('div');
-
-    expect(isHtmlFormElement(form)).toBe(true);
-    expect(isHtmlFormElement(div)).toBe(false);
-    expect(isHtmlFormElement(null)).toBe(false);
-  });
-
-  it('should identify Text node', () => {
-    const text = document.createTextNode('text');
-    const div = document.createElement('div');
-
-    expect(isHtmLTextElement(text)).toBe(true);
-    expect(isHtmLTextElement(div)).toBe(false);
-    expect(isHtmLTextElement(null)).toBe(false);
   });
 });
 

@@ -4,7 +4,8 @@ import { type Scope, createScope, disposeScope, getActiveScope, runWithScope } f
 import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
 import { addEventListener, insert } from './binding';
 import { getComponentKey, normalizeKey } from './key';
-import { getFirstDOMNode, insertNode, removeNode, shallowCompare } from './utils';
+import { getFirstDOMNode, insertNode, removeNode } from './utils/dom';
+import { shallowCompare } from './utils/node';
 import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
 

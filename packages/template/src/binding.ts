@@ -1,18 +1,25 @@
-import { coerceArray, isFunction } from '@estjs/shared';
-import { effect } from '@estjs/signals';
 import {
+  coerceArray,
+  isFunction,
   isHtmlInputElement,
   isHtmlSelectElement,
   isHtmlTextAreaElement,
-  normalizeNode,
-  removeNode,
-} from './utils';
+} from '@estjs/shared';
+import { effect } from '@estjs/signals';
+import { normalizeNode } from './utils/node';
+import { removeNode } from './utils/dom';
 import { patchChildren } from './patch';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { isHydrating } from './shared';
+import { isHydrating } from './utils/shared';
 import type { AnyNode } from './types';
+
 /**
  * Add event listener with automatic cleanup on scope destruction
+ *
+ * @param element - Element to attach listener to
+ * @param event - Event name
+ * @param handler - Event handler function
+ * @param options - Event listener options
  */
 export function addEventListener(
   element: Element,
@@ -22,149 +29,162 @@ export function addEventListener(
 ): void {
   element.addEventListener(event, handler, options);
 
-  // Register cleanup in current scope using onCleanup
   onCleanup(() => {
     element.removeEventListener(event, handler, options);
   });
 }
 
 /**
- * Bind an element to a setter function, allowing the element to update the setter value when its value changes.
+ * Bind an element to a setter function for two-way data binding
  *
- * @param node The element to bind.
- * @param setter The setter function to call when the element's value changes.
+ * @param node - The element to bind
+ * @param key - The property key (unused, kept for API compatibility)
+ * @param defaultValue - Default value (unused, kept for API compatibility)
+ * @param setter - The setter function to call when the element's value changes
  */
-export function bindElement(node: Element, key, defaultValue, setter: (value: unknown) => void) {
+export function bindElement(
+  node: Element,
+  key: string,
+  defaultValue: unknown,
+  setter: (value: unknown) => void,
+): void {
   if (isHtmlInputElement(node)) {
-    switch (node.type) {
-      case 'checkbox':
-        addEventListener(node, 'change', () => {
-          setter(Boolean(node.checked));
-        });
-        break;
-
-      case 'radio':
-        addEventListener(node, 'change', () => {
-          setter(node.checked ? node.value : '');
-        });
-        break;
-
-      case 'file':
-        addEventListener(node, 'change', () => {
-          setter(node.files);
-        });
-        break;
-
-      case 'number':
-      case 'range':
-        addEventListener(node, 'input', () => {
-          setter(node.value || '');
-        });
-        break;
-
-      case 'date':
-      case 'datetime-local':
-      case 'month':
-      case 'time':
-      case 'week':
-        addEventListener(node, 'change', () => {
-          setter(node.value || '');
-        });
-        break;
-
-      default:
-        // text, email, password, search, tel, url, etc.
-        addEventListener(node, 'input', () => {
-          setter(node.value);
-        });
-        break;
-    }
+    bindInputElement(node, setter);
   } else if (isHtmlSelectElement(node)) {
-    addEventListener(node, 'change', () => {
-      if (node.multiple) {
-        const values = Array.from(node.options)
-          .filter(option => option.selected)
-          .map(option => option.value);
-        setter(values);
-      } else {
-        setter(node.value);
-      }
-    });
+    bindSelectElement(node, setter);
   } else if (isHtmlTextAreaElement(node)) {
     addEventListener(node, 'input', () => {
-      setter(node.value);
+      setter((node as HTMLTextAreaElement).value);
     });
   }
 }
 
 /**
- * Reactive node insertion with binding support
- *
- * @param parent Parent node
- * @param nodeFactory Node factory function or static node
- * @param before Reference node for insertion position
- *
- * @example
- * ```typescript
- * insert(container, () => message.value, null);
- * insert(container, staticElement, referenceNode);
- * insert(container, "Hello World", null); // Direct string support
- * ```
+ * Bind input element based on its type
  */
-export interface InsertOptions {
-  preserveOnCleanup?: boolean;
+function bindInputElement(node: HTMLInputElement, setter: (value: unknown) => void): void {
+  switch (node.type) {
+    case 'checkbox':
+      addEventListener(node, 'change', () => {
+        setter(Boolean(node.checked));
+      });
+      break;
+
+    case 'radio':
+      addEventListener(node, 'change', () => {
+        setter(node.checked ? node.value : '');
+      });
+      break;
+
+    case 'file':
+      addEventListener(node, 'change', () => {
+        setter(node.files);
+      });
+      break;
+
+    case 'number':
+    case 'range':
+      addEventListener(node, 'input', () => {
+        setter(node.value || '');
+      });
+      break;
+
+    case 'date':
+    case 'datetime-local':
+    case 'month':
+    case 'time':
+    case 'week':
+      addEventListener(node, 'change', () => {
+        setter(node.value || '');
+      });
+      break;
+
+    default:
+      // text, email, password, search, tel, url, etc.
+      addEventListener(node, 'input', () => {
+        setter(node.value);
+      });
+      break;
+  }
+}
+
+/**
+ * Bind select element
+ */
+function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => void): void {
+  addEventListener(node, 'change', () => {
+    if (node.multiple) {
+      const values = Array.from(node.options)
+        .filter(option => option.selected)
+        .map(option => option.value);
+      setter(values);
+    } else {
+      setter(node.value);
+    }
+  });
+}
+
+let isFirstRun = true;
+/**
+ * Execute reactive update within the appropriate scope
+ */
+function executeReactiveUpdate(
+  ownerScope: Scope | null,
+  parent: Node,
+  nodeFactory: AnyNode,
+  before: Node | undefined,
+  renderedNodes: AnyNode[],
+): AnyNode[] {
+  const executeUpdate = () => {
+    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+    const nodes = coerceArray(rawNodes as unknown)
+      .map(item => (isFunction(item) ? item() : item))
+      .flatMap(i => i)
+      .map(normalizeNode) as AnyNode[];
+
+    // Hydration mode: skip DOM operations on first run
+    // but still execute nodeFactory() to collect dependencies
+    if (isFirstRun && isHydrating()) {
+      isFirstRun = false;
+      return renderedNodes;
+    }
+
+    return patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+  };
+
+  // If we have an owner scope, run within it to maintain context hierarchy
+  if (ownerScope && !ownerScope.isDestroyed) {
+    return runWithScope(ownerScope, executeUpdate);
+  }
+  return executeUpdate();
 }
 
 /**
  * Reactive node insertion with binding support
  *
- * @param parent Parent node
- * @param nodeFactory Node factory function or static node
- * @param before Reference node for insertion position
- * @param options Insertion options
+ * @param parent - Parent node
+ * @param nodeFactory - Node factory function or static node
+ * @param before - Reference node for insertion position
+ * @returns Array of rendered nodes
  *
  * @example
  * ```typescript
  * insert(container, () => message.value, null);
  * insert(container, staticElement, referenceNode);
- * insert(container, "Hello World", null); // Direct string support
+ * insert(container, "Hello World", null);
  * ```
  */
-export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
+export function insert(parent: Node, nodeFactory: AnyNode, before?: Node): AnyNode[] | undefined {
   if (!parent) return;
-  // Capture owner scope at call time - this is critical for correct context inheritance
-  // When dynamic components are created inside effects, they need to inherit from
-  // the scope that was active when insert() was called, not when the effect runs
+
+  // Capture owner scope at call time - critical for correct context inheritance
   const ownerScope: Scope | null = getActiveScope();
 
   let renderedNodes: AnyNode[] = [];
-  // Track if this is the first run (for hydration)
-  let isFirstRun = true;
 
-  // Track if this is the first run (for hydration)
   // Create effect for reactive updates
   const cleanup = effect(() => {
-    const executeUpdate = () => {
-      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-      const nodes = coerceArray(rawNodes as unknown)
-        .map(item => (isFunction(item) ? item() : item))
-        .flatMap(i => i)
-        .map(normalizeNode) as AnyNode[];
-      // Hydration mode: skip DOM operations on first run
-      // but still execute nodeFactory() to collect dependencies
-      if (isFirstRun && isHydrating()) {
-        isFirstRun = false;
-        return;
-      }
-      renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
-    };
-
-    // If we have an owner scope, run within it to maintain context hierarchy
-    if (ownerScope && !ownerScope.isDestroyed) {
-      runWithScope(ownerScope, executeUpdate);
-    } else {
-      executeUpdate();
-    }
+    renderedNodes = executeReactiveUpdate(ownerScope, parent, nodeFactory, before, renderedNodes);
   });
 
   onCleanup(() => {
@@ -175,13 +195,18 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
 
   return renderedNodes;
 }
+
 /**
  * Map nodes from template by indexes
+ *
+ * @param template - Template node to traverse
+ * @param indexes - Array of indexes to map
+ * @returns Array of mapped nodes
  */
 export function mapNodes(template: Node, indexes: number[]): Node[] {
   const len = indexes.length;
-  const tree = new Array<Node>(len); // Pre-allocate with exact size
-  const indexSet = new Set(indexes); // O(1) lookup
+  const tree = new Array<Node>(len);
+  const indexSet = new Set(indexes);
 
   let index = 1;
   let found = 0;
@@ -190,14 +215,14 @@ export function mapNodes(template: Node, indexes: number[]): Node[] {
     if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
       if (indexSet.has(index)) {
         tree[found++] = node;
-        if (found === len) return true; // Early exit when all nodes found
+        if (found === len) return true;
       }
       index++;
     }
 
     let child = node.firstChild;
     while (child) {
-      if (walk(child)) return true; // Propagate early exit
+      if (walk(child)) return true;
       child = child.nextSibling;
     }
 

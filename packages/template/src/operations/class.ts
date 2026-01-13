@@ -1,5 +1,5 @@
-import { isArray, isObject } from '@estjs/shared';
-import { isHydrating } from '../shared';
+import { normalizeClassName } from '@estjs/shared';
+import { isHydrating } from '../utils/shared';
 
 /**
  * Type definition for class values
@@ -48,47 +48,12 @@ export function patchClass(
 
 /**
  * Normalizes different class value formats into a single string
+ * Re-exports normalizeClassName from shared as normalizeClass for backward compatibility
  *
  * @param value - The class value to normalize
  * @returns A normalized class string
  * @public
  */
 export function normalizeClass(value: unknown): string {
-  if (value == null) {
-    return '';
-  }
-
-  if (typeof value === 'string') {
-    return value.trim();
-  }
-
-  // Handle arrays
-  if (isArray(value)) {
-    return value.map(normalizeClass).filter(Boolean).join(' ');
-  }
-
-  // Handle objects (conditional classes)
-  if (isObject(value)) {
-    // Pre-count true values for efficient array allocation
-    let count = 0;
-    for (const key in value) {
-      if (value[key]) count++;
-    }
-
-    if (count === 0) return '';
-
-    const result: string[] = new Array(count);
-    let index = 0;
-
-    for (const key in value) {
-      if (value[key]) {
-        result[index++] = key;
-      }
-    }
-
-    return result.join(' ');
-  }
-
-  // Convert other types to string
-  return String(value).trim();
+  return normalizeClassName(value);
 }

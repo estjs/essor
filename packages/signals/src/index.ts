@@ -1,4 +1,3 @@
-// ==================== Signal API ====================
 export {
   signal,
   shallowSignal,
@@ -8,7 +7,6 @@ export {
   SignalType,
 } from './signal';
 
-// ==================== Effect API ====================
 export {
   effect,
   memoEffect,
@@ -22,7 +20,6 @@ export {
   type MemoEffectFn,
 } from './effect';
 
-// ==================== Computed API ====================
 export {
   computed,
   isComputed,
@@ -33,7 +30,6 @@ export {
   type ComputedType,
 } from './computed';
 
-// ==================== Reactive API ====================
 export {
   reactive,
   shallowReactive,
@@ -44,10 +40,8 @@ export {
   type Reactive,
 } from './reactive';
 
-// ==================== Batch API ====================
 export { batch, startBatch, endBatch, isBatching, getBatchDepth } from './batch';
 
-// ==================== Scheduler API ====================
 export {
   nextTick,
   queueJob,
@@ -57,16 +51,11 @@ export {
   type FlushTiming,
 } from './scheduler';
 
-// ==================== Tracking & Debugging API ====================
 export { untrack, trigger, type DebuggerEvent, type DebuggerEventType } from './link';
 export { TriggerOpTypes } from './constants';
 
-// ==================== Type Utilities ====================
-
 export { createStore, type StoreOptions, type StoreActions } from './store';
 
-// ==================== Ref API ====================
 export { Ref, isRef, ref } from './ref';
 
-// ==================== Watch API ====================
 export { watch } from './watch';

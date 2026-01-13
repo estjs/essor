@@ -1,5 +1,5 @@
 import { camelCase, capitalize, isArray, isObject, isString } from '@estjs/shared';
-import { isHydrating } from '../shared';
+import { isHydrating } from '../utils/shared';
 
 /**
  * Symbol for storing CSS variable text in style objects

@@ -1,10 +1,11 @@
 import { isArray, isPromise, isUndefined, warn } from '@estjs/shared';
 import { provide } from '../provide';
 import { isComponent } from '../component';
-import { insertNode, normalizeNode } from '../utils';
+import { normalizeNode } from '../utils/node';
 import { COMPONENT_TYPE } from '../constants';
 import { onDestroy } from '../lifecycle';
 import { getActiveScope } from '../scope';
+import { insertNode } from '../utils/dom';
 import type { AnyNode } from '../types';
 
 export interface SuspenseProps {

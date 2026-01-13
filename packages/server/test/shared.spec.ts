@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addAttributes, convertToString, getHydrationKey, resetHydrationKey } from '../src/shared';
+import { addAttributes, convertToString, getHydrationKey, resetHydrationKey } from '../src/utils';
 
-describe('server/shared', () => {
+describe('server/ssr-utils', () => {
   describe('hydration key', () => {
     it('generates sequential keys', () => {
       resetHydrationKey();

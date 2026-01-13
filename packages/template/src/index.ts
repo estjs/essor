@@ -10,7 +10,16 @@ export { addEventListener, bindElement, insert, mapNodes } from './binding';
 
 export { delegateEvents } from './events';
 
-export { omitProps } from './utils';
+// Props utilities
+export { omitProps } from './utils/props';
+
+// DOM utilities
+export { removeNode, insertNode, replaceNode, getFirstDOMNode } from './utils/dom';
+
+// Node utilities
+export { normalizeNode, isSameNode, shallowCompare } from './utils/node';
+
+export { isHydrating, startHydration, endHydration } from './utils/shared';
 
 export {
   patchClass,
@@ -20,6 +29,7 @@ export {
   patchAttr,
   addEvent,
 } from './operations';
+
 export {
   Fragment,
   FragmentProps,
@@ -32,6 +42,7 @@ export {
   isSuspense,
   createResource,
 } from './components';
+
 export { ComponentProps, ComponentFn } from './types';
 
 export {
@@ -43,6 +54,3 @@ export {
   setActiveScope,
   onCleanup,
 } from './scope';
-
-// shared hydration status, used by the server and client
-export { startHydration, endHydration, isHydrating } from './shared';

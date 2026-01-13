@@ -11,15 +11,10 @@ import {
 } from './signals/symbol';
 import type { PluginState } from './types';
 
-// ============================================
-// Virtual module path - unified use of virtual:essor-hmr
-// ============================================
 function getHmrModulePath(): string {
   return '/@essor-refresh';
 }
-// ============================================
-// Create import identifier
-// ============================================
+
 export function createImportIdentifier(path: babel.NodePath, importName: string): t.Identifier {
   const source = getHmrModulePath();
   const program = path.scope.getProgramParent().path as babel.NodePath<t.Program>;

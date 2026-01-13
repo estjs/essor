@@ -2,9 +2,9 @@ export { render, createSSGComponent, renderToString } from './render';
 
 export { hydrate, mapSSRNodes, getRenderedElement } from './hydration';
 
-export { setSSGAttr } from './attrs';
+export { setSSGAttr, normalizeProps } from './attrs';
 
-export { convertToString, addAttributes, getHydrationKey, resetHydrationKey } from './shared';
+export { convertToString, addAttributes, getHydrationKey, resetHydrationKey } from './utils';
 
 export { escapeHTML } from '@estjs/shared';
 

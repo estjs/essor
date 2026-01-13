@@ -6,7 +6,7 @@ import {
   disposeScope,
   runWithScope,
 } from '@estjs/template';
-import { addAttributes, convertToString, resetHydrationKey } from './shared';
+import { addAttributes, convertToString, resetHydrationKey } from './utils';
 
 /**
  * Render a component to HTML string
@@ -47,11 +47,6 @@ export function renderToString(component: ComponentFn, props: ComponentProps = {
  * @returns {string} the rendered HTML string
  */
 export function render(templates: string[], hydrationKey: string, ...components: string[]): string {
-  // Rendered content
-  let content = '';
-  // Index for components
-  let index = 0;
-
   /**
    * JSX source code:
    * <div>
@@ -79,22 +74,22 @@ export function render(templates: string[], hydrationKey: string, ...components:
    * }
    */
 
-  // Map different templates
-  for (const template of templates) {
-    content += template;
-    // Render component
-    if (index < components.length) {
-      const component = components[index++];
-      if (component) {
-        content += convertToString(component);
-      }
+  // Build content using array join for better performance
+  const parts: string[] = [];
+  const templateLen = templates.length;
+  const componentLen = components.length;
+
+  for (let i = 0; i < templateLen; i++) {
+    parts.push(templates[i]);
+    if (i < componentLen && components[i]) {
+      parts.push(convertToString(components[i]));
     }
   }
 
-  // Add hydration key attribute
-  const result = addAttributes(content, hydrationKey);
+  const content = parts.join('');
 
-  return result;
+  // Add hydration key attribute
+  return addAttributes(content, hydrationKey);
 }
 
 /**

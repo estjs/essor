@@ -1,7 +1,9 @@
+/** Whether hydration is currently active */
 let isHydrationActive = false;
 
 /**
  * Start hydration mode
+ * Called when beginning client-side hydration of server-rendered content
  */
 export function startHydration(): void {
   isHydrationActive = true;
@@ -9,6 +11,7 @@ export function startHydration(): void {
 
 /**
  * End hydration mode
+ * Called when hydration is complete
  */
 export function endHydration(): void {
   isHydrationActive = false;
@@ -16,7 +19,7 @@ export function endHydration(): void {
 
 /**
  * Check if hydration is currently active
- * @returns {boolean} true if hydration is active, false otherwise
+ * @returns true if hydration is in progress
  */
 export function isHydrating(): boolean {
   return isHydrationActive;

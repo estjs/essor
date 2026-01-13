@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getRenderedElement, hydrate, mapSSRNodes } from '../src/hydration';
-import { getHydrationKey, resetHydrationKey } from '../src/shared';
+import { getHydrationKey, resetHydrationKey } from '../src/';
 
 describe('server/hydration', () => {
   let container: HTMLElement;

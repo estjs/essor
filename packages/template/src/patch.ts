@@ -1,14 +1,9 @@
-import { isHTMLElement } from '@estjs/shared';
+import { isHTMLElement, isTextNode } from '@estjs/shared';
 import { isComponent } from './component';
 import { getNodeKey, setNodeKey } from './key';
-import {
-  getFirstDOMNode,
-  insertNode,
-  isHtmLTextElement,
-  isSameNode,
-  removeNode,
-  replaceNode,
-} from './utils';
+import { getFirstDOMNode, insertNode, removeNode, replaceNode } from './utils/dom';
+import { isSameNode } from './utils/node';
+
 import type { AnyNode } from './types';
 
 /**
@@ -103,7 +98,7 @@ export function patch(parent: Node, oldNode: AnyNode, newNode: AnyNode): AnyNode
   }
 
   // Handle text nodes
-  if (isHtmLTextElement(oldNode) && isHtmLTextElement(newNode)) {
+  if (isTextNode(oldNode) && isTextNode(newNode)) {
     if (oldNode.textContent !== newNode.textContent) {
       oldNode.textContent = newNode.textContent;
     }
@@ -174,12 +169,12 @@ export function patchChildren(
   const oldLength = oldChildren.length;
   const newLength = newChildren.length;
 
-  // ===== FAST PATH 0: Both empty =====
+  //  FAST PATH 0: Both empty
   if (oldLength === 0 && newLength === 0) {
     return [];
   }
 
-  // ===== FAST PATH 1: Mount all (no old children) =====
+  //  FAST PATH 1: Mount all (no old children)
   if (oldLength === 0) {
     for (let i = 0; i < newLength; i++) {
       insertNode(parent, newChildren[i], anchor);
@@ -187,7 +182,7 @@ export function patchChildren(
     return newChildren;
   }
 
-  // ===== FAST PATH 2: Unmount all (no new children) =====
+  //  FAST PATH 2: Unmount all (no new children)
   if (newLength === 0) {
     // Remove all children efficiently
     for (let i = 0; i < oldLength; i++) {
@@ -196,7 +191,7 @@ export function patchChildren(
     return [];
   }
 
-  // ===== FAST PATH 3: Single child =====
+  //  FAST PATH 3: Single child
   if (oldLength === 1 && newLength === 1) {
     const oldNode = oldChildren[0];
     const newNode = newChildren[0];
@@ -209,7 +204,7 @@ export function patchChildren(
     return newChildren;
   }
 
-  // ===== FAST PATH 4: Two children =====
+  //  FAST PATH 4: Two children
   if (oldLength === 2 && newLength === 2) {
     const o0 = oldChildren[0];
     const o1 = oldChildren[1];
@@ -241,7 +236,7 @@ export function patchChildren(
     }
   }
 
-  // ===== GENERAL ALGORITHM: Map-based diffing with LIS =====
+  //  GENERAL ALGORITHM: Map-based diffing with LIS
   return patchKeyedChildren(parent, oldChildren, newChildren, anchor);
 }
 

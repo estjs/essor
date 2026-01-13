@@ -59,3 +59,25 @@ export {
   isDelegatedEvent,
   isBooleanAttr,
 } from './dom';
+
+// DOM type guards
+export {
+  isHtmlInputElement,
+  isHtmlSelectElement,
+  isHtmlTextAreaElement,
+  isHtmlFormElement,
+  isTextNode,
+  isNode,
+} from './dom-types';
+
+// Normalization utilities
+export {
+  normalizeStyle,
+  normalizeClassName,
+  styleToString,
+  parseStyleString,
+  styleObjectToString,
+  type NormalizedStyle,
+  type StyleValue,
+  type ClassValue,
+} from './normalize';

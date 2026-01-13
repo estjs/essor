@@ -81,7 +81,7 @@ const NO_VALUE = Symbol('computed-no-value');
  * @template T - The type of the computed value
  */
 export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
-  // ===== ReactiveNode interface implementation =====
+  //  ReactiveNode interface implementation
   depLink?: Link;
   subLink?: Link;
   depLinkTail?: Link;
@@ -91,15 +91,15 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   //@ts-ignore
   private readonly [SignalFlags.IS_COMPUTED] = true as const;
 
-  // ===== Core properties =====
+  //  Core properties
   readonly getter: ComputedGetter<T>;
   readonly setter?: ComputedSetter<T>;
 
-  // ===== Debug hooks =====
+  //  Debug hooks
   readonly onTrack?: (event: DebuggerEvent) => void;
   readonly onTrigger?: (event: DebuggerEvent) => void;
 
-  // ===== Cache =====
+  //  Cache
   // Use symbol sentinel to distinguish "no value" from undefined/null values
   private _value: T | typeof NO_VALUE = NO_VALUE;
 

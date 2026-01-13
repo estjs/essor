@@ -1,5 +1,6 @@
 import { isArray, isString, warn } from '@estjs/shared';
-import { insertNode, normalizeNode } from '../utils';
+import { insertNode } from '../utils/dom';
+import { normalizeNode } from '../utils/node';
 import { COMPONENT_TYPE } from '../constants';
 import { onMount } from '../lifecycle';
 import { onCleanup } from '../scope';
@@ -60,7 +61,7 @@ export function Portal(props: PortalProps): Comment | string {
         if (child != null) {
           const normalized = normalizeNode(child);
           if (normalized) {
-            insertNode(targetElement, normalized);
+            insertNode(targetElement as Node, normalized);
             nodes.push(normalized);
           }
         }

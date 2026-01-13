@@ -1,4 +1,4 @@
-import { error, isString } from '@estjs/shared';
+import { error, isBrowser, isString } from '@estjs/shared';
 import {
   createComponent,
   endHydration,
@@ -6,7 +6,7 @@ import {
   template,
   mapNodes as templateMapNodes,
 } from '@estjs/template';
-import { getHydrationKey, resetHydrationKey } from './shared';
+import { getHydrationKey, resetHydrationKey } from './utils';
 import type { ComponentFn } from '@estjs/template';
 /**
  * data-idx regex
@@ -19,6 +19,11 @@ export const DATA_IDX_REGEX = /^\d+-\d+$/;
  */
 export function getRenderedElement(temp: string) {
   return () => {
+    // SSR environment check
+    if (!isBrowser()) {
+      return null;
+    }
+
     // Get hydration key
     const key = getHydrationKey();
 
@@ -132,7 +137,9 @@ export function hydrate(component: ComponentFn, container: HTMLElement | string)
 
   try {
     // Get container element
-    const rootElement = isString(container) ? document.querySelector(container) : container;
+    const rootElement = isString(container)
+      ? document.querySelector(container as string)
+      : container;
 
     if (!rootElement) {
       error('Hydration error: Root element not found');

@@ -14,7 +14,7 @@ import {
   XMLNS_NAMESPACE,
 } from '../constants';
 import { setNodeKey } from '../key';
-import { isHydrating } from '../shared';
+import { isHydrating } from '../utils/shared';
 
 export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 

@@ -126,7 +126,7 @@ export interface EffectRunner<T = any> {
  * @template T - The return type of the effect function
  */
 export class EffectImpl<T = any> implements ReactiveNode {
-  // ===== ReactiveNode interface implementation =====
+  //  ReactiveNode interface implementation
   depLink?: Link;
   subLink?: Link;
   depLinkTail?: Link;
@@ -136,7 +136,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
   // @ts-ignore
   private readonly [SignalFlags.IS_EFFECT] = true as const;
 
-  // ===== Core properties =====
+  //  Core properties
   readonly fn: EffectFunction<T>;
   readonly scheduler?: EffectScheduler | FlushTiming;
   readonly onStop?: () => void;
@@ -144,7 +144,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
   readonly onTrigger?: (event: DebuggerEvent) => void;
   readonly flash?: 'sync' | 'pre' | 'post';
 
-  // ===== State management =====
+  //  State management
   private _active = true;
 
   /**
@@ -510,8 +510,6 @@ export function stop(runner: EffectRunner): void {
 export function isEffect(value: any): value is EffectImpl {
   return !!(value && value[SignalFlags.IS_EFFECT]);
 }
-
-// ==================== Memoized Effect ====================
 
 /**
  * Memoized effect function type
