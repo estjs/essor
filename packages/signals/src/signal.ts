@@ -143,7 +143,7 @@ export class SignalImpl<T> implements ReactiveNode {
       if (__DEV__) {
         warn(
           'Setting a signal value to another signal is not recommended. ' +
-          'The value will be unwrapped automatically.',
+            'The value will be unwrapped automatically.',
         );
       }
       value = (value as Signal<T>).peek() as T;

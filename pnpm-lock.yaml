@@ -399,12 +399,24 @@ importers:
 
   packages/core:
     dependencies:
+      '@estjs/server':
+        specifier: workspace:*
+        version: link:../server
       '@estjs/shared':
         specifier: workspace:*
         version: link:../shared
       '@estjs/signals':
         specifier: workspace:*
         version: link:../signals
+      '@estjs/template':
+        specifier: workspace:*
+        version: link:../template
+
+  packages/server:
+    dependencies:
+      '@estjs/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@estjs/template':
         specifier: workspace:*
         version: link:../template

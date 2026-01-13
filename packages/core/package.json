@@ -66,6 +66,7 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
+    "@estjs/server": "workspace:*",
     "@estjs/shared": "workspace:*",
     "@estjs/signals": "workspace:*",
     "@estjs/template": "workspace:*"

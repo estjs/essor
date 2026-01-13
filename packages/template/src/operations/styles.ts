@@ -1,4 +1,5 @@
 import { camelCase, capitalize, isArray, isObject, isString } from '@estjs/shared';
+import { isHydrating } from '../shared';
 
 /**
  * Symbol for storing CSS variable text in style objects
@@ -29,7 +30,9 @@ export type Style = string | Record<string, string | string[]> | null | undefine
 export function patchStyle(el: HTMLElement, prev: unknown, next: unknown) {
   const style = el.style;
   const isCssString = isString(next);
-
+  if (isHydrating()) {
+    return;
+  }
   if (next && isCssString) {
     if (prev !== next) {
       style.cssText = next;

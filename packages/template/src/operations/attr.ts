@@ -14,6 +14,7 @@ import {
   XMLNS_NAMESPACE,
 } from '../constants';
 import { setNodeKey } from '../key';
+import { isHydrating } from '../shared';
 
 export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 
@@ -37,6 +38,10 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     });
     return;
   }
+
+  if (isHydrating()) {
+    return;
+  }
   const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
   const isXlink = elementIsSVG && key.startsWith('xlink:');
   const isXmlns = elementIsSVG && key.startsWith('xmlns:');
@@ -52,7 +57,8 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
   const lowerKey = key.toLowerCase();
 
   // Cache event handler check (faster than regex for common case)
-  if (lowerKey.length > 2 && lowerKey.charCodeAt(0) === 111 && lowerKey.charCodeAt(1) === 110) { // 'on'
+  if (lowerKey.length > 2 && lowerKey.charCodeAt(0) === 111 && lowerKey.charCodeAt(1) === 110) {
+    // 'on'
     return;
   }
 

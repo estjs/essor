@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  addAttributes,
-  convertToString,
-  endHydration,
-  getHydrationKey,
-  isHydrating,
-  resetHydrationKey,
-  startHydration,
-} from '../../src/server/shared';
+import { addAttributes, convertToString, getHydrationKey, resetHydrationKey } from '../src/shared';
 
 describe('server/shared', () => {
   describe('hydration key', () => {
@@ -24,17 +16,6 @@ describe('server/shared', () => {
       getHydrationKey();
       resetHydrationKey();
       expect(getHydrationKey()).toBe('0');
-    });
-  });
-
-  describe('hydration state', () => {
-    it('manages hydration state', () => {
-      endHydration();
-      expect(isHydrating()).toBe(false);
-      startHydration();
-      expect(isHydrating()).toBe(true);
-      endHydration();
-      expect(isHydrating()).toBe(false);
     });
   });
 

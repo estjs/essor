@@ -32,16 +32,6 @@ export function Fragment(props?: FragmentProps): AnyNode {
     }
   }
 
-  // TODO:
-  // Check if we're in SSR mode (no document)
-  // if (typeof document === 'undefined') {
-  //   const children = props.children;
-  //   if (!children) return '';
-  //   const childArray = Array.isArray(children) ? children : [children];
-  //   // In SSR, convert children to string
-  //   return childArray.map(child => String(child || '')).join('');
-  // }
-
   return props?.children as Element;
 }
 

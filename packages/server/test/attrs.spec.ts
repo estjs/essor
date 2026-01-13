@@ -7,7 +7,7 @@ import {
   parseStyleString,
   setSSGAttr,
   styleObjectToString,
-} from '../../src/server/attrs';
+} from '../src/attrs';
 
 describe('server/attrs', () => {
   describe('normalizeStyle', () => {

@@ -246,8 +246,8 @@ describe('scope System', () => {
 
       runWithScope(scope, () => {
         provide('key', 'value');
-        onCleanup(() => { });
-        registerMountHook(() => { });
+        onCleanup(() => {});
+        registerMountHook(() => {});
       });
 
       expect(scope.provides?.size).toBeGreaterThan(0);
@@ -271,7 +271,7 @@ describe('scope System', () => {
       const successCleanup = vi.fn();
 
       // Mock console.error to avoid noise in test output
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       runWithScope(scope, () => {
         onCleanup(errorCleanup);

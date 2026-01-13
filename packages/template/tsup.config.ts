@@ -1,14 +1,8 @@
 import process from 'node:process';
 import { defineConfig } from 'tsup';
 
-import pkg from './package.json';
-
 const env = process.env.NODE_ENV;
-const banner = `/**
-* ${pkg.name} v${pkg.version}
-* (c) 2023-Present jiangxd <jiangxd2016@gmail.com>
-* @license MIT
-**/`;
+const isDev = env !== 'production';
 
 export default defineConfig({
   entryPoints: {
@@ -20,17 +14,14 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
-  banner: {
-    js: banner,
-  },
   treeshake: true,
   cjsInterop: true,
-  sourcemap: false,
-  minify: env === 'production',
+  sourcemap: isDev,
+  minify: !isDev,
   tsconfig: '../../tsconfig.build.json',
   external: ['csstype', '@estjs/shared', '@estjs/signals'],
   define: {
-    __DEV__: env !== 'production' ? 'true' : 'false',
+    __DEV__: isDev ? 'true' : 'false',
   },
   outExtension({ format }) {
     return {

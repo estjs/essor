@@ -1,4 +1,5 @@
 import { isArray, isObject } from '@estjs/shared';
+import { isHydrating } from '../shared';
 
 /**
  * Type definition for class values
@@ -25,7 +26,9 @@ export function patchClass(
   if (prev === next) {
     return;
   }
-
+  if (isHydrating()) {
+    return;
+  }
   const normalizedNext = normalizeClass(next);
   const normalizedPrev = normalizeClass(prev);
   // Skip DOM update if classes haven't changed

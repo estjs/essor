@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createSSGComponent, render, renderToString } from '../../src/server/render';
-import { getHydrationKey } from '../../src/server/shared';
+import { createSSGComponent, render, renderToString } from '../src/render';
+import { getHydrationKey } from '../src/shared';
 
 describe('server/render', () => {
   describe('renderToString', () => {

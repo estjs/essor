@@ -42,10 +42,6 @@ export const XLINK_NAMESPACE = 'http://www.w3.org/2000/xlink';
 export const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
 
 /**
- * data-idx regex
- */
-export const DATA_IDX_REGEX = /^\d+-\d+$/;
-/**
  * Defines various states of components for state management and debugging
  */
 export enum COMPONENT_STATE {

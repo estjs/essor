@@ -9,6 +9,7 @@ import {
 } from './utils';
 import { patchChildren } from './patch';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
+import { isHydrating } from './shared';
 import type { AnyNode } from './types';
 /**
  * Add event listener with automatic cleanup on scope destruction
@@ -137,6 +138,8 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   const ownerScope: Scope | null = getActiveScope();
 
   let renderedNodes: AnyNode[] = [];
+  // Track if this is the first run (for hydration)
+  let isFirstRun = true;
 
   // Track if this is the first run (for hydration)
   // Create effect for reactive updates
@@ -147,7 +150,12 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
         .map(item => (isFunction(item) ? item() : item))
         .flatMap(i => i)
         .map(normalizeNode) as AnyNode[];
-
+      // Hydration mode: skip DOM operations on first run
+      // but still execute nodeFactory() to collect dependencies
+      if (isFirstRun && isHydrating()) {
+        isFirstRun = false;
+        return;
+      }
       renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
     };
 

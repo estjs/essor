@@ -1,0 +1,44 @@
+{
+  "name": "@estjs/server",
+  "version": "0.0.1",
+  "description": "Server-side rendering for Essor framework",
+  "type": "module",
+  "keywords": [
+    "essor",
+    "ssr",
+    "ssg",
+    "server",
+    "hydration"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/estjs/essor",
+  "bugs": "https://github.com/estjs/essor/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/estjs/essor.git"
+  },
+  "author": "jiangxd <jiangxd2016@gmail.com>",
+  "funding": "https://github.com/sponsors/estjs",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/server.esm.js",
+  "module": "./dist/server.esm.js",
+  "types": "./dist/server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/server.d.ts",
+      "require": "./dist/server.cjs.js",
+      "import": "./dist/server.esm.js"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "@estjs/shared": "workspace:*",
+    "@estjs/template": "workspace:*"
+  }
+}
