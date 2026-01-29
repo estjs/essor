@@ -22,7 +22,7 @@
   "scripts": {
     "build": "pnpm run gen:version && turbo run build --filter=./packages/*",
     "dev": "pnpm run gen:version && turbo watch build --filter=./packages/*",
-    "lint": "eslint --cache --fix ./packages --ext .js,.jsx,.ts,.tsx",
+    "lint": "eslint --cache --fix .",
     "test": "pnpm run test:unit",
     "test:watch": "pnpm run test:unit --watch",
     "typecheck": "tsc --noEmit -p ./tsconfig.build.json",
