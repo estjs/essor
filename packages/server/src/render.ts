@@ -14,7 +14,10 @@ import { addAttributes, convertToString, resetHydrationKey } from './utils';
  * @param {ComponentProps} props - the props to pass to the component
  * @returns {string} the rendered HTML string
  */
-export function renderToString(component: ComponentFn, props: ComponentProps = {}): string {
+export function renderToString<P extends ComponentProps = ComponentProps>(
+  component: ComponentFn<P>,
+  props: P | ComponentProps = {},
+): string {
   if (!isFunction(component)) {
     error('Component must be a function');
     return '';
@@ -29,7 +32,7 @@ export function renderToString(component: ComponentFn, props: ComponentProps = {
   let result: unknown;
   try {
     // Render the component within scope
-    result = runWithScope(scope, () => component(props));
+    result = runWithScope(scope, () => component(props as P));
   } finally {
     // Clean up scope after rendering
     disposeScope(scope);
@@ -98,7 +101,10 @@ export function render(templates: string[], hydrationKey: string, ...components:
  * @param {ComponentProps} props - the props to pass to the component
  * @returns {string} the rendered component as a string
  */
-export function createSSGComponent(component: ComponentFn, props: ComponentProps = {}): string {
+export function createSSGComponent<P extends ComponentProps = ComponentProps>(
+  component: ComponentFn<P>,
+  props: P | ComponentProps = {},
+): string {
   if (!isFunction(component)) {
     error('createSSGComponent: Component is not a function');
     return '';
@@ -111,7 +117,7 @@ export function createSSGComponent(component: ComponentFn, props: ComponentProps
   let result: unknown;
   try {
     // Render the component within scope
-    result = runWithScope(scope, () => component(props));
+    result = runWithScope(scope, () => component(props as P));
   } finally {
     // Clean up scope after rendering
     disposeScope(scope);

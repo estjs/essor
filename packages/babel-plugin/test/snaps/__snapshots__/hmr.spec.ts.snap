@@ -1,0 +1,88 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hMR transformation > should add HMR metadata to components 1`] = `
+"import { template as _template$ } from "essor";
+import { createComponent } from 'essor';
+const _$tmpl = _template$("<div>Hello</div>");
+function App() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+App.__signature = "rzhl1b";
+App.__hmrId = "35tyqe:App";
+const __$registry$__ = [App];"
+`;
+
+exports[`hMR transformation > should handle multiple createComponent aliases 1`] = `
+"import { template as _template$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { createApp, signal } from 'essor';
+const _$tmpl = _template$("<div>Counter</div>"),
+  _$tmpl2 = _template$("<div></div>");
+function Counter() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+Counter.__signature = "1b90ocp";
+Counter.__hmrId = "35tyqe:Counter";
+function App() {
+  return (() => {
+    const _$el2 = _$tmpl2();
+    const _$nodes2 = _mapNodes$(_$el2, [1]);
+    _insert$(_$nodes2[0], __$createHMRComponent$__(Counter, {}));
+    return _$el2;
+  })();
+}
+App.__signature = "1ix0wf8";
+App.__hmrId = "35tyqe:App";
+createApp(__$createHMRComponent$__(App), 'root');
+const __$registry$__ = [Counter, App];"
+`;
+
+exports[`hMR transformation > should not transform when HMR is disabled 1`] = `
+"import { template as _template$ } from "essor";
+import { createComponent as cc } from 'essor';
+const _$tmpl = _template$("<div>Hello</div>");
+function App() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+cc(App);"
+`;
+
+exports[`hMR transformation > should replace user import alias (cc) with HMR component 1`] = `
+"import { template as _template$ } from "essor";
+import { createComponent as cc } from 'essor';
+const _$tmpl = _template$("<div>Hello</div>");
+function App() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+App.__signature = "rzhl1b";
+App.__hmrId = "35tyqe:App";
+cc(App);
+const __$registry$__ = [App];"
+`;
+
+exports[`hMR transformation > should transform createApp to create with HMR component 1`] = `
+"import { template as _template$ } from "essor";
+import { createApp } from 'essor';
+const _$tmpl = _template$("<div>Hello</div>");
+function App() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+App.__signature = "rzhl1b";
+App.__hmrId = "35tyqe:App";
+createApp(__$createHMRComponent$__(App), 'root');
+const __$registry$__ = [App];"
+`;

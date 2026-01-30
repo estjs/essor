@@ -1,5 +1,5 @@
 import { error, isString } from '@estjs/shared';
-import { createComponent } from './component';
+import { type Component, createComponent, isComponent } from './component';
 import type { ComponentFn, ComponentProps } from './types';
 
 /**
@@ -11,13 +11,7 @@ import type { ComponentFn, ComponentProps } from './types';
  * @param html - The HTML string to create template from
  * @returns Factory function that returns a cloned node of the template
  * @throws {Error} When template content is empty or invalid
- *
- * @example
- * ```typescript
- * const buttonTemplate = template('<button>Click me</button>');
- * const button1 = buttonTemplate(); // Creates first button instance
- * const button2 = buttonTemplate(); // Creates second button instance
- * ```
+
  */
 export function template(html: string) {
   let node: Node | undefined;
@@ -46,19 +40,9 @@ export function template(html: string) {
  * @param component - The root component function to mount
  * @param target - CSS selector string or DOM element to mount to
  * @returns The mount root component instance, or undefined if target not found
- *
- * @example
- * ```typescript
- * const App = () => template('<div>Hello World</div>')
- * const app = createApp(App, '#root');
- *
- * // Or with DOM element
- * const container = document.getElementById('app');
- * const app = createApp(App, container);
- * ```
  */
 export function createApp<P extends ComponentProps = {}>(
-  component: ComponentFn<P>,
+  component: ComponentFn<P> | Component<P>,
   target: string | Element,
 ) {
   const container = isString(target)
@@ -74,9 +58,9 @@ export function createApp<P extends ComponentProps = {}>(
     error(`Target element is not empty, it will be delete: ${target}`);
     container.innerHTML = '';
   }
-
-  const rootComponent = createComponent(component);
+  const rootComponent: Component<P> = isComponent(component)
+    ? (component as Component<P>)
+    : createComponent(component as ComponentFn<P>);
   rootComponent.mount(container);
-
   return rootComponent;
 }

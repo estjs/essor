@@ -5,7 +5,7 @@ export const DEFAULT_OPTIONS: PluginOptions = {
   mode: 'client',
   symbol: '$',
   props: true,
-  hmr: false,
+  hmr: true,
   styled: false,
 };
 
@@ -65,3 +65,6 @@ export const SSR_IMPORTS_MAPS = {
 
 // transform property name
 export const TRANSFORM_PROPERTY_NAME = '__props';
+
+// hmr component name
+export const HMR_COMPONENT_NAME = '__$createHMRComponent$__';

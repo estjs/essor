@@ -246,7 +246,9 @@ export class SignalImpl<T> implements ReactiveNode {
  * const empty = signal(); // undefined
  * ```
  */
-export function signal<T>(value?: T): Signal<T> {
+export function signal<T>(value: Signal<T>): Signal<T>;
+export function signal<T>(value?: T): Signal<T>;
+export function signal<T>(value?: T) {
   // If the value is already a signal, return it directly to avoid duplicate creation
   if (isSignal(value)) {
     if (__DEV__) {
@@ -254,7 +256,7 @@ export function signal<T>(value?: T): Signal<T> {
         'Creating a signal with another signal is not recommended. The value will be unwrapped.',
       );
     }
-    return value as Signal<T>;
+    return value as T;
   }
   return new SignalImpl(value);
 }
@@ -273,6 +275,8 @@ export function signal<T>(value?: T): Signal<T> {
  * // Only state.nested is reactive, not state.nested.value
  * ```
  */
+export function shallowSignal<T>(value: Signal<T>): Signal<T>;
+export function shallowSignal<T>(value?: T): Signal<T>;
 export function shallowSignal<T>(value?: T): Signal<T> {
   // If the value is a signal, extract its value
   if (isSignal(value)) {

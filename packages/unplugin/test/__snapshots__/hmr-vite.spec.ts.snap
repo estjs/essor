@@ -1,0 +1,315 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hMR - Vite Platform > should work with vite 1`] = `
+"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
+const componentRegistry = /* @__PURE__ */ new Map();
+function createHMRComponent(componentFn, props) {
+  const { __hmrId: hmrId, __signature: signature } = componentFn;
+  if (!hmrId) {
+    return createComponent(componentFn, props);
+  }
+  let info = componentRegistry.get(hmrId);
+  if (!info) {
+    info = {
+      componentSignal: signal(componentFn),
+      signature,
+      instances: /* @__PURE__ */ new Set(),
+      // Track all instances
+      cleanups: /* @__PURE__ */ new Map()
+      // Store cleanup for each instance
+    };
+    componentRegistry.set(hmrId, info);
+  }
+  if (!componentFn._hmrInstances) {
+    componentFn._hmrInstances = info.instances;
+    componentFn._hmrInfo = info;
+  }
+  const wrappedFn = (props2) => {
+    const currentFn = info.componentSignal.value;
+    return currentFn(props2);
+  };
+  wrappedFn._hmrInstances = info.instances;
+  wrappedFn._hmrInfo = info;
+  wrappedFn.__hmrId = hmrId;
+  wrappedFn.__signature = signature;
+  Object.defineProperty(wrappedFn, "name", {
+    value: componentFn.name || "HMRComponent",
+    configurable: true
+  });
+  const component = createComponent(wrappedFn, props);
+  let isFirstRun = true;
+  const cleanup = effect(() => {
+    info.componentSignal.value;
+    if (isFirstRun) {
+      isFirstRun = false;
+      return;
+    }
+    try {
+      component.forceUpdate();
+    } catch (error) {
+      console.error(\`[Essor HMR] Failed to update instance:\`, error);
+    }
+  });
+  info.cleanups.set(component, cleanup);
+  return component;
+}
+const _$tmpl = template("<div>Foo</div>"), _$tmpl2 = template("<div>Bar</div>"), _$tmpl3 = template("<div></div>");
+function Foo() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+Foo.__signature = "174rcvv";
+Foo.__hmrId = "35tyqe:Foo";
+function Bar() {
+  return (() => {
+    const _$el2 = _$tmpl2();
+    return _$el2;
+  })();
+}
+Bar.__signature = "k90znw";
+Bar.__hmrId = "35tyqe:Bar";
+function App() {
+  return (() => {
+    const _$el3 = _$tmpl3();
+    const _$nodes3 = mapNodes(_$el3, [1]);
+    insert(_$nodes3[0], createHMRComponent(Foo, {}));
+    insert(_$nodes3[0], createHMRComponent(Bar, {}));
+    return _$el3;
+  })();
+}
+App.__signature = "1i25p8q";
+App.__hmrId = "35tyqe:App";
+createApp(createHMRComponent(App), "#root");
+"
+`;
+
+exports[`hMR - Vite Platform > should work with vite 2`] = `
+"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
+const componentRegistry = /* @__PURE__ */ new Map();
+function createHMRComponent(componentFn, props) {
+  const { __hmrId: hmrId, __signature: signature } = componentFn;
+  if (!hmrId) {
+    return createComponent(componentFn, props);
+  }
+  let info = componentRegistry.get(hmrId);
+  if (!info) {
+    info = {
+      componentSignal: signal(componentFn),
+      signature,
+      instances: /* @__PURE__ */ new Set(),
+      // Track all instances
+      cleanups: /* @__PURE__ */ new Map()
+      // Store cleanup for each instance
+    };
+    componentRegistry.set(hmrId, info);
+  }
+  if (!componentFn._hmrInstances) {
+    componentFn._hmrInstances = info.instances;
+    componentFn._hmrInfo = info;
+  }
+  const wrappedFn = (props2) => {
+    const currentFn = info.componentSignal.value;
+    return currentFn(props2);
+  };
+  wrappedFn._hmrInstances = info.instances;
+  wrappedFn._hmrInfo = info;
+  wrappedFn.__hmrId = hmrId;
+  wrappedFn.__signature = signature;
+  Object.defineProperty(wrappedFn, "name", {
+    value: componentFn.name || "HMRComponent",
+    configurable: true
+  });
+  const component = createComponent(wrappedFn, props);
+  let isFirstRun = true;
+  const cleanup = effect(() => {
+    info.componentSignal.value;
+    if (isFirstRun) {
+      isFirstRun = false;
+      return;
+    }
+    try {
+      component.forceUpdate();
+    } catch (error) {
+      console.error(\`[Essor HMR] Failed to update instance:\`, error);
+    }
+  });
+  info.cleanups.set(component, cleanup);
+  return component;
+}
+const _$tmpl = template("<div>A</div>"), _$tmpl2 = template("<div>B</div>"), _$tmpl3 = template("<div></div>");
+function ComponentA() {
+  return (() => {
+    const _$el = _$tmpl();
+    return _$el;
+  })();
+}
+ComponentA.__signature = "szj98";
+ComponentA.__hmrId = "35tyqe:ComponentA";
+const ComponentB = () => (() => {
+  const _$el2 = _$tmpl2();
+  return _$el2;
+})();
+ComponentB.__signature = "1xhowjs";
+ComponentB.__hmrId = "35tyqe:ComponentB";
+function App() {
+  return (() => {
+    const _$el3 = _$tmpl3();
+    const _$nodes3 = mapNodes(_$el3, [1]);
+    insert(_$nodes3[0], createHMRComponent(ComponentA, {}));
+    insert(_$nodes3[0], createHMRComponent(ComponentB, {}));
+    return _$el3;
+  })();
+}
+App.__signature = "1gy08hq";
+App.__hmrId = "35tyqe:App";
+createApp(createHMRComponent(App), "#root");
+export {
+  ComponentA,
+  ComponentB,
+  App as default
+};
+"
+`;
+
+exports[`hMR - Vite Platform > should work with vite 3`] = `
+"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
+const componentRegistry = /* @__PURE__ */ new Map();
+function createHMRComponent(componentFn, props) {
+  const { __hmrId: hmrId, __signature: signature } = componentFn;
+  if (!hmrId) {
+    return createComponent(componentFn, props);
+  }
+  let info = componentRegistry.get(hmrId);
+  if (!info) {
+    info = {
+      componentSignal: signal(componentFn),
+      signature,
+      instances: /* @__PURE__ */ new Set(),
+      // Track all instances
+      cleanups: /* @__PURE__ */ new Map()
+      // Store cleanup for each instance
+    };
+    componentRegistry.set(hmrId, info);
+  }
+  if (!componentFn._hmrInstances) {
+    componentFn._hmrInstances = info.instances;
+    componentFn._hmrInfo = info;
+  }
+  const wrappedFn = (props2) => {
+    const currentFn = info.componentSignal.value;
+    return currentFn(props2);
+  };
+  wrappedFn._hmrInstances = info.instances;
+  wrappedFn._hmrInfo = info;
+  wrappedFn.__hmrId = hmrId;
+  wrappedFn.__signature = signature;
+  Object.defineProperty(wrappedFn, "name", {
+    value: componentFn.name || "HMRComponent",
+    configurable: true
+  });
+  const component = createComponent(wrappedFn, props);
+  let isFirstRun = true;
+  const cleanup = effect(() => {
+    info.componentSignal.value;
+    if (isFirstRun) {
+      isFirstRun = false;
+      return;
+    }
+    try {
+      component.forceUpdate();
+    } catch (error) {
+      console.error(\`[Essor HMR] Failed to update instance:\`, error);
+    }
+  });
+  info.cleanups.set(component, cleanup);
+  return component;
+}
+const _$tmpl = template("<div>Hello</div>");
+function PropsComponent(props) {
+  return (() => {
+    const _$el = _$tmpl();
+    const _$nodes = mapNodes(_$el, [1]);
+    insert(_$nodes[0], () => props.name);
+    return _$el;
+  })();
+}
+PropsComponent.__signature = "eh956m";
+PropsComponent.__hmrId = "35tyqe:PropsComponent";
+createApp(createHMRComponent(() => createHMRComponent(PropsComponent, {
+  "name": "World"
+})), "#root");
+"
+`;
+
+exports[`hMR - Vite Platform > should work with vite 4`] = `
+"import { createComponent, signal, effect, template, createApp, delegateEvents, mapNodes, insert } from "essor";
+const componentRegistry = /* @__PURE__ */ new Map();
+function createHMRComponent(componentFn, props) {
+  const { __hmrId: hmrId, __signature: signature } = componentFn;
+  if (!hmrId) {
+    return createComponent(componentFn, props);
+  }
+  let info = componentRegistry.get(hmrId);
+  if (!info) {
+    info = {
+      componentSignal: signal(componentFn),
+      signature,
+      instances: /* @__PURE__ */ new Set(),
+      // Track all instances
+      cleanups: /* @__PURE__ */ new Map()
+      // Store cleanup for each instance
+    };
+    componentRegistry.set(hmrId, info);
+  }
+  if (!componentFn._hmrInstances) {
+    componentFn._hmrInstances = info.instances;
+    componentFn._hmrInfo = info;
+  }
+  const wrappedFn = (props2) => {
+    const currentFn = info.componentSignal.value;
+    return currentFn(props2);
+  };
+  wrappedFn._hmrInstances = info.instances;
+  wrappedFn._hmrInfo = info;
+  wrappedFn.__hmrId = hmrId;
+  wrappedFn.__signature = signature;
+  Object.defineProperty(wrappedFn, "name", {
+    value: componentFn.name || "HMRComponent",
+    configurable: true
+  });
+  const component = createComponent(wrappedFn, props);
+  let isFirstRun = true;
+  const cleanup = effect(() => {
+    info.componentSignal.value;
+    if (isFirstRun) {
+      isFirstRun = false;
+      return;
+    }
+    try {
+      component.forceUpdate();
+    } catch (error) {
+      console.error(\`[Essor HMR] Failed to update instance:\`, error);
+    }
+  });
+  info.cleanups.set(component, cleanup);
+  return component;
+}
+const _$tmpl = template("<div>Count:</div>");
+function SignalComponent() {
+  const count = signal(0);
+  return (() => {
+    const _$el = _$tmpl();
+    const _$nodes = mapNodes(_$el, [1]);
+    insert(_$nodes[0], () => count.value);
+    _$nodes[0]["_$click"] = () => count.value++;
+    return _$el;
+  })();
+}
+SignalComponent.__signature = "dtx8aj";
+SignalComponent.__hmrId = "35tyqe:SignalComponent";
+createApp(createHMRComponent(SignalComponent), "#root");
+delegateEvents(["click"]);
+"
+`;

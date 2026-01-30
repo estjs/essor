@@ -22,3 +22,4 @@ test-results
 /blob-report/
 /playwright/.cache/
 .turbo
+dist-rspack

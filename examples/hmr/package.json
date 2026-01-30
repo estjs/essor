@@ -1,0 +1,26 @@
+{
+  "name": "essor-example-hmr",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --open",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview",
+    "test": "vitest --run"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@estjs/eslint-config": "^2.1.5",
+    "@types/node": "^25.0.6",
+    "eslint": "^9.39.2",
+    "jsdom": "^27.4.0",
+    "typescript": "^5.9.3",
+    "unplugin-essor": "workspace:*",
+    "vite": "^7.3.1",
+    "vite-plugin-inspect": "^11.3.3",
+    "vitest": "^4.0.16"
+  }
+}

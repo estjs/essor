@@ -15,6 +15,8 @@ export type RenderMode = 'client' | 'ssr' | 'ssg';
  */
 export type ReactiveSymbol = string;
 
+export type Primitive = string | number | bigint | boolean | symbol | null | undefined;
+
 /**
  * JSX element types
  */
@@ -54,13 +56,13 @@ export interface PluginOptions {
 
   /**
    * Whether to enable hot module replacement functionality
-   * @default false Enabled by default in client mode, this configuration is ignored in ssr and ssg modes
+   * @default true Enabled by default in client mode, this configuration is ignored in ssr and ssg modes
    */
   hmr?: boolean;
 
   /**
    * Whether to enable styled-jsx support
-   * @default true
+   * @default false
    */
   styled?: boolean;
 }

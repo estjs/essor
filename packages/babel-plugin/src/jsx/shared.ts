@@ -23,7 +23,7 @@ import { createTree, isTreeNode } from './tree';
 import { getContext } from './context';
 import type { Expression } from '@babel/types';
 import type { TreeNode } from './tree';
-import type { JSXChild, JSXElement } from '../types';
+import type { JSXChild, JSXElement, Primitive } from '../types';
 
 /**
  * Dynamic Content Interface
@@ -905,7 +905,7 @@ export function createPropsObjectExpression(
  * @return {t.Expression} Corresponding AST node
  */
 export function convertValueToASTNode(
-  value: JSXChild | TreeNode | Expression,
+  value: JSXChild | TreeNode | Expression | Primitive | Primitive[],
   transformJSX: (path: NodePath<JSXElement>, tree: TreeNode) => t.Expression,
 ): Expression {
   // If it's already an AST node, return directly
@@ -937,7 +937,7 @@ export function convertValueToASTNode(
       value.type === NODE_TYPE.SVG
     ) {
       const { path } = getContext();
-      return transformJSX(path, value);
+      return transformJSX(path, value as TreeNode);
     }
 
     if (

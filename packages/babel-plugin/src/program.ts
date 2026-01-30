@@ -9,6 +9,7 @@ import {
   symbolObjectPattern,
   symbolUpdate,
 } from './signals/symbol';
+import { generateHmrRegistry, transformCreateComponent, transformHmr } from './hmr';
 import type { PluginState } from './types';
 
 function getHmrModulePath(): string {
@@ -95,12 +96,18 @@ export const transformProgram = {
       ObjectPattern: withState(symbolObjectPattern, parentState), // { $x } → handle nested patterns
       ArrayPattern: withState(symbolArrayPattern, parentState), // [$x] → handle nested patterns
     });
+
+    if (opts?.hmr && opts?.mode === 'client') {
+      path.traverse({
+        FunctionDeclaration: withState(transformHmr, parentState), // Inject __hmrId for components
+        ArrowFunctionExpression: withState(transformHmr, parentState), // Inject __hmrId for components
+      });
+    }
   },
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
-  exit: (path: NodePath<t.Program>, state) => {
+  exit: (path: NodePath<t.Program>) => {
     const pluginState: PluginState = path.state as PluginState;
-    const { imports, declarations, events } = pluginState;
+    const { imports, declarations, events, opts } = pluginState;
     // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
     // Find optimal insertion point after imports but before other code
@@ -127,6 +134,11 @@ export const transformProgram = {
       );
       addImport(importMap.delegateEvents);
       path.node.body.push(eventsDeclaration);
+    }
+    // HMR: Generate HMR code
+    if (opts?.hmr && opts?.mode === 'client') {
+      generateHmrRegistry(path);
+      transformCreateComponent(path, imports);
     }
 
     // Generate and insert required import statements

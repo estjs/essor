@@ -68,7 +68,7 @@ export function createImport(
 ): void {
   const state = path.state as PluginState;
 
-  const mode = state.opts.mode;
+  const { mode } = state.opts;
 
   // Return early if no functions to import
   if (!importedSets.size) {
@@ -96,8 +96,8 @@ export function createImport(
     const importDeclaration = t.importDeclaration(importSpecifiers, t.stringLiteral(from));
 
     path.node.body.unshift(importDeclaration);
-  } catch (error_) {
-    error('Failed to create import declaration:', error);
-    throw error_;
+  } catch (_error) {
+    error('Failed to create import declaration:', _error);
+    throw _error;
   }
 }

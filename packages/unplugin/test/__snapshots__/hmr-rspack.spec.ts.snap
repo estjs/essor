@@ -1,0 +1,174 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`hMR - Rspack Platform > should work with rspack 1`] = `
+"import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
+import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
+import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { createApp } from "essor";
+var _$tmpl = _template$("<div>Foo</div>"), _$tmpl2 = _template$("<div>Bar</div>"), _$tmpl3 = _template$("<div></div>");
+function Foo() {
+    return function() {
+        var _$el = _$tmpl();
+        return _$el;
+    }();
+}
+Foo.__signature = "174rcvv";
+Foo.__hmrId = "35tyqe:Foo";
+function Bar() {
+    return function() {
+        var _$el2 = _$tmpl2();
+        return _$el2;
+    }();
+}
+Bar.__signature = "k90znw";
+Bar.__hmrId = "35tyqe:Bar";
+function App() {
+    return function() {
+        var _$el3 = _$tmpl3();
+        var _$nodes3 = _mapNodes$(_$el3, [
+            1
+        ]);
+        _insert$(_$nodes3[0], __$createHMRComponent$__(Foo, {}));
+        _insert$(_$nodes3[0], __$createHMRComponent$__(Bar, {}));
+        return _$el3;
+    }();
+}
+App.__signature = "1i25p8q";
+App.__hmrId = "35tyqe:App";
+createApp(__$createHMRComponent$__(App), "#root");
+var __$registry$__ = [
+    Foo,
+    Bar,
+    App
+];
+if (import.meta.hot) {
+    var _hot;
+    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
+}
+"
+`;
+
+exports[`hMR - Rspack Platform > should work with rspack 2`] = `
+"import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
+import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
+import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { createApp } from 'essor';
+var _$tmpl = _template$("<div>A</div>"), _$tmpl2 = _template$("<div>B</div>"), _$tmpl3 = _template$("<div></div>");
+export function ComponentA() {
+    return function() {
+        var _$el = _$tmpl();
+        return _$el;
+    }();
+}
+ComponentA.__signature = "szj98";
+ComponentA.__hmrId = "35tyqe:ComponentA";
+export var ComponentB = function() {
+    return function() {
+        var _$el2 = _$tmpl2();
+        return _$el2;
+    }();
+};
+ComponentB.__signature = "1xhowjs";
+ComponentB.__hmrId = "35tyqe:ComponentB";
+export default function App() {
+    return function() {
+        var _$el3 = _$tmpl3();
+        var _$nodes3 = _mapNodes$(_$el3, [
+            1
+        ]);
+        _insert$(_$nodes3[0], __$createHMRComponent$__(ComponentA, {}));
+        _insert$(_$nodes3[0], __$createHMRComponent$__(ComponentB, {}));
+        return _$el3;
+    }();
+}
+App.__signature = "1gy08hq";
+App.__hmrId = "35tyqe:App";
+createApp(__$createHMRComponent$__(App), '#root');
+var __$registry$__ = [
+    ComponentA,
+    ComponentB,
+    App
+];
+if (import.meta.hot) {
+    var _hot;
+    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
+}
+"
+`;
+
+exports[`hMR - Rspack Platform > should work with rspack 3`] = `
+"import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
+import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
+import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { createApp } from 'essor';
+var _$tmpl = _template$("<div>Hello</div>");
+function PropsComponent(props) {
+    return function() {
+        var _$el = _$tmpl();
+        var _$nodes = _mapNodes$(_$el, [
+            1
+        ]);
+        _insert$(_$nodes[0], function() {
+            return props.name;
+        });
+        return _$el;
+    }();
+}
+PropsComponent.__signature = "eh956m";
+PropsComponent.__hmrId = "35tyqe:PropsComponent";
+createApp(__$createHMRComponent$__(function() {
+    return __$createHMRComponent$__(PropsComponent, {
+        "name": "World"
+    });
+}), '#root');
+var __$registry$__ = [
+    PropsComponent
+];
+if (import.meta.hot) {
+    var _hot;
+    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
+}
+"
+`;
+
+exports[`hMR - Rspack Platform > should work with rspack 4`] = `
+"import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
+import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
+import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
+import { createApp, signal } from 'essor';
+var _$tmpl = _template$("<div>Count:</div>");
+function SignalComponent() {
+    var count = signal(0);
+    return function() {
+        var _$el = _$tmpl();
+        var _$nodes = _mapNodes$(_$el, [
+            1
+        ]);
+        _insert$(_$nodes[0], function() {
+            return count.value;
+        });
+        _$nodes[0]["_$click"] = function() {
+            return count.value++;
+        };
+        return _$el;
+    }();
+}
+SignalComponent.__signature = "dtx8aj";
+SignalComponent.__hmrId = "35tyqe:SignalComponent";
+createApp(__$createHMRComponent$__(SignalComponent), '#root');
+_delegateEvents$([
+    "click"
+]);
+var __$registry$__ = [
+    SignalComponent
+];
+if (import.meta.hot) {
+    var _hot;
+    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
+}
+"
+`;
