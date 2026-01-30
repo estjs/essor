@@ -95,10 +95,6 @@ function generateHMRCode(bundlerType: BundlerType) {
   };
 }
 
-// ============================================
-// Unplugin Factory
-// ============================================
-
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (
   options: Options = {},
   meta,

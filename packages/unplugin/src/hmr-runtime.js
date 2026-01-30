@@ -11,10 +11,6 @@
  */
 import { createComponent, effect, signal } from 'essor';
 
-// ============================================
-// Component Registry
-// ============================================
-
 /**
  * Global component registry for HMR tracking
  *
@@ -115,10 +111,6 @@ export function createHMRComponent(componentFn, props) {
 
   return component;
 }
-
-// ============================================
-// HMR Accept Handler
-// ============================================
 
 /**
  * Determine if a component needs to be updated

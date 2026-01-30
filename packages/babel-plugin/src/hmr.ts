@@ -1,12 +1,3 @@
-/**
- * HMR Transformation for Babel Plugin
- *
- * This module handles Hot Module Replacement transformations:
- * 1. Generates unique signatures for each component based on code content
- * 2. Attaches HMR metadata (__hmrId, __signature) to components
- * 3. Generates __$registry$__ array for runtime HMR updates
- */
-
 import { type NodePath, types as t } from '@babel/core';
 import { generate } from '@babel/generator';
 import { checkHasJSXReturn } from './signals/utils';
@@ -44,10 +35,6 @@ function simpleHash(str: string): string {
   return (hash >>> 0).toString(36);
 }
 
-// ============================================
-// State Management
-// ============================================
-
 /**
  * Component registry for current file transformation
  * Cleared after each file is processed
@@ -69,13 +56,9 @@ export function clearHmrComponentMap(): void {
  */
 export function generateComponentSignature(code: string): string {
   // Single regex replacement for better performance
-  const normalizedCode = code.replace(WHITESPACE_REGEX, ' ').trim();
+  const normalizedCode = code.replaceAll(WHITESPACE_REGEX, ' ').trim();
   return simpleHash(normalizedCode);
 }
-
-// ============================================
-// Component Transformation
-// ============================================
 
 /**
  * Extract function body code for signature generation

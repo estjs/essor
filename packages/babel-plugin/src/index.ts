@@ -9,6 +9,7 @@ export default function (): PluginObj {
 
     manipulateOptions(_, parserOpts) {
       parserOpts.plugins.push('jsx');
+      parserOpts.plugins.push('typescript');
     },
 
     visitor: {

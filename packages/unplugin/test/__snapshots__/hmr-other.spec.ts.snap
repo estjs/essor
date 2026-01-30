@@ -15,10 +15,6 @@ exports[`hMR - Rollup Platform > should work with rollup 1`] = `
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
 
-// ============================================
-// Component Registry
-// ============================================
-
 /**
  * Global component registry for HMR tracking
  *
@@ -119,10 +115,6 @@ function createHMRComponent(componentFn, props) {
 
   return component;
 }
-
-// ============================================
-// HMR Accept Handler
-// ============================================
 
 /**
  * Determine if a component needs to be updated
@@ -424,10 +416,6 @@ exports[`hMR - Rollup Platform > should work with rollup 2`] = `
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
 
-// ============================================
-// Component Registry
-// ============================================
-
 /**
  * Global component registry for HMR tracking
  *
@@ -528,10 +516,6 @@ function createHMRComponent(componentFn, props) {
 
   return component;
 }
-
-// ============================================
-// HMR Accept Handler
-// ============================================
 
 /**
  * Determine if a component needs to be updated
@@ -833,10 +817,6 @@ exports[`hMR - Rollup Platform > should work with rollup 3`] = `
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
 
-// ============================================
-// Component Registry
-// ============================================
-
 /**
  * Global component registry for HMR tracking
  *
@@ -937,10 +917,6 @@ function createHMRComponent(componentFn, props) {
 
   return component;
 }
-
-// ============================================
-// HMR Accept Handler
-// ============================================
 
 /**
  * Determine if a component needs to be updated
@@ -1227,10 +1203,6 @@ exports[`hMR - Rollup Platform > should work with rollup 4`] = `
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
 
-// ============================================
-// Component Registry
-// ============================================
-
 /**
  * Global component registry for HMR tracking
  *
@@ -1331,10 +1303,6 @@ function createHMRComponent(componentFn, props) {
 
   return component;
 }
-
-// ============================================
-// HMR Accept Handler
-// ============================================
 
 /**
  * Determine if a component needs to be updated
