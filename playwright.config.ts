@@ -1,5 +1,6 @@
 import process from 'node:process';
 import { defineConfig, devices } from '@playwright/test';
+import { generateWebServers } from './e2e/test-utils';
 
 /**
  * Read environment variables from file.
@@ -71,16 +72,5 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: [
-    {
-      command: 'pnpm -C examples/basic run dev',
-      url: 'http://localhost:3001/',
-      reuseExistingServer: !process.env.CI,
-    },
-    {
-      command: 'pnpm -C examples/todo run dev',
-      url: 'http://localhost:3002/',
-      reuseExistingServer: !process.env.CI,
-    },
-  ],
+  webServer: generateWebServers(),
 });

@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { getExampleUrl } from './test-utils';
 
 test('should work with basic router navigation', async ({ page }) => {
-  await page.goto('http://localhost:3002');
+  await page.goto(getExampleUrl('todo'));
 
   const input = await page.$('input');
 
