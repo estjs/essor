@@ -23,8 +23,13 @@ test.describe('HMR Example', () => {
     // Check counter heading
     await expect(counterSection.locator('h3')).toContainText('🔢 Stateful Component');
 
-    // Check initial state
-    await expect(counterSection.locator('p').nth(0)).toContainText('0');
+    // Check initial state - use the p tag with large font size that contains the count
+    const countDisplay = counterSection.locator('p[style*="font-size: 2em"]');
+    await expect(countDisplay).toBeVisible();
+    // Wait for the count to be rendered (could be 0 or any number)
+    await page.waitForTimeout(500);
+    const countText = await countDisplay.textContent();
+    expect(countText?.trim()).toMatch(/^-?\d+$/); // Should be a number
 
     // Check info text
     await expect(counterSection).toContainText('State is preserved during HMR updates');
@@ -34,30 +39,30 @@ test.describe('HMR Example', () => {
     const counterSection = page.locator('div').filter({ hasText: '🔢 Stateful Component' }).first();
 
     // Check initial state (should be 0)
-    const countDisplay = counterSection.locator('p').first();
-    await expect(countDisplay).toContainText('0');
+    const countDisplay = counterSection.locator('p[style*="font-size: 2em"]');
+    await expect(countDisplay).toHaveText('0');
 
     // Test increment
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
-    await expect(countDisplay).toContainText('1');
+    await expect(countDisplay).toHaveText('1');
 
     // Test multiple increments
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
-    await expect(countDisplay).toContainText('3');
+    await expect(countDisplay).toHaveText('3');
 
     // Test decrement
     await counterSection.locator('button').filter({ hasText: '- Decrease' }).click();
-    await expect(countDisplay).toContainText('2');
+    await expect(countDisplay).toHaveText('2');
 
     // Test multiple decrements
     await counterSection.locator('button').filter({ hasText: '- Decrease' }).click();
     await counterSection.locator('button').filter({ hasText: '- Decrease' }).click();
-    await expect(countDisplay).toContainText('0');
+    await expect(countDisplay).toHaveText('0');
 
     // Test going negative
     await counterSection.locator('button').filter({ hasText: '- Decrease' }).click();
-    await expect(countDisplay).toContainText('-1');
+    await expect(countDisplay).toHaveText('-1');
   });
 
   test('should display HelloWorld component correctly', async ({ page }) => {
@@ -91,7 +96,7 @@ test.describe('HMR Example', () => {
   test('should handle rapid counter interactions', async ({ page }) => {
     const counterSection = page.locator('div').filter({ hasText: '🔢 Stateful Component' }).first();
     const incrementButton = counterSection.locator('button').filter({ hasText: '+ Increase' });
-    const countDisplay = counterSection.locator('p').first();
+    const countDisplay = counterSection.locator('p[style*="font-size: 2em"]');
 
     // Rapidly click increment button
     for (let i = 0; i < 10; i++) {
@@ -99,7 +104,7 @@ test.describe('HMR Example', () => {
     }
 
     // Should handle all clicks correctly
-    await expect(countDisplay).toContainText('10');
+    await expect(countDisplay).toHaveText('10');
 
     // Test rapid decrement
     const decrementButton = counterSection.locator('button').filter({ hasText: '- Decrease' });
@@ -139,7 +144,7 @@ test.describe('HMR Example', () => {
     const operationStartTime = Date.now();
     const counterSection = page.locator('div').filter({ hasText: '🔢 Stateful Component' }).first();
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
-    await expect(counterSection.locator('p').first()).toContainText('1');
+    await expect(counterSection.locator('p[style*="font-size: 2em"]')).toHaveText('1');
 
     const operationTime = Date.now() - operationStartTime;
     expect(operationTime).toBeLessThan(500); // Counter operations should be immediate
@@ -185,7 +190,7 @@ test.describe('HMR Example', () => {
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
     await counterSection.locator('button').filter({ hasText: '+ Increase' }).click();
 
-    await expect(counterSection.locator('p').first()).toContainText('3');
+    await expect(counterSection.locator('p[style*="font-size: 2em"]')).toHaveText('3');
 
     // HelloWorld should remain unaffected (stateless)
     const helloWorldSection = page.locator('div').filter({ hasText: '👋 Hello World' }).first();
