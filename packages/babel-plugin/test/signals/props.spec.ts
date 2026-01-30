@@ -29,7 +29,7 @@ describe('signals/props', () => {
     (global as any).__DEV__ = true;
 
     traverse(ast, {
-      'FunctionDeclaration|ArrowFunctionExpression': function (path) {
+      'FunctionDeclaration|ArrowFunctionExpression': function (path: any) {
         // Mock state on path
         path.state = state;
         path.hub = {

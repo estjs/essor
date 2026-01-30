@@ -13,6 +13,7 @@ import { createTree } from '../src/jsx/tree';
 import { resetContext, setContext } from '../src/jsx/context';
 import { transformProgram } from '../src/program';
 import { createImportIdentifiers } from '../src/import';
+import type { DynamicContent } from '../src/jsx/shared';
 
 describe('jsx client helpers', () => {
   it('builds attribute setter statements', () => {
@@ -25,8 +26,8 @@ describe('jsx client helpers', () => {
       t.stringLiteral('value'),
       t.stringLiteral('data-id'),
     );
-    expect(stmt.expression.callee).toBe(fnIdentifier);
-    expect(stmt.expression.arguments).toHaveLength(3);
+    expect((stmt.expression as t.CallExpression).callee).toBe(fnIdentifier);
+    expect((stmt.expression as t.CallExpression).arguments).toHaveLength(3);
   });
 
   it('unwraps immediately invoked function expressions', () => {
@@ -37,7 +38,7 @@ describe('jsx client helpers', () => {
 
   it('creates insert arguments using index lookup', () => {
     const args = createInsertArguments(
-      { parentIndex: 2, before: 3, node: t.identifier('value') },
+      { parentIndex: 2, before: 3, node: t.identifier('value') } as DynamicContent,
       t.identifier('_nodes'),
       new Map([
         [1, 0],
@@ -45,13 +46,13 @@ describe('jsx client helpers', () => {
         [3, 2],
       ]),
     );
-    expect(args).toHaveLength(3);
+    expect(args.length).toBe(3);
   });
 
   it('throws when required parent index is absent', () => {
     expect(() =>
       createInsertArguments(
-        { parentIndex: null, node: t.identifier('x') },
+        { parentIndex: null, node: t.identifier('x') } as DynamicContent,
         t.identifier('_nodes'),
         new Map(),
       ),

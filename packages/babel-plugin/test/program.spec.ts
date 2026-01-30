@@ -95,7 +95,7 @@ describe('transformProgram visitor', () => {
     const client = buildProgram('export const Counter = () => <div>Count</div>;');
     const clientState = createState('client', true);
     transformProgram.enter(client.programPath, clientState);
-    transformProgram.exit(client.programPath, clientState);
+    transformProgram.exit(client.programPath);
 
     // Verify metadata is collected (if there are components)
     // Note: transformProgram.exit will call transformHMRSimple
@@ -104,7 +104,7 @@ describe('transformProgram visitor', () => {
     const ssr = buildProgram('const noop = () => null;');
     const ssrState = createState('ssr', true);
     transformProgram.enter(ssr.programPath, ssrState);
-    transformProgram.exit(ssr.programPath, ssrState);
+    transformProgram.exit(ssr.programPath);
 
     // SSR mode should not execute HMR transform
     expect(generate(ssr.ast).code).not.toContain('import.meta.hot');

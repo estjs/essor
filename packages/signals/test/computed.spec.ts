@@ -329,7 +329,7 @@ describe('computed', () => {
       // Trigger error
       shouldError.value = true;
       expect(effectError).toBeDefined();
-      expect(effectError?.message).toBe('Computation error');
+      expect((effectError as unknown as Error).message).toBe('Computation error');
 
       // Fix error
       shouldError.value = false;

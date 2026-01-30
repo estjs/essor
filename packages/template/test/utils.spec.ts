@@ -224,6 +224,7 @@ describe('omitProps', () => {
     const result = omitProps(obj, ['b']);
 
     expect(result.a).toBe(1);
+    // @ts-ignore
     expect(result.b).toBeUndefined();
     expect(result.c).toBe(3);
   });
@@ -259,8 +260,10 @@ describe('omitProps', () => {
     const result = omitProps(obj, ['b', 'd']);
 
     expect(result.a).toBe(1);
+    // @ts-ignore
     expect(result.b).toBeUndefined();
     expect(result.c).toBe(3);
+    // @ts-ignore
     expect(result.d).toBeUndefined();
   });
 });

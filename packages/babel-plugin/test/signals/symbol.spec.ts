@@ -1,7 +1,6 @@
-/* eslint-disable unused-imports/no-unused-vars */
 import { describe, expect, it } from 'vitest';
 import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import traverse, { type NodePath } from '@babel/traverse';
 import generate from '@babel/generator';
 import * as t from '@babel/types';
 import {
@@ -342,6 +341,7 @@ describe('signals/symbol', () => {
           };
           // symbolArrayPattern expects a proper NodePath, but for testing we can call it
           // Actually, let's just verify the code doesn't crash
+          symbolArrayPattern(mockPath as NodePath<t.ArrayPattern>);
         },
       });
       expect(output).toContain('$first');
@@ -352,7 +352,12 @@ describe('signals/symbol', () => {
       const code = 'const [$first, , $third] = arr;';
       const output = runTransform(code, {
         ArrayPattern(path) {
-          // Just verify it doesn't crash
+          const mockPath = {
+            node: path.node,
+            state: path.state,
+            parentPath: path.parentPath,
+          };
+          symbolArrayPattern(mockPath as NodePath<t.ArrayPattern>);
         },
       });
       expect(output).toContain('$first');
@@ -363,7 +368,12 @@ describe('signals/symbol', () => {
       const code = 'const [[$x, $y], $z] = nested;';
       const output = runTransform(code, {
         ArrayPattern(path) {
-          // Just verify it doesn't crash
+          const mockPath = {
+            node: path.node,
+            state: path.state,
+            parentPath: path.parentPath,
+          };
+          symbolArrayPattern(mockPath as NodePath<t.ArrayPattern>);
         },
       });
       expect(output).toContain('$x');
@@ -375,7 +385,12 @@ describe('signals/symbol', () => {
       const code = 'const [$head, ...$tail] = list;';
       const output = runTransform(code, {
         ArrayPattern(path) {
-          // Just verify it doesn't crash
+          const mockPath = {
+            node: path.node,
+            state: path.state,
+            parentPath: path.parentPath,
+          };
+          symbolArrayPattern(mockPath as NodePath<t.ArrayPattern>);
         },
       });
       expect(output).toContain('$head');
@@ -386,7 +401,12 @@ describe('signals/symbol', () => {
       const code = 'const [$count = 0, { $name = "test" }] = data;';
       const output = runTransform(code, {
         ArrayPattern(path) {
-          // Just verify it doesn't crash
+          const mockPath = {
+            node: path.node,
+            state: path.state,
+            parentPath: path.parentPath,
+          };
+          symbolArrayPattern(mockPath as NodePath<t.ArrayPattern>);
         },
       });
       expect(output).toContain('$count');
@@ -412,9 +432,12 @@ describe('signals/symbol', () => {
       const code = '$count = 1;';
       const output = runTransform(code, {
         AssignmentExpression(path) {
-          // Simulate invalid path
-          const invalidPath = { ...path, parentPath: null };
-          symbolAssignment(invalidPath as any);
+          const mockPath = {
+            node: path.node,
+            state: path.state,
+            parentPath: path.parentPath,
+          };
+          symbolAssignment(mockPath as NodePath<t.AssignmentExpression>);
         },
       });
       expect(output).toContain('$count');
@@ -720,16 +743,19 @@ describe('signals/symbol', () => {
     });
 
     it('handles object pattern in rest element', () => {
-      const code = 'const { a, ...{ $x } } = obj;';
-      // This is actually invalid JS syntax, but let's test the code path
-      // Instead, test a valid scenario with nested rest
-      const validCode = 'const { a, ...$rest } = obj;';
-      const output = runTransform(validCode, {
+      const code = 'const { a, ...$rest } = obj;';
+
+      const outputCode = runTransform(code, {
         ObjectPattern(path) {
           symbolObjectPattern(path);
         },
       });
-      expect(output).toContain('$rest');
+      expect(outputCode).toMatchInlineSnapshot(`
+        "const {
+          a,
+          ...$rest
+        } = obj;"
+      `);
     });
 
     it('handles array pattern in rest element', () => {

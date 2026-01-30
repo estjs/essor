@@ -86,7 +86,9 @@ describe('import utilities', () => {
     createImport(program, state.imports, 'essor');
 
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
-    const importedNames = specifiers.map(spec => (spec as t.ImportSpecifier).imported.name);
+    const importedNames = specifiers.map(
+      spec => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
+    );
     expect(importedNames).toContain('createSSGComponent');
     expect(importedNames).toContain('setSSGAttr');
   });
@@ -102,7 +104,9 @@ describe('import utilities', () => {
     createImport(program, state.imports, 'essor');
 
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
-    const imported = specifiers.map(spec => (spec as t.ImportSpecifier).imported.name);
+    const imported = specifiers.map(
+      spec => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
+    );
     expect(imported).toContain('mapSSRNodes');
     expect(imported).toContain('getRenderedElement');
   });

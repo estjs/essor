@@ -144,7 +144,7 @@ describe('scheduler', () => {
 });
 
 describe('scheduler Test Suite', () => {
-  let mockEffect: ReturnType<typeof vi.fn>;
+  let mockEffect;
 
   beforeEach(() => {
     mockEffect = vi.fn();

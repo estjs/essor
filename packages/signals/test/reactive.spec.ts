@@ -1241,7 +1241,7 @@ describe('reactive - edge cases', () => {
 
     it('should handle frozen objects', () => {
       const frozen = Object.freeze({ value: 1 });
-      const state = reactive({ frozen });
+      const state = reactive<Record<string, unknown>>({ frozen });
 
       // The frozen object itself cannot be modified
       expect(() => {
@@ -1320,8 +1320,8 @@ describe('reactive - edge cases', () => {
     });
 
     it('should handle empty objects and arrays', () => {
-      const emptyObj = reactive({});
-      const emptyArr = reactive([]);
+      const emptyObj = reactive<Record<string, unknown>>({});
+      const emptyArr = reactive<unknown[]>([]);
 
       expect(isReactive(emptyObj)).toBe(true);
       expect(isReactive(emptyArr)).toBe(true);

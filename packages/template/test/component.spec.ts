@@ -64,7 +64,7 @@ describe('component', () => {
 
       expect(ref.value).not.toBeNull();
       expect(instance.firstChild).not.toBeNull();
-      expect((ref.value as Node).isEqualNode(instance.firstChild)).toBe(true);
+      expect((ref.value as Node).isEqualNode(instance.firstChild!)).toBe(true);
     });
 
     it('triggers mounted lifecycle hook', () => {
@@ -987,7 +987,7 @@ describe('component', () => {
       };
 
       const Parent = () => {
-        capturedParentScope = getActiveScope();
+        capturedParentScope = getActiveScope()!;
         const div = document.createElement('div');
         const childInstance = createComponent(Child);
         childInstance.mount(div);
@@ -999,7 +999,7 @@ describe('component', () => {
 
       expect(capturedParentScope).toBeTruthy();
       expect(capturedChildScope).toBeTruthy();
-      expect(capturedChildScope?.parent).toBe(capturedParentScope);
+      expect((capturedChildScope as unknown as Scope).parent).toBe(capturedParentScope);
     });
   });
 });
