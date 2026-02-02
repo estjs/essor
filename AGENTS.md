@@ -37,22 +37,31 @@ pnpm vitest run signal.spec.ts -t "should track"
 ```
 essor-monorepo/
 ├── packages/
-│   ├── core/          # essor - Main entry (re-exports all)
-│   ├── signals/       # @estjs/signals - Reactive system
-│   ├── server/        # @estjs/server - SSR/SSG/Streaming
-│   ├── shared/        # @estjs/shared - Utilities
+│   ├── core/          # essor - Main entry (conditional exports: browser/node)
+│   │   ├── index.client.ts  # Browser entry → @estjs/signals + @estjs/template
+│   │   └── index.server.ts  # Node entry → @estjs/server
+│   ├── signals/       # @estjs/signals - Reactive system (13 source files)
+│   ├── template/      # @estjs/template - Rendering & hydration
+│   │   ├── hydration/ # Hydration utilities
+│   │   ├── components/ # Fragment, Portal, Suspense, createResource
+│   │   └── operations/ # DOM patch operations
+│   ├── server/        # @estjs/server - SSR/SSG rendering (4 files)
+│   ├── shared/        # @estjs/shared - Common utilities
 │   ├── babel-plugin/  # babel-plugin-essor - JSX transform
-│   └── unplugin/      # unplugin-essor - Build integration
+│   │   ├── jsx/client.ts   # Client JSX → template() calls
+│   │   └── jsx/ssg.ts      # SSG JSX → HTML strings
+│   └── unplugin/      # unplugin-essor - Build integration + HMR
 ├── examples/          # 20+ examples
 └── e2e/              # Playwright tests
 ```
 
 **Dependency Graph**:
 ```
-essor → signals + template + server
-  signals → shared
+essor (browser) → signals + template
+essor (node)    → server
+  signals  → shared
   template → signals + shared
-  server → template + shared
+  server   → template + shared (for SSR scope/hydration)
 babel-plugin → shared
 unplugin → babel-plugin
 ```
@@ -370,6 +379,7 @@ template(html) → factory
 // Component
 createComponent(fn, props)
 isComponent(node)
+Component (class)
 
 // Lifecycle
 onMount(fn) → cleanup?
@@ -386,111 +396,140 @@ insert(parent, child, before?)
 bindElement(el, prop, getter, setter)
 addEventListener(el, event, handler, options?)
 mapNodes(template, indexes)
+delegateEvents(events[])
+
+// DOM Operations
+patchClass(el, prev, next)
+normalizeClass(value)
+patchStyle(el, prev, next)
+setStyle(el, key, value)
+patchAttr(el, key, prev, next)
+addEvent(el, event, handler)
+
+// DOM Utilities
+removeNode(node)
+insertNode(parent, node, anchor)
+replaceNode(oldNode, newNode)
+getFirstDOMNode(node)
+
+// Node Utilities
+normalizeNode(node)
+isSameNode(a, b)
+shallowCompare(a, b)
+omitProps(props, keys)
+
+// Hydration (Critical!)
+isHydrating()
+startHydration()
+endHydration()
+getHydrationKey()
+resetHydrationKey()
+hydrate(component, container)
+mapSSRNodes(template, indexes)
+getRenderedElement()
 
 // Built-in Components
-<Fragment>...</Fragment>
-<Portal target={selector | element}>...</Portal>
-<Suspense fallback={<Loading />}>...</Suspense>
-<ErrorBoundary fallback={(error) => <Error />}>...</ErrorBoundary>
-
-// Async
-lazy(loader, options?)
+<Fragment>...</Fragment> + isFragment()
+<Portal target={...}>...</Portal> + isPortal()
+<Suspense fallback={...}>...</Suspense> + isSuspense()
 createResource(fetcher)
-createResource(source, fetcher)
-defineAsyncComponent(options)
 
 // Scope
 createScope(parent?)
 runWithScope(scope, fn)
 disposeScope(scope)
 getActiveScope()
+setActiveScope(scope)
 ```
 
 ### @estjs/server - SSR/SSG
 
-**Key Files**:
-- `render.ts` - renderToString(), createSSGComponent()
-- `streaming.ts` - renderToStream() for progressive rendering
-- `async-ssr.ts` - Async component SSR with state serialization
-- `error.ts` - ErrorBoundary for server
-- `components/` - Server-side Fragment, Portal, Suspense
+**Key Files** (simplified architecture):
+- `render.ts` - `renderToString()`, `render()`, `createSSGComponent()`
+- `attrs.ts` - `setSSGAttr()`, `normalizeProps()` for SSG attributes
+- `utils.ts` - `convertToString()`, `addAttributes()`
+- `index.ts` - Package exports
 
 **SSR Flow**:
 
 ```typescript
-// Server
+// Server-side rendering
 import { renderToString } from '@estjs/server';
+// Or via conditional exports:
+import { renderToString } from 'essor'; // Auto-resolves in Node.js
 
-// Client (auto-hydration)
-import { createApp } from 'essor'; // Detects SSR HTML and hydrates
+const html = renderToString(App, { title: 'Hello' });
 
-// Streaming SSR
-import { renderToStream } from '@estjs/server';
-const html = renderToString(App, props);
-createApp(App, '#root');
-const stream = renderToStream(App, props);
-stream.pipe(res);
+// Client hydration
+import { createApp, hydrate } from 'essor'; // Browser entry
+createApp(App, '#root'); // Auto-detects SSR HTML and hydrates
 ```
 
-**Hydration Keys**:
+**SSG Template Rendering** (used by babel-plugin in SSG mode):
 ```typescript
-// Server generates: data-hk="0", data-hk="1", etc.
-// Client matches by hydration key to reuse DOM
-let hydrationKeyCounter = 0;
-export function getHydrationKey() {
-  return `${hydrationKeyCounter++}`;
-}
+// Babel transforms JSX to:
+const _tmpl = ['<div>', '</div>'];
+render(_tmpl, getHydrationKey(),
+  createSSGComponent(Child1, {}),
+  createSSGComponent(Child2, {})
+);
 ```
 
 **API Summary**:
 ```typescript
-// Rendering
-renderToString(component, props)
-createSSGComponent(component, props)
-renderToStream(component, props)
-
-// Async SSR
-createSSRAsyncContext()
-renderAsyncToString(component, props, context)
-renderAsyncToStream(component, props, context)
-restoreAsyncState(serialized)
-isSSR()
+// Core Rendering
+renderToString(component, props)     // Full component → HTML string
+createSSGComponent(component, props) // Render component during SSG
+render(templates, hydrationKey, ...components) // Template interpolation
 
 // Utilities
-getHydrationKey()
-resetHydrationKey()
-escapeHTML(str)
-normalizeProps(props)
+convertToString(value)    // Convert any value to HTML string
+addAttributes(html, key)  // Add hydration attributes to HTML
+setSSGAttr(props)         // Set SSG-specific attributes
+normalizeProps(props)     // Normalize props for SSG
+escapeHTML(str)           // Escape HTML entities (from @estjs/shared)
 ```
 
 ### babel-plugin-essor - JSX Transform
 
 **Key Files**:
-- `index.ts` - Plugin entry
-- `program.ts` - Import injection
-- `signals/props.ts` - $ prefix transformation
-- `jsx/client.ts` - Client JSX → template() calls
-- `jsx/ssg.ts` - SSG JSX → HTML strings
-- `jsx/tree.ts` - JSX AST → TreeNode
-- `hmr.ts` - HMR signature generation
+- `index.ts` - Plugin entry (Program, FunctionDeclaration, JSXElement visitors)
+- `program.ts` - Import injection and module analysis
+- `import.ts` - Import rewriting for SSR/browser environments
+- `signals/props.ts` - `$` prefix transformation
+- `jsx/client.ts` - Client JSX → `template()` calls (38KB, main transformer)
+- `jsx/ssg.ts` - SSG JSX → HTML strings (12KB)
+- `jsx/tree.ts` - JSX AST → TreeNode representation (24KB)
+- `jsx/shared.ts` - Shared JSX utilities (37KB)
+- `jsx/context.ts` - Transform context management
+- `jsx/constants.ts` - JSX constants
+- `hmr.ts` - HMR signature generation and registry injection
 
 **Transformation Pipeline**:
 
 ```typescript
-// 1. Program visitor: Inject imports
+// 1. Program visitor: Inject imports based on mode
 import { signal, reactive } from '@estjs/signals';
 import { template, insert, addEventListener } from '@estjs/template';
+// OR for SSG:
+import { render, createSSGComponent, getHydrationKey } from '@estjs/server';
 
 // 2. Function visitor: Transform $ prefix
 const $count = 0;  →  const $count = signal(0);
 const $list = [];  →  const $list = reactive([]);
 
-// 3. JSX visitor: Transform to template calls
+// 3. JSX visitor (client mode):
 <div>{$count}</div>
   ↓
 const _tmpl = template('<div></div>');
 const _el = _tmpl();
 insert(_el, () => $count.value);
+
+// 3. JSX visitor (SSG mode):
+<div><Child /></div>
+  ↓
+const _tmpl = ['<div>', '</div>'];
+render(_tmpl, getHydrationKey(), createSSGComponent(Child, {}));
 
 // 4. HMR: Add signature and registry
 Component.__hmrId = "fileHash:ComponentName";
@@ -501,66 +540,64 @@ export const __$registry$__ = [Component1, Component2];
 **Plugin Options**:
 ```typescript
 {
-  symbol: '$',        // Signal prefix
+  symbol: '$',        // Signal prefix (default: '$')
   mode: 'client',     // 'client' | 'ssr' | 'ssg'
   props: true,        // Transform props destructuring
-  hmr: true           // Enable HMR
+  hmr: true           // Enable HMR (auto-disabled in SSG mode)
 }
 ```
 
 ### unplugin-essor - Build Integration
 
 **Key Files**:
-- `index.ts` - Unplugin factory
-- `hmr-runtime.js` - HMR runtime code
+- `index.ts` - Unplugin factory (5.8KB)
+- `hmr-runtime.js` - HMR runtime code (11KB, 406 lines)
 - `types.ts` - TypeScript definitions
+- `vite.ts`, `webpack.ts`, `rspack.ts`, etc. - Bundler-specific exports
 
-**HMR Runtime**:
+**HMR Runtime Functions** (packages/unplugin/src/hmr-runtime.js):
 
 ```javascript
-// packages/unplugin/src/hmr-runtime.js
-export function createHMRComponent(componentFn, props) {
-  const info = {
-    componentSignal: signal(componentFn),
-    signature: componentFn.__signature,
-    instances: new Set(),
-    cleanups: new Map()
-  };
+// Component registry - Maps hmrId → component info
+const componentRegistry = new Map();
 
-  componentFn._hmrInstances = info.instances;
+// Main exports:
+createHMRComponent(componentFn, props)  // Wrap component for HMR
+shouldUpdate(oldInfo, newFn, newSig)    // Determine if update needed
+isHMRComponent(value)                   // Check if HMR-enabled
+applyUpdate(registry)                   // Apply updates to components
+hmrAccept(bundlerType, hot, registry)   // Main HMR entry point
 
-  return (() => {
-    const componentInstance = createComponent(componentFn, props);
-    info.instances.add(componentInstance);
+// Bundler-specific setup:
+setupViteHMR(hot)      // For Vite (import.meta.hot)
+setupWebpackHMR(hot)   // For Webpack/Rspack (module.hot)
+setupStandardHMR(hot)  // Fallback for other bundlers
 
-    let isFirstRun = true;
-    const cleanup = effect(() => {
-      const _ = info.componentSignal.value;
-      if (isFirstRun) {
-        isFirstRun = false;
-        return;
-      }
-      componentInstance.forceUpdate();
-    });
+// Utilities:
+extractHMRComponents(module)  // Extract components from module
+unregisterAllInstances(hmrId) // Cleanup component instances
+getRegistryInfo()             // Debug: get registry state
+```
 
-    info.cleanups.set(componentInstance, cleanup);
-    return componentInstance;
-  })();
-}
+**HMR Update Flow**:
+```javascript
+// 1. createHMRComponent wraps each component:
+const info = {
+  componentSignal: signal(componentFn), // Signal wrapping the function
+  signature: componentFn.__signature,
+  instances: new Set(),  // Track live instances
+  cleanups: new Map()    // Cleanup functions per instance
+};
 
-export function hmrAccept(bundler, hot, registry) {
-  hot.accept((newModule) => {
-    registry.forEach((oldComponent, index) => {
-      const newComponent = newModule.__$registry$__[index];
-      if (shouldUpdate(oldComponent, newComponent)) {
-        oldComponent._hmrInstances.forEach(instance => {
-          instance.component = newComponent;
-          instance.forceUpdate();
-        });
-      }
-    });
-  });
-}
+// 2. Each instance has an effect watching componentSignal:
+effect(() => {
+  const _ = info.componentSignal.value;
+  if (!isFirstRun) componentInstance.forceUpdate();
+});
+
+// 3. On HMR update, applyUpdate() triggers:
+info.componentSignal.value = newComponentFn; // Signal update
+// → Effect triggers → forceUpdate() → Component re-renders
 ```
 
 **Bundler Support**:
