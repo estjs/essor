@@ -12,7 +12,7 @@ body:
     id: playground
     attributes:
       label: Playground URL
-      description: The reproduction URL on the playground (https://essor-playground.netlify.app/)
+      description: [playground](https://essor-playground.netlify.app/) reproduction URL
       placeholder: https://essor-playground.netlify.app/
       render: playground
 
