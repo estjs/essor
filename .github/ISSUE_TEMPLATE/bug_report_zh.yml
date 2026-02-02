@@ -12,7 +12,8 @@ body:
     id: playground
     attributes:
       label: playground地址
-      description: [playground](https://essor-playground.netlify.app/)复现地址
+      description: |
+        [playground](https://essor-playground.netlify.app/)复现地址
       placeholder: https://essor-playground.netlify.app/
       render: playground
 
