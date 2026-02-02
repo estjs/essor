@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { getHydrationKey } from '@estjs/template';
 import { createSSGComponent, render, renderToString } from '../src/render';
-import { getHydrationKey } from '../src/utils';
 
 describe('server/render', () => {
   describe('renderToString', () => {

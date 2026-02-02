@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { type InjectionKey, inject, provide } from '@estjs/template';
+import { type InjectionKey, getHydrationKey, inject, provide } from '@estjs/template';
 import { createSSGComponent, renderToString } from '../src/render';
-import { getHydrationKey } from '../src';
 
 describe('server/provide-inject', () => {
   describe('renderToString with provide/inject', () => {

@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as shared from '@estjs/shared';
-import { getRenderedElement, hydrate, mapSSRNodes } from '../../template/src/hydration/hydration';
-import { getHydrationKey, resetHydrationKey } from '../src/';
+import {
+  getHydrationKey,
+  getRenderedElement,
+  hydrate,
+  mapSSRNodes,
+  resetHydrationKey,
+} from '../../src';
 
 describe('server/hydration', () => {
   let container: HTMLElement;
@@ -192,7 +197,7 @@ describe('server/hydration', () => {
 
   describe('hydrate', () => {
     it('hydrates component with valid container element', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Create a simple component that returns an element
       const Component = () => {
@@ -209,7 +214,7 @@ describe('server/hydration', () => {
     });
 
     it('hydrates component with valid container selector', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Add an id to the container for selector-based lookup
       container.id = 'test-container';
@@ -227,7 +232,7 @@ describe('server/hydration', () => {
     });
 
     it('returns undefined if container not found', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const Component = () => ({ mount: vi.fn() }) as any;
 
       const result = hydrate(Component, '#non-existent');
@@ -237,7 +242,7 @@ describe('server/hydration', () => {
     });
 
     it('handles error during mounting and returns undefined', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Create a component that throws an error
       const ErrorComponent = () => {
@@ -252,7 +257,7 @@ describe('server/hydration', () => {
     });
 
     it('ends hydration mode even when error occurs', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
       // Create a component that throws an error
       const ErrorComponent = () => {
@@ -264,5 +269,21 @@ describe('server/hydration', () => {
 
       consoleSpy.mockRestore();
     });
+  });
+});
+describe('hydration key', () => {
+  it('generates sequential keys', () => {
+    resetHydrationKey();
+    expect(getHydrationKey()).toBe('0');
+    expect(getHydrationKey()).toBe('1');
+    expect(getHydrationKey()).toBe('2');
+  });
+
+  it('resets key', () => {
+    resetHydrationKey();
+    getHydrationKey();
+    getHydrationKey();
+    resetHydrationKey();
+    expect(getHydrationKey()).toBe('0');
   });
 });

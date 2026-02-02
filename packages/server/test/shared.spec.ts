@@ -1,24 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { addAttributes, convertToString, getHydrationKey, resetHydrationKey } from '../src/utils';
+import { addAttributes, convertToString } from '../src/utils';
 
 describe('server/ssr-utils', () => {
-  describe('hydration key', () => {
-    it('generates sequential keys', () => {
-      resetHydrationKey();
-      expect(getHydrationKey()).toBe('0');
-      expect(getHydrationKey()).toBe('1');
-      expect(getHydrationKey()).toBe('2');
-    });
-
-    it('resets key', () => {
-      resetHydrationKey();
-      getHydrationKey();
-      getHydrationKey();
-      resetHydrationKey();
-      expect(getHydrationKey()).toBe('0');
-    });
-  });
-
   describe('convertToString', () => {
     it('converts string', () => {
       expect(convertToString('hello')).toBe('hello');
