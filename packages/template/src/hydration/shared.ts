@@ -24,3 +24,21 @@ export function endHydration(): void {
 export function isHydrating(): boolean {
   return isHydrationActive;
 }
+
+/** Hydration identifier counter, used to generate unique IDs */
+let hydrationCounter = 0;
+
+/**
+ * Get the hydration key
+ * @returns the hydration key string
+ */
+export function getHydrationKey(): string {
+  return `${hydrationCounter++}`;
+}
+
+/**
+ * Reset the hydration key counter
+ */
+export function resetHydrationKey(): void {
+  hydrationCounter = 0;
+}

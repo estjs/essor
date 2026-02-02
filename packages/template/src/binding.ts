@@ -10,7 +10,7 @@ import { normalizeNode } from './utils/node';
 import { removeNode } from './utils/dom';
 import { patchChildren } from './patch';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { isHydrating } from './utils/shared';
+import { isHydrating } from './hydration/shared';
 import type { AnyNode } from './types';
 
 /**

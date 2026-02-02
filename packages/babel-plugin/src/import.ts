@@ -1,7 +1,6 @@
 import { type NodePath, types as t } from '@babel/core';
 import { error } from '@estjs/shared';
-import { IMPORTS_MAPS, RENDER_MODE, SSG_IMPORTS_MAPS, SSR_IMPORTS_MAPS } from './constants';
-import type { PluginState } from './types';
+import { IMPORTS_MAPS } from './constants';
 
 export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 /**
@@ -61,39 +60,33 @@ export function clearImport(): void {
  * @param {Record<string, t.Identifier>} imports Imported identifiers
  * @param {string} from The module path to import
  */
+// Always import from 'essor' package and let package exports handle environment switching
+const importSource = 'essor';
+
 export function createImport(
   path: NodePath<t.Program>,
   imports: Record<string, t.Identifier>,
-  from: string,
 ): void {
-  const state = path.state as PluginState;
-
-  const { mode } = state.opts;
-
   // Return early if no functions to import
   if (!importedSets.size) {
     return;
   }
+
   try {
     // Create import specifiers
+    // No need to map function names anymore as exports handle it!
     const importSpecifiers = Array.from(importedSets).map(name => {
       const importIdentifier = imports[name];
       if (!importIdentifier) {
         throw new Error(`Import identifier not found for: ${name}`);
       }
       const local = t.identifier(importIdentifier.name);
-      if (mode === RENDER_MODE.SSG) {
-        name = SSG_IMPORTS_MAPS[name] || name;
-      }
-      if (mode === RENDER_MODE.SSR) {
-        name = SSR_IMPORTS_MAPS[name] || name;
-      }
       const imported = t.identifier(name);
       return t.importSpecifier(local, imported);
     });
 
     // Create and insert import declaration at program start
-    const importDeclaration = t.importDeclaration(importSpecifiers, t.stringLiteral(from));
+    const importDeclaration = t.importDeclaration(importSpecifiers, t.stringLiteral(importSource));
 
     path.node.body.unshift(importDeclaration);
   } catch (_error) {

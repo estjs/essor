@@ -12,7 +12,8 @@ const banner = `/**
 
 export default defineConfig({
   entryPoints: {
-    essor: './src/index.ts',
+    'essor-client': './src/index.client.ts',
+    'essor-server': './src/index.server.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
@@ -26,7 +27,7 @@ export default defineConfig({
   treeshake: true,
   cjsInterop: true,
   sourcemap: true,
-  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals'],
+  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
   minify: env === 'production',
   tsconfig: '../../tsconfig.build.json',
   define: {

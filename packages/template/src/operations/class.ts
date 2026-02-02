@@ -1,5 +1,5 @@
 import { normalizeClassName } from '@estjs/shared';
-import { isHydrating } from '../utils/shared';
+import { isHydrating } from '../hydration/shared';
 
 /**
  * Type definition for class values

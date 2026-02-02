@@ -51,18 +51,6 @@ export const IMPORTS_MAPS = [
   'getHydrationKey',
 ] as const;
 
-// Static Site Generation API
-export const SSG_IMPORTS_MAPS = {
-  createComponent: 'createSSGComponent',
-  patchAttr: 'setSSGAttr',
-} as const;
-
-// Server-side Rendering API
-export const SSR_IMPORTS_MAPS = {
-  mapNodes: 'mapSSRNodes',
-  template: 'getRenderedElement',
-} as const;
-
 // transform property name
 export const TRANSFORM_PROPERTY_NAME = '__props';
 

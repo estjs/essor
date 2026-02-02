@@ -19,7 +19,16 @@ export { removeNode, insertNode, replaceNode, getFirstDOMNode } from './utils/do
 // Node utilities
 export { normalizeNode, isSameNode, shallowCompare } from './utils/node';
 
-export { isHydrating, startHydration, endHydration } from './utils/shared';
+export {
+  isHydrating,
+  startHydration,
+  endHydration,
+  getHydrationKey,
+  resetHydrationKey,
+  hydrate,
+  mapSSRNodes,
+  getRenderedElement,
+} from './hydration';
 
 export {
   patchClass,

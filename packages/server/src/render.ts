@@ -4,9 +4,10 @@ import {
   type ComponentProps,
   createScope,
   disposeScope,
+  resetHydrationKey,
   runWithScope,
 } from '@estjs/template';
-import { addAttributes, convertToString, resetHydrationKey } from './utils';
+import { addAttributes, convertToString } from './utils';
 
 /**
  * Render a component to HTML string

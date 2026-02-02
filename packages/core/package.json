@@ -18,29 +18,31 @@
     "jsx-runtime.d.ts",
     "types"
   ],
-  "main": "./dist/essor.esm.js",
-  "module": "./dist/essor.esm.js",
-  "types": "./dist/essor.d.ts",
+  "main": "./dist/essor-client.cjs.js",
+  "module": "./dist/essor-client.esm.js",
+  "types": "./dist/essor-client.d.ts",
   "exports": {
     ".": {
       "browser": {
-        "development": {
-          "types": "./dist/essor.d.ts",
-          "require": "./dist/essor.dev.cjs.js",
-          "import": "./dist/essor.dev.esm.js"
-        },
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.cjs.js",
-        "import": "./dist/essor.esm.js"
+        "types": "./dist/essor-client.d.ts",
+        "require": "./dist/essor-client.cjs.js",
+        "import": "./dist/essor-client.esm.js"
       },
-      "development": {
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.dev.cjs.js",
-        "import": "./dist/essor.dev.esm.js"
+      "node": {
+        "types": "./dist/essor-server.d.ts",
+        "require": "./dist/essor-server.cjs.js",
+        "import": "./dist/essor-server.esm.js"
       },
-      "types": "./dist/essor.d.ts",
-      "require": "./dist/essor.cjs.js",
-      "import": "./dist/essor.esm.js"
+      "server": {
+        "types": "./dist/essor-server.d.ts",
+        "require": "./dist/essor-server.cjs.js",
+        "import": "./dist/essor-server.esm.js"
+      },
+      "default": {
+        "types": "./dist/essor-client.d.ts",
+        "require": "./dist/essor-client.cjs.js",
+        "import": "./dist/essor-client.esm.js"
+      }
     },
     "./jsx-runtime": {
       "types": "./jsx-runtime.d.ts",

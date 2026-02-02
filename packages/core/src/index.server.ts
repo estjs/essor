@@ -1,7 +1,5 @@
 import { __version } from './version';
 
-export * from '@estjs/signals';
-export * from '@estjs/template';
 export * from '@estjs/server';
 
 if (globalThis) {
