@@ -16,7 +16,6 @@ interface HmrComponentInfo {
 const WHITESPACE_REGEX = /\s+/g;
 
 /**
- * Optimized DJB2 hash algorithm with bit operations
  * Used to generate unique IDs and signatures for HMR
  *
  * @param str - String to hash

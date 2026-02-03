@@ -1,9 +1,9 @@
 import { isArray, isString, warn } from '@estjs/shared';
 import { insertNode } from '../utils/dom';
 import { normalizeNode } from '../utils/node';
-import { COMPONENT_TYPE } from '../constants';
 import { onMount } from '../lifecycle';
 import { onCleanup } from '../scope';
+import { PORTAL_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
 
 export interface PortalProps {
@@ -23,22 +23,11 @@ export interface PortalProps {
  * <Portal target="#modal-root">
  *   <div>Modal content</div>
  * </Portal>
- * ```
  */
 export function Portal(props: PortalProps): Comment | string {
-  // Check if we're in SSR mode (no document)
-  if (typeof document === 'undefined') {
-    const children = props.children;
-    if (!children) return '';
-    const childArray = isArray(children) ? children : [children];
-    // In SSR, convert children to string
-    return childArray.map(child => String(child || '')).join('');
-  }
   // Create placeholder comment for parent tree
   const placeholder = document.createComment('portal');
-  // Mark as portal for isPortal check
-  (placeholder as any)[COMPONENT_TYPE.PORTAL] = true;
-
+  placeholder[PORTAL_COMPONENT] = true;
   const children = props.children;
   if (children) {
     const childArray = isArray(children) ? children : [children];
@@ -69,7 +58,7 @@ export function Portal(props: PortalProps): Comment | string {
 
       onCleanup(() => {
         nodes.forEach(node => {
-          if (typeof node !== 'string' && node.parentNode === targetElement) {
+          if (!isString(node) && node.parentNode === targetElement) {
             targetElement.removeChild(node);
           }
         });
@@ -80,7 +69,7 @@ export function Portal(props: PortalProps): Comment | string {
   return placeholder;
 }
 
-Portal[COMPONENT_TYPE.PORTAL] = true;
+Portal[PORTAL_COMPONENT] = true;
 
 /**
  * Check if a node is a Portal component
@@ -88,5 +77,5 @@ Portal[COMPONENT_TYPE.PORTAL] = true;
  * @returns true if node is a Portal
  */
 export function isPortal(node: unknown): boolean {
-  return !!node && !!(node as any)[COMPONENT_TYPE.PORTAL];
+  return !!node && !!node[PORTAL_COMPONENT];
 }

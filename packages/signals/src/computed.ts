@@ -219,7 +219,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
 
       // - If no previous value, always consider it changed
       // - Otherwise use hasChanged for proper comparison (handles NaN, etc.)
-      const valueChanged = !hadValue || hasChanged(oldValue as any, newValue);
+      const valueChanged = !hadValue || hasChanged(oldValue, newValue);
 
       if (valueChanged) {
         // Update cache
@@ -232,7 +232,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
         if (__DEV__ && this.onTrigger) {
           this.onTrigger({
             effect: this,
-            target: this as any,
+            target: this,
             type: 'set',
             key: 'value',
             newValue,

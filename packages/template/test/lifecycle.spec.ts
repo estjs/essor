@@ -113,8 +113,8 @@ describe('lifecycle management', () => {
 
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const hook = vi.fn();
-
-      registerLifecycleHook('invalid' as any, hook);
+      // @ts-ignore
+      registerLifecycleHook('invalid', hook);
 
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
@@ -226,8 +226,10 @@ describe('lifecycle management', () => {
     });
 
     it('handles hook timeout in development mode', async () => {
-      const originalDev = (globalThis as any).__DEV__;
-      (globalThis as any).__DEV__ = true;
+      // @ts-ignore
+      const originalDev = globalThis.__DEV__;
+      // @ts-ignore
+      globalThis.__DEV__ = true;
 
       const context = createContext(null);
       pushContextStack(context);
@@ -245,7 +247,8 @@ describe('lifecycle management', () => {
 
       consoleSpy.mockRestore();
       popContextStack();
-      (globalThis as any).__DEV__ = originalDev;
+      // @ts-ignore
+      globalThis.__DEV__ = originalDev;
     }, 5000);
   });
 

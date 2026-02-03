@@ -27,7 +27,6 @@ export function transferKey(oldNode: AnyNode, newNode: AnyNode): void {
 
 /**
  * Patches a single node, updating it if possible or replacing it.
- * Optimized for common cases with early returns and minimal allocations.
  *
  * ## Algorithm Complexity
  *

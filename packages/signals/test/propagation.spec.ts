@@ -711,7 +711,7 @@ describe('propagation', () => {
       comp.value;
 
       // Get the internal node
-      const node = comp as any;
+      const node = comp;
 
       // Set some flags
       node.flag |= ReactiveFlags.PENDING | ReactiveFlags.RECURSED | ReactiveFlags.RECURSED_CHECK;
@@ -731,7 +731,7 @@ describe('propagation', () => {
 
       comp.value;
 
-      const node = comp as any;
+      const node = comp;
       const originalFlags = node.flag;
 
       // Add propagation flags

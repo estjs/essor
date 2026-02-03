@@ -70,7 +70,8 @@ describe('signal', () => {
     expect(testSignal.value).toEqual([10, 20, 30]);
     expect(testSignal.peek()).toEqual([10, 20, 30]);
 
-    (testSignal.value as any) = null;
+    // @ts-ignore
+    testSignal.value = null;
     expect(effectCount).toBe(6);
     expect(testSignal.value).toBeNull();
     expect(testSignal.peek()).toBeNull();
@@ -616,7 +617,7 @@ describe('signal optimization - on-demand _oldValue creation', () => {
     const s = signal(10);
 
     // Access the internal implementation to check _oldValue property
-    const impl = s as any;
+    const impl = s;
 
     // _oldValue should not exist initially
     expect('_oldValue' in impl).toBe(false);
@@ -624,12 +625,12 @@ describe('signal optimization - on-demand _oldValue creation', () => {
     // First update should create _oldValue
     s.value = 20;
     expect('_oldValue' in impl).toBe(true);
-    expect(impl._oldValue).toBe(10);
+    expect((impl as any)._oldValue).toBe(10);
   });
 
   it('should create _oldValue on first value change', () => {
     const s = signal({ count: 0 });
-    const impl = s as any;
+    const impl = s;
 
     // _oldValue should not exist initially
     expect('_oldValue' in impl).toBe(false);
@@ -641,7 +642,7 @@ describe('signal optimization - on-demand _oldValue creation', () => {
 
   it('should not create _oldValue when setting same value', () => {
     const s = signal(10);
-    const impl = s as any;
+    const impl = s;
 
     // Setting the same value should not create _oldValue
     s.value = 10;
@@ -772,7 +773,8 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Setting a signal as value should unwrap it
-    s.value = nested as any;
+    // @ts-ignore
+    s.value = nested;
     expect(s.value).toBe(20);
     expect(typeof s.value).toBe('number');
   });
@@ -809,7 +811,8 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Update function returning a signal should unwrap it
-    s.update(() => nested as any);
+    // @ts-ignore
+    s.update(() => nested);
     expect(s.value).toBe(20);
   });
 

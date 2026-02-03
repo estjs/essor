@@ -72,8 +72,6 @@ describe('hMR - Rspack Platform', () => {
             const output = stats?.toJson({ source: true }).modules;
             if (!output) return reject(new Error('No output'));
 
-            console.log(output.map(m => m.name));
-
             // Find the entry module output
             const entryModule = output.find(
               m => m.name && (m.name.endsWith(path) || m.name.includes(path.replace('./', ''))),

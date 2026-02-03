@@ -105,7 +105,8 @@ describe('binding utilities', () => {
     it('ignores insert when parent is null', () => {
       const scope = createScope(null);
       runWithScope(scope, () => {
-        expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
+        // @ts-ignore
+        expect(() => insert(null, document.createTextNode('test'))).not.toThrow();
       });
       disposeScope(scope);
     });

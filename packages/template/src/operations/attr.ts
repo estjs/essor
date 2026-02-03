@@ -3,6 +3,7 @@ import {
   isBooleanAttr,
   isObject,
   isSpecialBooleanAttr,
+  isString,
   isSymbol,
   warn,
 } from '@estjs/shared';
@@ -100,7 +101,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
   const attrValue = isSymbol(next) ? String(next) : next;
 
   const isUrlAttr = lowerKey === 'href' || lowerKey === 'src' || lowerKey === 'xlink:href';
-  if (isUrlAttr && typeof attrValue === 'string') {
+  if (isUrlAttr && isString(attrValue)) {
     const v = attrValue.trim().toLowerCase();
     if (v.startsWith('javascript:') || v.startsWith('data:')) {
       return;
@@ -112,7 +113,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
   } else {
     if (key in el) {
       try {
-        (el as any)[key] = attrValue;
+        el[key] = attrValue;
       } catch {
         el.setAttribute(key, String(attrValue));
       }

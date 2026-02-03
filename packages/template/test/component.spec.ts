@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { computed, signal } from '@estjs/signals';
-import { createComponent } from '../src/component';
+import { createComponent, isComponent } from '../src/component';
 import { onDestroy, onMount, onUpdate } from '../src/lifecycle';
 import { COMPONENT_STATE } from '../src/constants';
 import { type Scope, getActiveScope } from '../src/scope';
@@ -141,8 +141,8 @@ describe('component', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         return document.createElement('div');
       };
-
-      const instance = createComponent(TestComp as any);
+      // @ts-ignore
+      const instance = createComponent(TestComp);
       await instance.mount(root);
 
       expect(mountedHook).toHaveBeenCalledTimes(1);
@@ -154,8 +154,8 @@ describe('component', () => {
         await new Promise(resolve => setTimeout(resolve, 10));
         throw new Error('Async error');
       };
-
-      const instance = createComponent(TestComp as any);
+      // @ts-ignore
+      const instance = createComponent(TestComp);
       await expect(instance.mount(root)).rejects.toThrow('Async error');
     });
 
@@ -170,8 +170,8 @@ describe('component', () => {
         const node = await promise;
         return node;
       };
-
-      const instance = createComponent(TestComp as any);
+      // @ts-ignore
+      const instance = createComponent(TestComp);
       const mountPromise = instance.mount(root);
 
       // Destroy while mount is in progress
@@ -287,7 +287,8 @@ describe('component', () => {
       next.update(first);
 
       // Force re-access of props to verify getter is updated
-      const propsItem = (next as any).reactiveProps.item;
+      // @ts-ignore
+      const propsItem = next.reactiveProps.item;
       expect(propsItem.label).toBe('Original !!!');
     });
 
@@ -455,8 +456,8 @@ describe('component', () => {
         div.textContent = `Async Render ${renderCount}`;
         return div;
       };
-
-      const instance = createComponent(TestComp as any);
+      // @ts-ignore
+      const instance = createComponent(TestComp);
       await instance.mount(root);
 
       await instance.forceUpdate();
@@ -504,8 +505,8 @@ describe('component', () => {
       const TestComp = () => document.createElement('div');
       const instance = createComponent(TestComp);
       await instance.mount(root);
-
-      (instance as any).scope = null;
+      // @ts-ignore
+      instance.scope = null;
 
       await instance.forceUpdate();
 
@@ -529,7 +530,7 @@ describe('component', () => {
       const originalNode = instance.firstChild;
       shouldError = true;
 
-      await expect(instance.forceUpdate()).rejects.toThrow('Render error');
+      expect(() => instance.forceUpdate()).toThrow('Render error');
 
       // Should attempt rollback
       expect(instance.firstChild).toBe(originalNode);
@@ -551,8 +552,8 @@ describe('component', () => {
         div.textContent = `Render ${currentCount}`;
         return div;
       };
-
-      const instance = createComponent(TestComp as any);
+      // @ts-ignore
+      const instance = createComponent(TestComp);
 
       // Mount and resolve the initial render
       const mountPromise = instance.mount(root);
@@ -647,8 +648,8 @@ describe('component', () => {
       expect(context).toBeTruthy();
 
       await instance.destroy();
-
-      expect((instance as any).scope).toBeNull();
+      // @ts-ignore
+      expect(instance.scope).toBeNull();
       expect(context?.isDestroyed).toBe(true);
     });
 
@@ -665,10 +666,14 @@ describe('component', () => {
 
       await instance.destroy();
 
-      expect((instance as any).renderedNode).toBeUndefined();
-      expect((instance as any).parentNode).toBeUndefined();
-      expect((instance as any).beforeNode).toBeUndefined();
-      expect((instance as any).reactiveProps).toEqual({});
+      // @ts-ignore
+      expect(instance.renderedNode).toBeUndefined();
+      // @ts-ignore
+      expect(instance.parentNode).toBeUndefined();
+      // @ts-ignore
+      expect(instance.beforeNode).toBeUndefined();
+      // @ts-ignore
+      expect(instance.reactiveProps).toEqual({});
       // set default value {}
       expect(instance.props).toEqual({});
     });
@@ -794,7 +799,7 @@ describe('component', () => {
 
     it('handles component with null rendered node', async () => {
       const root = createTestRoot();
-      const TestComp = () => null as any;
+      const TestComp = () => null;
 
       const instance = createComponent(TestComp);
       await instance.mount(root);
@@ -836,22 +841,25 @@ describe('component', () => {
       const TestComp = () => document.createElement('div');
 
       const instance = createComponent(TestComp);
-      expect((instance as any).state).toBe(COMPONENT_STATE.INITIAL);
+      // @ts-ignore
+      expect(instance.state).toBe(COMPONENT_STATE.INITIAL);
 
       // Mount is synchronous for sync components, so state changes immediately
       await instance.mount(root);
-      expect((instance as any).state).toBe(COMPONENT_STATE.MOUNTED);
+      // @ts-ignore
+      expect(instance.state).toBe(COMPONENT_STATE.MOUNTED);
 
       await instance.destroy();
-
-      expect((instance as any).state).toBe(COMPONENT_STATE.DESTROYED);
+      // @ts-ignore
+      expect(instance.state).toBe(COMPONENT_STATE.DESTROYED);
     });
   });
 
   describe('component utilities', () => {
     it('returns component instance when passed to createComponent', () => {
       const instance = createComponent(() => document.createElement('div'));
-      const reused = createComponent(instance as any);
+      // @ts-ignore
+      const reused = createComponent(instance);
       expect(reused).toBe(instance);
     });
 
@@ -1000,6 +1008,555 @@ describe('component', () => {
       expect(capturedParentScope).toBeTruthy();
       expect(capturedChildScope).toBeTruthy();
       expect((capturedChildScope as unknown as Scope).parent).toBe(capturedParentScope);
+    });
+  });
+
+  describe('propSnapshots functionality', () => {
+    describe('initialization', () => {
+      it('creates snapshots for object props on construction', () => {
+        const objProp = { name: 'test', count: 1 };
+        const TestComp = () => document.createElement('div');
+        const instance = createComponent(TestComp, { data: objProp });
+
+        // @ts-ignore - accessing private property for testing
+        expect(instance._propSnapshots.data).toBeDefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.data).toEqual({ name: 'test', count: 1 });
+        // @ts-ignore - snapshot should be a different reference
+        expect(instance._propSnapshots.data).not.toBe(objProp);
+      });
+
+      it('creates snapshots for array props on construction', () => {
+        const arrProp = [1, 2, 3];
+        const TestComp = () => document.createElement('div');
+        const instance = createComponent(TestComp, { items: arrProp });
+
+        // @ts-ignore
+        expect(instance._propSnapshots.items).toBeDefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.items).toEqual([1, 2, 3]);
+        // @ts-ignore - snapshot should be a different reference
+        expect(instance._propSnapshots.items).not.toBe(arrProp);
+      });
+
+      it('does not create snapshots for primitive props', () => {
+        const TestComp = () => document.createElement('div');
+        const instance = createComponent(TestComp, {
+          str: 'hello',
+          num: 42,
+          bool: true,
+          nullVal: null,
+          undefinedVal: undefined,
+        });
+
+        // @ts-ignore
+        expect(instance._propSnapshots.str).toBeUndefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.num).toBeUndefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.bool).toBeUndefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.nullVal).toBeUndefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.undefinedVal).toBeUndefined();
+      });
+
+      it('creates snapshots for nested objects', () => {
+        const nestedProp = { user: { name: 'John', age: 30 }, tags: ['a', 'b'] };
+        const TestComp = () => document.createElement('div');
+        const instance = createComponent(TestComp, { config: nestedProp });
+
+        // @ts-ignore
+        expect(instance._propSnapshots.config).toBeDefined();
+        // @ts-ignore - shallow copy, so nested objects are same reference
+        expect(instance._propSnapshots.config.user).toBe(nestedProp.user);
+        // @ts-ignore
+        expect(instance._propSnapshots.config.tags).toBe(nestedProp.tags);
+      });
+
+      it('creates snapshots for empty objects and arrays', () => {
+        const TestComp = () => document.createElement('div');
+        const instance = createComponent(TestComp, { obj: {}, arr: [] });
+
+        // @ts-ignore
+        expect(instance._propSnapshots.obj).toBeDefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.obj).toEqual({});
+        // @ts-ignore
+        expect(instance._propSnapshots.arr).toBeDefined();
+        // @ts-ignore
+        expect(instance._propSnapshots.arr).toEqual([]);
+      });
+    });
+
+    describe('mutation detection', () => {
+      it('detects when object properties are mutated (same reference)', async () => {
+        const root = createTestRoot();
+        let capturedProps: any = null;
+
+        const TestComp = (props: any) => {
+          capturedProps = props;
+          const div = document.createElement('div');
+          div.textContent = props.data.name;
+          return div;
+        };
+
+        // Initial mount
+        const data = { name: 'Alice', age: 25 };
+        const first = createComponent(TestComp, { data });
+        await first.mount(root);
+
+        expect(capturedProps.data.name).toBe('Alice');
+
+        // Mutate the object (same reference, different content)
+        data.name = 'Bob';
+        data.age = 30;
+
+        // Update with mutated object
+        const next = createComponent(TestComp, { data });
+        await next.update(first);
+
+        // ReactiveProps should be updated with new snapshot
+        // @ts-ignore
+        expect(next.reactiveProps.data.name).toBe('Bob');
+        // @ts-ignore
+        expect(next.reactiveProps.data.age).toBe(30);
+        // @ts-ignore - snapshot should be updated
+        expect(next._propSnapshots.data).toEqual({ name: 'Bob', age: 30 });
+      });
+
+      it('detects when array elements are mutated (same reference)', async () => {
+        const root = createTestRoot();
+        let capturedProps: any = null;
+
+        const TestComp = (props: any) => {
+          capturedProps = props;
+          const div = document.createElement('div');
+          div.textContent = props.items.join(',');
+          return div;
+        };
+
+        // Initial mount
+        const items = [1, 2, 3];
+        const first = createComponent(TestComp, { items });
+        await first.mount(root);
+
+        expect(capturedProps.items).toEqual([1, 2, 3]);
+
+        // Mutate the array (same reference)
+        items.push(4);
+        items[0] = 10;
+
+        // Update with mutated array
+        const next = createComponent(TestComp, { items });
+        await next.update(first);
+
+        // ReactiveProps should be updated with new snapshot
+        // @ts-ignore
+        expect(next.reactiveProps.items).toEqual([10, 2, 3, 4]);
+        // @ts-ignore - snapshot should be updated
+        expect(next._propSnapshots.items).toEqual([10, 2, 3, 4]);
+      });
+
+      it('updates reactiveProps when object reference changes', async () => {
+        const root = createTestRoot();
+        const TestComp = (props: any) => {
+          const div = document.createElement('div');
+          div.textContent = props.data.name;
+          return div;
+        };
+
+        const first = createComponent(TestComp, { data: { name: 'Alice' } });
+        await first.mount(root);
+
+        // Different reference, different content
+        const next = createComponent(TestComp, { data: { name: 'Bob' } });
+        await next.update(first);
+
+        // @ts-ignore
+        expect(next.reactiveProps.data.name).toBe('Bob');
+        // @ts-ignore
+        expect(next._propSnapshots.data).toEqual({ name: 'Bob' });
+      });
+
+      it('updates reactiveProps when array reference changes', async () => {
+        const root = createTestRoot();
+        const TestComp = () => {
+          const div = document.createElement('div');
+          return div;
+        };
+
+        const first = createComponent(TestComp, { items: [1, 2, 3] });
+        await first.mount(root);
+
+        // Different reference
+        const next = createComponent(TestComp, { items: [4, 5, 6] });
+        await next.update(first);
+
+        // @ts-ignore
+        expect(next.reactiveProps.items).toEqual([4, 5, 6]);
+        // @ts-ignore
+        expect(next._propSnapshots.items).toEqual([4, 5, 6]);
+      });
+
+      it('skips update when object content has not changed', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const data = { name: 'Alice', age: 25 };
+        const first = createComponent(TestComp, { data });
+        await first.mount(root);
+
+        // @ts-ignore
+        const originalReactiveData = first.reactiveProps.data;
+
+        // Same reference, no mutation
+        const next = createComponent(TestComp, { data });
+        await next.update(first);
+
+        // ReactiveProps should remain the same reference (optimization)
+        // @ts-ignore
+        expect(next.reactiveProps.data).toBe(originalReactiveData);
+      });
+
+      it('skips update when array content has not changed', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const items = [1, 2, 3];
+        const first = createComponent(TestComp, { items });
+        await first.mount(root);
+
+        // @ts-ignore
+        const originalReactiveItems = first.reactiveProps.items;
+
+        // Same reference, no mutation
+        const next = createComponent(TestComp, { items });
+        await next.update(first);
+
+        // ReactiveProps should remain the same reference (optimization)
+        // @ts-ignore
+        expect(next.reactiveProps.items).toBe(originalReactiveItems);
+      });
+
+      it('handles mixed props - some changed, some unchanged', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const data1 = { name: 'Alice' };
+        const data2 = { count: 10 };
+        const first = createComponent(TestComp, { data1, data2, primitive: 'hello' });
+        await first.mount(root);
+
+        // Mutate data1 but keep data2 unchanged
+        data1.name = 'Bob';
+
+        const next = createComponent(TestComp, { data1, data2, primitive: 'hello' });
+        await next.update(first);
+
+        // @ts-ignore - data1 should be updated
+        expect(next.reactiveProps.data1.name).toBe('Bob');
+        // @ts-ignore - data2 should remain same reference
+        expect(next.reactiveProps.data2).toBe(data2);
+        // @ts-ignore - primitive should remain unchanged
+        expect(next.reactiveProps.primitive).toBe('hello');
+      });
+    });
+
+    describe('snapshot lifecycle', () => {
+      it('transfers snapshots during component update', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const first = createComponent(TestComp, { data: { name: 'Alice' } });
+        await first.mount(root);
+
+        // @ts-ignore
+        const firstSnapshots = first._propSnapshots;
+
+        const next = createComponent(TestComp, { data: { name: 'Alice' } });
+        await next.update(first);
+
+        // Snapshots should be transferred
+        // @ts-ignore
+        expect(next._propSnapshots).toBe(firstSnapshots);
+      });
+
+      it('deletes snapshot when prop type changes from object to primitive', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const first = createComponent(TestComp, { value: { name: 'Alice' } });
+        await first.mount(root);
+
+        // @ts-ignore
+        expect(first._propSnapshots.value).toBeDefined();
+
+        // Change to primitive
+        const next = createComponent(TestComp, { value: 'hello' });
+        await next.update(first);
+
+        // Snapshot should be deleted
+        // @ts-ignore
+        expect(next._propSnapshots.value).toBeUndefined();
+        // @ts-ignore
+        expect(next.reactiveProps.value).toBe('hello');
+      });
+
+      it('creates snapshot when prop type changes from primitive to object', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const first = createComponent(TestComp, { value: 'hello' });
+        await first.mount(root);
+
+        // @ts-ignore
+        expect(first._propSnapshots.value).toBeUndefined();
+
+        // Change to object
+        const next = createComponent(TestComp, { value: { name: 'Alice' } });
+        await next.update(first);
+
+        // Snapshot should be created
+        // @ts-ignore
+        expect(next._propSnapshots.value).toBeDefined();
+        // @ts-ignore
+        expect(next._propSnapshots.value).toEqual({ name: 'Alice' });
+      });
+
+      it('updates snapshot when mutation is detected', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const data = { name: 'Alice', age: 25 };
+        const first = createComponent(TestComp, { data });
+        await first.mount(root);
+
+        // @ts-ignore
+        expect(first._propSnapshots.data).toEqual({ name: 'Alice', age: 25 });
+
+        // Mutate
+        data.name = 'Bob';
+        data.age = 30;
+
+        const next = createComponent(TestComp, { data });
+        await next.update(first);
+
+        // Snapshot should be updated
+        // @ts-ignore
+        expect(next._propSnapshots.data).toEqual({ name: 'Bob', age: 30 });
+        // @ts-ignore - should be a new reference
+        expect(next._propSnapshots.data).not.toBe(data);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('handles null values correctly', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        // Start with object
+        const first = createComponent(TestComp, { data: { name: 'Alice' } });
+        await first.mount(root);
+
+        // Update to null
+        const next = createComponent(TestComp, { data: null });
+        await next.update(first);
+
+        // @ts-ignore
+        expect(next.reactiveProps.data).toBeNull();
+        // @ts-ignore - snapshot should be deleted
+        expect(next._propSnapshots.data).toBeUndefined();
+      });
+
+      it('handles undefined values correctly', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const first = createComponent(TestComp, { data: { name: 'Alice' } });
+        await first.mount(root);
+
+        // Update to undefined
+        const next = createComponent(TestComp, { data: undefined });
+        await next.update(first);
+
+        // @ts-ignore
+        expect(next.reactiveProps.data).toBeUndefined();
+        // @ts-ignore - snapshot should be deleted
+        expect(next._propSnapshots.data).toBeUndefined();
+      });
+
+      it('handles deeply nested structures', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const deepData = {
+          level1: {
+            level2: {
+              level3: { value: 'deep' },
+            },
+          },
+        };
+
+        const first = createComponent(TestComp, { data: deepData });
+        await first.mount(root);
+
+        // Mutate deep property (shallow snapshot won't catch this immediately)
+        deepData.level1.level2.level3.value = 'changed';
+
+        const next = createComponent(TestComp, { data: deepData });
+        await next.update(first);
+
+        // The snapshot comparison is shallow, but it should still detect the reference is the same
+        // and content changed at the first level
+        // @ts-ignore
+        expect(next.reactiveProps.data).toBeDefined();
+      });
+
+      it('handles array methods that mutate in place', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const items = [1, 2, 3];
+        const first = createComponent(TestComp, { items });
+        await first.mount(root);
+
+        // Use array methods
+        items.push(4);
+        items.shift();
+        items.reverse();
+
+        const next = createComponent(TestComp, { items });
+        await next.update(first);
+
+        // Should detect mutation
+        // @ts-ignore
+        expect(next.reactiveProps.items).toEqual([4, 3, 2]);
+        // @ts-ignore
+        expect(next._propSnapshots.items).toEqual([4, 3, 2]);
+      });
+
+      it('handles object spread patterns', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const base = { name: 'Alice', age: 25 };
+        const first = createComponent(TestComp, { data: { ...base } });
+        await first.mount(root);
+
+        // Different reference with spread
+        const next = createComponent(TestComp, { data: { ...base, city: 'NYC' } });
+        await next.update(first);
+
+        // @ts-ignore
+        expect(next.reactiveProps.data).toEqual({ name: 'Alice', age: 25, city: 'NYC' });
+        // @ts-ignore
+        expect(next._propSnapshots.data).toEqual({ name: 'Alice', age: 25, city: 'NYC' });
+      });
+
+      it('handles Object.assign patterns', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const data = { name: 'Alice' };
+        const first = createComponent(TestComp, { data });
+        await first.mount(root);
+
+        // Mutate using Object.assign
+        Object.assign(data, { age: 25, city: 'NYC' });
+
+        const next = createComponent(TestComp, { data });
+        await next.update(first);
+
+        // Should detect mutation
+        // @ts-ignore
+        expect(next.reactiveProps.data).toEqual({ name: 'Alice', age: 25, city: 'NYC' });
+        // @ts-ignore
+        expect(next._propSnapshots.data).toEqual({ name: 'Alice', age: 25, city: 'NYC' });
+      });
+
+      it('handles props with getter functions', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        let currentValue = { name: 'Alice' };
+
+        const first = createComponent(TestComp, {
+          get data() {
+            return currentValue;
+          },
+        });
+        await first.mount(root);
+
+        // Change the getter result
+        currentValue = { name: 'Bob' };
+
+        const next = createComponent(TestComp, {
+          get data() {
+            return currentValue;
+          },
+        });
+        await next.update(first);
+
+        // Should detect the change
+        // @ts-ignore
+        expect(next.reactiveProps.data.name).toBe('Bob');
+      });
+
+      it('handles same object reference with identical content', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const data = { name: 'Alice', age: 25 };
+        const first = createComponent(TestComp, { data });
+        await first.mount(root);
+
+        // @ts-ignore
+        const originalSnapshot = first._propSnapshots.data;
+
+        // Same reference, same content
+        const next = createComponent(TestComp, { data });
+        await next.update(first);
+
+        // Should skip update (optimization)
+        // @ts-ignore
+        expect(next._propSnapshots.data).toBe(originalSnapshot);
+        // @ts-ignore
+        expect(next.reactiveProps.data).toBe(data);
+      });
+
+      it('handles empty array mutations', async () => {
+        const root = createTestRoot();
+        const TestComp = () => document.createElement('div');
+
+        const items: number[] = [];
+        const first = createComponent(TestComp, { items });
+        await first.mount(root);
+
+        // Mutate empty array
+        items.push(1, 2, 3);
+
+        const next = createComponent(TestComp, { items });
+        await next.update(first);
+
+        // Should detect mutation
+        // @ts-ignore
+        expect(next.reactiveProps.items).toEqual([1, 2, 3]);
+        // @ts-ignore
+        expect(next._propSnapshots.items).toEqual([1, 2, 3]);
+      });
+    });
+  });
+
+  describe('isComponent test', () => {
+    it('should return true for component instance', () => {
+      const instance = createComponent(() => document.createElement('div'));
+      expect(isComponent(instance)).toBe(true);
+    });
+
+    it('should return false for non-component instance', () => {
+      const instance = document.createElement('div');
+      expect(isComponent(instance)).toBe(false);
     });
   });
 });

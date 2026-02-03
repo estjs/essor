@@ -2,10 +2,10 @@ import { isArray, isPromise, isUndefined, warn } from '@estjs/shared';
 import { provide } from '../provide';
 import { isComponent } from '../component';
 import { normalizeNode } from '../utils/node';
-import { COMPONENT_TYPE } from '../constants';
 import { onDestroy } from '../lifecycle';
 import { getActiveScope } from '../scope';
 import { insertNode } from '../utils/dom';
+import { SUSPENSE_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
 
 export interface SuspenseProps {
@@ -136,7 +136,8 @@ export function Suspense(props: SuspenseProps): AnyNode {
         // Reparent component to current context to ensure it can access SuspenseContext
         // This is necessary because children are created in the parent scope
         if (isComponent(child)) {
-          (child as any).parentContext = currentScope;
+          // @ts-ignore
+          child.parentContext = currentScope;
         }
 
         const normalized = normalizeNode(child);
@@ -237,7 +238,7 @@ export function Suspense(props: SuspenseProps): AnyNode {
   return container;
 }
 
-Suspense[COMPONENT_TYPE.SUSPENSE] = true;
+Suspense[SUSPENSE_COMPONENT] = true;
 
 /**
  * Check if a node is a Suspense component
@@ -245,5 +246,5 @@ Suspense[COMPONENT_TYPE.SUSPENSE] = true;
  * @returns true if node is a Suspense
  */
 export function isSuspense(node: unknown): boolean {
-  return !!node && !!(node as any)[COMPONENT_TYPE.SUSPENSE];
+  return !!node && !!node[SUSPENSE_COMPONENT];
 }

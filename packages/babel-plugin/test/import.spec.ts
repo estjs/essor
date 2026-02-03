@@ -30,7 +30,7 @@ function getProgramPath(code: string) {
     throw new Error('Failed to locate Program path');
   }
 
-  return programPath as any;
+  return programPath;
 }
 
 function createState(mode: PluginState['opts']['mode'] = 'client') {

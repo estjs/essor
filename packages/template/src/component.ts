@@ -6,10 +6,11 @@ import {
   isFunction,
   isHTMLElement,
   isObject,
+  isPromise,
   startsWith,
 } from '@estjs/shared';
 import { type Scope, createScope, disposeScope, getActiveScope, runWithScope } from './scope';
-import { COMPONENT_STATE, COMPONENT_TYPE, EVENT_PREFIX, REF_KEY } from './constants';
+import { COMPONENT_STATE, EVENT_PREFIX, NORMAL_COMPONENT, REF_KEY } from './constants';
 import { addEventListener, insert } from './binding';
 import { getComponentKey, normalizeKey } from './key';
 import { getFirstDOMNode, insertNode, removeNode } from './utils/dom';
@@ -43,8 +44,8 @@ export class Component<P extends ComponentProps = ComponentProps> {
   // Parent scope captured at construction time for correct hierarchy
   protected parentScope: Scope | null = null;
 
-  // Component type marker (using symbol for type-safe discrimination)
-  declare private [COMPONENT_TYPE.NORMAL]: true;
+  // @ts-ignore
+  public readonly [NORMAL_COMPONENT] = true;
 
   get isConnected(): boolean {
     return this.state === COMPONENT_STATE.MOUNTED;
@@ -96,7 +97,19 @@ export class Component<P extends ComponentProps = ComponentProps> {
 
     // Run component within its scope
     const renderedNodes = runWithScope(this.scope, () => {
-      return this._renderComponent(parentNode, beforeNode);
+      let result = this.component(this.reactiveProps as P);
+
+      // Unwrap function (render function pattern)
+      if (isFunction(result)) {
+        result = (result as Function)(this.reactiveProps);
+      }
+
+      // Unwrap signals and computed values
+      if (isSignal<Element>(result) || isComputed<Element>(result)) {
+        result = result.value;
+      }
+
+      return insert(parentNode, result, beforeNode) ?? [];
     });
 
     this.renderedNodes = renderedNodes;
@@ -117,47 +130,11 @@ export class Component<P extends ComponentProps = ComponentProps> {
     return this.renderedNodes;
   }
 
-  /**
-   * Render component and return nodes
-   */
-  private _renderComponent(parentNode: Node, beforeNode?: Node): AnyNode[] {
-    let result = this.component(this.reactiveProps as P);
-
-    // Unwrap function (render function pattern)
-    if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps);
-    }
-
-    // Unwrap signals and computed values
-    if (isSignal<Element>(result) || isComputed<Element>(result)) {
-      result = result.value;
-    }
-
-    return insert(parentNode, result as any, beforeNode) ?? [];
-  }
-
-  /**
-   * Unwrap and normalize render result
-   */
-  private _unwrapRenderResult(result: any): AnyNode[] {
-    // Unwrap function (render function pattern)
-    if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps);
-    }
-
-    // Unwrap signals and computed values
-    if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
-      result = result.value;
-    }
-
-    return coerceArray(result) as AnyNode[];
-  }
-
-  update(prevNode: Component<P>): Component<P> {
+  update<T extends ComponentProps>(prevNode: Component<T>): Component<T> {
     // if key is different, mount the component
     if (this.key !== prevNode.key) {
       this.mount(prevNode.parentNode!, prevNode.beforeNode);
-      return this;
+      return this as unknown as Component<T>;
     }
 
     // Take previous node's properties and reactive state
@@ -176,7 +153,7 @@ export class Component<P extends ComponentProps = ComponentProps> {
     // Mount component if not connected
     if (!this.isConnected && this.parentNode) {
       this.mount(this.parentNode, this.beforeNode);
-      return this;
+      return this as unknown as Component<T>;
     }
 
     // Apply props and trigger update lifecycle
@@ -187,7 +164,7 @@ export class Component<P extends ComponentProps = ComponentProps> {
       triggerUpdateHooks(this.scope);
     }
 
-    return this;
+    return this as unknown as Component<T>;
   }
 
   /**
@@ -200,22 +177,55 @@ export class Component<P extends ComponentProps = ComponentProps> {
       const newValue = props[key];
       const oldValue = this.reactiveProps[key];
 
-      if (isObject(newValue)) {
+      // Early return: if values are strictly equal, skip processing
+      // Note: If we have a snapshot, we might still need to check for mutations (same ref but content changed)
+      if (newValue === oldValue && !this._propSnapshots[key]) continue;
+
+      // Cache type check to avoid repeated calls
+      const isNewValueObject = isObject(newValue);
+
+      if (isNewValueObject) {
         // For objects/arrays: compare with snapshot to detect mutations
         const snapshot = this._propSnapshots[key];
-        if (!snapshot || !shallowCompare(newValue, snapshot)) {
-          const newSnapshot = isArray(newValue) ? [...newValue] : { ...newValue };
-          this.reactiveProps[key] = newSnapshot;
-          this._propSnapshots[key] = newSnapshot;
-        }
+
+        // Early return: if snapshot exists and content is the same, skip update
+        if (snapshot && shallowCompare(newValue, snapshot)) continue;
+
+        // Create new snapshot efficiently
+        const newSnapshot = isArray(newValue) ? [...newValue] : { ...newValue };
+        this.reactiveProps[key] = newSnapshot;
+        this._propSnapshots[key] = newSnapshot;
       } else {
-        // For primitives: standard equality check
+        // For primitives: hasChanged check (handles NaN, +0/-0, etc.)
         if (hasChanged(newValue, oldValue)) {
           this.reactiveProps[key] = newValue;
-          delete this._propSnapshots[key]; // Clear snapshot if type changed
+          // Clean up snapshot if it exists (type may have changed from object to primitive)
+          if (this._propSnapshots[key]) {
+            delete this._propSnapshots[key];
+          }
         }
       }
     }
+  }
+
+  private unwrapRenderResult(result: any): AnyNode[] {
+    if (isFunction(result)) {
+      result = (result as Function)(this.reactiveProps);
+    }
+
+    // Unwrap signals and computed values
+    if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
+      result = result.value;
+    }
+    if (isComponent(result)) {
+      result = result.mount(this.parentNode!, this.beforeNode);
+    }
+
+    if (isPromise(result)) {
+      result = result.then(r => this.unwrapRenderResult(r));
+    }
+
+    return result;
   }
 
   forceUpdate(): void {
@@ -228,8 +238,19 @@ export class Component<P extends ComponentProps = ComponentProps> {
     try {
       runWithScope(this.scope, () => {
         // Re-render and get new nodes
-        const result = this.component(this.reactiveProps as P);
-        const newNodes = this._unwrapRenderResult(result);
+        let result = this.component(this.reactiveProps as P);
+
+        // Unwrap function (render function pattern)
+        if (isFunction(result)) {
+          result = (result as Function)(this.reactiveProps);
+        }
+
+        // Unwrap signals and computed values
+        if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
+          result = result.value;
+        }
+
+        const newNodes = coerceArray(result) as AnyNode[];
 
         // Calculate anchor position for insertion
         const anchor = this._getAnchorNode();
@@ -338,7 +359,7 @@ export class Component<P extends ComponentProps = ComponentProps> {
  * @returns {boolean} true if the node is a component, false otherwise
  */
 export function isComponent(node: unknown): node is Component {
-  return !!node && !!node[COMPONENT_TYPE.NORMAL];
+  return !!node && !!node[NORMAL_COMPONENT];
 }
 
 /**

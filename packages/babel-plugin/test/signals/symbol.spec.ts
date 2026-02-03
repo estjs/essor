@@ -421,7 +421,7 @@ describe('signals/symbol', () => {
         Identifier(path) {
           // Simulate invalid path by removing required properties
           const invalidPath = { ...path, parentPath: null };
-          symbolIdentifier(invalidPath as any);
+          symbolIdentifier(invalidPath);
         },
       });
       // Should skip transformation when path is invalid
@@ -449,7 +449,7 @@ describe('signals/symbol', () => {
         UpdateExpression(path) {
           // Simulate invalid path
           const invalidPath = { ...path, parentPath: null };
-          symbolUpdate(invalidPath as any);
+          symbolUpdate(invalidPath);
         },
       });
       expect(output).toContain('$count');
@@ -461,7 +461,7 @@ describe('signals/symbol', () => {
         ObjectPattern(path) {
           // Simulate invalid path
           const invalidPath = { ...path, parentPath: null };
-          symbolObjectPattern(invalidPath as any);
+          symbolObjectPattern(invalidPath);
         },
       });
       expect(output).toContain('$a');
@@ -473,7 +473,7 @@ describe('signals/symbol', () => {
         ArrayPattern(path) {
           // Simulate invalid path
           const invalidPath = { ...path, parentPath: null };
-          symbolArrayPattern(invalidPath as any);
+          symbolArrayPattern(invalidPath);
         },
       });
       expect(output).toContain('$a');
@@ -598,8 +598,10 @@ describe('signals/symbol', () => {
     });
 
     it('handles null/undefined in isSignal', () => {
-      expect(isSignal(null as any)).toBe(false);
-      expect(isSignal(undefined as any)).toBe(false);
+      // @ts-ignore
+      expect(isSignal(null)).toBe(false);
+      // @ts-ignore
+      expect(isSignal(undefined)).toBe(false);
     });
 
     it('skips import default specifiers', () => {
@@ -818,7 +820,7 @@ describe('signals/symbol', () => {
         Identifier(path) {
           // Test with null parentPath
           const testPath = { ...path, parentPath: null };
-          symbolIdentifier(testPath as any);
+          symbolIdentifier(testPath);
         },
       });
       expect(output).toContain('$count');

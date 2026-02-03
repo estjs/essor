@@ -14,7 +14,7 @@ describe('jSX SSG helpers', () => {
     expect(attrs.staticAttrs).toContain(' id="foo"');
     expect(attrs.dynamicAttrs).toHaveLength(0);
 
-    const dynamicAttrs = processAttributes({ title: parseExpression('value') as any });
+    const dynamicAttrs = processAttributes({ title: parseExpression('value') });
     expect(dynamicAttrs.dynamicAttrs).toHaveLength(1);
   });
 
@@ -35,7 +35,7 @@ describe('jSX SSG helpers', () => {
       },
     });
 
-    transformProgram.enter(programPath, { opts: { mode: 'ssg', hmr: false } } as any);
+    transformProgram.enter(programPath, { opts: { mode: 'ssg', hmr: false } });
     const state = programPath.state;
     state.imports = createImportIdentifiers(programPath);
     jsxPath.state = state;

@@ -49,12 +49,13 @@ describe('node-operations', () => {
 
     it('handles null parent gracefully', () => {
       const node = document.createElement('div');
-      expect(() => insertNode(null as any, node)).not.toThrow();
+      // @ts-ignore
+      expect(() => insertNode(null, node)).not.toThrow();
     });
 
     it('handles null node gracefully', () => {
       const root = createTestRoot();
-      expect(() => insertNode(root, null as any)).not.toThrow();
+      expect(() => insertNode(root, null)).not.toThrow();
     });
 
     it('handles insertion errors gracefully', () => {
@@ -88,11 +89,11 @@ describe('node-operations', () => {
 
       insertNode(root, instance);
       await removeNode(instance);
-      expect((instance.destroy as any).mock.calls.length).toBe(1);
+      expect(instance.destroy).toHaveBeenCalledTimes(1);
     });
 
     it('handles null node gracefully', () => {
-      expect(() => removeNode(null as any)).not.toThrow();
+      expect(() => removeNode(null)).not.toThrow();
     });
 
     it('handles node without parent gracefully', () => {
@@ -126,14 +127,14 @@ describe('node-operations', () => {
     it('handles null old node gracefully', () => {
       const root = createTestRoot();
       const node = document.createElement('div');
-      expect(() => replaceNode(root, null as any, node)).not.toThrow();
+      expect(() => replaceNode(root, null, node)).not.toThrow();
     });
 
     it('handles null new node gracefully', () => {
       const root = createTestRoot();
       const node = document.createElement('div');
       root.appendChild(node);
-      expect(() => replaceNode(root, node, null as any)).not.toThrow();
+      expect(() => replaceNode(root, node, null)).not.toThrow();
     });
 
     it('handles same node gracefully', () => {
@@ -274,11 +275,11 @@ describe('getFirstDOMNode', () => {
   });
 
   it('should return undefined for null node', () => {
-    expect(getFirstDOMNode(null as any)).toBeUndefined();
+    expect(getFirstDOMNode(null)).toBeUndefined();
   });
 
   it('should return undefined for undefined node', () => {
-    expect(getFirstDOMNode(undefined as any)).toBeUndefined();
+    expect(getFirstDOMNode(undefined)).toBeUndefined();
   });
 
   it('should return firstChild for component node', () => {
@@ -292,9 +293,9 @@ describe('getFirstDOMNode', () => {
   });
 
   it('should return undefined for primitive values', () => {
-    expect(getFirstDOMNode('text' as any)).toBeUndefined();
-    expect(getFirstDOMNode(123 as any)).toBeUndefined();
-    expect(getFirstDOMNode(true as any)).toBeUndefined();
+    expect(getFirstDOMNode('text')).toBeUndefined();
+    expect(getFirstDOMNode(123)).toBeUndefined();
+    expect(getFirstDOMNode(true)).toBeUndefined();
   });
 
   it('should return the node itself for DOM nodes', () => {
@@ -343,12 +344,12 @@ describe('isSameNode', () => {
   });
 
   it('should return true for same primitive values', () => {
-    expect(isSameNode('text' as any, 'text' as any)).toBe(true);
-    expect(isSameNode(123 as any, 123 as any)).toBe(true);
+    expect(isSameNode('text', 'text')).toBe(true);
+    expect(isSameNode(123, 123)).toBe(true);
   });
 
   it('should return false for different primitive values', () => {
-    expect(isSameNode('text1' as any, 'text2' as any)).toBe(false);
+    expect(isSameNode('text1', 'text2')).toBe(false);
   });
 
   it('should return false for nodes with different nodeType', () => {

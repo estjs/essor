@@ -48,7 +48,6 @@ let symbolIdCounter = 0;
 
 /**
  * Normalize any key value to a string.
- * Optimized with inline type checks for hot path performance.
  *
  * @param key - The key value to normalize
  * @returns Normalized string key or undefined for null/undefined
@@ -100,7 +99,6 @@ export function normalizeKey(key: any): string | undefined {
 
 /**
  * Check if two nodes have the same type for reconciliation.
- * Used in hot paths - optimized for minimal branching.
  *
  * @param a - First node
  * @param b - Second node
@@ -152,22 +150,21 @@ export function setNodeKey(node: AnyNode, key: NodeKey | undefined): void {
 
   const normalizedKey = normalizeKey(key);
   if (isFalsy(normalizedKey)) {
-    delete (node as any)[NODE_KEY_SYMBOL];
+    delete node[NODE_KEY_SYMBOL];
   } else {
-    (node as any)[NODE_KEY_SYMBOL] = normalizedKey;
+    node[NODE_KEY_SYMBOL] = normalizedKey;
   }
 }
 
 /**
  * Get the key from a node or component.
- * Optimized for inline usage in hot paths.
  *
  * @param node - The node to get key from
  * @returns The key string or undefined
  */
 export function getNodeKey(node: AnyNode): string | undefined {
   if (!node) return undefined;
-  return isComponent(node) ? node.key : (node as any)[NODE_KEY_SYMBOL];
+  return isComponent(node) ? node.key : node[NODE_KEY_SYMBOL];
 }
 
 /**

@@ -2,7 +2,15 @@
  * Node normalization and comparison utilities
  */
 
-import { isFalsy, isHTMLElement, isPrimitive, isTextNode } from '@estjs/shared';
+import {
+  isArray,
+  isFalsy,
+  isHTMLElement,
+  isNull,
+  isObject,
+  isPrimitive,
+  isTextNode,
+} from '@estjs/shared';
 import { isComponent } from '../component';
 import { getNodeKey } from '../key';
 import type { AnyNode } from '../types';
@@ -85,23 +93,38 @@ export function isHtmlTextElement(val: unknown): val is Text {
 }
 
 /**
- * Shallow compare two objects
+ * Shallow compare two objects or arrays
+ * Performs strict equality check on top-level properties
  *
- * @param a - First object
- * @param b - Second object
- * @returns true if objects are shallowly equal
+ * @param a - First value to compare
+ * @param b - Second value to compare
+ * @returns true if values are shallowly equal
  */
-export function shallowCompare(a: any, b: any): boolean {
+export function shallowCompare(a: unknown, b: unknown): boolean {
+  // Fast path: strict equality
   if (a === b) return true;
-  if (!a || !b) return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
 
-  for (const key in a) {
-    if (a[key] !== b[key]) return false;
+  // Null/undefined check
+  if (isNull(a) || isNull(b)) return false;
+
+  // Type guard: both must be objects
+  if (!isObject(a) || !isObject(b)) return false;
+
+  // Array type consistency check
+  if (isArray(a) !== isArray(b)) return false;
+
+  // Type guard for record-like objects
+  const aRecord = a as Record<string, unknown>;
+  const bRecord = b as Record<string, unknown>;
+
+  // Compare properties in a
+  for (const key in aRecord) {
+    if (aRecord[key] !== bRecord[key]) return false;
   }
 
-  for (const key in b) {
-    if (!(key in a)) return false;
+  // Check for extra properties in b
+  for (const key in bRecord) {
+    if (!(key in aRecord)) return false;
   }
 
   return true;

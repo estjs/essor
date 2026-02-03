@@ -233,8 +233,8 @@ describe('server/hydration', () => {
 
     it('returns undefined if container not found', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      const Component = () => ({ mount: vi.fn() }) as any;
-
+      const Component = () => ({ mount: vi.fn() });
+      // @ts-ignore
       const result = hydrate(Component, '#non-existent');
       expect(result).toBeUndefined();
       expect(consoleSpy).toHaveBeenCalled();

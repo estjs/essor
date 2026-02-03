@@ -69,7 +69,7 @@ describe('suspense component', () => {
     it('should handle null children', () => {
       const app = () => {
         return Suspense({
-          children: null as any,
+          children: null,
         });
       };
 
@@ -275,7 +275,7 @@ describe('suspense component', () => {
     it('should handle mixed children with null values', () => {
       const app = () => {
         return Suspense({
-          children: [document.createElement('div'), null, document.createElement('span')] as any,
+          children: [document.createElement('div'), null, document.createElement('span')],
         });
       };
 
@@ -784,7 +784,7 @@ describe('suspense component', () => {
       // This tests the early return in renderChildren when children is null
       const app = () => {
         return Suspense({
-          children: [null, document.createElement('div')] as any,
+          children: [null, document.createElement('div')],
         });
       };
 

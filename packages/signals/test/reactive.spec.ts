@@ -120,7 +120,7 @@ describe('reactive - nested objects and arrays', () => {
     expect(state.user.age).toBe(31);
     expect(mockFn).toHaveBeenCalledTimes(2);
 
-    state.user = { e: 3 } as any;
+    state.user = { e: 3 };
 
     expect(state.user.e).toBe(3);
     expect(mockFn).toHaveBeenCalledTimes(3);
@@ -192,7 +192,7 @@ describe('reactive - nested objects and arrays', () => {
 
     state.a.b = { e: 3 };
 
-    expect((state.a.b as any).e).toBe(3);
+    expect(state.a.b.e).toBe(3);
     expect(mockFn).toHaveBeenCalledTimes(3);
   });
 
@@ -246,7 +246,8 @@ describe('reactive - nested objects and arrays', () => {
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toReversed)('toReversed should return reactive array', () => {
     const array = reactive([1, { val: 2 }]);
-    const result = computed(() => (array as any).toReversed());
+    // @ts-ignore
+    const result = computed(() => array.toReversed());
     expect(result.value).toStrictEqual([{ val: 2 }, 1]);
     expect(isReactive(result.value[0])).toBe(true);
 
@@ -263,7 +264,8 @@ describe('reactive - nested objects and arrays', () => {
 
     const shallow = shallowReactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
     let result;
-    result = computed(() => (shallow as any).toSorted((a, b) => a.val - b.val));
+    // @ts-ignore
+    result = computed(() => shallow.toSorted((a, b) => a.val - b.val));
     expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
 
@@ -274,7 +276,8 @@ describe('reactive - nested objects and arrays', () => {
     expect(result.value.map(x => x.val)).toStrictEqual([1, 4]);
 
     const deep = reactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
-    result = computed(() => (deep as any).toSorted((a, b) => a.val - b.val));
+    // @ts-ignore
+    result = computed(() => deep.toSorted((a, b) => a.val - b.val));
     expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
 
@@ -286,7 +289,8 @@ describe('reactive - nested objects and arrays', () => {
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toSpliced)('toSpliced should return reactive array', () => {
     const array = reactive([1, 2, 3]);
-    const result = computed(() => (array as any).toSpliced(1, 1, -2));
+    // @ts-ignore
+    const result = computed(() => array.toSpliced(1, 1, -2));
     expect(result.value).toStrictEqual([1, -2, 3]);
 
     // Now modify the original array
@@ -1245,7 +1249,8 @@ describe('reactive - edge cases', () => {
 
       // The frozen object itself cannot be modified
       expect(() => {
-        (state.frozen as any).value = 2;
+        // @ts-ignore
+        state.frozen.value = 2;
       }).toThrow();
 
       // But the reference to it can be changed
@@ -1267,7 +1272,8 @@ describe('reactive - edge cases', () => {
 
       // Cannot add new properties
       expect(() => {
-        (state.sealed as any).newProp = 3;
+        // @ts-ignore
+        state.sealed.newProp = 3;
       }).toThrow();
     });
 
@@ -1327,8 +1333,8 @@ describe('reactive - edge cases', () => {
       expect(isReactive(emptyArr)).toBe(true);
 
       // Should be able to add properties
-      (emptyObj as any).newProp = 'value';
-      expect((emptyObj as any).newProp).toBe('value');
+      emptyObj.newProp = 'value';
+      expect(emptyObj.newProp).toBe('value');
 
       emptyArr.push(1);
       expect(emptyArr[0]).toBe(1);
@@ -1343,15 +1349,15 @@ describe('reactive - edge cases', () => {
         configurable: true,
       });
 
-      const state = reactive(obj);
+      const state = reactive<Record<string, unknown>>(obj);
 
-      expect((state as any).hidden).toBe('secret');
+      expect(state.hidden).toBe('secret');
 
-      const mockFn = vi.fn(() => (state as any).hidden);
+      const mockFn = vi.fn(() => state.hidden);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
 
-      (state as any).hidden = 'updated';
+      state.hidden = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
   });

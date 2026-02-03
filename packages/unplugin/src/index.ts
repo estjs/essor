@@ -67,7 +67,6 @@ function detectBundler(meta: UnpluginContextMeta): BundlerType {
 
 /**
  * Generate HMR boilerplate code for a specific bundler
- * Optimized with array join for better performance
  *
  * @param bundlerType - The bundler type detected
  * @returns Object with imports and registration code
@@ -153,12 +152,12 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
      * Transform code with Babel plugin
      */
     transform(code, id) {
-      // Skip node_modules, dist, and public directories (optimized)
+      // Skip node_modules, dist, and public directories
       if (SKIP_DIRECTORIES.some(p => id.includes(p))) {
         return;
       }
 
-      // Only transform JS/TS files (optimized with pre-compiled regex)
+      // Only transform JS/TS files
       if (!filter(id) || !FILE_EXTENSION_REGEX.test(id)) {
         return null;
       }

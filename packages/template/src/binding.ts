@@ -9,8 +9,7 @@ import { effect } from '@estjs/signals';
 import { normalizeNode } from './utils/node';
 import { removeNode } from './utils/dom';
 import { patchChildren } from './patch';
-import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { isHydrating } from './hydration/shared';
+import { onCleanup } from './scope';
 import type { AnyNode } from './types';
 
 /**
@@ -124,69 +123,35 @@ function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => 
   });
 }
 
-let isFirstRun = true;
-/**
- * Execute reactive update within the appropriate scope
- */
-function executeReactiveUpdate(
-  ownerScope: Scope | null,
-  parent: Node,
-  nodeFactory: AnyNode,
-  before: Node | undefined,
-  renderedNodes: AnyNode[],
-): AnyNode[] {
-  const executeUpdate = () => {
-    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-    const nodes = coerceArray(rawNodes as unknown)
-      .map(item => (isFunction(item) ? item() : item))
-      .flatMap(i => i)
-      .map(normalizeNode) as AnyNode[];
-
-    // Hydration mode: skip DOM operations on first run
-    // but still execute nodeFactory() to collect dependencies
-    if (isFirstRun && isHydrating()) {
-      isFirstRun = false;
-      return renderedNodes;
-    }
-
-    return patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
-  };
-
-  // If we have an owner scope, run within it to maintain context hierarchy
-  if (ownerScope && !ownerScope.isDestroyed) {
-    return runWithScope(ownerScope, executeUpdate);
-  }
-  return executeUpdate();
-}
-
 /**
  * Reactive node insertion with binding support
  *
- * @param parent - Parent node
- * @param nodeFactory - Node factory function or static node
- * @param before - Reference node for insertion position
- * @returns Array of rendered nodes
+ * @param parent Parent node
+ * @param nodeFactory Node factory function or static node
+ * @param before Reference node for insertion position
+ * @param options Insertion options
  *
  * @example
  * ```typescript
  * insert(container, () => message.value, null);
  * insert(container, staticElement, referenceNode);
- * insert(container, "Hello World", null);
+ * insert(container, "Hello World", null); // Direct string support
  * ```
  */
-export function insert(parent: Node, nodeFactory: AnyNode, before?: Node): AnyNode[] | undefined {
+export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
-
-  // Capture owner scope at call time - critical for correct context inheritance
-  const ownerScope: Scope | null = getActiveScope();
 
   let renderedNodes: AnyNode[] = [];
 
   // Create effect for reactive updates
   const cleanup = effect(() => {
-    renderedNodes = executeReactiveUpdate(ownerScope, parent, nodeFactory, before, renderedNodes);
-  });
+    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+    const nodes = coerceArray(rawNodes as unknown)
+      .map(item => (isFunction(item) ? item() : item))
+      .flatMap(normalizeNode) as AnyNode[];
 
+    renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+  });
   onCleanup(() => {
     cleanup();
     renderedNodes.forEach(node => removeNode(node));

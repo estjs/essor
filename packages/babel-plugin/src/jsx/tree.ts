@@ -368,7 +368,7 @@ function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
       const spreadNode = attribute.get('argument').node;
       if (props[SPREAD_NAME]) {
         if (Array.isArray(props[SPREAD_NAME])) {
-          (props[SPREAD_NAME] as any[]).push(spreadNode);
+          props[SPREAD_NAME].push(spreadNode);
         } else {
           props[SPREAD_NAME] = [props[SPREAD_NAME], spreadNode];
         }
@@ -648,7 +648,6 @@ function processChildSpread(
  * 3. **SVG**: SVG-related tags (svg, path, circle, etc.)
  * 4. **NORMAL**: Regular HTML elements (div, span, p, etc.)
  *
- * @param {NodePath<JSXElement>} path - JSX element path
  * @param {string} tagName - Tag name
  * @returns {NODE_TYPE} Node type enum value
  */

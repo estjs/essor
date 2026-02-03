@@ -102,7 +102,7 @@ function cloneValue<T>(value: T): T {
   // Plain object
   const cloned: any = {};
   for (const key of Object.keys(value as object)) {
-    cloned[key] = cloneValue((value as any)[key]);
+    cloned[key] = cloneValue(value[key]);
   }
   return cloned as T;
 }
@@ -146,8 +146,8 @@ function resolveSource<T>(source: WatchSource<T>): () => T {
   }
 
   // If source is a reactive object, return a getter that deeply traverses it.
-  if (isReactive(source as any)) {
-    return () => traverse(source as any) as unknown as T;
+  if (isReactive(source)) {
+    return () => traverse(source) as unknown as T;
   }
 
   // Otherwise, source is a plain value, return a getter that directly returns the value.

@@ -96,8 +96,9 @@ export function createResource<T>(
   const resource = (() => {
     // If we are loading and have a suspense context, register the promise
     if (loading.value && currentPromise) {
-      const suspenseContext = inject(SuspenseContext, null) as any;
+      const suspenseContext = inject(SuspenseContext, null);
       if (suspenseContext) {
+        // @ts-ignore
         suspenseContext.register(currentPromise);
       }
     }

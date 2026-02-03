@@ -200,7 +200,7 @@ describe('hMR Runtime', () => {
     });
 
     it('should return false if hot object missing', () => {
-      expect(hmrAccept('vite', undefined as any, [])).toBe(false);
+      expect(hmrAccept('vite', undefined, [])).toBe(false);
     });
   });
 

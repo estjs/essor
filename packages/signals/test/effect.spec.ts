@@ -1292,7 +1292,7 @@ describe('memoEffect', () => {
     it('should handle cases with no return value', () => {
       const badFn = vi.fn();
 
-      const effect = memoEffect(badFn as any, { value: 1 });
+      const effect = memoEffect(badFn, { value: 1 });
 
       expect(effect).toBeDefined();
       expect(badFn).toHaveBeenCalled();

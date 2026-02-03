@@ -69,7 +69,7 @@ export function propagate(link: Link): void {
 
     // If it's an Effect, add to execution queue
     if (sub.flag & ReactiveFlags.WATCHING) {
-      enqueueEffect(sub as any);
+      enqueueEffect(sub as Effect);
     }
 
     // Continue propagating downward
@@ -106,6 +106,7 @@ export function propagate(link: Link): void {
 
     // All nodes processed
     break;
+    // eslint-disable-next-line no-constant-condition
   } while (true);
 }
 

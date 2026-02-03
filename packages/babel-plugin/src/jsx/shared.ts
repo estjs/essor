@@ -877,7 +877,7 @@ export function createPropsObjectExpression(
         });
       }
     } else {
-      const astValue = convertValueToASTNode(propValue as any, transformJSX);
+      const astValue = convertValueToASTNode(propValue as unknown as t.Expression, transformJSX);
       // Check if dynamic and not a function
       // if (isDynamicExpression(astValue) && !t.isFunction(astValue)) {
       //   objectProperties.push(

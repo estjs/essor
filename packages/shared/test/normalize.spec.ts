@@ -160,7 +160,8 @@ describe('styleObjectToString', () => {
   });
 
   it('returns empty string for falsy values', () => {
-    expect(styleObjectToString(null as any)).toBe('');
+    // @ts-ignore
+    expect(styleObjectToString(null)).toBe('');
     expect(styleObjectToString(undefined)).toBe('');
   });
 });
@@ -179,23 +180,30 @@ describe('styleToString', () => {
   });
 
   it('returns empty string for falsy values', () => {
-    expect(styleToString(null as any)).toBe('');
+    // @ts-ignore
+    expect(styleToString(null)).toBe('');
     expect(styleToString(undefined)).toBe('');
   });
 
   it('skips non-string/non-number values', () => {
     // Test with object values - should be skipped
-    expect(styleToString({ color: 'red', nested: { value: 'blue' } } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', nested: { value: 'blue' } })).toBe('color:red;');
     // Test with array values - should be skipped
-    expect(styleToString({ color: 'red', items: ['a', 'b'] } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', items: ['a', 'b'] })).toBe('color:red;');
     // Test with boolean values - should be skipped
-    expect(styleToString({ color: 'red', active: true } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', active: true })).toBe('color:red;');
     // Test with null values - should be skipped
-    expect(styleToString({ color: 'red', empty: null } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', empty: null })).toBe('color:red;');
     // Test with undefined values - should be skipped
-    expect(styleToString({ color: 'red', missing: undefined } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', missing: undefined })).toBe('color:red;');
     // Test with function values - should be skipped
-    expect(styleToString({ color: 'red', fn: () => {} } as any)).toBe('color:red;');
+    // @ts-ignore
+    expect(styleToString({ color: 'red', fn: () => {} })).toBe('color:red;');
   });
 
   it('handles numeric values', () => {

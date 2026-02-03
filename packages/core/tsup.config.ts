@@ -3,6 +3,8 @@ import { defineConfig } from 'tsup';
 import pkg from './package.json';
 
 const env = process.env.NODE_ENV;
+const isDev = env !== 'production';
+
 const banner = `/**
 * ${pkg.name} v${pkg.version}
 * build time ${new Date().toISOString()}
@@ -28,14 +30,14 @@ export default defineConfig({
   cjsInterop: true,
   sourcemap: true,
   noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
-  minify: env === 'production',
+  minify: isDev,
   tsconfig: '../../tsconfig.build.json',
   define: {
-    __DEV__: env !== 'production' ? 'true' : 'false',
+    __DEV__: isDev ? 'true' : 'false',
   },
   outExtension({ format }) {
     return {
-      js: `${env !== 'production' ? '.dev' : ''}.${format}.js`,
+      js: `${isDev ? '.dev' : ''}.${format}.js`,
     };
   },
 });

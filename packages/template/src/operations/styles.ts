@@ -111,7 +111,7 @@ export function setStyle(style: CSSStyleDeclaration, name: string, val: string |
   const prefixed = autoPrefix(style, name);
 
   // Handle !important
-  if (typeof val === 'string' && importantRE.test(val)) {
+  if (isString(val) && importantRE.test(val)) {
     style.setProperty(camelCase(prefixed), val.replace(importantRE, ''), 'important');
   } else {
     style[prefixed] = val;

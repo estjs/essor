@@ -633,7 +633,7 @@ function generateDynamicPropsCode(
           ) {
             generateSpecificAttributeCode(
               attrName,
-              attrValue as any, // Pass array as-is, createAttributeStatement will spread it
+              attrValue as unknown as t.Expression, // Pass array as-is, createAttributeStatement will spread it
               nodesId,
               parentIndexPosition,
               statements,
@@ -1125,7 +1125,7 @@ function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: Tree
             operations.push({
               nodeIndex: node?.index,
               attrName: name,
-              attrValue: (attrValue as any)[0],
+              attrValue: (attrValue as t.Expression[])[0],
               setFunction,
               propKey: generatePropKey(),
             });

@@ -15,7 +15,8 @@ const parseExpression = (code: string) => babelParseExpression(code, { plugins: 
 describe('signals/utils', () => {
   describe('isValidPath', () => {
     it('returns true for valid path with node', () => {
-      const path = { node: {} } as any;
+      const path = { node: {} };
+      // @ts-ignore
       expect(isValidPath(path)).toBe(true);
     });
 
@@ -25,7 +26,8 @@ describe('signals/utils', () => {
     });
 
     it('returns false for path without node', () => {
-      const path = {} as any;
+      const path = {};
+      // @ts-ignore
       expect(isValidPath(path)).toBe(false);
     });
   });
@@ -129,7 +131,8 @@ describe('signals/utils', () => {
     });
 
     it('returns false for invalid path', () => {
-      expect(checkHasJSXReturn(null as any)).toBe(false);
+      // @ts-ignore
+      expect(checkHasJSXReturn(null)).toBe(false);
     });
   });
 

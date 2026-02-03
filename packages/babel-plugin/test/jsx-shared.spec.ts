@@ -44,7 +44,7 @@ describe('jsx shared helpers', () => {
 
   it('converts JSX element names to string', () => {
     const expr = parseExpression('Namespace.Component');
-    expect(jsxElementNameToString(expr as any)).toBe('Namespace.Component');
+    expect(jsxElementNameToString(expr as unknown as t.JSXIdentifier)).toBe('Namespace.Component');
 
     // Test JSXIdentifier
     const code = '<MyComponent />';
@@ -124,10 +124,11 @@ describe('jsx shared helpers', () => {
       opts: { mode: 'client' },
       declarations: [],
       events: new Set<string>(),
-      imports: createImportIdentifiers(jsxPath.scope.path as any),
-    } as any;
+      imports: createImportIdentifiers(jsxPath.scope.path),
+    };
 
-    transformProgram.enter(jsxPath.scope.path as any, state);
+    transformProgram.enter(jsxPath.scope.path, state);
+    // @ts-ignore
     setContext({ path: jsxPath, state, operationIndex: 0 });
     const propsExpr = createPropsObjectExpression(
       { class: 'x', data: t.identifier('value') },
@@ -159,7 +160,8 @@ describe('jsx shared helpers', () => {
       return { state };
     })();
 
-    setContext({ state, path: null as any, operationIndex: 0 });
+    // @ts-ignore
+    setContext({ state, path: null, operationIndex: 0 });
     expect(getSetFunctionForAttribute('class').name).toBe('patchClass');
     expect(getSetFunctionForAttribute('style').name).toBe('patchStyle');
     expect(getSetFunctionForAttribute('title').name).toBe('patchAttr');
@@ -252,7 +254,8 @@ describe('jsx shared helpers', () => {
     const attrsEmpty = undefined;
     expect(serializeAttributes(attrsEmpty)).toBe('');
 
-    const attrsNotObject = 'not an object' as any;
+    const attrsNotObject = 'not an object';
+    // @ts-ignore
     expect(serializeAttributes(attrsNotObject)).toBe('');
   });
 
@@ -270,7 +273,7 @@ describe('jsx shared helpers', () => {
       },
     });
 
-    const optimized = optimizeChildNodes(jsxPath.get('children') as any);
+    const optimized = optimizeChildNodes(jsxPath.get('children'));
     expect(optimized.length).toBe(2); // merged adjacent text nodes
 
     const parentNode = {
@@ -279,12 +282,12 @@ describe('jsx shared helpers', () => {
         { type: NODE_TYPE.EXPRESSION, index: 3, parentIndex: 1, isLastChild: false },
       ],
       index: 1,
-    } as any;
-
+    };
+    // @ts-ignore
     processTextElementAddComment(parentNode);
     expect(parentNode.children.some((child: any) => child.type === NODE_TYPE.COMMENT)).toBe(true);
-
-    const beforeIdx = findBeforeIndex(parentNode.children[0], parentNode as any);
+    // @ts-ignore
+    const beforeIdx = findBeforeIndex(parentNode.children[0], parentNode);
     expect(beforeIdx).not.toBeNull();
 
     const map = collectNodeIndexMap(
@@ -331,7 +334,7 @@ describe('jsx shared helpers', () => {
 
   it('tests hasPureStringChildren and extractStringChildren', () => {
     // Test node with no children
-    const emptyNode = { children: [], type: NODE_TYPE.NORMAL, index: 0 } as any;
+    const emptyNode = { children: [], type: NODE_TYPE.NORMAL, index: 0 };
     expect(hasPureStringChildren(emptyNode)).toBe(false);
     expect(extractStringChildren(emptyNode)).toBe('');
 
@@ -340,7 +343,7 @@ describe('jsx shared helpers', () => {
       children: ['hello', ' ', 'world'],
       type: NODE_TYPE.NORMAL,
       index: 0,
-    } as any;
+    };
     expect(hasPureStringChildren(stringNode)).toBe(true);
     expect(extractStringChildren(stringNode)).toBe('hello world');
 
@@ -352,8 +355,10 @@ describe('jsx shared helpers', () => {
       type: NODE_TYPE.NORMAL,
       index: 0,
       _isTreeNode: true,
-    } as any;
+    };
+    // @ts-ignore
     expect(hasPureStringChildren(textNode)).toBe(true);
+    // @ts-ignore
     expect(extractStringChildren(textNode)).toBe('foobar');
 
     // Test node with mixed children (not pure strings)
@@ -361,12 +366,15 @@ describe('jsx shared helpers', () => {
       children: ['text', { type: NODE_TYPE.EXPRESSION, children: [], _isTreeNode: true }],
       type: NODE_TYPE.NORMAL,
       index: 0,
-    } as any;
+    };
+    // @ts-ignore
     expect(hasPureStringChildren(mixedNode)).toBe(false);
 
     // Test node with undefined children
-    const noChildrenNode = { type: NODE_TYPE.NORMAL, index: 0 } as any;
+    const noChildrenNode = { type: NODE_TYPE.NORMAL, index: 0 };
+    // @ts-ignore
     expect(hasPureStringChildren(noChildrenNode)).toBe(false);
+    // @ts-ignore
     expect(extractStringChildren(noChildrenNode)).toBe('');
   });
 
@@ -422,37 +430,43 @@ describe('jsx shared helpers', () => {
   it('tests findBeforeIndex edge cases', () => {
     // Test with last child
     const lastChildNode = { type: NODE_TYPE.EXPRESSION, index: 3, isLastChild: true };
-    const parentWithLastChild = { children: [lastChildNode], index: 1 } as any;
-    expect(findBeforeIndex(lastChildNode as any, parentWithLastChild)).toBeNull();
+    const parentWithLastChild = { children: [lastChildNode], index: 1 };
+    // @ts-ignore
+    expect(findBeforeIndex(lastChildNode, parentWithLastChild)).toBeNull();
 
     // Test with no children
-    const parentNoChildren = { children: [], index: 1 } as any;
+    const parentNoChildren = { children: [], index: 1 };
     const childNode = { type: NODE_TYPE.EXPRESSION, index: 2, isLastChild: false };
-    expect(findBeforeIndex(childNode as any, parentNoChildren)).toBeNull();
+    // @ts-ignore
+    expect(findBeforeIndex(childNode, parentNoChildren)).toBeNull();
 
     // Test with static sibling
     const dynamicNode = { type: NODE_TYPE.EXPRESSION, index: 2, isLastChild: false };
     const staticNode = { type: NODE_TYPE.NORMAL, index: 3, isLastChild: false };
-    const parentWithStatic = { children: [dynamicNode, staticNode], index: 1 } as any;
-    expect(findBeforeIndex(dynamicNode as any, parentWithStatic)).toBe(3);
+    const parentWithStatic = { children: [dynamicNode, staticNode], index: 1 };
+    // @ts-ignore
+    expect(findBeforeIndex(dynamicNode, parentWithStatic)).toBe(3);
 
     // Test with all dynamic siblings
     const dynamic1 = { type: NODE_TYPE.EXPRESSION, index: 2, isLastChild: false };
     const dynamic2 = { type: NODE_TYPE.FRAGMENT, index: 3, isLastChild: false };
     const dynamic3 = { type: NODE_TYPE.COMPONENT, index: 4, isLastChild: false };
-    const parentAllDynamic = { children: [dynamic1, dynamic2, dynamic3], index: 1 } as any;
-    expect(findBeforeIndex(dynamic1 as any, parentAllDynamic)).toBeNull();
+    const parentAllDynamic = { children: [dynamic1, dynamic2, dynamic3], index: 1 };
+    // @ts-ignore
+    expect(findBeforeIndex(dynamic1, parentAllDynamic)).toBeNull();
   });
 
   it('tests processTextElementAddComment edge cases', () => {
     // Test with no children
-    const nodeNoChildren = { children: [], index: 1 } as any;
+    const nodeNoChildren = { children: [], index: 1 };
+    // @ts-ignore
     processTextElementAddComment(nodeNoChildren);
     expect(nodeNoChildren.children.length).toBe(0);
 
     // Test with single child
     const singleChild = { type: NODE_TYPE.EXPRESSION, index: 2 };
-    const nodeSingleChild = { children: [singleChild], index: 1 } as any;
+    const nodeSingleChild = { children: [singleChild], index: 1 };
+    // @ts-ignore
     processTextElementAddComment(nodeSingleChild);
     // Single child should not trigger comment insertion
     expect(nodeSingleChild.children.length).toBe(1);
@@ -460,7 +474,8 @@ describe('jsx shared helpers', () => {
     // Test with expression followed by normal element (no comment needed)
     const expr = { type: NODE_TYPE.EXPRESSION, index: 2, _isTreeNode: true };
     const normal = { type: NODE_TYPE.NORMAL, index: 3, _isTreeNode: true };
-    const nodeExprNormal = { children: [expr, normal], index: 1 } as any;
+    const nodeExprNormal = { children: [expr, normal], index: 1 };
+    // @ts-ignore
     processTextElementAddComment(nodeExprNormal);
     // Should not insert comment between expression and normal element
     expect(nodeExprNormal.children.length).toBe(2);

@@ -1,4 +1,4 @@
-import { warn } from '@estjs/shared';
+import { isFunction, warn } from '@estjs/shared';
 import { batch, computed, reactive } from './';
 
 /**
@@ -268,11 +268,11 @@ function createClassStore<S extends State>(
   Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
     const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
     if (descriptor) {
-      if (typeof descriptor.get === 'function') {
+      if (isFunction(descriptor.get)) {
         getters[key] = function (this: S) {
           return descriptor.get!.call(this);
         };
-      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
+      } else if (isFunction(descriptor.value) && key !== 'constructor') {
         actions[key] = function (this: S, ...args: any[]) {
           return descriptor.value.apply(this, args);
         };
@@ -350,7 +350,7 @@ export function createStore<S extends State, G extends Getters<S>, A extends Act
   return () => {
     let options: StoreOptions<S, G, A>;
 
-    if (typeof storeDefinition === 'function') {
+    if (isFunction(storeDefinition)) {
       options = createClassStore(storeDefinition) as StoreOptions<S, G, A>;
     } else {
       options = storeDefinition;
@@ -359,7 +359,7 @@ export function createStore<S extends State, G extends Getters<S>, A extends Act
     const store = createOptionsStore(options);
 
     // For class-based stores, bind methods to the store
-    if (typeof storeDefinition === 'function') {
+    if (isFunction(storeDefinition)) {
       Object.keys(options.actions || {}).forEach(key => {
         (store as any)[key] = (options.actions as any)[key].bind(store);
       });

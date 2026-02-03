@@ -35,7 +35,7 @@ export function toRaw<T>(value: T): T {
     return value as T;
   }
 
-  const raw = (value as any)[SignalFlags.RAW];
+  const raw = value[SignalFlags.RAW];
   if (raw) {
     // Recursively unwrap in case the raw value is also reactive
     return toRaw(raw);

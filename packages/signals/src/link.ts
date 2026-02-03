@@ -217,7 +217,7 @@ export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): 
   if (nextDep && nextDep.depNode === depNode) {
     // Found a reusable Link! Update its version to mark it as "still in use"
     // Links with old versions will be cleaned up by endTracking()
-    (nextDep as any).version = currentLinkVersion;
+    nextDep.version = currentLinkVersion;
     // Move the tail pointer forward to this Link
     subNode.depLinkTail = nextDep;
     return nextDep;
@@ -368,8 +368,10 @@ export function unlinkReactiveNode(
 
   // Clear all references in the link to enable garbage collection
   // This is important for preventing memory leaks
-  (linkNode as any).depNode = undefined;
-  (linkNode as any).subNode = undefined;
+  // @ts-ignore
+  linkNode.depNode = undefined;
+  // @ts-ignore
+  linkNode.subNode = undefined;
   linkNode.prevSubLink = undefined;
   linkNode.nextSubLink = undefined;
   linkNode.prevDepLink = undefined;

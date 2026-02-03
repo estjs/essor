@@ -80,7 +80,7 @@ describe('jsx client helpers', () => {
       },
     });
 
-    transformProgram.enter(programPath, { opts: { mode: 'client', hmr: false } } as any);
+    transformProgram.enter(programPath, { opts: { mode: 'client', hmr: false } });
     const state = programPath.state;
     state.imports = createImportIdentifiers(programPath);
     jsxPath.state = state;

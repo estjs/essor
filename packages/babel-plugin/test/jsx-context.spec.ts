@@ -3,7 +3,8 @@ import { getContext, resetContext, setContext } from '../src/jsx/context';
 
 describe('jsx context stack', () => {
   it('pushes and pops context entries', () => {
-    const ctx = { state: {} as any, path: {} as any, operationIndex: 0 };
+    const ctx = { state: {}, path: {}, operationIndex: 0 };
+    // @ts-ignore
     setContext(ctx);
     expect(getContext()).toBe(ctx);
     resetContext();

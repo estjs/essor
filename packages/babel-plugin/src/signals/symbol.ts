@@ -109,7 +109,7 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>): void {
   const args = init ? [init] : [];
   const newInit = t.callExpression(t.identifier(state.imports[importName].name), args);
 
-  addImport(importName as any);
+  addImport(importName);
 
   // Update the AST
   path.node.init = newInit;

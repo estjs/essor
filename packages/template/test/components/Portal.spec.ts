@@ -91,22 +91,6 @@ describe('portal', () => {
     expect(isPortal(null)).toBe(false);
   });
 
-  it('handles SSR mode', () => {
-    const originalDocument = global.document;
-    // @ts-ignore
-    delete global.document;
-
-    try {
-      const result = Portal({
-        target: 'body',
-        children: ['a', 'b'] as any,
-      });
-      expect(result).toBe('ab');
-    } finally {
-      global.document = originalDocument;
-    }
-  });
-
   it('handles multiple children and cleanup', () => {
     const scope = createScope(null);
     runWithScope(scope, () => {

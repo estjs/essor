@@ -117,12 +117,13 @@ describe('key system', () => {
     it('removes key when set to null', () => {
       const el = document.createElement('div');
       setNodeKey(el, 'initial');
-      setNodeKey(el, null as any);
+      // @ts-ignore
+      setNodeKey(el, null);
       expect(getNodeKey(el)).toBeUndefined();
     });
 
     it('returns undefined for null node', () => {
-      expect(getNodeKey(null as any)).toBeUndefined();
+      expect(getNodeKey(null)).toBeUndefined();
     });
 
     it('skips setting key on component nodes', () => {
@@ -140,7 +141,7 @@ describe('key system', () => {
 
     it('skips setting key on document node', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-      setNodeKey(document as any, 'key');
+      setNodeKey(document, 'key');
       warnSpy.mockRestore();
     });
   });

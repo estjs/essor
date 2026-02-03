@@ -16,7 +16,8 @@ describe('event delegation', () => {
     const handler = vi.fn();
 
     // Set handler on the element using the event name as property
-    (button as any)._$click = handler;
+    // @ts-ignore
+    button._$click = handler;
     container.appendChild(button);
     document.body.appendChild(container);
 
@@ -35,8 +36,10 @@ describe('event delegation', () => {
     const handler = vi.fn();
     const eventData = { value: 'test-data' };
 
-    (button as any)._$click = handler;
-    (button as any).clickData = eventData;
+    // @ts-ignore
+    button._$click = handler;
+    // @ts-ignore
+    button.clickData = eventData;
     document.body.appendChild(button);
 
     button.dispatchEvent(new Event('click', { bubbles: true }));
@@ -52,9 +55,10 @@ describe('event delegation', () => {
       e.cancelBubble = true;
     });
     const containerHandler = vi.fn();
-
-    (button as any)._$click = buttonHandler;
-    (container as any)._$click = containerHandler;
+    // @ts-ignore
+    button._$click = buttonHandler;
+    // @ts-ignore
+    container._$click = containerHandler;
     container.appendChild(button);
     document.body.appendChild(container);
 
@@ -69,8 +73,9 @@ describe('event delegation', () => {
     const button = document.createElement('button');
     const handler = vi.fn();
 
-    (button as any)._$click = handler;
-    (button as any).disabled = true;
+    // @ts-ignore
+    button._$click = handler;
+    button.disabled = true;
     document.body.appendChild(button);
 
     button.dispatchEvent(new Event('click', { bubbles: true }));
@@ -82,8 +87,8 @@ describe('event delegation', () => {
 
     const button = document.createElement('button');
     const handler = vi.fn();
-
-    (button as any)._$click = handler;
+    // @ts-ignore
+    button._$click = handler;
     document.body.appendChild(button);
 
     button.dispatchEvent(new Event('click', { bubbles: true }));
@@ -99,9 +104,12 @@ describe('event delegation', () => {
     const mountHandler = vi.fn();
 
     // Simulate portal structure
-    (portalContent as any)._$host = portalMount;
-    (button as any)._$click = vi.fn();
-    (portalMount as any)._$click = mountHandler;
+    // @ts-ignore
+    portalContent._$host = portalMount;
+    // @ts-ignore
+    button._$click = vi.fn();
+    // @ts-ignore
+    portalMount._$click = mountHandler;
 
     portalContent.appendChild(button);
     document.body.appendChild(portalMount);
@@ -126,9 +134,12 @@ describe('event delegation', () => {
     const rootHandler = vi.fn();
     const containerHandler = vi.fn();
 
-    (button as any)._$click = vi.fn();
-    (container as any)._$click = containerHandler;
-    (root as any)._$click = rootHandler;
+    // @ts-ignore
+    button._$click = vi.fn();
+    // @ts-ignore
+    container._$click = containerHandler;
+    // @ts-ignore
+    root._$click = rootHandler;
 
     container.appendChild(button);
     root.appendChild(container);
@@ -156,8 +167,10 @@ describe('event delegation', () => {
     const buttonHandler = vi.fn();
     const containerHandler = vi.fn();
 
-    (button as any)._$click = buttonHandler;
-    (container as any)._$click = containerHandler;
+    // @ts-ignore
+    button._$click = buttonHandler;
+    // @ts-ignore
+    container._$click = containerHandler;
     container.appendChild(button);
     document.body.appendChild(container);
 
@@ -181,7 +194,8 @@ describe('event delegation', () => {
       capturedCurrentTarget = e.currentTarget;
     });
 
-    (button as any)._$click = handler;
+    // @ts-ignore
+    button._$click = handler;
     document.body.appendChild(button);
 
     button.dispatchEvent(new Event('click', { bubbles: true }));
@@ -204,9 +218,10 @@ describe('event delegation', () => {
     const button = document.createElement('button');
     const clickHandler = vi.fn();
     const inputHandler = vi.fn();
-
-    (button as any)._$click = clickHandler;
-    (button as any)._$input = inputHandler;
+    // @ts-ignore
+    button._$click = clickHandler;
+    // @ts-ignore
+    button._$input = inputHandler;
     document.body.appendChild(button);
 
     button.dispatchEvent(new Event('click', { bubbles: true }));
@@ -234,7 +249,8 @@ describe('event delegation', () => {
     delegateEvents(['click']);
 
     const button = document.createElement('button');
-    (button as any)._$click = 'not-a-function';
+    // @ts-ignore
+    button._$click = 'not-a-function';
     document.body.appendChild(button);
 
     expect(() => {

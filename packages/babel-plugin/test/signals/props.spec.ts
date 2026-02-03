@@ -26,7 +26,8 @@ describe('signals/props', () => {
     };
 
     // Mock __DEV__
-    (global as any).__DEV__ = true;
+    // @ts-ignore
+    globalThis.__DEV__ = true;
 
     traverse(ast, {
       'FunctionDeclaration|ArrowFunctionExpression': function (path: any) {
@@ -55,7 +56,8 @@ describe('signals/props', () => {
     });
 
     // Clean up
-    delete (global as any).__DEV__;
+    // @ts-ignore
+    delete globalThis.__DEV__;
 
     return generate(ast).code;
   };
@@ -173,7 +175,8 @@ describe('signals/props', () => {
   it('warns about signal prefix in props', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     // Mock __DEV__ global
-    (global as any).__DEV__ = true;
+    // @ts-ignore
+    globalThis.__DEV__ = true;
 
     const code = `
       function Component({ $signal }) {
@@ -188,7 +191,8 @@ describe('signals/props', () => {
     );
 
     warnSpy.mockRestore();
-    delete (global as any).__DEV__;
+    // @ts-ignore
+    delete globalThis.__DEV__;
   });
 
   it('transforms complex default values', () => {

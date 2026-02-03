@@ -59,10 +59,7 @@ export enum COMPONENT_STATE {
   DESTROYED,
 }
 
-export enum COMPONENT_TYPE {
-  NORMAL = 'normal',
-  FRAGMENT = 'fragment',
-  PORTAL = 'portal',
-  SUSPENSE = 'suspense',
-  FOR = 'for',
-}
+export const NORMAL_COMPONENT = Symbol(__DEV__ ? 'Normal Component' : '');
+export const FRAGMENT_COMPONENT = Symbol(__DEV__ ? 'Fragment Component' : '');
+export const PORTAL_COMPONENT = Symbol(__DEV__ ? 'Portal Component' : '');
+export const SUSPENSE_COMPONENT = Symbol(__DEV__ ? 'Suspense Component' : '');
