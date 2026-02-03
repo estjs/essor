@@ -3,9 +3,8 @@ import { HelloWorld } from './HelloWorld';
 
 export function App() {
   return (
-    <div>
-      <h1>🔥 Essor HMR Demo</h1>
-      <p></p>
+    <div class="hmr-demo-app">
+      <h1 class="hmr-demo-title">🔥 Essor HMR Demo</h1>
       <Counter />
       <HelloWorld />
     </div>

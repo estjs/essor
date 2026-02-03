@@ -10,16 +10,18 @@ export function Counter() {
   const dec = () => $count--;
 
   return (
-    <div style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-      <h3>🔢 Stateful Component</h3>
-      <p style="font-size: 2em; margin: 10px 0;">{$count}</p>
-      <div style="gap: 10px; display: flex;">
-        <button onClick={dec}>- Decrease</button>
-        <button onClick={inc}>+ Increase</button>
+    <div class="counter-component">
+      <h3 class="counter-title">🔢 Stateful Component</h3>
+      <p class="counter-display">{$count}</p>
+      <div class="counter-buttons">
+        <button class="counter-btn-decrease" onClick={dec}>
+          - Decrease
+        </button>
+        <button class="counter-btn-increase" onClick={inc}>
+          + Increase
+        </button>
       </div>
-      <p style="color: #666; font-size: 0.8em; margin-top: 10px;">
-        State is preserved during HMR updates
-      </p>
+      <p class="counter-info">State is preserved during HMR updates</p>
     </div>
   );
 }

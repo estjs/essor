@@ -24,6 +24,18 @@ import { createComponent, effect, signal } from 'essor';
 const componentRegistry = new Map();
 
 /**
+ * Utility function to handle invalidate or reload
+ * @param hot - Hot module API object
+ */
+function invalidateOrReload(hot) {
+  if (typeof hot?.invalidate === 'function') {
+    hot.invalidate();
+  } else if (typeof location !== 'undefined') {
+    location.reload();
+  }
+}
+
+/**
  * Create HMR-enabled component wrapper
  *
  * This function wraps a component to enable HMR:
@@ -57,57 +69,54 @@ export function createHMRComponent(componentFn, props) {
     componentRegistry.set(hmrId, info);
   }
 
-  // Attach _hmrInstances and _hmrInfo to component function
-  // Component constructor will check this and auto-register
-  if (!componentFn._hmrInstances) {
-    componentFn._hmrInstances = info.instances;
-    componentFn._hmrInfo = info;
-  }
-
-  // Create wrapper: read latest component from signal
-  const wrappedFn = props => {
-    const currentFn = info.componentSignal.value;
-    return currentFn(props);
-  };
-
-  // Copy HMR properties to wrapper
-  wrappedFn._hmrInstances = info.instances;
-  wrappedFn._hmrInfo = info;
-  wrappedFn.__hmrId = hmrId;
-  wrappedFn.__signature = signature;
-  Object.defineProperty(wrappedFn, 'name', {
-    value: componentFn.name || 'HMRComponent',
-    configurable: true,
-  });
-
   // Create Component instance
-  // Component class checks wrappedFn._hmrInstances and auto-registers
-  const component = createComponent(wrappedFn, props);
+  const component = createComponent(componentFn, props);
+  // Track this instance
+  info.instances.add(component);
 
   // Create effect for this Component instance
-  // Auto call forceUpdate when signal changes
-  let isFirstRun = true;
+  // The effect subscribes to componentSignal and updates the component
+  // We read the signal value immediately to establish the dependency,
+  // but only trigger updates on subsequent changes
+  let initialized = false;
   const cleanup = effect(() => {
     // Read signal value to establish dependency
-    // eslint-disable-next-line unused-imports/no-unused-vars
-    const _ = info.componentSignal.value;
-
-    // Skip first run
-    if (isFirstRun) {
-      isFirstRun = false;
+    const currentComponentFn = info.componentSignal.value;
+    // Skip the initialization run - only update on actual changes
+    if (!initialized) {
+      initialized = true;
       return;
     }
 
     // Update this specific instance when signal changes
     try {
+      component.component = currentComponentFn;
       component.forceUpdate();
     } catch (error) {
-      console.error(`[Essor HMR] Failed to update instance:`, error);
+      console.error(`[Essor HMR] Failed to update component instance:`, error);
     }
   });
 
-  // Store cleanup function
+  // Store cleanup function for this instance
   info.cleanups.set(component, cleanup);
+
+  // Integrate with component lifecycle - cleanup when component is destroyed
+  // Store the original onBeforeUnmount handler if it exists
+  const originalOnBeforeUnmount = component.onBeforeUnmount;
+  component.onBeforeUnmount = function () {
+    // Call original handler first
+    if (originalOnBeforeUnmount) {
+      originalOnBeforeUnmount.call(this);
+    }
+    // Cleanup HMR effect
+    const cleanupFn = info.cleanups.get(component);
+    if (cleanupFn) {
+      cleanupFn();
+      info.cleanups.delete(component);
+    }
+    // Remove from instances tracking
+    info.instances.delete(component);
+  };
 
   return component;
 }
@@ -193,28 +202,37 @@ export function applyUpdate(registry) {
 }
 
 /**
+ * Common handler for HMR updates across bundlers
+ * @param hot - Hot module API
+ * @param newModule - Updated module
+ * @returns true if handled successfully
+ */
+function handleHMRUpdate(hot, newModule) {
+  if (!newModule) {
+    invalidateOrReload(hot);
+    return false;
+  }
+
+  // Extract HMR components from new module
+  const newRegistry = extractHMRComponents(newModule);
+  if (newRegistry.length === 0) {
+    return true;
+  }
+
+  const needsReload = applyUpdate(newRegistry);
+  if (needsReload) {
+    invalidateOrReload(hot);
+  }
+  return true;
+}
+
+/**
  * Setup HMR for Vite bundler
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
 function setupViteHMR(hot) {
-  hot.accept(newModule => {
-    if (!newModule) {
-      hot.invalidate?.();
-      return;
-    }
-
-    // Extract HMR components from new module
-    const newRegistry = extractHMRComponents(newModule);
-    if (newRegistry.length === 0) {
-      return;
-    }
-
-    const needsReload = applyUpdate(newRegistry);
-    if (needsReload) {
-      hot.invalidate?.();
-    }
-  });
+  hot.accept(newModule => handleHMRUpdate(hot, newModule));
 }
 
 /**
@@ -223,20 +241,24 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  hot.accept?.();
+  if (typeof hot.accept === 'function') {
+    hot.accept();
+  }
 
-  // Apply update if previous data exists
+  // Apply update if previous data exists from last hot reload
   if (hot.data?.__$registry$__) {
     const needsReload = applyUpdate(registry);
-    if (needsReload && hot.invalidate) {
-      hot.invalidate();
+    if (needsReload) {
+      invalidateOrReload(hot);
     }
   }
 
   // Save current registry for next update
-  hot.dispose?.(data => {
-    data.__$registry$__ = registry;
-  });
+  if (typeof hot.dispose === 'function') {
+    hot.dispose(data => {
+      data.__$registry$__ = registry;
+    });
+  }
 }
 
 /**
@@ -245,41 +267,22 @@ function setupWebpackHMR(hot, registry) {
  * Attempts to work with any bundler that provides a basic hot module API
  */
 function setupStandardHMR(hot, registry) {
-  // Try accept callback mode
+  // Try accept callback mode first (more efficient)
   if (typeof hot.accept === 'function') {
     try {
-      hot.accept(newModule => {
-        if (!newModule) {
-          if (typeof hot.invalidate === 'function') {
-            hot.invalidate();
-          } else if (typeof location !== 'undefined') {
-            location.reload();
-          }
-          return;
-        }
-
-        // Extract HMR components from new module
-        const newRegistry = extractHMRComponents(newModule);
-        if (newRegistry.length === 0) {
-          return;
-        }
-
-        const needsReload = applyUpdate(newRegistry);
-        if (needsReload) {
-          if (typeof hot.invalidate === 'function') {
-            hot.invalidate();
-          } else if (typeof location !== 'undefined') {
-            location.reload();
-          }
-        }
-      });
+      hot.accept(newModule => handleHMRUpdate(hot, newModule));
     } catch {
-      // If accept callback not supported, use simple accept
-      hot.accept();
+      // Some bundlers don't support accept with callback
+      // Fall back to simple accept (for Webpack-style pattern)
+      try {
+        hot.accept();
+      } catch (error_) {
+        console.warn('[Essor HMR] Failed to setup hot.accept:', error_);
+      }
     }
   }
 
-  // Setup dispose handler
+  // Setup dispose handler for state persistence
   if (typeof hot.dispose === 'function') {
     hot.dispose(data => {
       data.__$registry$__ = registry;
@@ -287,15 +290,11 @@ function setupStandardHMR(hot, registry) {
     });
   }
 
-  // Apply update if previous data exists
+  // Apply update if previous data exists (for Webpack-style HMR)
   if (hot.data?.__$registry$__) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
-      if (typeof hot.invalidate === 'function') {
-        hot.invalidate();
-      } else if (typeof location !== 'undefined') {
-        location.reload();
-      }
+      invalidateOrReload(hot);
     }
   }
 }
