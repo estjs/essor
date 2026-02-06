@@ -2,7 +2,7 @@
  * DOM manipulation utilities
  */
 
-import { error, isPrimitive } from '@estjs/shared';
+import { isPrimitive } from '@estjs/shared';
 import { isComponent } from '../component';
 import type { AnyNode } from '../types';
 
@@ -14,17 +14,14 @@ import type { AnyNode } from '../types';
 export function removeNode(node: AnyNode): void {
   if (!node) return;
 
-  try {
-    if (isComponent(node)) {
-      node.destroy();
-    } else {
-      const element = node as Element;
-      if (element.parentElement) {
-        element.remove();
-      }
-    }
-  } catch (_error) {
-    error('Failed to remove node:', _error);
+  if (isComponent(node)) {
+    node.destroy();
+    return;
+  }
+
+  const element = node as Element;
+  if (element.parentElement) {
+    element.remove();
   }
 }
 
@@ -39,26 +36,18 @@ export function removeNode(node: AnyNode): void {
 export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): void {
   if (!parent || !child) return;
 
-  try {
+  if (isComponent(child)) {
     const beforeNode = isComponent(before) ? before.firstChild : (before as Node);
+    child.mount(parent, beforeNode);
+    return;
+  }
 
-    if (isComponent(child)) {
-      child.mount(parent, beforeNode);
-      return;
-    }
+  const beforeNode = isComponent(before) ? before.firstChild : (before as Node);
 
-    if (beforeNode) {
-      parent.insertBefore(child as Node, beforeNode);
-    } else {
-      if (__DEV__) {
-        if (!child) {
-          error('insertNode: child is not a Node', child);
-        }
-      }
-      parent.appendChild(child as Node);
-    }
-  } catch (_error) {
-    error('Failed to insert node:', _error);
+  if (beforeNode) {
+    parent.insertBefore(child as Node, beforeNode);
+  } else {
+    parent.appendChild(child as Node);
   }
 }
 
@@ -73,15 +62,11 @@ export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): void
 export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): void {
   if (!parent || !newNode || !oldNode || newNode === oldNode) return;
 
-  try {
-    const beforeNode: AnyNode | undefined = isComponent(oldNode)
-      ? oldNode.beforeNode
-      : (oldNode as Node).nextSibling!;
-    removeNode(oldNode);
-    insertNode(parent, newNode, beforeNode);
-  } catch (_error) {
-    error('Failed to replace node:', _error);
-  }
+  const beforeNode: AnyNode | undefined = isComponent(oldNode)
+    ? oldNode.beforeNode
+    : (oldNode as Node).nextSibling!;
+  removeNode(oldNode);
+  insertNode(parent, newNode, beforeNode);
 }
 
 /**

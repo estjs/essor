@@ -63,3 +63,5 @@ export {
   setActiveScope,
   onCleanup,
 } from './scope';
+
+export { For, type ForProps } from './components/For';

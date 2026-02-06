@@ -7,6 +7,7 @@ export const DEFAULT_OPTIONS: PluginOptions = {
   props: true,
   hmr: true,
   styled: false,
+  enableFor: false,
 };
 
 // Rendering mode
@@ -33,6 +34,7 @@ export const IMPORTS_MAPS = [
 
   // Template related
   'mapNodes',
+  'mapArray',
   'template',
   'delegateEvents',
   // styled

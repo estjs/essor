@@ -207,47 +207,22 @@ function generateIndexMap({
 }) {
   const indexSet = new Set<number>();
 
-  // Collect indices related to dynamic child nodes
+  // Collect indices in a single pass per array
   for (const item of children) {
-    // Add parent node index
-    if (!isNil(item.parentIndex)) {
-      indexSet.add(item.parentIndex);
-    }
-    // Add reference node index (for insertBefore)
-    if (!isNil(item.before)) {
-      indexSet.add(item.before);
-    }
+    if (!isNil(item.parentIndex)) indexSet.add(item.parentIndex);
+    if (!isNil(item.before)) indexSet.add(item.before);
   }
 
-  // Collect parent node indices related to dynamic attributes
   for (const item of props) {
-    if (!isNil(item.parentIndex)) {
-      indexSet.add(item.parentIndex);
-    }
+    if (!isNil(item.parentIndex)) indexSet.add(item.parentIndex);
   }
 
-  // Collect node indices for reactive operations
-  if (operations && operations.length > 0) {
-    for (const item of operations) {
-      if (!isNil(item.nodeIndex)) {
-        indexSet.add(item.nodeIndex);
-      }
-    }
+  for (const item of operations) {
+    if (!isNil(item.nodeIndex)) indexSet.add(item.nodeIndex);
   }
 
   // Convert to sorted array for predictable ordering
-  const indexMap = Array.from(indexSet).sort((a, b) => a - b);
-
-  // Validation: Ensure all indices are positive integers
-  if (__DEV__) {
-    for (const index of indexMap) {
-      if (!Number.isInteger(index) || index < 1) {
-        warn(`Invalid index in index map: ${index}. All indices must be positive integers.`);
-      }
-    }
-  }
-
-  return indexMap;
+  return Array.from(indexSet).sort((a, b) => a - b);
 }
 
 // typeof value === "function" ? value(_el$) : value.value = _el$;
@@ -564,8 +539,204 @@ function generateDynamicChildrenCode(
 
   // Create insertion statement for each dynamic content
   for (const dynamicContent of dynamicChildren) {
+    let node = dynamicContent.node;
+
+    // Optimization for list.map() calls
+    let mapCall: t.CallExpression | null = null;
+
+    if (
+      t.isCallExpression(node) &&
+      t.isMemberExpression(node.callee) &&
+      t.isIdentifier(node.callee.property) &&
+      node.callee.property.name === 'map' &&
+      node.arguments.length > 0
+    ) {
+      mapCall = node;
+    } else if (
+      t.isArrowFunctionExpression(node) &&
+      t.isCallExpression(node.body) &&
+      t.isMemberExpression(node.body.callee) &&
+      t.isIdentifier(node.body.callee.property) &&
+      node.body.callee.property.name === 'map' &&
+      node.body.arguments.length > 0
+    ) {
+      mapCall = node.body;
+    }
+
+    if (mapCall && state.opts.enableFor !== false) {
+      // list.map(item => ...) -> For({ each: () => list, children: mapFn, keyFn: ... })
+      const listExpr = (mapCall.callee as t.MemberExpression).object;
+      const mapFn = mapCall.arguments[0];
+
+      if (
+        t.isExpression(listExpr) &&
+        (t.isArrowFunctionExpression(mapFn) || t.isFunctionExpression(mapFn))
+      ) {
+        addImport(importMap.createComponent);
+        addImport(importMap.For);
+
+        // Extract key prop and transform the map function body
+        let keyFnExpr: t.Expression | null = null;
+        let transformedMapFn: t.ArrowFunctionExpression | t.FunctionExpression = mapFn;
+        const mapFnBody = t.isArrowFunctionExpression(mapFn) ? mapFn.body : null;
+        const mapFnParams = mapFn.params;
+
+        // Get the item parameter name
+        let itemParamName: string | null = null;
+        if (mapFnParams.length > 0 && t.isIdentifier(mapFnParams[0])) {
+          itemParamName = mapFnParams[0].name;
+        }
+
+        if (itemParamName && mapFnBody) {
+          // Check if body is createComponent(Component, { key: ..., ...props })
+          if (t.isCallExpression(mapFnBody)) {
+            const callee = mapFnBody.callee;
+            const args = mapFnBody.arguments;
+
+            // Check if it's a createComponent call (identifier or member expression)
+            const isCreateComponentCall =
+              (t.isIdentifier(callee) && callee.name.includes('createComponent')) ||
+              (t.isMemberExpression(callee) &&
+                t.isIdentifier(callee.property) &&
+                callee.property.name === 'createComponent');
+
+            if (isCreateComponentCall && args.length >= 2) {
+              const componentRef = args[0]; // The component function (e.g., Row)
+              const propsArg = args[1];
+
+              if (t.isExpression(componentRef) && t.isObjectExpression(propsArg)) {
+                // Extract key from props and create keyFn
+                const newProps: t.ObjectProperty[] = [];
+
+                for (const prop of propsArg.properties) {
+                  if (
+                    t.isObjectProperty(prop) &&
+                    t.isIdentifier(prop.key) &&
+                    prop.key.name === 'key' &&
+                    t.isExpression(prop.value)
+                  ) {
+                    // Found key prop - create keyFn
+                    keyFnExpr = t.arrowFunctionExpression(
+                      [t.identifier(itemParamName)],
+                      prop.value,
+                    );
+                    // Don't include key in props passed to component
+                  } else if (t.isObjectProperty(prop) || t.isSpreadElement(prop)) {
+                    newProps.push(prop as t.ObjectProperty);
+                  }
+                }
+
+                // Transform: createComponent(Row, props) -> Row(props)
+                // Create new props object without key
+                const newPropsObj = t.objectExpression(newProps);
+                const directCall = t.callExpression(componentRef as t.Expression, [newPropsObj]);
+
+                // Create new mapFn with transformed body
+                transformedMapFn = t.arrowFunctionExpression(mapFnParams, directCall);
+              }
+            }
+          }
+          // Case 2: Still a JSX Element (e.g. <Row ... />)
+          else if (t.isJSXElement(mapFnBody)) {
+            const opening = mapFnBody.openingElement;
+            const tagName = opening.name;
+
+            // Determine if it is a component
+            let componentRef: t.Expression | null = null;
+            if (t.isJSXIdentifier(tagName) && /^[A-Z]/.test(tagName.name)) {
+              componentRef = t.identifier(tagName.name);
+            } else if (t.isJSXMemberExpression(tagName)) {
+              // Convert JSXMemberExpression to MemberExpression
+              const convertJSXName = (
+                name: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
+              ): t.Expression => {
+                if (t.isJSXIdentifier(name)) return t.identifier(name.name);
+                if (t.isJSXMemberExpression(name))
+                  return t.memberExpression(
+                    convertJSXName(name.object),
+                    convertJSXName(name.property),
+                  );
+                throw new Error('Unsupported JSX Member Expression');
+              };
+              componentRef = t.memberExpression(
+                convertJSXName(tagName.object),
+                convertJSXName(tagName.property),
+              );
+            }
+
+            if (componentRef) {
+              // Extract props and key
+              const newProps: (t.ObjectProperty | t.SpreadElement)[] = [];
+
+              for (const attr of opening.attributes) {
+                if (t.isJSXAttribute(attr)) {
+                  const nameNode = attr.name;
+                  const name = t.isJSXIdentifier(nameNode) ? nameNode.name : nameNode.name.name;
+                  let valueExpr: t.Expression = t.booleanLiteral(true);
+
+                  if (attr.value) {
+                    if (t.isJSXExpressionContainer(attr.value)) {
+                      if (t.isExpression(attr.value.expression)) {
+                        valueExpr = attr.value.expression;
+                      } else {
+                        continue; // skip empty expression
+                      }
+                    } else if (t.isStringLiteral(attr.value)) {
+                      valueExpr = attr.value;
+                    }
+                  }
+
+                  if (name === 'key') {
+                    // Found key
+                    keyFnExpr = t.arrowFunctionExpression([t.identifier(itemParamName)], valueExpr);
+                  } else {
+                    newProps.push(t.objectProperty(t.identifier(name), valueExpr));
+                  }
+                } else if (t.isJSXSpreadAttribute(attr)) {
+                  newProps.push(t.spreadElement(attr.argument));
+                }
+              }
+
+              // Transform <Row ... /> -> Row({...})
+              const newPropsObj = t.objectExpression(newProps as any);
+              const directCall = t.callExpression(componentRef, [newPropsObj]);
+              transformedMapFn = t.arrowFunctionExpression(mapFnParams, directCall);
+            }
+          }
+        }
+
+        /**
+         * For({
+         *   each: () => list,
+         *   children: item => Row({ item }),  // Direct call, no createComponent
+         *   keyFn: item => item.id
+         * })
+         */
+        const propsProperties: t.ObjectProperty[] = [
+          t.objectProperty(t.identifier('each'), t.arrowFunctionExpression([], listExpr)),
+          t.objectProperty(t.identifier('children'), transformedMapFn as t.Expression),
+        ];
+
+        // Add keyFn if we extracted it
+        if (keyFnExpr) {
+          propsProperties.push(t.objectProperty(t.identifier('keyFn'), keyFnExpr));
+        }
+
+        const propsObject = t.objectExpression(propsProperties);
+
+        // Call through createComponent
+        const newExpr = t.callExpression(state.imports.createComponent, [
+          state.imports.For,
+          propsObject,
+        ]);
+
+        dynamicContent.node = newExpr;
+        node = newExpr;
+      }
+    }
+
     // Special handling for IIFE expressions, optimize performance
-    const processedNode = processIIFEExpression(dynamicContent.node);
+    const processedNode = processIIFEExpression(node);
 
     // Create insertion parameters
     const insertArgs = createInsertArguments(

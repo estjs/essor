@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { signal } from '@estjs/signals';
+import { nextTick, signal } from '@estjs/signals';
 import { createComponent } from '../src/component';
 import { template } from '../src/renderer';
 import { insert } from '../src/binding';
@@ -46,6 +46,7 @@ describe('provide/Inject Update Regression', () => {
 
     // Trigger update
     toggle.value = true;
+    await nextTick();
 
     // Check if value is still provided
     expect(root.textContent).toContain('provided-value');
@@ -92,6 +93,7 @@ describe('provide/Inject Update Regression', () => {
 
     // Trigger update
     toggle.value = true;
+    await nextTick();
 
     // Verify persistence after update
     expect(root.innerHTML).toContain('<div>root-value</div>');
@@ -132,11 +134,13 @@ describe('provide/Inject Update Regression', () => {
 
     // Switch to B
     router.value = 'B';
+    await nextTick();
     expect(root.textContent).toContain('ChildB:root-value');
     expect(root.textContent?.includes('ChildA')).toBe(false);
 
     // Switch back to A
     router.value = 'A';
+    await nextTick();
     expect(root.textContent).toContain('ChildA:root-value');
   });
 
@@ -184,12 +188,14 @@ describe('provide/Inject Update Regression', () => {
 
     // Toggle branch 2 off
     showBranch2.value = false;
+    await nextTick();
     expect(root.textContent).toContain('Static:dark');
     expect(root.textContent).toContain('Fallback');
     expect(root.textContent?.includes('Deep')).toBe(false);
 
     // Toggle branch 2 on
     showBranch2.value = true;
+    await nextTick();
     expect(root.textContent).toContain('Static:dark');
     expect(root.textContent).toContain('Deep:dark-user-alice');
   });
@@ -228,6 +234,7 @@ describe('provide/Inject Update Regression', () => {
 
     // Trigger update in Leaf
     updateSignal.value++;
+    await nextTick();
     expect(root.textContent).toContain('Leaf:val1-val2-1');
   });
 });

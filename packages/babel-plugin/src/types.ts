@@ -65,6 +65,13 @@ export interface PluginOptions {
    * @default false
    */
   styled?: boolean;
+
+  /**
+   * @experimental
+   * Whether to enable For component transformation
+   * @default false
+   */
+  enableFor?: boolean;
 }
 
 /**

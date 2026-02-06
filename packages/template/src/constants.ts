@@ -63,3 +63,4 @@ export const NORMAL_COMPONENT = Symbol(__DEV__ ? 'Normal Component' : '');
 export const FRAGMENT_COMPONENT = Symbol(__DEV__ ? 'Fragment Component' : '');
 export const PORTAL_COMPONENT = Symbol(__DEV__ ? 'Portal Component' : '');
 export const SUSPENSE_COMPONENT = Symbol(__DEV__ ? 'Suspense Component' : '');
+export const FOR_COMPONENT = Symbol(__DEV__ ? 'For Component' : '');

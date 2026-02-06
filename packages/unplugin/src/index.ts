@@ -21,6 +21,7 @@ const DEFAULT_OPTIONS = {
   mode: 'client',
   props: true,
   hmr: true,
+  enableFor: false,
 };
 
 /**

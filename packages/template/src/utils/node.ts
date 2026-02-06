@@ -117,14 +117,16 @@ export function shallowCompare(a: unknown, b: unknown): boolean {
   const aRecord = a as Record<string, unknown>;
   const bRecord = b as Record<string, unknown>;
 
-  // Compare properties in a
-  for (const key in aRecord) {
-    if (aRecord[key] !== bRecord[key]) return false;
-  }
+  // Fast path: check key count first
+  const aKeys = Object.keys(aRecord);
+  const bKeys = Object.keys(bRecord);
+  if (aKeys.length !== bKeys.length) return false;
 
-  // Check for extra properties in b
-  for (const key in bRecord) {
-    if (!(key in aRecord)) return false;
+  // Single pass: check all keys and values
+  for (const key of aKeys) {
+    if (!(key in bRecord) || aRecord[key] !== bRecord[key]) {
+      return false;
+    }
   }
 
   return true;

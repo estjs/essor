@@ -57,18 +57,6 @@ describe('node-operations', () => {
       const root = createTestRoot();
       expect(() => insertNode(root, null)).not.toThrow();
     });
-
-    it('handles insertion errors gracefully', () => {
-      const root = createTestRoot();
-      const node = document.createElement('div');
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      // Create a scenario that might cause an error
-      const invalidBefore = document.createElement('span');
-      insertNode(root, node, invalidBefore);
-
-      consoleSpy.mockRestore();
-    });
   });
 
   describe('removeNode', () => {

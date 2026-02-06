@@ -1,58 +1,58 @@
-import babel from '@babel/core';
-import babelPlugin from 'babel-plugin-essor';
-import { type Scope, createScope, disposeScope, runWithScope } from '../src/scope';
+import { type Scope, createScope, disposeScope, runWithScope, setActiveScope } from '../src/scope';
+import { triggerMountHooks } from '../src/lifecycle';
+import { insert } from '../src';
+
+let testRoots: HTMLElement[] = [];
 
 /**
- * Mount a component to a container for testing
- * @param componentFn - Component function to mount
- * @param container - Container element to mount into
+ * Create a test root element for mounting components
+ * @param id - Optional ID for the root element
+ * @returns HTML element to use as a root
  */
-import { insert } from '../src/binding';
-
-export function createTestRoot(id = 'app'): HTMLElement {
-  let root = document.querySelector(`#${id}`) as HTMLElement | null;
-  if (!root) {
-    root = document.createElement('div');
+export function createTestRoot(id?: string): HTMLElement {
+  const root = document.createElement('div');
+  if (id) {
     root.id = id;
-    document.body.appendChild(root);
   }
-  root.innerHTML = '';
+  document.body.appendChild(root);
+  testRoots.push(root);
   return root;
 }
 
+/**
+ * Reset the test environment by removing all test roots
+ * and clearing any global state
+ */
 export function resetEnvironment(): void {
-  document.body.innerHTML = '';
-}
-
-export function transform(code: string, opts): string {
-  const result = babel.transformSync(code, {
-    filename: 'test.jsx',
-    sourceType: 'module',
-    plugins: [[babelPlugin, opts]],
-  });
-  if (result?.code) {
-    return result.code;
+  // Remove all test roots
+  for (const root of testRoots) {
+    root.remove();
   }
-  return code;
+  testRoots = [];
+
+  // Clear any active scope
+  setActiveScope(null);
 }
 
 /**
- * Mount a component to a container for testing
- * @param componentFn - Component function to mount
- * @param container - Container element to mount into
+ * Mount a component function with a scope
+ * @param fn - The component function to mount
+ * @param root - The root element to mount to
  * @returns The scope for cleanup
  */
-export function mount(componentFn: () => any, container: HTMLElement): Scope {
+export function mount(fn: any, root: HTMLElement): Scope {
   const scope = createScope(null);
   runWithScope(scope, () => {
-    insert(container, componentFn);
+    const result = fn();
+    insert(root, result);
   });
+  triggerMountHooks(scope);
   return scope;
 }
 
 /**
  * Unmount a component by disposing its scope
- * @param scope - The scope returned from mount
+ * @param scope - The scope to dispose
  */
 export function unmount(scope: Scope): void {
   disposeScope(scope);
