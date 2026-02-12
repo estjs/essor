@@ -9,7 +9,7 @@ import { effect } from '@estjs/signals';
 import { normalizeNode } from './utils/node';
 import { removeNode } from './utils/dom';
 import { patchChildren } from './patch';
-import { onCleanup } from './scope';
+import { getActiveScope, onCleanup, runWithScope } from './scope';
 import type { AnyNode } from './types';
 
 /**
@@ -142,16 +142,24 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
 
   let renderedNodes: AnyNode[] = [];
-
+  const currentScope = getActiveScope();
   // Create effect for reactive updates
   const cleanup = effect(() => {
-    const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-    const nodes = coerceArray(rawNodes as unknown)
-      .map(item => (isFunction(item) ? item() : item))
-      .flatMap(normalizeNode) as AnyNode[];
+    const run = () => {
+      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+      const nodes = coerceArray(rawNodes as unknown)
+        .map(item => (isFunction(item) ? item() : item))
+        .flatMap(normalizeNode) as AnyNode[];
 
-    renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+      renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+    };
+    if (currentScope) {
+      runWithScope(currentScope, run);
+    } else {
+      run();
+    }
   });
+
   onCleanup(() => {
     cleanup();
     renderedNodes.forEach(node => removeNode(node));

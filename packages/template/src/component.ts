@@ -9,7 +9,14 @@ import {
   isPromise,
   startsWith,
 } from '@estjs/shared';
-import { type Scope, createScope, disposeScope, getActiveScope, runWithScope } from './scope';
+import {
+  type Scope,
+  createScope,
+  disposeScope,
+  getActiveScope,
+  runWithScope,
+  setActiveScope,
+} from './scope';
 import { COMPONENT_STATE, EVENT_PREFIX, NORMAL_COMPONENT, REF_KEY } from './constants';
 import { addEventListener, insert } from './binding';
 import { getComponentKey, normalizeKey } from './key';
@@ -91,41 +98,34 @@ export class Component<P extends ComponentProps = ComponentProps> {
       return this.renderedNodes;
     }
 
-    // Create scope with correct parent (captured at construction or current active)
-    const parent = this.parentScope ?? getActiveScope();
-    this.scope = createScope(parent);
+    const parentScope = this.parentScope ?? getActiveScope();
+    this.scope = createScope(parentScope);
+    setActiveScope(this.scope);
+    let result = this.component(this.reactiveProps as P);
 
-    // Run component within its scope
-    const renderedNodes = runWithScope(this.scope, () => {
-      let result = this.component(this.reactiveProps as P);
+    // Unwrap function (render function pattern)
+    if (isFunction(result)) {
+      result = (result as Function)(this.reactiveProps);
+    }
 
-      // Unwrap function (render function pattern)
-      if (isFunction(result)) {
-        result = (result as Function)(this.reactiveProps);
-      }
+    // Unwrap signals and computed values
+    if (isSignal<Element>(result) || isComputed<Element>(result)) {
+      result = result.value;
+    }
 
-      // Unwrap signals and computed values
-      if (isSignal<Element>(result) || isComputed<Element>(result)) {
-        result = result.value;
-      }
-
-      return insert(parentNode, result, beforeNode) ?? [];
-    });
+    const renderedNodes = insert(parentNode, result, beforeNode) ?? [];
 
     this.renderedNodes = renderedNodes;
 
     // Apply props (events, refs) after renderedNodes is set
-    runWithScope(this.scope, () => {
-      this.applyProps(this.props);
-    });
+
+    this.applyProps(this.props);
 
     // Update state to mounted
     this.state = COMPONENT_STATE.MOUNTED;
 
     // Trigger mount lifecycle hooks
-    if (this.scope) {
-      triggerMountHooks(this.scope);
-    }
+    triggerMountHooks(this.scope);
 
     return this.renderedNodes;
   }
@@ -158,9 +158,8 @@ export class Component<P extends ComponentProps = ComponentProps> {
 
     // Apply props and trigger update lifecycle
     if (this.scope) {
-      runWithScope(this.scope, () => {
-        this.applyProps(this.props);
-      });
+      setActiveScope(this.scope);
+      this.applyProps(this.props);
       triggerUpdateHooks(this.scope);
     }
 
@@ -309,19 +308,16 @@ export class Component<P extends ComponentProps = ComponentProps> {
 
     this.state = COMPONENT_STATE.DESTROYING;
 
-    const scope = this.scope;
-    if (scope) {
-      // Dispose scope (handles cleanup, destroy hooks, and children)
-      // The disposeScope function triggers destroy hooks internally
-      disposeScope(scope);
-      this.scope = null;
-    }
-
     // Remove all rendered nodes
     for (const node of this.renderedNodes) {
       removeNode(node);
     }
 
+    const scope = this.scope;
+    if (scope) {
+      disposeScope(scope);
+      this.scope = null;
+    }
     // Reset all component properties
     this.renderedNodes = [];
     this.parentNode = undefined;

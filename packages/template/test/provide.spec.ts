@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { nextTick, signal } from '@estjs/signals';
+import { effect, nextTick, signal } from '@estjs/signals';
 import { createComponent } from '../src/component';
 import { template } from '../src/renderer';
 import { insert } from '../src/binding';
 import { inject, provide } from '../src/provide';
 import { createScope, runWithScope, setActiveScope } from '../src/scope';
+import { mount } from './test-utils';
 
 describe('provide/Inject Update Regression', () => {
   let root: HTMLElement;
@@ -416,6 +417,47 @@ describe('provide/inject edge cases', () => {
       });
 
       expect(result).toBe('default-fallback');
+    });
+  });
+
+  describe('provide/inject with component async', () => {
+    it('should work scope with sync component', () => {
+      const show = signal(false);
+
+      const testComp = () => {
+        const value = inject('key');
+        const el = document.createElement('div');
+        el.textContent = `test: ${value}`;
+        return el;
+      };
+
+      const asyncComp = () => {
+        const value = inject('key');
+        const el = document.createElement('div');
+        el.textContent = `async: ${value}`;
+        return el;
+      };
+
+      const rootComp = () => {
+        provide('key', 'value');
+        const compts = signal<any>();
+
+        effect(() => {
+          console.log('show.value', show.value);
+
+          if (show.value) {
+            compts.value = createComponent(testComp);
+          } else {
+            compts.value = createComponent(asyncComp);
+          }
+        });
+        return [() => compts.value];
+      };
+      const rootEl = document.createElement('div');
+      mount(rootComp, rootEl);
+      expect(rootEl.textContent).toBe('async: value');
+      show.value = true;
+      expect(rootEl.textContent).toBe('test: value');
     });
   });
 });
