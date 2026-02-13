@@ -40,7 +40,7 @@ importers:
         version: 1.1.1
       pnpm:
         specifier: ^10.28.2
-        version: 10.28.2
+        version: 10.29.3
       prettier:
         specifier: ^3.8.1
         version: 3.8.1
@@ -4902,8 +4902,8 @@ packages:
   pnpm-workspace-yaml@1.5.0:
     resolution: {integrity: sha512-PxdyJuFvq5B0qm3s9PaH/xOtSxrcvpBRr+BblhucpWjs8c79d4b7/cXhyY4AyHOHCnqklCYZTjfl0bT/mFVTRw==}
 
-  pnpm@10.28.2:
-    resolution: {integrity: sha512-QYcvA3rSL3NI47Heu69+hnz9RI8nJtnPdMCPGVB8MdLI56EVJbmD/rwt9kC1Q43uYCPrsfhO1DzC1lTSvDJiZA==}
+  pnpm@10.29.3:
+    resolution: {integrity: sha512-SY4ftMylqgbB3PJhHm+vxQly/+cYmZjECekN50VmREKY/+Q+bNKs3Hdboap8xeCSqLcFTIEbqMV3D4RpPTPS3A==}
     engines: {node: '>=18.12'}
     hasBin: true
 
@@ -11245,7 +11245,7 @@ snapshots:
     dependencies:
       yaml: 2.8.2
 
-  pnpm@10.28.2: {}
+  pnpm@10.29.3: {}
 
   polka@1.0.0-next.28:
     dependencies:
