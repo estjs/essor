@@ -64,13 +64,13 @@ export const enum ReactiveFlags {
   QUEUED = 1 << 6, // 0b01000000 = 64
 }
 
-// Define specific flags for effects
 export enum EffectFlags {
   ALLOW_RECURSE = 1 << 7, // Allow recursive calls
   PAUSED = 1 << 8, // Paused
-  STOP = 1 << 10, // Stopped
+  RUNNING = 1 << 9, // Currently executing
+  STOP = 1 << 10, // Permanently stopped
 }
-// Define operation type constants
+
 export const TriggerOpTypes = {
   SET: 'SET',
   ADD: 'ADD',

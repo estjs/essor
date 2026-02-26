@@ -1,5 +1,5 @@
 import { isComputed, isSignal } from '@estjs/signals';
-import { normalizeClassName, normalizeStyle, styleToString } from '@estjs/shared';
+import { isString, normalizeClassName, normalizeStyle, styleToString } from '@estjs/shared';
 
 /**
  * Normalize component properties
@@ -17,7 +17,7 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
   const { class: className, style } = props;
 
   // Normalize class attribute
-  if (className && typeof className !== 'string') {
+  if (className && !isString(className)) {
     props.class = normalizeClassName(className);
   }
 
@@ -61,7 +61,7 @@ export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string
       return '';
     }
 
-    if (typeof normalizedStyle === 'string') {
+    if (isString(normalizedStyle)) {
       return ` style="${normalizedStyle}"`;
     }
 

@@ -1,5 +1,5 @@
 import { error, isFunction } from '@estjs/shared';
-import { ReactiveFlags } from './constants';
+import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags } from './constants';
 import { type Effect, propagate } from './propagation';
 
 /**
@@ -46,17 +46,19 @@ export interface Link {
    */
   subNode: ReactiveNode;
 
-  // Connects multiple subscribers of the same depNode
-
-  /** Previous subscriber Link */
+  /**
+   * Connects multiple subscribers of the same depNode.
+   * Previous subscriber Link
+   */
   prevSubLink?: Link;
 
   /** Next subscriber Link */
   nextSubLink?: Link;
 
-  // Connects multiple dependencies of the same subNode
-
-  /** Previous dependency Link */
+  /**
+   * Connects multiple dependencies of the same subNode.
+   * Previous dependency Link
+   */
   prevDepLink?: Link;
 
   /** Next dependency Link */
@@ -146,14 +148,8 @@ export interface ReactiveNode {
    */
   flag: ReactiveFlags;
 
-  /**
-   * Optional debugging hook called when dependencies are tracked
-   */
+  _triggerVersion?: number; // Used for development debugging to track trigger versions
   onTrack?: (event: DebuggerEvent) => void;
-
-  /**
-   * Optional debugging hook called when reactive changes are triggered
-   */
   onTrigger?: (event: DebuggerEvent) => void;
 }
 
@@ -366,31 +362,13 @@ export function unlinkReactiveNode(
     }
   }
 
-  // Clear all references in the link to enable garbage collection
-  // This is important for preventing memory leaks
-  // @ts-ignore
-  linkNode.depNode = undefined;
-  // @ts-ignore
-  linkNode.subNode = undefined;
-  linkNode.prevSubLink = undefined;
-  linkNode.nextSubLink = undefined;
-  linkNode.prevDepLink = undefined;
-  linkNode.nextDepLink = undefined;
-
   // Return the next link in the dependency chain for iteration
   return nextDep;
 }
 
-/**
- * Check stack frame
- *
- * Used to save check state in iterative implementation.
- */
-interface CheckStackFrame {
-  /** The Link currently being checked */
-  link: Link | undefined;
-  /** The node that owns the Link */
-  owner: ReactiveNode;
+interface CheckStackNode {
+  link: Link;
+  prev?: CheckStackNode;
 }
 
 /**
@@ -461,121 +439,109 @@ interface CheckStackFrame {
  * ```
  */
 export function checkDirty(link: Link, sub: ReactiveNode): boolean {
-  // Use explicit stack instead of recursion to support arbitrary depth
-  // Each stack frame contains:
-  // - link: The dependency Link to check
-  // - owner: The ReactiveNode that owns this Link
-  const stack: CheckStackFrame[] = [{ link, owner: sub }];
+  let stack: CheckStackNode | undefined;
+  let checkDepth = 0;
+  let dirty = false;
 
-  // Track all PENDING nodes encountered during traversal
-  // If we find a DIRTY dependency, we'll mark all these as DIRTY too
-  // This ensures the entire path from dirty source to subscriber is marked
-  const pendingNodes: ReactiveNode[] = [];
+  // eslint-disable-next-line no-restricted-syntax
+  top: do {
+    let currentDirty = false;
 
-  // Process stack frames until empty (depth-first traversal)
-  while (stack.length > 0) {
-    const frame = stack.pop()!;
-    let current = frame.link;
-    const owner = frame.owner;
-
-    // Traverse all dependencies at the current level (linked list)
-    // This handles nodes with multiple dependencies (e.g., computed(() => a.value + b.value))
-    while (current) {
-      const dep = current.depNode;
+    if (sub.flag & ReactiveFlags.DIRTY) {
+      currentDirty = true;
+    } else {
+      const dep = link.depNode;
       const depFlags = dep.flag;
 
-      // If owner is already marked DIRTY, no need to continue checking
-      // This can happen in diamond dependencies where multiple paths lead to same node
-      if (owner.flag & ReactiveFlags.DIRTY) {
-        return true;
-      }
-
-      // Dependency is both MUTABLE (can change) and DIRTY (has changed)
-      // This means the subscriber definitely needs to recompute
       if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY)) ===
         (ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY)
       ) {
         const subs = dep.subLink;
-        // If this dependency has multiple subscribers, propagate to all of them
-        // This ensures sibling subscribers are also marked dirty
         if (subs && subs.nextSubLink) {
           shallowPropagate(subs);
         }
-
-        // Mark all PENDING nodes on the path from dirty source to subscriber as DIRTY
-        // This is crucial for correctness: if A depends on B depends on C, and C is dirty,
-        // then both B and A should be marked dirty
-        for (const node of pendingNodes) {
-          if (node.flag & ReactiveFlags.PENDING) {
-            node.flag = (node.flag & ~ReactiveFlags.PENDING) | ReactiveFlags.DIRTY;
-          }
-        }
-        return true;
-      }
-
-      // Dependency is MUTABLE and PENDING (might be dirty, need to check its dependencies)
-      // This is the recursive case - we need to check if this dependency's dependencies are dirty
-      if (
+        currentDirty = true;
+      } else if (
         (depFlags & (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING)) ===
         (ReactiveFlags.MUTABLE | ReactiveFlags.PENDING)
       ) {
         if (dep.depLink) {
-          // Add this node to pending list - we'll mark it dirty if we find dirty dependencies
-          pendingNodes.push(dep);
-          // Push this dependency's dependencies onto stack for checking
-          // This is the key optimization: instead of recursive call, we use explicit stack
-          // This allows handling chains like: computed1 → computed2 → ... → computedN → signal
-          stack.push({ link: dep.depLink, owner: dep });
+          stack = { link, prev: stack };
+          link = dep.depLink;
+          sub = dep;
+          ++checkDepth;
+          continue top;
         } else {
-          // No dependencies means this is a leaf node (e.g., a Signal)
-          // If it's PENDING but has no dependencies, it's actually clean
           dep.flag &= ~ReactiveFlags.PENDING;
         }
       } else if (depFlags & ReactiveFlags.PENDING) {
-        // Dependency is PENDING but not MUTABLE (or already checked)
-        // Clear the PENDING flag - this dependency is confirmed clean
         dep.flag &= ~ReactiveFlags.PENDING;
       }
-
-      // Move to next dependency in the chain (horizontal traversal)
-      current = current.nextDepLink;
     }
-  }
 
-  // We've checked all dependencies and found no DIRTY ones
-  // Clear PENDING flags from all nodes we encountered
-  for (const node of pendingNodes) {
-    node.flag &= ~ReactiveFlags.PENDING;
-  }
+    if (!currentDirty && link.nextDepLink !== undefined) {
+      link = link.nextDepLink;
+      continue top;
+    }
 
-  // Clear subscriber's PENDING flag
-  if (sub.flag & ReactiveFlags.PENDING) {
-    sub.flag &= ~ReactiveFlags.PENDING;
-  }
+    dirty = currentDirty;
 
-  // All dependencies are clean - subscriber doesn't need recomputation
-  return false;
+    while (checkDepth--) {
+      link = stack!.link;
+      stack = stack!.prev;
+      sub = link.subNode;
+      const checkedDep = link.depNode;
+
+      if (dirty) {
+        checkedDep.flag = (checkedDep.flag & ~ReactiveFlags.PENDING) | ReactiveFlags.DIRTY;
+      } else {
+        checkedDep.flag &= ~ReactiveFlags.PENDING;
+      }
+
+      if (checkedDep.flag & ReactiveFlags.DIRTY) {
+        dirty = true;
+      }
+
+      if (!dirty && link.nextDepLink !== undefined) {
+        link = link.nextDepLink;
+        continue top;
+      }
+    }
+
+    if (dirty) {
+      sub.flag = (sub.flag & ~ReactiveFlags.PENDING) | ReactiveFlags.DIRTY;
+    } else {
+      sub.flag &= ~ReactiveFlags.PENDING;
+    }
+
+    return dirty;
+  } while (true);
 }
 
 /**
- * Shallow propagate - Only mark direct subscribers as dirty
+ * Shallow propagate for Signal getters
  *
- * Does not recursively propagate, only affects one level of subscribers.
- * Used for Computed to update its subscribers.
+ * Called from Signal.value getter when the signal's shouldUpdate() returns true,
+ * to mark direct PENDING subscribers as DIRTY without triggering full propagation.
+ * This is a simpler/faster path than the Computed shallowPropagate in propagation.ts
+ * because it directly writes DIRTY, bypassing notify() and its scheduling guards.
+ *
+ * The full propagation.ts version (used by Computed) additionally handles WATCHING
+ * nodes by routing through enqueueEffect — a path we don't need here because
+ * Signal's setter already called propagate() to mark/queue downstream effects.
  *
  * @param link - The starting Link of the subscriber chain
  */
 export function shallowPropagate(link: Link | undefined): void {
   while (link) {
     const sub = link.subNode;
-    const queueBit = sub.flag & ReactiveFlags.QUEUED;
-    const flags = sub.flag & ~ReactiveFlags.QUEUED;
+    const flags = sub.flag;
 
-    // Only process nodes in PENDING state
+    // Only promote nodes that are PENDING (computed might need recheck) —
+    // nodes already DIRTY don't need promotion, clean nodes aren't in PENDING.
     if ((flags & (ReactiveFlags.PENDING | ReactiveFlags.DIRTY)) === ReactiveFlags.PENDING) {
-      // Mark as DIRTY
-      sub.flag = queueBit | flags | ReactiveFlags.DIRTY;
+      sub.flag = flags | ReactiveFlags.DIRTY;
     }
 
     link = link.nextSubLink;
@@ -701,6 +667,31 @@ export function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
  * It's specifically for tracking property access on reactive objects.
  */
 const targetMap = new WeakMap<object, Map<string | symbol, Set<ReactiveNode>>>();
+let triggerVersion = 0;
+
+function collectTriggeredEffects(
+  dep: Set<ReactiveNode> | undefined,
+  effects: ReactiveNode[],
+  version: number,
+): void {
+  if (!dep) {
+    return;
+  }
+
+  dep.forEach(effect => {
+    // Prune stopped effects to prevent long-term stale dependency growth
+    if (effect.flag & ReactiveFlags.WATCHING && !(effect as Effect)._active) {
+      dep.delete(effect);
+      return;
+    }
+
+    if (effect._triggerVersion === version) {
+      return;
+    }
+    effect._triggerVersion = version;
+    effects.push(effect);
+  });
+}
 
 /**
  * Track a dependency on a reactive object property
@@ -782,20 +773,19 @@ export function track(target: object, key: string | symbol): void {
     depsMap.set(key, dep);
   }
 
-  // Only add if not already present (Set automatically handles duplicates)
-  if (!dep.has(activeSub)) {
-    dep.add(activeSub);
+  // Set.add() is idempotent so no need for a redundant has() check.
+  // Only invoke the debug hook when it's a genuinely new dependency.
+  const sizeBefore = __DEV__ ? dep.size : 0;
+  dep.add(activeSub);
 
-    // In development mode, notify debugging tools about the dependency
-    // This enables features like dependency visualization and tracking logs
-    if (__DEV__ && isFunction(activeSub.onTrack)) {
-      activeSub.onTrack({
-        effect: activeSub,
-        target,
-        type: 'get',
-        key,
-      });
-    }
+  // In development mode, notify debugging tools about the dependency
+  if (__DEV__ && dep.size !== sizeBefore && isFunction(activeSub.onTrack)) {
+    activeSub.onTrack({
+      effect: activeSub,
+      target,
+      type: 'get',
+      key,
+    });
   }
 }
 
@@ -859,25 +849,17 @@ export function trigger(
     return;
   }
 
-  // Use Set to automatically deduplicate effects
-  // This is important for diamond dependencies where an effect might be
-  // reached through multiple paths
-  const effects = new Set<ReactiveNode>();
+  const effects: ReactiveNode[] = [];
+  const version = ++triggerVersion;
 
   // Collect all effects that depend on the specific property that changed
   if (key !== undefined) {
     if (Array.isArray(key)) {
-      key.forEach(k => {
-        const dep = depsMap.get(k);
-        if (dep) {
-          dep.forEach(effect => effects.add(effect));
-        }
-      });
-    } else {
-      const dep = depsMap.get(key);
-      if (dep) {
-        dep.forEach(effect => effects.add(effect));
+      for (const element of key) {
+        collectTriggeredEffects(depsMap.get(element), effects, version);
       }
+    } else {
+      collectTriggeredEffects(depsMap.get(key), effects, version);
     }
   }
 
@@ -885,20 +867,12 @@ export function trigger(
   // effects that iterate over the collection
 
   if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
-    // Use different iteration keys for arrays vs objects
-    // This allows more precise dependency tracking
-    const ITERATE_KEY = Symbol('iterate');
-    const ARRAY_ITERATE_KEY = Symbol('arrayIterate');
-
     const iterationKey = Array.isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
-    const iterationDep = depsMap.get(iterationKey);
-    if (iterationDep) {
-      iterationDep.forEach(effect => effects.add(effect));
-    }
+    collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
   }
 
   // Process each effect that needs to be notified
-  effects.forEach(effect => {
+  for (const effect of effects) {
     // In development mode, notify debugging tools about the trigger
     if (__DEV__ && isFunction(effect.onTrigger)) {
       effect.onTrigger({
@@ -920,5 +894,5 @@ export function trigger(
         propagate(effect.subLink);
       }
     }
-  });
+  }
 }

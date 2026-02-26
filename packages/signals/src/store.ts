@@ -189,37 +189,13 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
   if (getters) {
     for (const key in getters) {
       const getter = getters[key];
-      if (getter) {
-        // Development mode: Track getter access frequency to warn about inefficient usage
-        let accessCount = 0;
-        let lastWarnTime = 0;
+      if (!getter) continue;
 
-        Object.defineProperty(store, key, {
-          get() {
-            // Development mode: Warn if getter is accessed too frequently
-            if (__DEV__) {
-              accessCount++;
-              const now = Date.now();
-              // Warn if accessed more than 100 times in 1 second
-              if (accessCount > 100 && now - lastWarnTime > 1000) {
-                warn(
-                  `Getter '${key}' has been accessed ${accessCount} times. ` +
-                    'Consider caching the result if the value is used frequently. ' +
-                    'Note: Getters are computed properties that recalculate on every access.',
-                );
-                lastWarnTime = now;
-                accessCount = 0;
-              }
-            }
-
-            // Create a new computed on every access to ensure we get the latest value
-            // This is necessary because store properties may not be fully reactive
-            return computed(() => getter.call(store, reactiveState)).value;
-          },
-          enumerable: true,
-          configurable: true,
-        });
-      }
+      Object.defineProperty(store, key, {
+        get: () => computed(() => getter.call(store, reactiveState)).value,
+        enumerable: true,
+        configurable: true,
+      });
     }
   }
 
@@ -228,11 +204,11 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     for (const key in actions) {
       const action = actions[key];
       if (action) {
-        (store as any)[key] = (...args: any[]) => {
+        Reflect.set(store, key, (...args: unknown[]) => {
           const result = action.apply(reactiveState, args);
           actionCallbacks.forEach(callback => callback(reactiveState));
           return result;
-        };
+        });
       }
     }
   }
@@ -268,11 +244,11 @@ function createClassStore<S extends State>(
   Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
     const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
     if (descriptor) {
-      if (isFunction(descriptor.get)) {
+      if (typeof descriptor.get === 'function') {
         getters[key] = function (this: S) {
           return descriptor.get!.call(this);
         };
-      } else if (isFunction(descriptor.value) && key !== 'constructor') {
+      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
         actions[key] = function (this: S, ...args: any[]) {
           return descriptor.value.apply(this, args);
         };
@@ -356,12 +332,15 @@ export function createStore<S extends State, G extends Getters<S>, A extends Act
       options = storeDefinition;
     }
 
-    const store = createOptionsStore(options);
+    const store = createOptionsStore(options) as S &
+      GetterValues<G> &
+      A &
+      StoreActions<S> & { state: S };
 
     // For class-based stores, bind methods to the store
-    if (isFunction(storeDefinition)) {
-      Object.keys(options.actions || {}).forEach(key => {
-        (store as any)[key] = (options.actions as any)[key].bind(store);
+    if (isFunction(storeDefinition) && options.actions) {
+      Object.keys(options.actions).forEach(key => {
+        Reflect.set(store, key, options.actions![key].bind(store));
       });
     }
 

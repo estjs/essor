@@ -9,15 +9,14 @@ import type { Effect } from './propagation';
 // A unique initial value used to identify if watcher is running for the first time.
 const INITIAL_WATCHER_VALUE = {};
 
-// Watch function options interface.
 interface WatchOptions {
   immediate?: boolean; // Whether to execute callback immediately once
   deep?: boolean; // Whether to deeply traverse source to track nested changes
 }
 
-// Watch source type, can be value, ref/signal, getter function or array.
+/** Watch source type, can be value, ref/signal, getter function or array. */
 type WatchSource<T = any> = T | { value: T } | (() => T);
-// Watch callback function type.
+
 type WatchCallback<T = any> = (newValue: T, oldValue: T | undefined) => void;
 
 // Use WeakMap to store cleanup functions for each effect.

@@ -36,26 +36,15 @@ let isFlushPending = false;
 /**
  * Schedules a function to be executed in the next microtask
  *
- * If no function is provided, returns a Promise that resolves in the next microtask.
- * This is useful for waiting until the DOM is update or deferring execution.
+ * Returns a Promise that resolves in the next microtask.
+ * Passing fn chains it onto the shared resolved promise — cheaper than
+ * constructing a new Promise + queueMicrotask pair.
  *
  * @param fn - Optional function to execute
  * @returns A Promise that resolves after the function execution
  */
 export function nextTick(fn?: () => void): Promise<void> {
-  if (fn) {
-    return new Promise((resolve, reject) => {
-      queueMicrotask(() => {
-        try {
-          fn();
-          resolve();
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-  }
-  return p;
+  return fn ? p.then(fn) : p;
 }
 
 /**
@@ -121,15 +110,12 @@ export function flushJobs(): void {
   // Execute pre-flush callbacks first
   flushPreFlushCbs();
 
-  // Process jobs until queue is empty
-  // This handles jobs queued during flush
+  // Process jobs until queue is empty.
+  // Iterate the Set directly (before clearing) rather than Array.from() to avoid
+  // a full copy allocation each tick. Jobs added during execution are picked up
+  // in the next while-iteration.
   while (queue.size > 0) {
-    // Convert Set to array and clear the Set
-    const jobs = Array.from(queue);
-    queue.clear();
-
-    // Execute all jobs with error handling
-    for (const job of jobs) {
+    for (const job of queue) {
       try {
         job();
       } catch (_error) {
@@ -138,6 +124,7 @@ export function flushJobs(): void {
         }
       }
     }
+    queue.clear();
   }
 }
 

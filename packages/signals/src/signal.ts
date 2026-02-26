@@ -1,8 +1,7 @@
-// Import shared utility functions for checking value changes, object types, and sending warnings in development mode.
 import { hasChanged, isObject, warn } from '@estjs/shared';
 import { activeSub, linkReactiveNode, shallowPropagate } from './link';
 import { ReactiveFlags, SignalFlags } from './constants';
-import { reactive, shallowReactive, toRaw } from './reactive';
+import { isReactive, reactive, shallowReactive, toRaw } from './reactive';
 import { propagate } from './propagation';
 import type { Link, ReactiveNode } from './link';
 
@@ -72,6 +71,7 @@ export type SignalType<T> = T extends Signal<infer V> ? V : never;
 
  * @template T - The type of value held by the Signal
  */
+
 export class SignalImpl<T> implements ReactiveNode {
   // Implement ReactiveNode interface
   depLink?: Link | undefined;
@@ -80,17 +80,17 @@ export class SignalImpl<T> implements ReactiveNode {
   subLinkTail?: Link | undefined;
   flag: ReactiveFlags = ReactiveFlags.MUTABLE; // Initial state is "mutable"
 
-  // Optimization: _oldValue is only created when needed for comparison
-  // This reduces memory usage for signals that don't need change detection
-  private _oldValue?: T; // Store old value for comparison (created on-demand)
-  private _rawValue: T; // Store raw (non-proxied) new value
+  // _oldValue is deliberately NOT initialized here so that `'_oldValue' in instance`
+  // returns false until the first value change — the test suite directly checks this.
+  protected _oldValue!: T; // on-demand, only present after first change
+  protected _rawValue: T; // Store raw (non-proxied) new value
 
   _value: T; // Store current value (may be a reactive proxy)
 
   private readonly [SignalFlags.IS_SHALLOW]: boolean; // Mark whether it's shallow reactive
 
-  // @ts-ignore
-  private readonly [SignalFlags.IS_SIGNAL] = true as const; // Mark as Signal
+  // @ts-ignore: used internally by isSignal typeguard
+  private readonly [SignalFlags.IS_SIGNAL] = true as const;
 
   /**
    * Create a new Signal with the given initial value.
@@ -101,15 +101,26 @@ export class SignalImpl<T> implements ReactiveNode {
   constructor(value?: T, shallow = false) {
     // Optimization: Don't initialize _oldValue in constructor
     // It will be created on-demand in shouldUpdate()
-    this._rawValue = value as T;
-    // In shallow mode, wrap objects/arrays/collections in shallow reactive proxy
-    // In deep mode, wrap objects in deep reactive proxy
-    if (shallow) {
-      this._value = (isObject(value) ? shallowReactive(value as object) : value) as T;
-    } else {
-      this._value = (isObject(value) ? reactive(value as object) : value) as T;
-    }
+
+    // Extract raw value correctly in constructor to ensure _rawValue is never a proxy
+    const unwrapped = toRaw(value);
+    this._rawValue = unwrapped as T;
+
     this[SignalFlags.IS_SHALLOW] = shallow;
+
+    // Fast path: if primitive, no proxy needed
+    if (!isObject(unwrapped)) {
+      this._value = unwrapped as T;
+    } else {
+      // If value is already reactive, reuse it directly instead of lookup
+      if (isReactive(value)) {
+        this._value = value as T;
+      } else {
+        this._value = (
+          shallow ? shallowReactive(unwrapped as object) : reactive(unwrapped as object)
+        ) as T;
+      }
+    }
   }
 
   // dep getter, returns itself for dependency collection
@@ -137,70 +148,64 @@ export class SignalImpl<T> implements ReactiveNode {
   }
 
   // value setter, triggers update when value changes
-  set value(value: T) {
+  set value(newValue: T) {
     // If the new value is another signal, unwrap it
-    if (isSignal(value)) {
+    if (isSignal(newValue)) {
       if (__DEV__) {
         warn(
           'Setting a signal value to another signal is not recommended. ' +
             'The value will be unwrapped automatically.',
         );
       }
-      value = (value as Signal<T>).peek() as T;
+      newValue = (newValue as Signal<T>).peek() as T;
     }
 
-    // Extract raw value
-    value = toRaw(value);
+    // Keep a reference to the caller-supplied value (may already be a reactive proxy)
+    // before stripping it to raw, so we can reuse the existing proxy if present.
+    const originalValue = newValue;
+    const rawValue = toRaw(newValue);
 
-    if (!hasChanged(this._rawValue, value)) {
+    if (!hasChanged(this._rawValue, rawValue)) {
       return;
     }
 
-    // Optimization: Store old raw value before updating (on-demand)
-    // Only create _oldValue property when we actually need to track changes
-    if (!('_oldValue' in this)) {
-      this._oldValue = this._rawValue;
-    }
+    this._oldValue = this._rawValue;
+    this._rawValue = rawValue;
+    this.flag |= ReactiveFlags.DIRTY;
 
-    // Optimization: Cache flag to local variable and use bitwise OR for flag update
-    const flags = this.flag;
-    this.flag = flags | ReactiveFlags.DIRTY;
-    this._rawValue = value;
-
-    // Optimization: Cache shallow flag locally to avoid repeated property access
-    const shallow = this[SignalFlags.IS_SHALLOW];
-
-    // In shallow mode, wrap in shallow reactive proxy; in deep mode, wrap in deep reactive proxy
-    if (shallow) {
-      this._value = (isObject(value) ? shallowReactive(value as object) : value) as T;
+    if (!isObject(rawValue)) {
+      // Primitive: no proxy needed
+      this._value = rawValue as T;
+    } else if (isReactive(originalValue)) {
+      // The caller already handed us a reactive proxy — reuse it directly.
+      // This avoids an unnecessary WeakMap lookup in reactiveCaches.
+      this._value = originalValue as T;
     } else {
-      this._value = (isObject(value) ? reactive(value as object) : value) as T;
+      // Plain object/array: wrap in a reactive proxy (cached by reactiveCaches).
+      const shallow = this[SignalFlags.IS_SHALLOW];
+      this._value = (
+        shallow ? shallowReactive(rawValue as object) : reactive(rawValue as object)
+      ) as T;
     }
 
-    // Optimization: Cache subLink locally to avoid repeated property access
     const subs = this.subLink;
     if (subs) {
-      propagate(subs); // Propagate notification
+      propagate(subs);
     }
   }
 
-  // Check if the value should be update
+  // Check if the value should be updated
   shouldUpdate(): boolean {
-    // Clear "dirty" flag using bitwise AND with NOT
     this.flag &= ~ReactiveFlags.DIRTY;
 
-    // Optimization: _oldValue is created on-demand in the setter
-    // If it doesn't exist yet, this is the first update, so return true
+    // _oldValue is only assigned in the setter (on-demand), so `'_oldValue' in this` is false
+    // until the first actual change. This preserves the test-verified optimization.
     if (!('_oldValue' in this)) {
       return true;
     }
 
-    // Compare old value with new raw value
-    const changed = hasChanged(this._oldValue, this._rawValue);
-
-    // Update _oldValue for next comparison
+    const changed = hasChanged(this._oldValue as T, this._rawValue);
     this._oldValue = this._rawValue;
-
     return changed;
   }
 
@@ -260,7 +265,6 @@ export function signal<T>(value?: T) {
   }
   return new SignalImpl(value);
 }
-
 /**
  * Create a new shallow signal with the given initial value.
  * Only the top-level properties of object values are reactive.
@@ -275,8 +279,6 @@ export function signal<T>(value?: T) {
  * // Only state.nested is reactive, not state.nested.value
  * ```
  */
-export function shallowSignal<T>(value: Signal<T>): Signal<T>;
-export function shallowSignal<T>(value?: T): Signal<T>;
 export function shallowSignal<T>(value?: T): Signal<T> {
   // If the value is a signal, extract its value
   if (isSignal(value)) {

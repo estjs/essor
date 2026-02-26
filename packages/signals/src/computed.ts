@@ -88,7 +88,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   subLinkTail?: Link;
   flag: ReactiveFlags = ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY;
 
-  //@ts-ignore
+  // @ts-ignore: used internally by isComputed typeguard
   private readonly [SignalFlags.IS_COMPUTED] = true as const;
 
   //  Core properties
@@ -190,7 +190,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   /**
    * Recompute the value
    *
-   *  computation logic:
+   * computation logic:
    * 1. Start tracking dependencies
    * 2. Execute getter function
    * 3. Check if value changed using optimized comparison
@@ -255,8 +255,8 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
       const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
       this.flag &= clearMask;
 
-      // Then set DIRTY flag to ensure next access will retry computation
-      this.flag |= ReactiveFlags.DIRTY;
+      // Force recompute on next access instead of setting DIRTY.
+      this._value = NO_VALUE;
 
       if (__DEV__) {
         error(

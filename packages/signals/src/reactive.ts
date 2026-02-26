@@ -110,10 +110,8 @@ function createArrayInstrumentations() {
         const arr = toRaw(this);
         // Call the method using Array.prototype to ensure it works correctly
         const res = Array.prototype[key].apply(arr, args);
-        // Trigger change notification for the entire array
-        trigger(arr, TriggerOpTypes.SET, ARRAY_KEY);
-        // Also trigger ARRAY_ITERATE_KEY since array content/order changed
-        trigger(arr, TriggerOpTypes.SET, ARRAY_ITERATE_KEY);
+        // Trigger both array content and iteration watchers in a single pass
+        trigger(arr, TriggerOpTypes.SET, [ARRAY_KEY, ARRAY_ITERATE_KEY]);
         return res;
       };
     },
@@ -701,13 +699,9 @@ const objectHandlers = (shallow: boolean) => ({
   },
 });
 
-/**
- * Create a reactive proxy for the given target object.
- *
- * @param target - The target object to wrap.
- * @param shallow - If true, only top-level properties are reactive.
- * @returns The reactive proxy of the target object.
- */
+const shallowObjectHandlers = objectHandlers(true);
+const deepObjectHandlers = objectHandlers(false);
+
 export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   if (!isObject(target)) {
     return target;
@@ -733,7 +727,7 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   } else if (isWeakMap(target) || isWeakSet(target)) {
     handler = weakCollectionHandlers;
   } else {
-    handler = objectHandlers(shallow);
+    handler = shallow ? shallowObjectHandlers : deepObjectHandlers;
   }
 
   // Create and cache proxy.

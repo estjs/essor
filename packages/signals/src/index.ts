@@ -56,6 +56,6 @@ export { TriggerOpTypes } from './constants';
 
 export { createStore, type StoreOptions, type StoreActions } from './store';
 
-export { Ref, isRef, ref } from './ref';
+export { type Ref, isRef, ref } from './ref';
 
 export { watch } from './watch';

@@ -133,20 +133,19 @@ export class EffectImpl<T = any> implements ReactiveNode {
   subLinkTail?: Link;
   flag: ReactiveFlags = ReactiveFlags.WATCHING | ReactiveFlags.DIRTY;
 
-  // @ts-ignore
+  // @ts-ignore: used internally by isEffect typeguard
   private readonly [SignalFlags.IS_EFFECT] = true as const;
 
-  //  Core properties
+  // Core properties
   readonly fn: EffectFunction<T>;
-  readonly scheduler?: EffectScheduler | FlushTiming;
-  readonly onStop?: () => void;
-  readonly onTrack?: (event: DebuggerEvent) => void;
-  readonly onTrigger?: (event: DebuggerEvent) => void;
-  readonly flash?: 'sync' | 'pre' | 'post';
+  private _flushScheduler?: (effect?) => void | Promise<void>;
 
-  //  State management
-  private _active = true;
+  // State management
+  _active = true;
 
+  onTrack?: (event: DebuggerEvent) => void;
+  onTrigger?: (event: DebuggerEvent) => void;
+  onStop?: () => void;
   /**
    * Create an Effect instance
    *
@@ -158,10 +157,21 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
     if (options) {
       // Use flush as an alias for scheduler if provided
-      this.scheduler = options.flush || options.scheduler;
-      this.onStop = options.onStop;
-      this.onTrack = options.onTrack;
-      this.onTrigger = options.onTrigger;
+      const scheduler = options.scheduler ?? options.flush;
+      if (scheduler) {
+        this._flushScheduler = isFunction(scheduler)
+          ? () => scheduler(this)
+          : createScheduler(() => this.run(), scheduler);
+      }
+
+      if (options.onStop) this.onStop = options.onStop;
+
+      // For development debugging hooks, we assign them directly to the instance
+      // if provided, so the link.ts checking logic can find them without an extra optional chain.
+      if (__DEV__) {
+        if (options.onTrack) this.onTrack = options.onTrack;
+        if (options.onTrigger) this.onTrigger = options.onTrigger;
+      }
     }
   }
 
@@ -174,7 +184,6 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
   /**
    * Check if the Effect is dirty (needs re-execution)
-
    */
   get dirty(): boolean {
     const flags = this.flag;
@@ -287,7 +296,8 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
     // Cache flags and use bitwise operations to update multiple flags efficiently
     const flags = this.flag;
-    this.flag = (flags & ~ReactiveFlags.DIRTY) | EffectFlags.STOP;
+    // Clear DIRTY/PENDING flags and set RUNNING to block concurrent notify() calls.
+    this.flag = (flags & ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING)) | EffectFlags.RUNNING;
 
     // Start dependency tracking
     const prevSub = startTracking(this);
@@ -301,8 +311,8 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
       throw error;
     } finally {
-      // Clear running flag
-      this.flag &= ~EffectFlags.STOP;
+      // Clear RUNNING flag
+      this.flag &= ~EffectFlags.RUNNING;
       // End tracking, clean up stale dependencies
       endTracking(this, prevSub);
     }
@@ -330,9 +340,8 @@ export class EffectImpl<T = any> implements ReactiveNode {
     // Cache flags for efficient checking
     const flags = this.flag;
 
-    // Early exit: check multiple conditions using bitwise operations
-    // Already stopped, paused, running, or dirty - ignore notification
-    if (!this._active || flags & (EffectFlags.PAUSED | EffectFlags.STOP | ReactiveFlags.DIRTY)) {
+    // Early exit: already stopped, paused, currently running, or already dirty—ignore notification.
+    if (!this._active || flags & (EffectFlags.PAUSED | EffectFlags.RUNNING | ReactiveFlags.DIRTY)) {
       return;
     }
 
@@ -340,7 +349,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
     this.flag = flags | ReactiveFlags.DIRTY;
 
     // Trigger callback
-    if (__DEV__ && this.onTrigger) {
+    if (__DEV__ && this?.onTrigger) {
       this.onTrigger({
         effect: this,
         target: {},
@@ -348,15 +357,8 @@ export class EffectImpl<T = any> implements ReactiveNode {
       });
     }
 
-    // Use scheduler or decide execution method based on batch state
-    if (this.scheduler) {
-      if (isFunction(this.scheduler)) {
-        this.scheduler(this);
-      } else {
-        // Create and immediately call the scheduler for flush timing
-        const schedulerFn = createScheduler(() => this.run(), this.scheduler);
-        schedulerFn();
-      }
+    if (this._flushScheduler) {
+      this._flushScheduler?.();
     } else if (isBatching()) {
       // When in batch, queue for execution
       queueJob(this.getJob());
@@ -402,6 +404,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
     // Clear cached job function to free memory
     this._job = undefined;
+    this._flushScheduler = undefined;
 
     // Clear link tail pointers to ensure no dangling references
     this.depLinkTail = undefined;
@@ -425,7 +428,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
     }
 
     // Call stop callback
-    if (this.onStop) {
+    if (this?.onStop) {
       this.onStop();
     }
   }

@@ -1,6 +1,7 @@
 import { hasChanged } from '@estjs/shared';
-import { SIGNAL_KEY, SignalFlags } from './constants';
-import { shallowPropagate, track, trigger } from './link';
+import { ReactiveFlags, SignalFlags } from './constants';
+import { activeSub, linkReactiveNode } from './link';
+import { propagate } from './propagation';
 import { type Signal, SignalImpl, isSignal } from './signal';
 
 /**
@@ -26,7 +27,7 @@ export interface Ref<T> extends Signal<T> {
  * @internal
  */
 class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
-  // @ts-ignore
+  // @ts-ignore: used internally by isRef typeguard
   private readonly [SignalFlags.IS_REF] = true;
 
   /**
@@ -39,15 +40,18 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
   }
 
   get value(): T {
-    track(this, SIGNAL_KEY);
-    // ref just proxy the value without reactive wrapping
+    const sub = activeSub;
+    if (sub) {
+      linkReactiveNode(this, sub);
+    }
+    // ref just returns the value without reactive wrapping
     return this._value;
   }
 
   set value(newValue: T) {
     // Handle nested signals by unwrapping them
     if (isSignal(newValue)) {
-      newValue = newValue.value as T;
+      newValue = newValue.peek() as T;
     }
     if (isRef(newValue)) {
       newValue = newValue.value as T;
@@ -55,14 +59,13 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
 
     // Only trigger updates if the value has actually changed
     if (hasChanged(this._value, newValue)) {
+      this._rawValue = newValue;
       this._value = newValue;
+      this.flag |= ReactiveFlags.DIRTY;
 
       if (this.subLink) {
-        shallowPropagate(this.subLink);
+        propagate(this.subLink);
       }
-
-      // Keep the old system for backward compatibility
-      trigger(this, 'SET', SIGNAL_KEY);
     }
   }
 }

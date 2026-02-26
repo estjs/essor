@@ -698,7 +698,7 @@ function generateDynamicChildrenCode(
               }
 
               // Transform <Row ... /> -> Row({...})
-              const newPropsObj = t.objectExpression(newProps as any);
+              const newPropsObj = t.objectExpression(newProps);
               const directCall = t.callExpression(componentRef, [newPropsObj]);
               transformedMapFn = t.arrowFunctionExpression(mapFnParams, directCall);
             }

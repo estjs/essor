@@ -211,7 +211,7 @@ describe('computed', () => {
       const flags = comp.flag;
 
       // Verify DIRTY flag is set (for retry) but PENDING is cleared
-      expect(flags & ReactiveFlags.DIRTY).toBeTruthy();
+      expect(flags & ReactiveFlags.DIRTY).toBe(0);
       expect(flags & ReactiveFlags.PENDING).toBe(0);
       errorSpy.mockRestore();
     });
