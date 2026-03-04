@@ -128,6 +128,6 @@ pnpm build
 
 **如果这个项目对你有帮助，请给我们一个 ⭐️**
 
-[GitHub](https://github.com/estjs/essor) | [文档](https://essor.estjs.dev) | [讨论](https://github.com/estjs/essor/discussions)
+[GitHub](https://github.com/estjs/essor) | [文档](https://essor.netlify.app/) | [讨论](https://github.com/estjs/essor/discussions)
 
 </div>

@@ -128,7 +128,7 @@ Thanks to all developers who contributed to Essor!
 
 **If this project helps you, please give us a ⭐️**
 
-[GitHub](https://github.com/estjs/essor) | [Documentation](https://essor.estjs.dev) | [Discussions](https://github.com/estjs/essor/discussions)
+[GitHub](https://github.com/estjs/essor) | [Documentation](https://essor.netlify.app/) | [Discussions](https://github.com/estjs/essor/discussions)
 
 </div>
 
