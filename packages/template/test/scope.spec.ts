@@ -9,7 +9,11 @@ import {
   setActiveScope,
 } from '../src/scope';
 import { inject, provide } from '../src';
-import { registerDestroyHook, registerMountHook, triggerMountHooks } from '../src/lifecycle';
+import {
+  onDestroy,
+  onMount,
+  triggerMountHooks,
+} from '../src/lifecycle';
 
 describe('scope System', () => {
   beforeEach(() => {
@@ -45,12 +49,12 @@ describe('scope System', () => {
       expect(child.parent).toBe(parent);
     });
 
-    it("should add child to parent's children set", () => {
+    it("should add child to parent's children array", () => {
       const parent = createScope();
       const child = createScope(parent);
 
-      expect(parent.children).toBeInstanceOf(Set);
-      expect(parent.children?.has(child)).toBe(true);
+      expect(parent.children).toBeInstanceOf(Array);
+      expect(parent.children?.includes(child)).toBe(true);
     });
   });
 
@@ -171,7 +175,7 @@ describe('scope System', () => {
         onCleanup(cleanup);
       });
 
-      expect(scope.cleanup?.has(cleanup)).toBe(true);
+      expect(scope.cleanup?.includes(cleanup)).toBe(true);
       expect(cleanup).not.toHaveBeenCalled();
     });
 
@@ -210,11 +214,11 @@ describe('scope System', () => {
       const parent = createScope();
       const child = createScope(parent);
 
-      expect(parent.children?.has(child)).toBe(true);
+      expect(parent.children?.includes(child)).toBe(true);
 
       disposeScope(child);
 
-      expect(parent.children?.has(child)).toBe(false);
+      expect(parent.children?.includes(child)).toBe(false);
     });
 
     it('should recursively dispose children', () => {
@@ -247,20 +251,20 @@ describe('scope System', () => {
       runWithScope(scope, () => {
         provide('key', 'value');
         onCleanup(() => {});
-        registerMountHook(() => {});
+        onMount(() => {});
       });
 
       expect(scope.provides?.size).toBeGreaterThan(0);
-      expect(scope.cleanup?.size).toBeGreaterThan(0);
+      expect(scope.cleanup?.length).toBeGreaterThan(0);
 
       disposeScope(scope);
 
       expect(scope.provides?.size ?? 0).toBe(0);
-      // Checking implementation: scope.provides?.clear(); scope.cleanup?.clear();
-      // It clears the Set/Map content.
+      // Checking implementation: scope.provides?.clear(); scope.cleanup?.length = 0;
+      // It clears the Map/array content.
       expect(scope.provides?.size ?? 0).toBe(0);
-      expect(scope.cleanup?.size ?? 0).toBe(0);
-      expect(scope.children?.size ?? 0).toBe(0);
+      expect(scope.cleanup?.length ?? 0).toBe(0);
+      expect(scope.children?.length ?? 0).toBe(0);
     });
 
     it('should handle errors in cleanup functions gracefully', () => {
@@ -388,7 +392,7 @@ describe('scope System', () => {
       const destroyHook = vi.fn();
 
       runWithScope(scope, () => {
-        registerDestroyHook(destroyHook);
+        onDestroy(destroyHook);
       });
 
       disposeScope(scope);
@@ -400,7 +404,7 @@ describe('scope System', () => {
       const mountHook = vi.fn();
 
       runWithScope(scope, () => {
-        registerMountHook(mountHook);
+        onMount(mountHook);
       });
 
       expect(mountHook).not.toHaveBeenCalled();
@@ -416,7 +420,7 @@ describe('scope System', () => {
 
       const mountHook = vi.fn();
       runWithScope(scope, () => {
-        registerMountHook(mountHook);
+        onMount(mountHook);
       });
 
       expect(mountHook).toHaveBeenCalledTimes(1);

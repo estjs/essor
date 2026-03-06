@@ -1,46 +1,44 @@
 import { error } from '@estjs/shared';
+import { triggerDestroyHooks } from './lifecycle';
 import type { InjectionKey } from './provide';
 
-/**
- * Scope represents an execution context in the component tree.
- * It manages provides, cleanup functions, and lifecycle hooks.
- */
+
 export interface Scope {
-  /** Unique identifier for debugging */
+  /// Unique identifier for debugging and tracking scope lifetime
   readonly id: number;
 
-  /** Parent scope in the hierarchy */
+  // Parent scope in the tree 
   parent: Scope | null;
 
-  /** Child scopes (lazy initialized) */
-  children: Set<Scope> | null;
+  // Child scopes created within this scope
+  children: Scope[] | null;
 
-  /** Provided values (lazy initialized) */
+ // Provided values map for dependency injection
   provides: Map<InjectionKey<unknown> | string | number | symbol, unknown> | null;
 
-  /** Cleanup functions (lazy initialized) */
-  cleanup: Set<() => void> | null;
+ // Set of cleanup functions to run on scope disposal 
+  cleanup: (() => void)[] | null;
 
-  /** Mount lifecycle hooks (lazy initialized) */
-  onMount: Set<() => void | Promise<void>> | null;
+ // Mount lifecycle hooks - run once after first render
+  onMount: (() => void | Promise<void>)[] | null;
 
-  /** Update lifecycle hooks (lazy initialized) */
-  onUpdate: Set<() => void | Promise<void>> | null;
+  // Update lifecycle hooks
+  onUpdate: (() => void | Promise<void>)[] | null;
 
-  /** Destroy lifecycle hooks (lazy initialized) */
-  onDestroy: Set<() => void | Promise<void>> | null;
+ // Destroy lifecycle hooks - run before scope disposal 
+  onDestroy: (() => void | Promise<void>)[] | null;
 
-  /** Whether the scope has been mounted */
+ // Flag indicating whether the scope has completed its mount phase 
   isMounted: boolean;
 
-  /** Whether the scope has been destroyed */
+ // Flag indicating whether the scope has been disposed
   isDestroyed: boolean;
 }
 
-/** Currently active scope */
+// Currently active scope 
 let activeScope: Scope | null = null;
 
-/** Scope ID counter for unique identification */
+// Scope ID counter for unique identification 
 let scopeId = 0;
 
 /**
@@ -59,23 +57,16 @@ export function setActiveScope(scope: Scope | null): void {
   activeScope = scope;
 }
 
-/**
- * Create a new scope with optional parent.
- * If no parent is provided, uses the current active scope as parent.
- *
- * @param parent - Optional parent scope (defaults to active scope)
- * @returns A new scope instance
- */
 export function createScope(parent: Scope | null = activeScope): Scope {
   const scope: Scope = {
     id: ++scopeId,
     parent,
-    children: null, // Lazy initialized
-    provides: null, // Lazy initialized
-    cleanup: null, // Lazy initialized
-    onMount: null, // Lazy initialized
-    onUpdate: null, // Lazy initialized
-    onDestroy: null, // Lazy initialized
+    children: null, 
+    provides: null, 
+    cleanup: null, 
+    onMount: null, 
+    onUpdate: null, 
+    onDestroy: null, 
     isMounted: false,
     isDestroyed: false,
   };
@@ -83,9 +74,9 @@ export function createScope(parent: Scope | null = activeScope): Scope {
   // Establish parent-child relationship
   if (parent) {
     if (!parent.children) {
-      parent.children = new Set();
+      parent.children = [];
     }
-    parent.children.add(scope);
+    parent.children.push(scope);
   }
 
   return scope;
@@ -112,45 +103,49 @@ export function runWithScope<T>(scope: Scope, fn: () => T): T {
 }
 
 /**
- * Dispose a scope and all its children.
- * Children are disposed first (depth-first), then the scope itself.
+ * Dispose a scope and recursively dispose all child scopes.
+ * Performs the following cleanup in order:
+ * 1. Recursively disposes all children (depth-first)
+ * 2. Executes destroy lifecycle hooks
+ * 3. Executes registered cleanup functions
+ * 4. Removes scope from parent's children list
+ * 5. Clears all internal collections and resets state
+ *
+ * Safe to call multiple times (idempotent).
  *
  * @param scope - The scope to dispose
+ *
+ * @example
+ * ```ts
+ * const scope = createScope(parent);
+ * // ... use scope ...
+ * disposeScope(scope); // Cleanup everything
+ * ```
  */
 export function disposeScope(scope: Scope): void {
-  // Idempotent: already destroyed
+  // Idempotent: skip if already destroyed
   if (!scope || scope.isDestroyed) {
     return;
   }
 
-  // Dispose children first (depth-first)
-  // Iterate directly without copying to avoid allocation
+  const parentScope = scope.parent;
+
+  // Recursively dispose children first (depth-first cleanup)
   if (scope.children) {
-    // Use while loop since children will remove themselves during dispose
-    while (scope.children.size > 0) {
-      const child = scope.children.values().next().value;
-      if (child) {
-        disposeScope(child);
-      }
+    for (const child of scope.children) {
+      disposeScope(child);
     }
+    scope.children.length = 0;
   }
 
-  // Execute destroy lifecycle hooks
-  if (scope.onDestroy) {
-    for (const hook of scope.onDestroy) {
-      try {
-        hook();
-      } catch (error_) {
-        if (__DEV__) {
-          error(`Scope(${scope.id}): Error in destroy hook:`, error_);
-        }
-      }
-    }
-    scope.onDestroy.clear();
+  //  Execute destroy lifecycle hooks
+  if (scope.onDestroy?.length) {
+    triggerDestroyHooks(scope);
+    scope.onDestroy.length = 0;
   }
 
-  // Execute cleanup functions
-  if (scope.cleanup) {
+  //  Execute cleanup functions in reverse order
+  if (scope.cleanup?.length) {
     for (const fn of scope.cleanup) {
       try {
         fn();
@@ -160,35 +155,52 @@ export function disposeScope(scope: Scope): void {
         }
       }
     }
-    scope.cleanup.clear();
+    scope.cleanup.length = 0;
   }
 
-  // Remove from parent's children
-  if (scope.parent?.children) {
-    scope.parent.children.delete(scope);
+  // Step 4: Remove from parent's children array
+  if (parentScope?.children) {
+    const idx = parentScope.children.indexOf(scope);
+    if (idx !== -1) {
+      parentScope.children.splice(idx, 1);
+    }
   }
 
-  // Clear all internal collections
-  scope.children?.clear();
+  // Clear provides map
   scope.provides?.clear();
-  scope.onMount?.clear();
-  scope.onUpdate?.clear();
 
-  // reset active with parent scope
-  setActiveScope(scope.parent);
+  // Clear mount and update hooks
+  if (scope.onMount) scope.onMount.length = 0;
+  if (scope.onUpdate) scope.onUpdate.length = 0;
 
-  // Break parent reference to prevent memory leaks
+  // Clear references to prevent memory leaks
   scope.parent = null;
-
-  // Mark as destroyed
   scope.isDestroyed = true;
+
+  // Restore parent scope context if it was active
+  if (activeScope === scope) {
+    activeScope = parentScope;
+  }
 }
 
+
+
 /**
- * Register a cleanup function in the current scope.
- * The function will be called when the scope is disposed.
+ * Register a cleanup function to be executed when the scope is disposed.
+ * Useful for cleaning up timers, subscriptions, event listeners, etc.
  *
- * @param fn - The cleanup function
+ * Cleanup functions are executed in LIFO order (last registered, first executed).
+ * Cleanup errors don't prevent other cleanups from running.
+ *
+ * @param fn - The cleanup function to register
+ *
+ * @throws Error in dev mode if called outside a scope
+ *
+ * @example
+ * ```ts
+ * const timerId = setInterval(() => {}, 1000);
+ * onCleanup(() => clearInterval(timerId));
+ * ```
  */
 export function onCleanup(fn: () => void): void {
   const scope = activeScope;
@@ -200,10 +212,10 @@ export function onCleanup(fn: () => void): void {
     return;
   }
 
-  // Lazy initialize cleanup set
+  // Lazy initialize cleanup array
   if (!scope.cleanup) {
-    scope.cleanup = new Set();
+    scope.cleanup = [];
   }
 
-  scope.cleanup.add(fn);
+  scope.cleanup.push(fn);
 }
