@@ -90,7 +90,6 @@ function executeHooks(
   return Promise.all(pending).then(() => undefined);
 }
 
-
 /**
  * Register a mount lifecycle hook.
  * Runs after component is mounted and virtual tree is committed.
@@ -115,23 +114,21 @@ export function onMount(hook: LifecycleHook): void {
 
   if (scope.isMounted) {
     // Scope already mounted, execute immediately
-  try {
-    const result = hook();
-    if (isPromise(result)) {
-      result.catch(error_ => {
-        if (__DEV__) error(`Scope(${scope.id}): Async ${LIFECYCLE.mount} hook rejected:`, error_);
-      });
+    try {
+      const result = hook();
+      if (isPromise(result)) {
+        result.catch(error_ => {
+          if (__DEV__) error(`Scope(${scope.id}): Async ${LIFECYCLE.mount} hook rejected:`, error_);
+        });
+      }
+    } catch (error_) {
+      if (__DEV__) error(`Scope(${scope.id}): Error in ${LIFECYCLE.mount} hook:`, error_);
     }
-  } catch (error_) {
-    if (__DEV__) error(`Scope(${scope.id}): Error in ${LIFECYCLE.mount} hook:`, error_);
-  }
     return;
   }
 
   registerScopedHook(scope, 'onMount', hook);
 }
-
-
 
 /**
  * Register an update lifecycle hook.
@@ -181,7 +178,6 @@ export function onDestroy(hook: LifecycleHook): void {
   registerScopedHook(scope, 'onDestroy', hook);
 }
 
-
 /**
  * Trigger all mount hooks registered in a scope.
  * Clears the hook list after execution and marks scope as mounted.
@@ -225,5 +221,3 @@ export function triggerDestroyHooks(scope: Scope): void | Promise<void> {
   if (scope.isDestroyed || !scope.onDestroy?.length) return;
   return runWithScope(scope, () => executeHooks(scope.onDestroy!, scope.id, 'destroy'));
 }
-
-

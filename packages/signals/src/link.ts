@@ -516,6 +516,7 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
     }
 
     return dirty;
+    // eslint-disable-next-line no-constant-condition
   } while (true);
 }
 

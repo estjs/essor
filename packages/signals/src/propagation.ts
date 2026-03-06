@@ -118,6 +118,7 @@ export function propagate(link: Link): void {
     }
 
     break;
+    // eslint-disable-next-line no-constant-condition
   } while (true);
 }
 

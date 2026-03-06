@@ -28,6 +28,7 @@ export function convertToString(content: unknown, isSvg = false): string {
 }
 
 /** Regex to match the root element */
+// eslint-disable-next-line regexp/no-super-linear-backtracking
 const ROOT_ELEMENT_REGEX = /^<([a-z]+)(\s*)([^>]*)>/i;
 /** Regex to match data-idx attributes */
 const INDEX_ATTRIBUTE_REGEX = /data-idx="(\d+)"/g;

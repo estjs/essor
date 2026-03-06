@@ -8,10 +8,10 @@ import {
   triggerMountHooks,
   triggerUpdateHooks,
 } from '../src/lifecycle';
-import { createScope, disposeScope, setActiveScope, onCleanup } from '../src/scope';
+import { createScope, disposeScope, onCleanup, setActiveScope } from '../src/scope';
 import { resetEnvironment } from './test-utils';
 
-describe('Lifecycle Management', () => {
+describe('lifecycle Management', () => {
   beforeEach(() => {
     resetEnvironment();
   });
@@ -43,7 +43,7 @@ describe('Lifecycle Management', () => {
       setActiveScope(null);
     });
 
-    it('handles async mount hooks correctly', async () => {
+    it('handles async mount hooks correctly', () => {
       const scope = createScope();
       scope.isMounted = true;
       setActiveScope(scope);
@@ -414,7 +414,7 @@ describe('Lifecycle Management', () => {
     });
   });
 
-  describe('Lifecycle Integration', () => {
+  describe('lifecycle Integration', () => {
     it('executes lifecycle hooks in correct order', () => {
       const order: string[] = [];
 
@@ -492,7 +492,7 @@ describe('Lifecycle Management', () => {
     });
   });
 
-  describe('Lifecycle with Cleanup', () => {
+  describe('lifecycle with Cleanup', () => {
     it('combines onCleanup with onDestroy', () => {
       const order: string[] = [];
 
@@ -529,7 +529,7 @@ describe('Lifecycle Management', () => {
     });
   });
 
-  describe('Edge Cases', () => {
+  describe('edge Cases', () => {
     it('handles empty hook sets gracefully', () => {
       const scope = createScope();
 
@@ -598,7 +598,7 @@ describe('Lifecycle Management', () => {
     });
   });
 
-  describe('LIFECYCLE constants', () => {
+  describe('lIFECYCLE constants', () => {
     it('exports lifecycle phase constants', () => {
       expect(LIFECYCLE.mount).toBe('mount');
       expect(LIFECYCLE.update).toBe('update');

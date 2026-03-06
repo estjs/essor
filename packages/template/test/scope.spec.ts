@@ -9,11 +9,7 @@ import {
   setActiveScope,
 } from '../src/scope';
 import { inject, provide } from '../src';
-import {
-  onDestroy,
-  onMount,
-  triggerMountHooks,
-} from '../src/lifecycle';
+import { onDestroy, onMount, triggerMountHooks } from '../src/lifecycle';
 
 describe('scope System', () => {
   beforeEach(() => {

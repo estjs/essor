@@ -129,7 +129,6 @@ function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => 
  * @param parent Parent node
  * @param nodeFactory Node factory function or static node
  * @param before Reference node for insertion position
- * @param options Insertion options
  *
  * @example
  * ```typescript

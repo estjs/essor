@@ -290,6 +290,7 @@ describe('type Check Utils', () => {
       { value: [], expected: false },
       { value: () => {}, expected: false },
       { value: new Date(), expected: false },
+      // eslint-disable-next-line regexp/no-empty-group
       { value: /(?:)/, expected: false },
     ];
 
@@ -324,6 +325,7 @@ describe('type Check Utils', () => {
       { value: [], expected: false },
       { value: () => {}, expected: false },
       { value: new Date(), expected: false },
+      // eslint-disable-next-line regexp/no-empty-group
       { value: /(?:)/, expected: false },
       { value: null, expected: false },
       { value: undefined, expected: false },

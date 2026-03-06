@@ -443,8 +443,6 @@ describe('provide/inject edge cases', () => {
         const compts = signal<any>();
 
         effect(() => {
-          console.log('show.value', show.value);
-
           if (show.value) {
             compts.value = createComponent(testComp);
           } else {

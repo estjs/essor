@@ -2,43 +2,42 @@ import { error } from '@estjs/shared';
 import { triggerDestroyHooks } from './lifecycle';
 import type { InjectionKey } from './provide';
 
-
 export interface Scope {
   /// Unique identifier for debugging and tracking scope lifetime
   readonly id: number;
 
-  // Parent scope in the tree 
+  // Parent scope in the tree
   parent: Scope | null;
 
   // Child scopes created within this scope
   children: Scope[] | null;
 
- // Provided values map for dependency injection
+  // Provided values map for dependency injection
   provides: Map<InjectionKey<unknown> | string | number | symbol, unknown> | null;
 
- // Set of cleanup functions to run on scope disposal 
+  // Set of cleanup functions to run on scope disposal
   cleanup: (() => void)[] | null;
 
- // Mount lifecycle hooks - run once after first render
+  // Mount lifecycle hooks - run once after first render
   onMount: (() => void | Promise<void>)[] | null;
 
   // Update lifecycle hooks
   onUpdate: (() => void | Promise<void>)[] | null;
 
- // Destroy lifecycle hooks - run before scope disposal 
+  // Destroy lifecycle hooks - run before scope disposal
   onDestroy: (() => void | Promise<void>)[] | null;
 
- // Flag indicating whether the scope has completed its mount phase 
+  // Flag indicating whether the scope has completed its mount phase
   isMounted: boolean;
 
- // Flag indicating whether the scope has been disposed
+  // Flag indicating whether the scope has been disposed
   isDestroyed: boolean;
 }
 
-// Currently active scope 
+// Currently active scope
 let activeScope: Scope | null = null;
 
-// Scope ID counter for unique identification 
+// Scope ID counter for unique identification
 let scopeId = 0;
 
 /**
@@ -61,12 +60,12 @@ export function createScope(parent: Scope | null = activeScope): Scope {
   const scope: Scope = {
     id: ++scopeId,
     parent,
-    children: null, 
-    provides: null, 
-    cleanup: null, 
-    onMount: null, 
-    onUpdate: null, 
-    onDestroy: null, 
+    children: null,
+    provides: null,
+    cleanup: null,
+    onMount: null,
+    onUpdate: null,
+    onDestroy: null,
     isMounted: false,
     isDestroyed: false,
   };
@@ -182,8 +181,6 @@ export function disposeScope(scope: Scope): void {
     activeScope = parentScope;
   }
 }
-
-
 
 /**
  * Register a cleanup function to be executed when the scope is disposed.
