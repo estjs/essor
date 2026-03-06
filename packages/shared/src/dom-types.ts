@@ -4,7 +4,7 @@
  * @returns true if the value is an HTMLInputElement
  */
 export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
-  return typeof HTMLInputElement !== 'undefined' && val instanceof HTMLInputElement;
+  return val instanceof HTMLInputElement;
 }
 
 /**
@@ -13,7 +13,7 @@ export function isHtmlInputElement(val: unknown): val is HTMLInputElement {
  * @returns true if the value is an HTMLSelectElement
  */
 export function isHtmlSelectElement(val: unknown): val is HTMLSelectElement {
-  return typeof HTMLSelectElement !== 'undefined' && val instanceof HTMLSelectElement;
+  return val instanceof HTMLSelectElement;
 }
 
 /**
@@ -22,7 +22,7 @@ export function isHtmlSelectElement(val: unknown): val is HTMLSelectElement {
  * @returns true if the value is an HTMLTextAreaElement
  */
 export function isHtmlTextAreaElement(val: unknown): val is HTMLTextAreaElement {
-  return typeof HTMLTextAreaElement !== 'undefined' && val instanceof HTMLTextAreaElement;
+  return val instanceof HTMLTextAreaElement;
 }
 
 /**
@@ -31,7 +31,7 @@ export function isHtmlTextAreaElement(val: unknown): val is HTMLTextAreaElement 
  * @returns true if the value is an HTMLFormElement
  */
 export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
-  return typeof HTMLFormElement !== 'undefined' && val instanceof HTMLFormElement;
+  return val instanceof HTMLFormElement;
 }
 
 /**
@@ -40,7 +40,7 @@ export function isHtmlFormElement(val: unknown): val is HTMLFormElement {
  * @returns true if the value is a Text node
  */
 export function isTextNode(val: unknown): val is Text {
-  return typeof Text !== 'undefined' && val instanceof Text;
+  return val instanceof Text;
 }
 
 /**
@@ -49,5 +49,5 @@ export function isTextNode(val: unknown): val is Text {
  * @returns true if the value is a Node
  */
 export function isNode(val: unknown): val is Node {
-  return typeof Node !== 'undefined' && val instanceof Node;
+  return val instanceof Node;
 }
