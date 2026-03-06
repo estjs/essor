@@ -37,9 +37,9 @@
     "release": "pnpm run changelog && pnpm run prerelease && bumpp package.json packages/*/package.json --no-git-checks --commit --push --tag"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^2.1.6",
+    "@estjs/eslint-config": "^2.2.1",
     "@playwright/test": "^1.58.2",
-    "@types/node": "^25.3.3",
+    "@types/node": "^25.3.5",
     "@vitest/coverage-v8": "^4.0.18",
     "bumpp": "^10.4.1",
     "cross-env": "^10.1.0",
