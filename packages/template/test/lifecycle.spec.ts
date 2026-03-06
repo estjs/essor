@@ -421,9 +421,9 @@ describe('lifecycle Management', () => {
       const scope = createScope();
       setActiveScope(scope);
 
-      onMount(() => order.push('mount'));
-      onUpdate(() => order.push('update'));
-      onDestroy(() => order.push('destroy'));
+      onMount(() => void order.push('mount'));
+      onUpdate(() => void order.push('update'));
+      onDestroy(() => void order.push('destroy'));
 
       setActiveScope(null);
 
@@ -461,9 +461,9 @@ describe('lifecycle Management', () => {
       const scope = createScope();
       setActiveScope(scope);
 
-      const hook1 = vi.fn(() => order.push(1));
-      const hook2 = vi.fn(() => order.push(2));
-      const hook3 = vi.fn(() => order.push(3));
+      const hook1 = vi.fn(() => void order.push(1));
+      const hook2 = vi.fn(() => void order.push(2));
+      const hook3 = vi.fn(() => void order.push(3));
 
       onMount(hook1);
       onMount(hook2);
@@ -480,7 +480,7 @@ describe('lifecycle Management', () => {
       const scope = createScope();
       setActiveScope(scope);
 
-      const hooks = Array.from({ length: 5 }, (_, i) => vi.fn(() => i));
+      const hooks = Array.from({ length: 5 }, (_, i) => vi.fn(() => void i));
 
       hooks.forEach(hook => onMount(hook));
 
@@ -499,8 +499,8 @@ describe('lifecycle Management', () => {
       const scope = createScope();
       setActiveScope(scope);
 
-      onCleanup(() => order.push('cleanup'));
-      onDestroy(() => order.push('destroy'));
+      onCleanup(() => void order.push('cleanup'));
+      onDestroy(() => void order.push('destroy'));
 
       setActiveScope(null);
 
