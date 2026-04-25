@@ -60,17 +60,17 @@ describe('dom utilities', () => {
     const nonBooleanAttrs = ['class', 'style', 'id'];
 
     it('isSpecialBooleanAttr should identify special boolean attributes', () => {
-      specialBooleanAttrs.forEach(attr => {
+      specialBooleanAttrs.forEach((attr) => {
         expect(isSpecialBooleanAttr(attr)).toBe(true);
       });
       expect(isSpecialBooleanAttr('disabled')).toBe(false);
     });
 
     it('isBooleanAttr should identify all boolean attributes', () => {
-      booleanAttrs.forEach(attr => {
+      booleanAttrs.forEach((attr) => {
         expect(isBooleanAttr(attr)).toBe(true);
       });
-      nonBooleanAttrs.forEach(attr => {
+      nonBooleanAttrs.forEach((attr) => {
         expect(isBooleanAttr(attr)).toBe(false);
       });
     });
@@ -101,7 +101,7 @@ describe('dom utilities', () => {
     ];
 
     it('should identify safe attribute names', () => {
-      safeAttrs.forEach(attr => {
+      safeAttrs.forEach((attr) => {
         expect(isSSRSafeAttrName(attr)).toBe(true);
       });
     });
@@ -109,7 +109,7 @@ describe('dom utilities', () => {
     it('should identify unsafe attribute names', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      unsafeAttrs.forEach(attr => {
+      unsafeAttrs.forEach((attr) => {
         expect(isSSRSafeAttrName(attr)).toBe(false);
         expect(consoleSpy).toHaveBeenCalledWith(`[Essor error]: unsafe attribute name: ${attr}`);
       });
@@ -153,7 +153,7 @@ describe('dom utilities', () => {
         'attr-name-123',
       ];
 
-      safePatterns.forEach(attr => {
+      safePatterns.forEach((attr) => {
         expect(isSSRSafeAttrName(attr)).toBe(true);
       });
     });
@@ -178,49 +178,49 @@ describe('dom utilities', () => {
     const selfClosingTags = ['img', 'input', 'br', 'hr'];
 
     it('isKnownHtmlAttr', () => {
-      knownHtmlAttrs.forEach(attr => {
+      knownHtmlAttrs.forEach((attr) => {
         expect(isKnownHtmlAttr(attr)).toBe(true);
       });
       expect(isKnownHtmlAttr('nonexistent')).toBe(false);
     });
 
     it('isKnownSvgAttr', () => {
-      knownSvgAttrs.forEach(attr => {
+      knownSvgAttrs.forEach((attr) => {
         expect(isKnownSvgAttr(attr)).toBe(true);
       });
       expect(isKnownSvgAttr('nonexistent')).toBe(false);
     });
 
     it('isHTMLTag', () => {
-      htmlTags.forEach(tag => {
+      htmlTags.forEach((tag) => {
         expect(isHTMLTag(tag)).toBe(true);
       });
       expect(isHTMLTag('svg')).toBe(false);
     });
 
     it('isSVGTag', () => {
-      svgTags.forEach(tag => {
+      svgTags.forEach((tag) => {
         expect(isSVGTag(tag)).toBe(true);
       });
       expect(isSVGTag('div')).toBe(false);
     });
 
     it('isMathMLTag', () => {
-      mathmlTags.forEach(tag => {
+      mathmlTags.forEach((tag) => {
         expect(isMathMLTag(tag)).toBe(true);
       });
       expect(isMathMLTag('div')).toBe(false);
     });
 
     it('isVoidTag', () => {
-      voidTags.forEach(tag => {
+      voidTags.forEach((tag) => {
         expect(isVoidTag(tag)).toBe(true);
       });
       expect(isVoidTag('div')).toBe(false);
     });
 
     it('isSelfClosingTag', () => {
-      selfClosingTags.forEach(tag => {
+      selfClosingTags.forEach((tag) => {
         expect(isSelfClosingTag(tag)).toBe(true);
       });
       expect(isSelfClosingTag('div')).toBe(false);
@@ -232,13 +232,13 @@ describe('dom utilities', () => {
     const nonRenderableValues = [null, undefined, {}, [], () => {}];
 
     it('should identify renderable attribute values', () => {
-      renderableValues.forEach(value => {
+      renderableValues.forEach((value) => {
         expect(isRenderAbleAttrValue(value)).toBe(true);
       });
     });
 
     it('should identify non-renderable attribute values', () => {
-      nonRenderableValues.forEach(value => {
+      nonRenderableValues.forEach((value) => {
         expect(isRenderAbleAttrValue(value)).toBe(false);
       });
     });

@@ -147,7 +147,7 @@ describe('attributes module', () => {
 
       // Should throw an exception (text nodes don't have attributes)
       expect(() => {
-        patchAttr(textNode as any, 'data-test', null, 'test');
+        patchAttr(textNode, 'data-test', null, 'test');
       }).toThrow();
     });
 
@@ -157,24 +157,24 @@ describe('attributes module', () => {
         // The key should be set on the element (stored in a Symbol property)
         // We can verify by checking that the element has the key set
         const keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
+          (s) => s.toString() === 'Symbol(essor.key)',
         );
         expect(keySymbol).toBeDefined();
-        expect((element as any)[keySymbol!]).toBe('my-key');
+        expect(element[keySymbol!]).toBe('my-key');
       });
 
       it('should clear node key when KEY_PROP is null', () => {
         // First set a key
         patchAttr(element, KEY_PROP, null, 'my-key');
         let keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
+          (s) => s.toString() === 'Symbol(essor.key)',
         );
         expect(keySymbol).toBeDefined();
 
         // Then clear it
         patchAttr(element, KEY_PROP, 'my-key', null);
         keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
+          (s) => s.toString() === 'Symbol(essor.key)',
         );
         // The symbol property should be deleted
         expect(keySymbol).toBeUndefined();
@@ -183,9 +183,9 @@ describe('attributes module', () => {
       it('should convert KEY_PROP value to string', () => {
         patchAttr(element, KEY_PROP, null, 123);
         const keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
+          (s) => s.toString() === 'Symbol(essor.key)',
         );
-        expect((element as any)[keySymbol!]).toBe('123');
+        expect(element[keySymbol!]).toBe('123');
       });
     });
 

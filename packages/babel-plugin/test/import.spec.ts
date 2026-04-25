@@ -53,7 +53,7 @@ describe('import utilities', () => {
     const identifiers = createImportIdentifiers(program);
 
     expect(Object.keys(identifiers)).toHaveLength(Object.keys(importMap).length);
-    const uniqueNames = new Set(Object.values(identifiers).map(identifier => identifier.name));
+    const uniqueNames = new Set(Object.values(identifiers).map((identifier) => identifier.name));
     expect(uniqueNames.size).toBe(Object.keys(identifiers).length);
   });
 
@@ -87,7 +87,7 @@ describe('import utilities', () => {
 
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
     const importedNames = specifiers.map(
-      spec => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
+      (spec) => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
     );
     expect(importedNames).toContain('createSSGComponent');
     expect(importedNames).toContain('setSSGAttr');
@@ -105,7 +105,7 @@ describe('import utilities', () => {
 
     const specifiers = (program.node.body[0] as t.ImportDeclaration).specifiers;
     const imported = specifiers.map(
-      spec => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
+      (spec) => ((spec as t.ImportSpecifier).imported as t.Identifier).name,
     );
     expect(imported).toContain('mapSSRNodes');
     expect(imported).toContain('getRenderedElement');

@@ -27,7 +27,7 @@ export interface Ref<T> extends Signal<T> {
  * @internal
  */
 class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
-  // @ts-ignore: used internally by isRef typeguard
+  // @ts-ignore
   private readonly [SignalFlags.IS_REF] = true;
 
   /**
@@ -39,6 +39,11 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
     super(value, true);
   }
 
+  /**
+   * Returns the current value.
+   *
+   * @returns {T} The current value.
+   */
   get value(): T {
     const sub = activeSub;
     if (sub) {
@@ -48,6 +53,11 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
     return this._value;
   }
 
+  /**
+   * Updates the current value.
+   *
+   * @param newValue - The new value.
+   */
   set value(newValue: T) {
     // Handle nested signals by unwrapping them
     if (isSignal(newValue)) {
@@ -74,9 +84,9 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
  * Creates a new ref with the given initial value.
  * Unlike signals, refs don't create reactive proxies for object values.
  *
- * @template T - The type of value to store in the ref
- * @param value - The initial value
- * @returns A new ref instance
+ * @template T - The type of value to store in the ref.
+ * @param value - The initial value.
+ * @returns A new ref instance.
  *
  * @example
  * ```ts
@@ -99,9 +109,9 @@ export function ref<T>(value: T = undefined as unknown as T): Ref<T> {
 /**
  * Type guard to check if a value is a Ref instance.
  *
- * @template T - The type of value held by the ref
- * @param value - The value to check
- * @returns True if the value is a Ref instance
+ * @template T - The type of value held by the ref.
+ * @param value - The value to check.
+ * @returns True if the value is a Ref instance.
  */
 export function isRef<T>(value: unknown): value is Ref<T> {
   return !!value && !!value[SignalFlags.IS_REF];

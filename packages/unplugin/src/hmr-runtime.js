@@ -232,7 +232,7 @@ function handleHMRUpdate(hot, newModule) {
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
 function setupViteHMR(hot) {
-  hot.accept(newModule => handleHMRUpdate(hot, newModule));
+  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
 }
 
 /**
@@ -255,7 +255,7 @@ function setupWebpackHMR(hot, registry) {
 
   // Save current registry for next update
   if (typeof hot.dispose === 'function') {
-    hot.dispose(data => {
+    hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
   }
@@ -270,7 +270,7 @@ function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
   if (typeof hot.accept === 'function') {
     try {
-      hot.accept(newModule => handleHMRUpdate(hot, newModule));
+      hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
       // Some bundlers don't support accept with callback
       // Fall back to simple accept (for Webpack-style pattern)
@@ -284,7 +284,7 @@ function setupStandardHMR(hot, registry) {
 
   // Setup dispose handler for state persistence
   if (typeof hot.dispose === 'function') {
-    hot.dispose(data => {
+    hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
     });

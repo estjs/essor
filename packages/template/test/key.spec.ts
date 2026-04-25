@@ -142,6 +142,7 @@ describe('key system', () => {
     it('skips setting key on document node', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       setNodeKey(document, 'key');
+      expect(warnSpy).toHaveBeenCalled();
       warnSpy.mockRestore();
     });
   });

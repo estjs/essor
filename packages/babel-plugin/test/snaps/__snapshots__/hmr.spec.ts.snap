@@ -19,7 +19,9 @@ exports[`hMR transformation > should handle multiple createComponent aliases 1`]
 "import { template as _template$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
 import { createApp, signal } from 'essor';
 const _$tmpl = _template$("<div>Counter</div>"),
-  _$tmpl2 = _template$("<div></div>");
+  _$tmpl2 = _template$("<div>Counter</div>"),
+  _$tmpl3 = _template$("<div>Counter</div>"),
+  _$tmpl4 = _template$("<div></div>");
 function Counter() {
   return (() => {
     const _$el = _$tmpl();
@@ -29,17 +31,33 @@ function Counter() {
 Counter.__signature = "1b90ocp";
 Counter.__hmrId = "35tyqe:Counter";
 function App() {
+  function Counter1() {
+    function Counter2() {
+      return (() => {
+        const _$el2 = _$tmpl2();
+        return _$el2;
+      })();
+    }
+    Counter2.__signature = "1b90ocp";
+    Counter2.__hmrId = "35tyqe:Counter2";
+    return (() => {
+      const _$el3 = _$tmpl3();
+      return _$el3;
+    })();
+  }
+  Counter1.__signature = "urxb6o";
+  Counter1.__hmrId = "35tyqe:Counter1";
   return (() => {
-    const _$el2 = _$tmpl2();
-    const _$nodes2 = _mapNodes$(_$el2, [1]);
-    _insert$(_$nodes2[0], __$createHMRComponent$__(Counter, {}));
-    return _$el2;
+    const _$el4 = _$tmpl4();
+    const _$nodes4 = _mapNodes$(_$el4, [1]);
+    _insert$(_$nodes4[0], __$createHMRComponent$__(Counter, {}));
+    return _$el4;
   })();
 }
-App.__signature = "1ix0wf8";
+App.__signature = "o5vgkn";
 App.__hmrId = "35tyqe:App";
 createApp(__$createHMRComponent$__(App), 'root');
-const __$registry$__ = [Counter, App];"
+const __$registry$__ = [Counter, App, Counter1, Counter2];"
 `;
 
 exports[`hMR transformation > should not transform when HMR is disabled 1`] = `

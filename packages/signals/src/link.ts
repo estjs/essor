@@ -1,5 +1,5 @@
 import { error, isFunction } from '@estjs/shared';
-import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags } from './constants';
+import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags, SignalFlags } from './constants';
 import { type Effect, propagate } from './propagation';
 
 /**
@@ -46,19 +46,17 @@ export interface Link {
    */
   subNode: ReactiveNode;
 
-  /**
-   * Connects multiple subscribers of the same depNode.
-   * Previous subscriber Link
-   */
+  // Connects multiple subscribers of the same depNode
+
+  /** Previous subscriber Link */
   prevSubLink?: Link;
 
   /** Next subscriber Link */
   nextSubLink?: Link;
 
-  /**
-   * Connects multiple dependencies of the same subNode.
-   * Previous dependency Link
-   */
+  // Connects multiple dependencies of the same subNode
+
+  /** Previous dependency Link */
   prevDepLink?: Link;
 
   /** Next dependency Link */
@@ -148,8 +146,14 @@ export interface ReactiveNode {
    */
   flag: ReactiveFlags;
 
-  _triggerVersion?: number; // Used for development debugging to track trigger versions
+  /**
+   * Optional debugging hook called when dependencies are tracked
+   */
   onTrack?: (event: DebuggerEvent) => void;
+
+  /**
+   * Optional debugging hook called when reactive changes are triggered.
+   */
   onTrigger?: (event: DebuggerEvent) => void;
 }
 
@@ -178,22 +182,58 @@ export let activeSub: ReactiveNode | undefined;
 let isUntracking = false;
 
 /**
- * Get whether currently in untrack mode
+ * Reactive-object property dependency node.
+ *
+ * Each tracked property on a reactive target owns one Dep instance, which
+ * participates in the same Link graph as Signal / Computed / Effect nodes.
+ * When the last subscriber leaves, the property entry removes itself from its
+ * containing deps map via the `subLink` setter.
+ */
+class Dep implements ReactiveNode {
+  readonly isDep = true;
+  depLink?: Link;
+  depLinkTail?: Link;
+  subLinkTail?: Link;
+  flag: ReactiveFlags = ReactiveFlags.NONE;
+
+  private _subLink?: Link;
+
+  constructor(
+    private readonly map: Map<string | symbol, Dep>,
+    private readonly key: string | symbol,
+  ) {}
+
+  get subLink(): Link | undefined {
+    return this._subLink;
+  }
+
+  set subLink(value: Link | undefined) {
+    this._subLink = value;
+    if (value === undefined) {
+      this.map.delete(this.key);
+    }
+  }
+}
+
+/**
+ * Get whether currently in untrack mode.
+ *
+ * @returns True if currently in untrack mode.
  */
 export function getIsUntracking(): boolean {
   return isUntracking;
 }
 
 /**
- * Link a dependency node to a subscriber node
+ * Link a dependency node to a subscriber node.
  *
  * This function establishes a bidirectional link between a dependency (e.g., Signal)
  * and a subscriber (e.g., Effect or Computed). It's called automatically when a
  * reactive value is accessed during effect/computed execution.
  *
- * @param depNode - The dependency node (data source)
- * @param subNode - The subscriber node (data consumer)
- * @returns The link connecting the two nodes, or undefined if in untrack mode
+ * @param depNode - The dependency node (data source).
+ * @param subNode - The subscriber node (data consumer).
+ * @returns The link connecting the two nodes, or undefined if in untrack mode.
  */
 export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): Link | undefined {
   // If in untrack mode, don't establish any dependencies
@@ -285,14 +325,14 @@ export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): 
 }
 
 /**
- * Remove a dependency link
+ * Remove a dependency link.
  *
  * This function removes a link from the dependency graph, updating all pointers
  * in both the subscriber's dependency chain and the dependency's subscriber chain.
  *
- * @param linkNode - The link to remove
- * @param subNode - The subscriber node (defaults to linkNode.subNode)
- * @returns The next link in the dependency chain (for iteration)
+ * @param linkNode - The link to remove.
+ * @param subNode - The subscriber node (defaults to linkNode.subNode).
+ * @returns The next link in the dependency chain (for iteration).
  */
 export function unlinkReactiveNode(
   linkNode: Link,
@@ -345,9 +385,11 @@ export function unlinkReactiveNode(
       // Clear tail pointer to ensure no dangling references
       depNode.depLinkTail = undefined;
 
-      // Mark as dirty so it recomputes on next access
-      // This is important for computed values that might be accessed again later
-      depNode.flag |= ReactiveFlags.DIRTY;
+      // Mark as dirty so it recomputes on next access.
+      // Dep nodes are leaf nodes with no value to recompute, so skip them.
+      if (!depNode.isDep) {
+        depNode.flag |= ReactiveFlags.DIRTY;
+      }
 
       // Development mode verification
       if (__DEV__) {
@@ -417,9 +459,9 @@ interface CheckStackNode {
  * - Space complexity: O(d) where d is the maximum depth of the dependency graph
  * - Early exit: Returns immediately when first DIRTY dependency is found
  *
- * @param link - The starting Link of the dependency chain to check
- * @param sub - The subscriber node that owns this dependency chain
- * @returns true if any dependency is dirty (subscriber needs recomputation), false otherwise
+ * @param link - The starting Link of the dependency chain to check.
+ * @param sub - The subscriber node that owns this dependency chain.
+ * @returns True if any dependency is dirty (subscriber needs recomputation), false otherwise.
  *
  * @example
  * ```typescript
@@ -521,18 +563,9 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
 }
 
 /**
- * Shallow propagate for Signal getters
+ * Shallow propagate for Signal getters.
  *
- * Called from Signal.value getter when the signal's shouldUpdate() returns true,
- * to mark direct PENDING subscribers as DIRTY without triggering full propagation.
- * This is a simpler/faster path than the Computed shallowPropagate in propagation.ts
- * because it directly writes DIRTY, bypassing notify() and its scheduling guards.
- *
- * The full propagation.ts version (used by Computed) additionally handles WATCHING
- * nodes by routing through enqueueEffect — a path we don't need here because
- * Signal's setter already called propagate() to mark/queue downstream effects.
- *
- * @param link - The starting Link of the subscriber chain
+ * @param link - The starting Link of the subscriber chain.
  */
 export function shallowPropagate(link: Link | undefined): void {
   while (link) {
@@ -550,10 +583,10 @@ export function shallowPropagate(link: Link | undefined): void {
 }
 
 /**
- * Set the active subscriber
+ * Set the active subscriber.
  *
- * @param sub - The new active subscriber
- * @returns The previous active subscriber
+ * @param sub - The new active subscriber.
+ * @returns The previous active subscriber.
  */
 export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
   const prev = activeSub;
@@ -562,13 +595,10 @@ export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
 }
 
 /**
- * Start tracking dependencies
+ * Start tracking dependencies.
  *
- * Called before Effect/Computed execution.
- * Increments version number, stale Links will be cleaned up.
- *
- * @param sub - The subscriber node to track
- * @returns The previous active subscriber
+ * @param sub - The subscriber node to track.
+ * @returns The previous active subscriber.
  */
 export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
   // Increment version number to mark new tracking cycle
@@ -586,13 +616,10 @@ export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
 }
 
 /**
- * End tracking dependencies
+ * End tracking dependencies.
  *
- * Called after Effect/Computed execution.
- * Cleans up stale Links (version number less than current version).
- *
- * @param sub - The tracked subscriber node
- * @param prevSub - The previous active subscriber
+ * @param sub - The tracked subscriber node.
+ * @param prevSub - The previous active subscriber.
  */
 export function endTracking(sub: ReactiveNode, prevSub: ReactiveNode | undefined): void {
   // Restore previous active subscriber
@@ -611,12 +638,10 @@ export function endTracking(sub: ReactiveNode, prevSub: ReactiveNode | undefined
 }
 
 /**
- * Execute function with tracking disabled
+ * Execute function with tracking disabled.
  *
- * During function execution, accessing Signals won't establish dependencies.
- *
- * @param fn - The function to execute
- * @returns The function's return value
+ * @param fn - The function to execute.
+ * @returns {T} The function's return value.
  */
 export function untrack<T>(fn: () => T): T {
   const prevSub = setActiveSub(undefined);
@@ -632,14 +657,11 @@ export function untrack<T>(fn: () => T): T {
 }
 
 /**
- * Validate if a Link is still valid
+ * Validate if a Link is still valid.
  *
- * Checks if the Link is still in the subscriber's dependency chain.
- * Used to prevent propagation through stale Links.
- *
- * @param checkLink - The Link to validate
- * @param sub - The subscriber node
- * @returns true if the Link is valid
+ * @param checkLink - The Link to validate.
+ * @param sub - The subscriber node.
+ * @returns True if the Link is valid.
  */
 export function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
   let link = sub.depLinkTail;
@@ -667,11 +689,18 @@ export function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
  * This is separate from the Link-based dependency tracking used by Signal/Computed/Effect.
  * It's specifically for tracking property access on reactive objects.
  */
-const targetMap = new WeakMap<object, Map<string | symbol, Set<ReactiveNode>>>();
+const targetMap = new WeakMap<object, Map<string | symbol, Dep>>();
 let triggerVersion = 0;
 
+/**
+ * Collects triggered subscribers from a reactive-property dep node.
+ *
+ * @param dep - The property dep node.
+ * @param effects - The effects array to push to.
+ * @param version - The trigger version.
+ */
 function collectTriggeredEffects(
-  dep: Set<ReactiveNode> | undefined,
+  dep: Dep | undefined,
   effects: ReactiveNode[],
   version: number,
 ): void {
@@ -679,66 +708,21 @@ function collectTriggeredEffects(
     return;
   }
 
-  dep.forEach(effect => {
-    // Prune stopped effects to prevent long-term stale dependency growth
-    if (effect.flag & ReactiveFlags.WATCHING && !(effect as Effect)._active) {
-      dep.delete(effect);
-      return;
-    }
-
+  for (let link = dep.subLink; link; link = link.nextSubLink) {
+    const effect = link.subNode;
     if (effect._triggerVersion === version) {
-      return;
+      continue;
     }
     effect._triggerVersion = version;
     effects.push(effect);
-  });
+  }
 }
 
 /**
- * Track a dependency on a reactive object property
+ * Track a dependency on a reactive object property.
  *
- * This function establishes a dependency relationship between the currently active
- * subscriber (effect/computed) and a specific property of a reactive object.
- *
- * ## When is this called?
- *
- * - When accessing a property on a reactive object: `reactiveObj.prop`
- * - When accessing array elements: `reactiveArray[0]`
- * - When calling array methods: `reactiveArray.length`, `reactiveArray.includes()`
- * - When iterating collections: `for (const item of reactiveArray)`
- *
- * ## How it works
- *
- * 1. Check if there's an active subscriber (effect/computed currently executing)
- * 2. Get or create the dependency map for the target object
- * 3. Get or create the dependency set for the specific property
- * 4. Add the active subscriber to the set
- * 5. Call debug hook if in development mode
- *
- * ## Relationship with Link-based tracking
- *
- * This function is used for reactive objects, while linkReactiveNode() is used for
- * Signal/Computed dependencies. Both systems work together:
- *
- * ```typescript
- * const obj = reactive({ count: 0 });
- * const sig = signal(1);
- *
- * effect(() => {
- *   console.log(obj.count); // Uses track()
- *   console.log(sig.value); // Uses linkReactiveNode()
- * });
- * ```
- *
- * ## Performance considerations
- *
- * - WeakMap lookup: O(1) average case
- * - Map lookup: O(1) average case
- * - Set.has() and Set.add(): O(1) average case
- * - Overall: O(1) for tracking a single property
- *
- * @param target - The reactive object being accessed
- * @param key - The property key being accessed (string, number, or symbol)
+ * @param target - The reactive object being accessed.
+ * @param key - The property key being accessed (string, number, or symbol).
  *
  * @example
  * ```typescript
@@ -767,31 +751,19 @@ export function track(target: object, key: string | symbol): void {
     targetMap.set(target, depsMap);
   }
 
-  // Each property has a Set of subscribers that depend on it
+  // Each property has a dedicated Dep node that participates in the same
+  // Link graph as signals / computeds / effects.
   let dep = depsMap.get(key);
   if (!dep) {
-    dep = new Set();
+    dep = new Dep(depsMap, key);
     depsMap.set(key, dep);
   }
 
-  // Set.add() is idempotent so no need for a redundant has() check.
-  // Only invoke the debug hook when it's a genuinely new dependency.
-  const sizeBefore = __DEV__ ? dep.size : 0;
-  dep.add(activeSub);
-
-  // In development mode, notify debugging tools about the dependency
-  if (__DEV__ && dep.size !== sizeBefore && isFunction(activeSub.onTrack)) {
-    activeSub.onTrack({
-      effect: activeSub,
-      target,
-      type: 'get',
-      key,
-    });
-  }
+  linkReactiveNode(dep, activeSub);
 }
 
 /**
- * Trigger updates for subscribers of a reactive object property
+ * Trigger updates for subscribers of a reactive object property.
  *
  * This function notifies all subscribers (effects/computed) that depend on a specific
  * property of a reactive object that the property has changed.
@@ -812,11 +784,11 @@ export function track(target: object, key: string | symbol): void {
  * - **CLEAR**: Collection cleared (affects iteration)
  *
  * ## Iteration Dependencies
-
- * @param target - The reactive object that changed
- * @param type - The type of operation: 'SET' | 'ADD' | 'DELETE' | 'CLEAR'
- * @param key - The property key that changed (optional for CLEAR operations)
- * @param newValue - The new value (optional, used for debugging)
+ *
+ * @param target - The reactive object that changed.
+ * @param type - The type of operation: 'SET' | 'ADD' | 'DELETE' | 'CLEAR'.
+ * @param key - The property key that changed (optional for CLEAR operations).
+ * @param newValue - The new value.
  *
  * @example
  * ```typescript
@@ -837,6 +809,15 @@ export function track(target: object, key: string | symbol): void {
  * state.items.push(4); // trigger(state.items, 'SET', 'length', 4)
  *                      // trigger(state.items, 'ADD', '3', 4)
  * ```
+ */
+/**
+ * Trigger updates for subscribers of a reactive object property.
+ *
+ * @param target - The reactive object that changed.
+ * @param type - The type of operation: 'SET' | 'ADD' | 'DELETE' | 'CLEAR'.
+ * @param key - The property key that changed (optional for CLEAR operations).
+ * @param newValue - The new value.
+ * @returns {void}
  */
 export function trigger(
   target: object,
@@ -896,4 +877,25 @@ export function trigger(
       }
     }
   }
+}
+
+/**
+ * Internal test helper: returns the number of subscribers currently linked to
+ * a reactive target property dep.
+ */
+export function getTargetDepSize(target: object, key: string | symbol): number {
+  const rawTarget =
+    (target as Record<string, unknown> | null)?.[SignalFlags.RAW] instanceof Object
+      ? ((target as Record<string, unknown>)[SignalFlags.RAW] as object)
+      : target;
+  const dep = targetMap.get(rawTarget)?.get(key);
+  if (!dep) {
+    return 0;
+  }
+
+  let size = 0;
+  for (let link = dep.subLink; link; link = link.nextSubLink) {
+    size++;
+  }
+  return size;
 }

@@ -180,7 +180,7 @@ export function generateHmrRegistry(path: NodePath<t.Program>): void {
   try {
     // Collect all registered component identifiers
     const registryElements: t.Identifier[] = [];
-    hmrComponentMap.forEach(info => {
+    hmrComponentMap.forEach((info) => {
       registryElements.push(t.identifier(info.name));
     });
 

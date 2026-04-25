@@ -221,7 +221,7 @@ export class Component<P extends ComponentProps = ComponentProps> {
     }
 
     if (isPromise(result)) {
-      result = result.then(r => this.unwrapRenderResult(r));
+      result = result.then((r) => this.unwrapRenderResult(r));
     }
 
     return result;

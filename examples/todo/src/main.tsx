@@ -32,7 +32,7 @@ function App() {
       <ul>
         {$list.map((item, index) => (
           <li>
-            <input type="checkbox" onChange={e => itemChecked(e, item)} />
+            <input type="checkbox" onChange={(e) => itemChecked(e, item)} />
             <span>{item}</span>
             <button onClick={() => deleteTodo(index)}>{`del-${index}`}</button>
           </li>

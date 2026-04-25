@@ -49,7 +49,7 @@ describe('lifecycle Management', () => {
       setActiveScope(scope);
 
       const hook = vi.fn(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       });
       onMount(hook);
 
@@ -270,7 +270,7 @@ describe('lifecycle Management', () => {
       setActiveScope(scope);
 
       const hook = vi.fn(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       });
       onMount(hook);
 
@@ -482,13 +482,13 @@ describe('lifecycle Management', () => {
 
       const hooks = Array.from({ length: 5 }, (_, i) => vi.fn(() => void i));
 
-      hooks.forEach(hook => onMount(hook));
+      hooks.forEach((hook) => onMount(hook));
 
       setActiveScope(null);
 
       triggerMountHooks(scope);
 
-      hooks.forEach(hook => expect(hook).toHaveBeenCalledTimes(1));
+      hooks.forEach((hook) => expect(hook).toHaveBeenCalledTimes(1));
     });
   });
 

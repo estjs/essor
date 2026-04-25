@@ -114,8 +114,8 @@ function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => 
   addEventListener(node, 'change', () => {
     if (node.multiple) {
       const values = Array.from(node.options)
-        .filter(option => option.selected)
-        .map(option => option.value);
+        .filter((option) => option.selected)
+        .map((option) => option.value);
       setter(values);
     } else {
       setter(node.value);
@@ -147,7 +147,7 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
     const run = () => {
       const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
       const nodes = coerceArray(rawNodes as unknown)
-        .map(item => (isFunction(item) ? item() : item))
+        .map((item) => (isFunction(item) ? item() : item))
         .flatMap(normalizeNode) as AnyNode[];
 
       renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
@@ -161,7 +161,7 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
 
   onCleanup(() => {
     cleanup();
-    renderedNodes.forEach(node => removeNode(node));
+    renderedNodes.forEach((node) => removeNode(node));
     renderedNodes.length = 0;
   });
 

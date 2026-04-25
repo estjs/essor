@@ -330,7 +330,7 @@ function processProps(path: NodePath<JSXElement>): Record<string, unknown> {
     return props;
   }
 
-  attributes.forEach(attribute => {
+  attributes.forEach((attribute) => {
     if (t.isJSXAttribute(attribute.node)) {
       const name = getAttrName(attribute.node);
       const value = attribute.get('value');
@@ -493,7 +493,7 @@ function processChildren(path: NodePath<JSXElement>, treeNode: TreeNode): void {
   }
   const optimizedChildren = optimizeChildNodes(path.get('children'));
 
-  optimizedChildren.forEach(child => {
+  optimizedChildren.forEach((child) => {
     processChild(child, treeNode, optimizedChildren.length === 1);
   });
 }

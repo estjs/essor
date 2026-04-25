@@ -46,7 +46,7 @@ export function Portal(props: PortalProps): Comment | string {
         return;
       }
 
-      childArray.forEach(child => {
+      childArray.forEach((child) => {
         if (child != null) {
           const normalized = normalizeNode(child);
           if (normalized) {
@@ -57,7 +57,7 @@ export function Portal(props: PortalProps): Comment | string {
       });
 
       onCleanup(() => {
-        nodes.forEach(node => {
+        nodes.forEach((node) => {
           if (!isString(node) && node.parentNode === targetElement) {
             targetElement.removeChild(node);
           }

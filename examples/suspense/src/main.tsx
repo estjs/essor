@@ -1,7 +1,7 @@
 import { Suspense, createApp, createResource } from 'essor';
 
 function fetchUser(id: number) {
-  return new Promise<{ id: number; name: string }>(resolve => {
+  return new Promise<{ id: number; name: string }>((resolve) => {
     setTimeout(() => {
       resolve({ id, name: `User ${id}` });
     }, 2000);

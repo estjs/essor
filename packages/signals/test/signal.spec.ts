@@ -70,7 +70,6 @@ describe('signal', () => {
     expect(testSignal.value).toEqual([10, 20, 30]);
     expect(testSignal.peek()).toEqual([10, 20, 30]);
 
-    // @ts-ignore
     testSignal.value = null;
     expect(effectCount).toBe(6);
     expect(testSignal.value).toBeNull();
@@ -131,6 +130,39 @@ describe('signal', () => {
     expect(testSignal.value).toEqual([1, 3, 2, 4, 8, 5, 7]);
 
     expect(effectCount).toBe(10);
+  });
+
+  it('should re-run effects tracking array length after push', () => {
+    const todos = signal<{ id: number }[]>([]);
+    let runs = 0;
+
+    effect(() => {
+      todos.value.length;
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    todos.value.push({ id: 1 });
+
+    expect(runs).toBe(2);
+    expect(todos.value.length).toBe(1);
+  });
+
+  it('should re-run effects tracking array iteration after push', () => {
+    const todos = signal<{ id: number; completed: boolean }[]>([]);
+    let runs = 0;
+
+    effect(() => {
+      todos.value.filter((todo) => !todo.completed).length;
+      runs++;
+    });
+
+    expect(runs).toBe(1);
+
+    todos.value.push({ id: 1, completed: false });
+
+    expect(runs).toBe(2);
   });
 
   it('should work with Set', () => {
@@ -301,6 +333,7 @@ describe('signal', () => {
   });
 
   it('should work with set signal value to original value', () => {
+    const warnSpy = vitest.spyOn(console, 'warn').mockImplementation(() => {});
     const value1 = signal(1);
     const value2 = signal({});
     const value3 = signal([1, 2, 3]);
@@ -314,9 +347,11 @@ describe('signal', () => {
     expect(value1.value).toBe(2);
     expect(value2.value).toEqual({ a: 'b' });
     expect(value3.value).toEqual([2, 3, 4]);
+    warnSpy.mockRestore();
   });
 
   it('should work use signal is signal value', () => {
+    const warnSpy = vitest.spyOn(console, 'warn').mockImplementation(() => {});
     const value1 = signal(signal(1));
     const value2 = signal(signal({ a: 'b' }));
     const value3 = signal(signal([1, 2, 3]));
@@ -324,6 +359,7 @@ describe('signal', () => {
     expect(value1.value).toBe(1);
     expect(value2.value).toEqual({ a: 'b' });
     expect(value3.value).toEqual([1, 2, 3]);
+    warnSpy.mockRestore();
   });
 });
 
@@ -467,7 +503,7 @@ describe('shallowSignal', () => {
   });
 
   // skip this testcase because too slow
-  it.skip('should work with set method ant function calls', () => {
+  it.todo('should work with set method ant function calls', () => {
     const value1 = shallowSignal<any>(new Set([1, 2, 3]));
     const value2 = signal<any>(1);
     const value3 = signal<any>({});
@@ -528,18 +564,18 @@ describe('shallowSignal', () => {
     );
 
     expect(triggerCount).toBe(1);
-    value1.update(value => new Set([...value, 4]));
+    value1.update((value) => new Set([...value, 4]));
     value2.update(() => new Map([['a', 1]]));
-    value3.update(value => ({ ...value, a: 2 }));
+    value3.update((value) => ({ ...value, a: 2 }));
     value4.update(() => new Map([['a', 1]]));
     value5.update(() => new WeakMap());
     value6.update(() => new WeakSet([]));
 
     expect(triggerCount).toBe(7);
 
-    value1.update(value => new Set([...value, 5]));
+    value1.update((value) => new Set([...value, 5]));
     value2.update(() => new Map([['a', 2]]));
-    value3.update(value => ({ ...value, a: 2 }));
+    value3.update((value) => ({ ...value, a: 2 }));
     value4.update(() => new Map([['a', 2]]));
     value5.update(() => new WeakMap());
     value6.update(() => new WeakSet());
@@ -625,7 +661,7 @@ describe('signal optimization - on-demand _oldValue creation', () => {
     // First update should create _oldValue
     s.value = 20;
     expect('_oldValue' in impl).toBe(true);
-    expect((impl as any)._oldValue).toBe(10);
+    expect(impl._oldValue).toBe(10);
   });
 
   it('should create _oldValue on first value change', () => {
@@ -773,7 +809,6 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Setting a signal as value should unwrap it
-    // @ts-ignore
     s.value = nested;
     expect(s.value).toBe(20);
     expect(typeof s.value).toBe('number');
@@ -811,7 +846,6 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Update function returning a signal should unwrap it
-    // @ts-ignore
     s.update(() => nested);
     expect(s.value).toBe(20);
   });

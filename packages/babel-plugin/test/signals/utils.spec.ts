@@ -97,7 +97,7 @@ describe('signals/utils', () => {
       const ast = parse(code, { sourceType: 'module', plugins: ['jsx'] });
       let fnPath: any = null;
       traverse(ast, {
-        'FunctionDeclaration|FunctionExpression|ArrowFunctionExpression': path => {
+        'FunctionDeclaration|FunctionExpression|ArrowFunctionExpression': (path) => {
           fnPath = path;
           path.stop();
         },

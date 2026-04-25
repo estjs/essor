@@ -28,7 +28,7 @@ const reactiveCaches = new WeakMap<object, object>();
  * Recursively unwraps nested reactive objects and arrays.
  *
  * @param value - Reactive or signal value.
- * @returns Raw value without any reactive wrapping.
+ * @returns {T} Raw value without any reactive wrapping.
  */
 export function toRaw<T>(value: T): T {
   if (!value || !isObject(value)) {
@@ -63,7 +63,7 @@ function createArrayInstrumentations() {
   const instrumentations: Record<string | symbol, Function> = {};
 
   // Search methods: track array iteration and handle reactive object arguments
-  ['includes', 'indexOf', 'lastIndexOf'].forEach(key => {
+  ['includes', 'indexOf', 'lastIndexOf'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
       const arr = toRaw(this) as any[];
       // Track iteration access to the entire array
@@ -75,7 +75,7 @@ function createArrayInstrumentations() {
       // If lookup fails and we have arguments, try with raw values
       // This handles cases where reactive objects are passed as search values
       if ((res === -1 || res === false) && args.length > 0) {
-        const rawArgs = args.map(arg => toRaw(arg));
+        const rawArgs = args.map((arg) => toRaw(arg));
         res = arr[key as keyof typeof arr](...rawArgs);
       }
 
@@ -84,7 +84,7 @@ function createArrayInstrumentations() {
   });
 
   // Search methods that return elements: track iteration and maintain reactivity
-  ['find', 'findIndex', 'findLast', 'findLastIndex'].forEach(key => {
+  ['find', 'findIndex', 'findLast', 'findLastIndex'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
       const arr = toRaw(this) as any[];
       const isShallowMode = isShallow(this);
@@ -105,7 +105,7 @@ function createArrayInstrumentations() {
 
   // Mutation methods: trigger array changes
   ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(
-    key => {
+    (key) => {
       instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
         const arr = toRaw(this);
         // Call the method using Array.prototype to ensure it works correctly
@@ -118,7 +118,7 @@ function createArrayInstrumentations() {
   );
 
   // ES2023 methods that return new arrays: track access and maintain reactivity
-  ['toReversed', 'toSorted', 'toSpliced'].forEach(key => {
+  ['toReversed', 'toSorted', 'toSpliced'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
       const arr = toRaw(this);
       const isShallowMode = isShallow(this);
@@ -142,27 +142,32 @@ function createArrayInstrumentations() {
       }
 
       // Make object elements reactive (deep or shallow based on parent mode)
-      return res.map(item => (isObject(item) ? reactiveImpl(item, isShallowMode) : item));
+      return res.map((item) => (isObject(item) ? reactiveImpl(item, isShallowMode) : item));
     };
   });
 
-  // Methods that return new arrays but don't modify original: track and maintain reactivity
-  ['concat', 'slice', 'filter', 'map', 'flatMap', 'flat'].forEach(key => {
+  // Methods that return new arrays but don't modify original: track and maintain reactivity.
+  //
+  // IMPORTANT: we `apply` on `this` (the reactive proxy), not on the raw
+  // array. This way every element access inside the native implementation
+  // goes through the proxy's get trap, which (for deep reactive arrays)
+  // returns reactive proxies of the items. That preserves reactivity for
+  // callers doing e.g. `data.value.slice()[i].label = '...'` or passing
+  // the resulting array to `.set()`. Running on the raw array would leak
+  // raw, non-reactive items and silently break downstream bindings.
+  ['concat', 'slice', 'filter', 'map', 'flatMap', 'flat'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
       const arr = toRaw(this);
-
       // Track iteration access
       track(arr, ARRAY_ITERATE_KEY);
-
-      // Call the native method
-      const res = Array.prototype[key].apply(arr, args);
-
-      return res;
+      // Call the native method on the proxy (this), not the raw array, so
+      // element reads go through the reactive get trap.
+      return Array.prototype[key].apply(this, args);
     };
   });
 
   // Methods that return strings: only track, no reactivity needed
-  ['join', 'toString', 'toLocaleString'].forEach(key => {
+  ['join', 'toString', 'toLocaleString'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
       const arr = toRaw(this);
       // Track iteration access
@@ -172,7 +177,7 @@ function createArrayInstrumentations() {
   });
 
   // Iterator methods: track access and maintain reactivity
-  ['values', 'keys', 'entries', Symbol.iterator].forEach(key => {
+  ['values', 'keys', 'entries', Symbol.iterator].forEach((key) => {
     instrumentations[key] = function (this: unknown[]) {
       const arr = toRaw(this);
       const isShallowMode = isShallow(this);
@@ -183,6 +188,9 @@ function createArrayInstrumentations() {
       const rawIterator = key === Symbol.iterator ? arr[Symbol.iterator]() : arr[key]();
 
       return {
+        /**
+         * Returns the next iterator result.
+         */
         next() {
           const { value, done } = rawIterator.next();
 
@@ -193,7 +201,7 @@ function createArrayInstrumentations() {
           // Handle entries (returns [index, value] or [value, value] for Set)
           if (Array.isArray(value)) {
             return {
-              value: value.map(v => (isObject(v) ? reactiveImpl(v, isShallowMode) : v)),
+              value: value.map((v) => (isObject(v) ? reactiveImpl(v, isShallowMode) : v)),
               done,
             };
           }
@@ -204,6 +212,9 @@ function createArrayInstrumentations() {
             done,
           };
         },
+        /**
+         * Returns an iterator for the current collection.
+         */
         [Symbol.iterator]() {
           return this;
         },
@@ -219,7 +230,7 @@ function createArrayInstrumentations() {
  * Intercepts get and set operations to perform dependency tracking and trigger changes.
  *
  * @param shallow - Indicates whether reactivity should be shallow.
- * @returns Object containing array get and set traps.
+ * @returns {any} Object containing array get and set traps.
  */
 const arrayHandlers = (shallow: boolean) => ({
   get: (target: any, key: string | symbol, receiver: any) => {
@@ -276,6 +287,9 @@ const deepArrayHandlers = arrayHandlers(false);
 
 // Proxy handler for Map and Set collections.
 const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
+  /**
+   * Exposes collection proxy flags and instrumented methods.
+   */
   get(target, key: string | symbol) {
     if (key === SignalFlags.IS_REACTIVE) {
       return true;
@@ -294,6 +308,9 @@ const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
 
 // Proxy handler for WeakMap and WeakSet collections.
 const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<object>> = {
+  /**
+   * Exposes weak-collection proxy flags and instrumented methods.
+   */
   get(target, key: string | symbol) {
     if (key === SignalFlags.IS_REACTIVE) {
       return true;
@@ -312,6 +329,9 @@ const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<ob
 
 // Enhanced versions of Map and Set collection methods.
 const collectionInstrumentations = {
+  /**
+   * Reads a Map entry with dependency tracking.
+   */
   get(this: Map<unknown, unknown>, key: unknown) {
     const target = toRaw(this);
     // Track access to the collection
@@ -326,6 +346,9 @@ const collectionInstrumentations = {
 
     return value;
   },
+  /**
+   * Sets the requested value.
+   */
   set(this: Map<unknown, unknown>, key: unknown, value: unknown) {
     const target = toRaw(this);
     const hadKey = target.has(key);
@@ -342,6 +365,9 @@ const collectionInstrumentations = {
 
     return this; // Return the reactive proxy, not the raw target
   },
+  /**
+   * Adds the requested value.
+   */
   add(this: Set<unknown>, value: unknown) {
     const target = toRaw(this);
     // Store raw value to avoid nested reactive wrapping
@@ -350,17 +376,16 @@ const collectionInstrumentations = {
 
     target.add(rawValue);
 
-    // Trigger even if value already exists, as this is still a write operation
-    // This ensures consistency with reactive tracking
+    // Only trigger when the Set membership actually changes.
     if (!hadValue) {
       trigger(target, TriggerOpTypes.ADD, COLLECTION_KEY);
-    } else {
-      // Even if value exists, trigger SET to notify watchers
-      trigger(target, TriggerOpTypes.SET, COLLECTION_KEY);
     }
 
     return this; // Return the reactive proxy, not the raw target
   },
+  /**
+   * Returns whether the requested value exists.
+   */
   has(key: unknown) {
     const target = toRaw(this);
     // Track access to the collection
@@ -375,6 +400,9 @@ const collectionInstrumentations = {
 
     return hasKey;
   },
+  /**
+   * Deletes the requested value.
+   */
   delete(key: unknown) {
     const target = toRaw(this);
     const hadKey = target.has(key);
@@ -394,6 +422,9 @@ const collectionInstrumentations = {
 
     return result;
   },
+  /**
+   * Clears the current collection.
+   */
   clear() {
     const target = toRaw(this);
     const hadItems = target.size > 0;
@@ -406,6 +437,9 @@ const collectionInstrumentations = {
 
     return result;
   },
+  /**
+   * Iterates over each collection entry.
+   */
   forEach(
     this: Map<unknown, unknown> | Set<unknown>,
     callback: (value: unknown, key: unknown, map: Map<unknown, unknown> | Set<unknown>) => void,
@@ -425,6 +459,9 @@ const collectionInstrumentations = {
       callback.call(thisArg, wrappedValue, wrappedKey, this);
     });
   },
+  /**
+   * Returns an iterator for the current collection.
+   */
   [Symbol.iterator](this: Map<unknown, unknown> | Set<unknown>) {
     const target = toRaw(this);
     const isShallowMode = isShallow(this);
@@ -435,6 +472,9 @@ const collectionInstrumentations = {
     const rawIterator = target[Symbol.iterator]();
 
     return {
+      /**
+       * Returns the next iterator result.
+       */
       next() {
         const { value, done } = rawIterator.next();
 
@@ -450,7 +490,7 @@ const collectionInstrumentations = {
         // For Map entries [key, value], wrap both if they're objects
         if (Array.isArray(value)) {
           return {
-            value: value.map(v => (isObject(v) ? reactiveImpl(v) : v)),
+            value: value.map((v) => (isObject(v) ? reactiveImpl(v) : v)),
             done,
           };
         }
@@ -461,17 +501,26 @@ const collectionInstrumentations = {
           done,
         };
       },
+      /**
+       * Returns an iterator for the current collection.
+       */
       [Symbol.iterator]() {
         return this;
       },
     };
   },
+  /**
+   * Returns the current collection size.
+   */
   get size() {
     const target = toRaw(this);
     // Track access to size property
     track(target, COLLECTION_KEY);
     return target.size;
   },
+  /**
+   * Returns an iterator over the current keys.
+   */
   keys(this: Map<unknown, unknown> | Set<unknown>) {
     const target = toRaw(this);
     const isShallowMode = isShallow(this);
@@ -482,6 +531,9 @@ const collectionInstrumentations = {
     const rawIterator = target.keys();
 
     return {
+      /**
+       * Returns the next iterator result.
+       */
       next() {
         const { value, done } = rawIterator.next();
 
@@ -495,11 +547,17 @@ const collectionInstrumentations = {
           done,
         };
       },
+      /**
+       * Returns an iterator for the current collection.
+       */
       [Symbol.iterator]() {
         return this;
       },
     };
   },
+  /**
+   * Returns an iterator over the current values.
+   */
   values(this: Map<unknown, unknown> | Set<unknown>) {
     const target = toRaw(this);
     const isShallowMode = isShallow(this);
@@ -510,6 +568,9 @@ const collectionInstrumentations = {
     const rawIterator = target.values();
 
     return {
+      /**
+       * Returns the next iterator result.
+       */
       next() {
         const { value, done } = rawIterator.next();
 
@@ -523,11 +584,17 @@ const collectionInstrumentations = {
           done,
         };
       },
+      /**
+       * Returns an iterator for the current collection.
+       */
       [Symbol.iterator]() {
         return this;
       },
     };
   },
+  /**
+   * Returns an iterator over the current entries.
+   */
   entries(this: Map<unknown, unknown> | Set<unknown>) {
     const target = toRaw(this);
     const isShallowMode = isShallow(this);
@@ -538,6 +605,9 @@ const collectionInstrumentations = {
     const rawIterator = target.entries();
 
     return {
+      /**
+       * Returns the next iterator result.
+       */
       next() {
         const { value, done } = rawIterator.next();
 
@@ -556,6 +626,9 @@ const collectionInstrumentations = {
           done,
         };
       },
+      /**
+       * Returns an iterator for the current collection.
+       */
       [Symbol.iterator]() {
         return this;
       },
@@ -565,6 +638,9 @@ const collectionInstrumentations = {
 
 // Enhanced versions of WeakMap and WeakSet collection methods.
 const weakInstrumentations = {
+  /**
+   * Reads a WeakMap entry with dependency tracking.
+   */
   get(this: WeakMap<object, unknown>, key: object) {
     const target = toRaw(this);
     // Track access to the weak collection
@@ -585,6 +661,9 @@ const weakInstrumentations = {
 
     return value;
   },
+  /**
+   * Sets the requested value.
+   */
   set(this: WeakMap<object, unknown>, key: object, value: unknown) {
     const target = toRaw(this);
     const rawKey = toRaw(key);
@@ -602,6 +681,9 @@ const weakInstrumentations = {
 
     return this; // Return the reactive proxy, not the raw target
   },
+  /**
+   * Adds the requested value.
+   */
   add(this: WeakSet<object>, value: object) {
     const target = toRaw(this);
     const rawValue = toRaw(value);
@@ -616,6 +698,9 @@ const weakInstrumentations = {
 
     return this; // Return the reactive proxy, not the raw target
   },
+  /**
+   * Returns whether the requested value exists.
+   */
   has(key: object) {
     const target = toRaw(this);
     // Track access to the weak collection
@@ -631,6 +716,9 @@ const weakInstrumentations = {
 
     return hasKey;
   },
+  /**
+   * Deletes the requested value.
+   */
   delete(key: object) {
     const target = toRaw(this);
     const rawKey = toRaw(key);
@@ -652,9 +740,12 @@ const weakInstrumentations = {
  * Intercepts get, set, and delete operations to manage reactivity.
  *
  * @param shallow - Indicates whether to create shallow reactive proxy.
- * @returns Object containing get, set, and delete traps.
+ * @returns {any} Object containing get, set, and delete traps.
  */
 const objectHandlers = (shallow: boolean) => ({
+  /**
+   * Reads an object property, unwraps signals, and tracks the access.
+   */
   get(target: object, key: string | symbol, receiver: object) {
     if (key === SignalFlags.RAW) {
       return target;
@@ -699,9 +790,18 @@ const objectHandlers = (shallow: boolean) => ({
   },
 });
 
+// Pre-create handler objects at module load time so reactiveImpl never
+// allocates a new handler on each call (Fix-3).
 const shallowObjectHandlers = objectHandlers(true);
 const deepObjectHandlers = objectHandlers(false);
 
+/**
+ * Creates or reuses the appropriate reactive proxy for a target.
+ *
+ * @param target - The object to make reactive.
+ * @param shallow - Whether to create a shallow reactive proxy.
+ * @returns {T} The reactive proxy of the target object.
+ */
 export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   if (!isObject(target)) {
     return target;
@@ -740,7 +840,7 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
  * Check if the target object is reactive.
  *
  * @param target - The object to check.
- * @returns True if the object is reactive, false otherwise.
+ * @returns {boolean} True if the object is reactive, false otherwise.
  */
 export function isReactive(target: unknown): boolean {
   return !!(target && target[SignalFlags.IS_REACTIVE]);
@@ -749,9 +849,9 @@ export function isReactive(target: unknown): boolean {
 /**
  * Create a reactive proxy for the given target object. If the object is already reactive, return directly.
  *
- * @template T - The type of the object to make reactive
- * @param target - The object to make reactive
- * @returns The reactive proxy of the target object
+ * @template T - The type of the object to make reactive.
+ * @param target - The object to make reactive.
+ * @returns {T} The reactive proxy of the target object.
  *
  * @example
  * ```typescript
@@ -777,9 +877,9 @@ export function reactive<T extends object>(target: T): T {
 /**
  * Create a shallow reactive proxy for the given object. Only root-level properties are reactive.
  *
- * @template T - The type of the object to make shallow reactive
- * @param target - The object to make shallow reactive
- * @returns The shallow reactive proxy of the object
+ * @template T - The type of the object to make shallow reactive.
+ * @param target - The object to make shallow reactive.
+ * @returns {T} The shallow reactive proxy of the object.
  *
  * @example
  * ```typescript
@@ -806,7 +906,7 @@ export function shallowReactive<T extends object>(target: T): T {
  * Check if the target object is a shallow reactive proxy.
  *
  * @param value - The object to check.
- * @returns True if the object is shallow reactive, false otherwise.
+ * @returns {boolean} True if the object is shallow reactive, false otherwise.
  */
 export function isShallow(value: unknown): boolean {
   return !!(value && value[SignalFlags.IS_SHALLOW]);
@@ -817,6 +917,7 @@ export function isShallow(value: unknown): boolean {
  * If the given value is not an object, return the original value itself.
  *
  * @param value - The value that needs a reactive proxy created for it.
+ * @returns {T} The reactive proxy of the value, or the original value.
  */
 export const toReactive = <T extends unknown>(value: T): T =>
   isObject(value) ? reactive(value) : value;

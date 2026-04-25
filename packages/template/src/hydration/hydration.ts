@@ -113,8 +113,8 @@ export function mapSSRNodes(templateEl: HTMLElement, idx: number[]): Node[] {
   const nodes: Node[] = [templateEl];
 
   // Map indices to corresponding nodes
-  idx.forEach(indexValue => {
-    const node = nodesList.find(item => item.idx === String(indexValue));
+  idx.forEach((indexValue) => {
+    const node = nodesList.find((item) => item.idx === String(indexValue));
     if (node) {
       nodes.push(node.node);
     }

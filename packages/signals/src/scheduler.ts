@@ -34,25 +34,19 @@ const p = Promise.resolve();
 let isFlushPending = false;
 
 /**
- * Schedules a function to be executed in the next microtask
+ * Schedules a function to be executed in the next microtask.
  *
- * Returns a Promise that resolves in the next microtask.
- * Passing fn chains it onto the shared resolved promise — cheaper than
- * constructing a new Promise + queueMicrotask pair.
- *
- * @param fn - Optional function to execute
- * @returns A Promise that resolves after the function execution
+ * @param fn - Optional function to execute.
+ * @returns A Promise that resolves after the function execution.
  */
 export function nextTick(fn?: () => void): Promise<void> {
   return fn ? p.then(fn) : p;
 }
 
 /**
- * Adds a job to the main queue and ensures it will be executed
+ * Adds a job to the main queue and ensures it will be executed.
  *
- * Jobs are automatically deduplicated - the same job reference won't be added multiple times.
- * This is useful for batching updates and avoiding redundant work.
- * @param job - The job to enqueue
+ * @param job - The job to enqueue.
  */
 export function queueJob(job: Job): void {
   queue.add(job); // Set automatically deduplicates
@@ -60,9 +54,9 @@ export function queueJob(job: Job): void {
 }
 
 /**
- * Schedules a queue flush in the next microtask if one hasn't been scheduled yet
+ * Schedules a queue flush in the next microtask if one hasn't been scheduled yet.
  *
- * @internal
+ * @returns {void}
  */
 function queueFlush(): void {
   if (!isFlushPending) {
@@ -72,11 +66,9 @@ function queueFlush(): void {
 }
 
 /**
- * Adds a callback to be executed before the main queue processing
+ * Adds a callback to be executed before the main queue processing.
  *
- * Pre-flush callbacks are useful for setup work that needs to run before effects,
- * such as computing derived values or preparing state.
- * @param cb - The callback to execute before the main queue
+ * @param cb - The callback to execute before the main queue.
  */
 export function queuePreFlushCb(cb: PreFlushCallback): void {
   activePreFlushCbs.add(cb); // Set automatically deduplicates
@@ -84,25 +76,9 @@ export function queuePreFlushCb(cb: PreFlushCallback): void {
 }
 
 /**
- * Executes all enqueued jobs and pre-flush callbacks
+ * Executes all enqueued jobs and pre-flush callbacks.
  *
- * This function runs in a microtask and processes the entire queue.
- * Jobs are executed in order, with error handling to prevent one failing job from blocking others.
- *
- * ## Cleanup Process
- *
- * 1. Reset flush pending flag
- * 2. Execute pre-flush callbacks and clear their queue
- * 3. Execute main jobs and clear their queue
- * 4. Handle jobs queued during flush
- *
- * ## Memory Management
- *
- * - Jobs queued during flush are executed in the same cycle
- * - Error handling prevents one failing job from blocking others
- * - All temporary state is cleared after execution
- *
- * @internal
+ * @returns {void}
  */
 export function flushJobs(): void {
   isFlushPending = false;
@@ -129,18 +105,9 @@ export function flushJobs(): void {
 }
 
 /**
- * Executes all pre-flush callbacks
+ * Executes all pre-flush callbacks.
  *
- * Pre-flush callbacks are executed before the main job queue.
- * This is useful for setup work that needs to run before effects.
- *
- * ## Cleanup Process
- *
- * 1. Copy callbacks to array
- * 2. Clear the callback queue immediately
- * 3. Execute all callbacks with error handling
- *
- * @internal
+ * @returns {void}
  */
 function flushPreFlushCbs(): void {
   // Convert Set to array and clear the Set immediately
@@ -161,15 +128,11 @@ function flushPreFlushCbs(): void {
 }
 
 /**
- * Creates a scheduler function for an effect based on the specified flush timing
+ * Creates a scheduler function for an effect based on the specified flush timing.
  *
- * This is used internally by the effect system to control when effects execute:
- * - 'sync': Immediate execution (blocking)
- * - 'pre': Before main queue (setup phase)
- * - 'post': After main queue (cleanup/side effects)
- * @param effect - The effect function to schedule
- * @param flush - When to execute the effect
- * @returns A scheduler function that will run the effect at the appropriate time
+ * @param effect - The effect function to schedule.
+ * @param flush - When to execute the effect ('pre', 'post', or 'sync').
+ * @returns A scheduler function that will run the effect at the appropriate time.
  */
 export function createScheduler(
   effect: () => void,

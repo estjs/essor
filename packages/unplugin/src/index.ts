@@ -154,7 +154,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
      */
     transform(code, id) {
       // Skip node_modules, dist, and public directories
-      if (SKIP_DIRECTORIES.some(p => id.includes(p))) {
+      if (SKIP_DIRECTORIES.some((p) => id.includes(p))) {
         return;
       }
 

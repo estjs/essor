@@ -14,7 +14,7 @@ function getContentHTML(element: HTMLElement): string {
   while (walker.nextNode()) {
     comments.push(walker.currentNode as Comment);
   }
-  comments.forEach(c => c.remove());
+  comments.forEach((c) => c.remove());
   return clone.innerHTML;
 }
 
@@ -38,7 +38,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: items,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -57,7 +57,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: () => list.value,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -108,7 +108,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -144,7 +144,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -168,7 +168,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -203,7 +203,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -235,7 +235,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -266,7 +266,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -299,7 +299,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -329,7 +329,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           trackedNodes.set(item, el);
@@ -363,7 +363,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item.id;
           return el;
@@ -387,7 +387,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -409,7 +409,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;
@@ -434,7 +434,7 @@ describe('for Component', () => {
     const scope = mount(() => {
       return For({
         each: list,
-        children: item => {
+        children: (item) => {
           const el = document.createElement('div');
           el.textContent = item;
           return el;

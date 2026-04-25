@@ -131,14 +131,14 @@ describe('component', () => {
   });
 
   // TODO: need support async component
-  describe.skip('asynchronous component mounting', () => {
+  describe.todo('asynchronous component mounting', () => {
     it('triggers mounted lifecycle hook for async component', async () => {
       const root = createTestRoot();
       const mountedHook = vi.fn();
 
       const TestComp = async () => {
         onMount(mountedHook);
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return document.createElement('div');
       };
       // @ts-ignore
@@ -151,7 +151,7 @@ describe('component', () => {
     it('handles async component errors', async () => {
       const root = createTestRoot();
       const TestComp = async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         throw new Error('Async error');
       };
       // @ts-ignore
@@ -162,7 +162,7 @@ describe('component', () => {
     it('cancels outdated mount when destroyed during async mount', async () => {
       const root = createTestRoot();
       let resolveFn: (value: Node) => void;
-      const promise = new Promise<Node>(resolve => {
+      const promise = new Promise<Node>((resolve) => {
         resolveFn = resolve;
       });
 
@@ -380,7 +380,7 @@ describe('component', () => {
     it('handles async updated lifecycle hook from inherited context', async () => {
       const root = createTestRoot();
       const updatedHook = vi.fn(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       });
 
       const TestComp = (props: any) => {
@@ -405,7 +405,7 @@ describe('component', () => {
   describe('forceUpdate functionality', () => {
     // TODO: forceUpdate requires endAnchor to be set, which is not implemented in mount()
     // This is a pre-existing implementation issue unrelated to the scope system changes
-    it.skip('force updates component successfully', async () => {
+    it.todo('force updates component successfully', async () => {
       const root = createTestRoot();
       let renderCount = 0;
 
@@ -445,13 +445,13 @@ describe('component', () => {
     });
 
     // TODO:  not support  async component
-    it.skip('handles forceUpdate with async component', async () => {
+    it.todo('handles forceUpdate with async component', async () => {
       const root = createTestRoot();
       let renderCount = 0;
 
       const TestComp = async () => {
         renderCount++;
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         const div = document.createElement('div');
         div.textContent = `Async Render ${renderCount}`;
         return div;
@@ -467,7 +467,7 @@ describe('component', () => {
 
     // TODO: forceUpdate requires endAnchor to be set, which is not implemented in mount()
     // This is a pre-existing implementation issue unrelated to the scope system changes
-    it.skip('handles forceUpdate with signal/computed', async () => {
+    it.todo('handles forceUpdate with signal/computed', async () => {
       const root = createTestRoot();
       let renderCount = 0;
 
@@ -537,7 +537,7 @@ describe('component', () => {
     });
 
     // TODO: not supported Promise
-    it.skip('handles concurrent forceUpdate calls correctly', async () => {
+    it.todo('handles concurrent forceUpdate calls correctly', async () => {
       const root = createTestRoot();
       let renderCount = 0;
       const resolvers: Array<() => void> = [];
@@ -545,7 +545,7 @@ describe('component', () => {
       const TestComp = async () => {
         const currentCount = ++renderCount;
         // Each render waits for a promise
-        await new Promise<void>(resolve => {
+        await new Promise<void>((resolve) => {
           resolvers.push(resolve);
         });
         const div = document.createElement('div');
@@ -557,7 +557,7 @@ describe('component', () => {
 
       // Mount and resolve the initial render
       const mountPromise = instance.mount(root);
-      await new Promise(resolve => setTimeout(resolve, 0)); // Let mount start
+      await new Promise((resolve) => setTimeout(resolve, 0)); // Let mount start
       resolvers[0](); // Resolve initial mount
       await mountPromise;
 
@@ -565,18 +565,18 @@ describe('component', () => {
 
       // Start multiple concurrent updates
       const update1 = instance.forceUpdate();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const update2 = instance.forceUpdate();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const update3 = instance.forceUpdate();
-      await new Promise(resolve => setTimeout(resolve, 0));
+      await new Promise((resolve) => setTimeout(resolve, 0));
 
       // Now we have resolvers[1], [2], [3] for the three updates
       // Resolve them in reverse order - only the last one (update3) should apply
       if (resolvers[3]) resolvers[3](); // update3's render
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       if (resolvers[2]) resolvers[2](); // update2's render (should be ignored)
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
       if (resolvers[1]) resolvers[1](); // update1's render (should be ignored)
 
       await Promise.all([update1, update2, update3]);
@@ -709,7 +709,7 @@ describe('component', () => {
     it('handles async mounted hook', async () => {
       const root = createTestRoot();
       const mountedHook = vi.fn(async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
       });
 
       const TestComp = () => {

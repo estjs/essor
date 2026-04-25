@@ -133,38 +133,34 @@ export class EffectImpl<T = any> implements ReactiveNode {
   subLinkTail?: Link;
   flag: ReactiveFlags = ReactiveFlags.WATCHING | ReactiveFlags.DIRTY;
 
-  // @ts-ignore: used internally by isEffect typeguard
+  // @ts-ignore
   private readonly [SignalFlags.IS_EFFECT] = true as const;
 
-  // Core properties
+  //  Core properties
   readonly fn: EffectFunction<T>;
-  private _flushScheduler?: (effect?) => void | Promise<void>;
+  readonly options?: EffectOptions;
+  private _flushScheduler?: () => void | Promise<void>;
 
-  // State management
-  _active = true;
+  //  State management
+  private _active = true;
 
-  onTrack?: (event: DebuggerEvent) => void;
-  onTrigger?: (event: DebuggerEvent) => void;
-  onStop?: () => void;
   /**
-   * Create an Effect instance
+   * Create an Effect instance.
    *
-   * @param fn - The effect function
-   * @param options - Configuration options
+   * @param fn - The effect function.
+   * @param options - Configuration options.
    */
   constructor(fn: EffectFunction<T>, options?: EffectOptions) {
     this.fn = fn;
 
     if (options) {
+      this.options = options;
       // Use flush as an alias for scheduler if provided
-      const scheduler = options.scheduler ?? options.flush;
-      if (scheduler) {
-        this._flushScheduler = isFunction(scheduler)
-          ? () => scheduler(this)
-          : createScheduler(() => this.run(), scheduler);
-      }
+      const scheduler = options.flush || options.scheduler;
 
-      if (options.onStop) this.onStop = options.onStop;
+      if (scheduler && !isFunction(scheduler)) {
+        this._flushScheduler = createScheduler(() => this.run(), scheduler);
+      }
 
       // For development debugging hooks, we assign them directly to the instance
       // if provided, so the link.ts checking logic can find them without an extra optional chain.
@@ -176,14 +172,18 @@ export class EffectImpl<T = any> implements ReactiveNode {
   }
 
   /**
-   * Check if the Effect is active
+   * Check if the Effect is active.
+   *
+   * @returns {boolean} True if the effect is active.
    */
   get active(): boolean {
     return this._active;
   }
 
   /**
-   * Check if the Effect is dirty (needs re-execution)
+   * Check if the Effect is dirty (needs re-execution).
+   *
+   * @returns {boolean} True if the effect is dirty.
    */
   get dirty(): boolean {
     const flags = this.flag;
@@ -208,58 +208,40 @@ export class EffectImpl<T = any> implements ReactiveNode {
   }
 
   /**
-   * Pause Effect execution
+   * Pause Effect execution.
    *
    * When an effect is paused:
-   * - It stops responding to dependency changes
-   * - Notifications are ignored (see notify method)
-   * - DIRTY and PENDING flags are still set when dependencies change
-   * - The effect remains active and maintains its dependency links
+   * - It stops responding to dependency changes.
+   * - Notifications are ignored (see notify method).
+   * - DIRTY and PENDING flags are still set when dependencies change.
+   * - The effect remains active and maintains its dependency links.
    *
    * Use cases:
-   * - Temporarily disable effects during bulk updates
-   * - Prevent effects from running during initialization
-   * - Control when side effects should execute
+   * - Temporarily disable effects during bulk updates.
+   * - Prevent effects from running during initialization.
+   * - Control when side effects should execute.
    *
-   * @example
-   * ```typescript
-   * const count = signal(0);
-   * const runner = effect(() => console.log(count.value));
-   *
-   * runner.effect.pause();
-   * count.value = 1; // Effect won't run
-   * count.value = 2; // Effect won't run
-   * runner.effect.resume(); // Effect runs once with latest value
-   * ```
+   * @returns {void}
    */
   pause(): void {
     this.flag |= EffectFlags.PAUSED;
   }
 
   /**
-   * Resume Effect execution
+   * Resume Effect execution.
    *
    * When an effect is resumed:
-   * - The PAUSED flag is cleared
+   * - The PAUSED flag is cleared.
    * - If dependencies changed during pause (DIRTY or PENDING flags set),
-   *   the effect executes immediately via notify()
-   * - If no changes occurred, the effect simply becomes active again
+   *   the effect executes immediately via notify().
+   * - If no changes occurred, the effect simply becomes active again.
    *
    * State management:
-   * - Clears PAUSED flag atomically
-   * - Checks for accumulated DIRTY/PENDING flags
-   * - Triggers execution if needed
+   * - Clears PAUSED flag atomically.
+   * - Checks for accumulated DIRTY/PENDING flags.
+   * - Triggers execution if needed.
    *
-   * @example
-   * ```typescript
-   * const count = signal(0);
-   * const runner = effect(() => console.log(count.value));
-   *
-   * runner.effect.pause();
-   * count.value = 1; // Queued
-   * count.value = 2; // Queued
-   * runner.effect.resume(); // Executes once with count.value = 2
-   * ```
+   * @returns {void}
    */
   resume(): void {
     const flags = this.flag;
@@ -277,7 +259,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
   }
 
   /**
-   * Execute the Effect function
+   * Execute the Effect function.
    *
    * Core execution flow:
    * 1. Check if active
@@ -285,8 +267,8 @@ export class EffectImpl<T = any> implements ReactiveNode {
    * 3. Start tracking dependencies
    * 4. Execute user function
    * 5. End tracking, clean up stale dependencies
-
-   * @returns The return value of the effect function
+   *
+   * @returns {T} The return value of the effect function.
    */
   run(): T {
     // Already stopped, execute without tracking
@@ -321,7 +303,9 @@ export class EffectImpl<T = any> implements ReactiveNode {
   private _job?: () => void;
 
   /**
-   * Get or create the job function for this effect
+   * Get or create the job function for this effect.
+   *
+   * @returns {() => void} The job function.
    */
   private getJob(): () => void {
     if (!this._job) {
@@ -331,10 +315,12 @@ export class EffectImpl<T = any> implements ReactiveNode {
   }
 
   /**
-   * Notify that the Effect needs to execute
+   * Notify that the Effect needs to execute.
    *
    * Called by dependent reactive values.
    * Decides whether to execute immediately or defer based on scheduling strategy.
+   *
+   * @returns {void}
    */
   notify(): void {
     // Cache flags for efficient checking
@@ -349,16 +335,22 @@ export class EffectImpl<T = any> implements ReactiveNode {
     this.flag = flags | ReactiveFlags.DIRTY;
 
     // Trigger callback
-    if (__DEV__ && this?.onTrigger) {
-      this.onTrigger({
+    if (__DEV__ && this.options?.onTrigger) {
+      this.options.onTrigger({
         effect: this,
         target: {},
         type: 'set',
       });
     }
 
-    if (this._flushScheduler) {
-      this._flushScheduler?.();
+    // Use scheduler or decide execution method based on batch state
+    const scheduler = this.options?.flush || this.options?.scheduler;
+    if (scheduler) {
+      if (isFunction(scheduler)) {
+        scheduler(this);
+      } else {
+        this._flushScheduler?.();
+      }
     } else if (isBatching()) {
       // When in batch, queue for execution
       queueJob(this.getJob());
@@ -369,14 +361,16 @@ export class EffectImpl<T = any> implements ReactiveNode {
   }
 
   /**
-   * Stop the Effect
+   * Stop the Effect.
    *
    * After stopping:
-   * - No longer responds to dependency changes
-   * - Disconnects all dependency links
-   * - Clears cached job function
-   * - Calls onStop callback
-   * - Verifies complete cleanup in development mode
+   * - No longer responds to dependency changes.
+   * - Disconnects all dependency links.
+   * - Clears cached job function.
+   * - Calls onStop callback.
+   * - Verifies complete cleanup in development mode.
+   *
+   * @returns {void}
    */
   stop(): void {
     if (!this._active) {
@@ -428,18 +422,18 @@ export class EffectImpl<T = any> implements ReactiveNode {
     }
 
     // Call stop callback
-    if (this?.onStop) {
-      this.onStop();
+    if (this.options?.onStop) {
+      this.options.onStop();
     }
   }
 }
 
 /**
- * Create and immediately execute an Effect
+ * Create and immediately execute an Effect.
  *
- * @param fn - The effect function
- * @param options - Configuration options
- * @returns Effect runner
+ * @param fn - The effect function.
+ * @param options - Configuration options.
+ * @returns {EffectRunner<T>} Effect runner.
  *
  * @example
  * ```typescript
@@ -487,7 +481,9 @@ export function effect<T = any>(fn: EffectFunction<T>, options?: EffectOptions):
     throw _error;
   }
 
-  // Create runner function
+  /**
+   * Runs the wrapped effect.
+   */
   const runner: any = () => effectInstance.run();
   runner.effect = effectInstance;
   runner.stop = () => effectInstance.stop();
@@ -496,19 +492,20 @@ export function effect<T = any>(fn: EffectFunction<T>, options?: EffectOptions):
 }
 
 /**
- * Stop Effect execution
+ * Stop Effect execution.
  *
- * @param runner - The effect runner
+ * @param runner - The effect runner to stop.
+ * @returns {void}
  */
 export function stop(runner: EffectRunner): void {
   runner.effect.stop();
 }
 
 /**
- * Type guard - Check if value is an Effect
+ * Type guard - Check if value is an Effect instance.
  *
- * @param value - The value to check
- * @returns true if value is an Effect
+ * @param value - The value to check.
+ * @returns {boolean} True if value is an Effect instance.
  */
 export function isEffect(value: any): value is EffectImpl {
   return !!(value && value[SignalFlags.IS_EFFECT]);
@@ -524,21 +521,15 @@ export function isEffect(value: any): value is EffectImpl {
 export type MemoEffectFn<T> = (prevState: T) => T;
 
 /**
- * Create a memoized Effect
+ * Create a memoized Effect.
  *
  * A memoized effect remembers the return value from the previous execution
  * and passes it as a parameter on the next execution.
  *
- * Use cases:
- * - Incremental DOM updates
- * - Avoiding duplicate operations
- * - State persistence
- * - Difference detection
- *
- * @param fn - The memoized function
- * @param initialState - Initial state
- * @param options - Configuration options
- * @returns Effect runner
+ * @param fn - The memoized function.
+ * @param initialState - Initial state.
+ * @param options - Configuration options.
+ * @returns {EffectRunner<void>} Effect runner.
  *
  * @example
  * ```typescript
@@ -564,6 +555,9 @@ export function memoEffect<T>(
 ): EffectRunner<void> {
   let currentState = initialState;
 
+  /**
+   * Executes the effect callback.
+   */
   const effectFn = () => {
     // Pass current state each time
     // fn may modify the passed object, so the return value is the update state

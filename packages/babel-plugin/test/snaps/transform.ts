@@ -55,7 +55,7 @@ export function getTransform(
     },
     visitor: transform,
   };
-  return code => {
+  return (code) => {
     const result = babel.transformSync(code, {
       filename: 'test.jsx',
       sourceType: 'module',

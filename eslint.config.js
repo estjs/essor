@@ -16,6 +16,9 @@ export default estjs(
     javascript: {
       'no-prototype-builtins': 'off',
     },
+    test: {
+      'vitest/no-conditional-expect': 'off',
+    },
     ignores: ['AGENTS.md'],
   },
   { unocss: false, node: false },

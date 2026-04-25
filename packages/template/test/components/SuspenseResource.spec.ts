@@ -23,7 +23,7 @@ describe('suspense with createResource', () => {
 
     let resolveResource: (val: string) => void;
     const fetcher = () =>
-      new Promise<string>(resolve => {
+      new Promise<string>((resolve) => {
         resolveResource = resolve;
       });
 
@@ -77,8 +77,8 @@ describe('suspense with createResource', () => {
     let resolve1: (val: string) => void;
     let resolve2: (val: string) => void;
 
-    const fetcher1 = () => new Promise<string>(r => (resolve1 = r));
-    const fetcher2 = () => new Promise<string>(r => (resolve2 = r));
+    const fetcher1 = () => new Promise<string>((r) => (resolve1 = r));
+    const fetcher2 = () => new Promise<string>((r) => (resolve2 = r));
 
     const Child = () => {
       const [data1] = createResource(fetcher1);

@@ -131,7 +131,7 @@ export function Suspense(props: SuspenseProps): AnyNode {
 
     const currentScope = getActiveScope();
     const childArray = isArray(children) ? children : [children];
-    childArray.forEach(child => {
+    childArray.forEach((child) => {
       if (child != null) {
         // Reparent component to current context to ensure it can access SuspenseContext
         // This is necessary because children are created in the parent scope
@@ -179,7 +179,7 @@ export function Suspense(props: SuspenseProps): AnyNode {
             showChildren();
           }
         })
-        .catch(error => {
+        .catch((error) => {
           if (__DEV__) {
             warn('[Suspense] Resource failed:', error);
           }
@@ -211,7 +211,7 @@ export function Suspense(props: SuspenseProps): AnyNode {
   if (isPromise(children)) {
     // Async children - show fallback immediately, then resolve
     children
-      .then(resolved => {
+      .then((resolved) => {
         resolvedChildren = resolved;
       })
       .catch(() => {

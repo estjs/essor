@@ -76,7 +76,7 @@ export function createImport(
   }
   try {
     // Create import specifiers
-    const importSpecifiers = Array.from(importedSets).map(name => {
+    const importSpecifiers = Array.from(importedSets).map((name) => {
       const importIdentifier = imports[name];
       if (!importIdentifier) {
         throw new Error(`Import identifier not found for: ${name}`);

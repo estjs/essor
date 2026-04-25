@@ -337,7 +337,7 @@ function isAlreadyValueAccess(path: NodePath<t.Identifier>): boolean {
 
   // Traverse ancestors for nested member expressions such as ($count).value
   // Only needed for rare cases with parentheses or type assertions
-  const ancestorCheck = path.findParent(p => {
+  const ancestorCheck = path.findParent((p) => {
     if (!p.isMemberExpression()) {
       return false;
     }

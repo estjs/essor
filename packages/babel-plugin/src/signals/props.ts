@@ -169,7 +169,7 @@ function buildRestVariableDeclaration(
 
   // Build the source object expression from parentPath
   // e.g., '__props.' -> __props, '__props.user.' -> __props.user
-  const pathParts = parentPath.split('.').filter(part => part.length > 0);
+  const pathParts = parentPath.split('.').filter((part) => part.length > 0);
   let sourceObject: t.Expression = t.identifier(pathParts[0] || '__props');
 
   for (let i = 1; i < pathParts.length; i++) {
@@ -183,7 +183,7 @@ function buildRestVariableDeclaration(
     // Create: omit(sourceObject, ['name', 'age'])
     init = t.callExpression(state.imports.omitProps, [
       sourceObject,
-      t.arrayExpression(validExcludeProps.map(name => t.stringLiteral(name))),
+      t.arrayExpression(validExcludeProps.map((name) => t.stringLiteral(name))),
     ]);
   }
 
@@ -355,21 +355,23 @@ export function transformProps(
 
   const signalPrefix = state.opts.symbol || '$';
 
-  const notRestProperties = properties.filter(prop => !t.isRestElement(prop)) as ObjectProperty[];
+  const notRestProperties = properties.filter((prop) => !t.isRestElement(prop)) as ObjectProperty[];
 
   // one object just have one rest
-  const restProperties = properties.find(prop => t.isRestElement(prop)) as RestElement | undefined;
+  const restProperties = properties.find((prop) => t.isRestElement(prop)) as
+    | RestElement
+    | undefined;
   const notRestNames = notRestProperties
-    .map(prop => (t.isIdentifier(prop.key) ? prop.key.name : null))
+    .map((prop) => (t.isIdentifier(prop.key) ? prop.key.name : null))
     .filter((name): name is string => name !== null);
 
   if (__DEV__) {
     // if the property names start with the signal prefix,
-    if (notRestNames.some(name => startsWith(name, signalPrefix))) {
+    if (notRestNames.some((name) => startsWith(name, signalPrefix))) {
       warn(
         'transformProps',
         'Property names cannot start with signal prefix',
-        notRestNames.filter(name => startsWith(name, signalPrefix)),
+        notRestNames.filter((name) => startsWith(name, signalPrefix)),
       );
     }
   }

@@ -34,7 +34,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
         warn('spread attribute must be an object');
       }
     }
-    Object.keys(next as Record<string, unknown>).forEach(k => {
+    Object.keys(next as Record<string, unknown>).forEach((k) => {
       patchAttr(el, k, prev?.[k], next?.[k]);
     });
     return;

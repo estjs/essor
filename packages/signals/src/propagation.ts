@@ -10,38 +10,30 @@ export interface Effect extends ReactiveNode {
 }
 
 /**
- * Enqueue an Effect for execution
+ * Enqueue an Effect for execution.
  *
- * Calls effect.notify() which decides whether to run synchronously or defer.
- *
- * @param effect - The Effect to enqueue
+ * @param effect - The Effect to enqueue.
+ * @returns {void}
  */
 export function enqueueEffect(effect: Effect): void {
   effect?.notify?.();
 }
 
 /**
- * Clear propagation flags (PENDING, RECURSED, RECURSED_CHECK) from a node
+ * Clear propagation flags (PENDING, RECURSED, RECURSED_CHECK) from a node.
  *
- * Used by tests and internal cleanup to reset propagation state.
- *
- * @param node - The reactive node to clear flags on
+ * @param node - The reactive node to clear flags on.
+ * @returns {void}
  */
 export function clearPropagationFlags(node: ReactiveNode): void {
   node.flag &= ~(ReactiveFlags.PENDING | ReactiveFlags.RECURSED | ReactiveFlags.RECURSED_CHECK);
 }
 
 /**
- * Propagate changes through the reactive graph
+ * Propagate changes through the reactive graph.
  *
- * Traverses subscriber graph marking nodes PENDING/DIRTY.
- * For WATCHING nodes (Effects), calls enqueueEffect.
- * For MUTABLE nodes (Computed), descends into their subscribers.
- *
- * Follows the alien-signals propagate algorithm: a stack is used to track
- * the "next sibling at the current level" so backtracking works correctly.
- *
- * @param link - Starting Link of the subscriber chain
+ * @param link - Starting Link of the subscriber chain.
+ * @returns {void}
  */
 export function propagate(link: Link): void {
   let next: Link | undefined = link.nextSubLink;
@@ -123,24 +115,10 @@ export function propagate(link: Link): void {
 }
 
 /**
- * Shallow propagate from a Computed value to its direct subscribers
+ * Shallow propagate from a Computed value to its direct subscribers.
  *
- * Implements alien-signals' shallowPropagate semantics:
- * Only processes subscribers that are PENDING but NOT yet DIRTY.
- *
- * This guards against double-notification:
- * - propagate() marks effects PENDING and immediately calls enqueueEffect→notify().
- *   notify() sets DIRTY on the effect (our EffectImpl.notify does this).
- * - When shallowPropagate is later called from checkDirty (which runs inside the
- *   already-enqueued effect's fn()), the effect has DIRTY set → skipped by the guard.
- *   No double execution.
- * - If the effect is only PENDING (not yet run, e.g., in a multi-subscriber scenario
- *   where shallowPropagate fires before propagate reaches the effect naturally), it
- *   upgrades PENDING→DIRTY and calls enqueueEffect.
- * - If the effect is RECURSED_CHECK (currently executing via startTracking), it still
- *   gets upgraded to DIRTY but notify() is not called — the next run will recheck.
- *
- * @param link - Starting Link of the subscriber chain
+ * @param link - Starting Link of the subscriber chain.
+ * @returns {void}
  */
 export function shallowPropagate(link: Link | undefined): void {
   while (link) {

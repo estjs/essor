@@ -722,7 +722,7 @@ describe('signals/symbol', () => {
         '||=',
         '??=',
       ];
-      operators.forEach(op => {
+      operators.forEach((op) => {
         const code = `$count ${op} 1;`;
         const output = runTransform(code, {
           AssignmentExpression(path) {

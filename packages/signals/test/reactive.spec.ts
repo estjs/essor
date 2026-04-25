@@ -228,6 +228,63 @@ describe('reactive - nested objects and arrays', () => {
     expect(state[0]).toBe(2);
   });
 
+  it('should support includes/indexOf/lastIndexOf with reactive elements', () => {
+    const raw = { id: 1 };
+    const state = reactive([raw]);
+
+    const proxy = state[0];
+
+    expect(state.includes(proxy)).toBe(true);
+    expect(state.indexOf(proxy)).toBe(0);
+    expect(state.lastIndexOf(proxy)).toBe(0);
+
+    expect(state.includes(raw)).toBe(true);
+  });
+
+  it('should return reactive elements from find in deep reactive arrays', () => {
+    const state = reactive([
+      { id: 1, label: 'a' },
+      { id: 2, label: 'b' },
+      { id: 3, label: 'c' },
+    ]);
+
+    const found = computed(() => state.find((item) => item.id === 2));
+    const value = found.value!;
+
+    expect(value.label).toBe('b');
+    expect(isReactive(value)).toBe(true);
+
+    state[1].label = 'bb';
+    expect(value.label).toBe('bb');
+  });
+
+  // Node 20+
+  // @ts-expect-error tests are not limited to es2016
+  it.skipIf(!Array.prototype.findLast)(
+    'should return reactive elements from findLast in deep reactive arrays',
+    () => {
+      const state = reactive([
+        { id: 1, label: 'a' },
+        { id: 2, label: 'b' },
+        { id: 3, label: 'c' },
+      ]);
+
+      const found = computed(() => state.findLast((item: any) => item.id > 1));
+      const value = found.value!;
+
+      expect(value.id).toBe(3);
+      expect(isReactive(value)).toBe(true);
+    },
+  );
+
+  it('should return raw elements from find in shallow reactive arrays', () => {
+    const state = shallowReactive([{ id: 1 }, { id: 2 }]);
+    const found = state.find((item) => item.id === 2);
+
+    expect(found?.id).toBe(2);
+    expect(isReactive(found)).toBe(false);
+  });
+
   // Reactivity with nested arrays of objects
   it('should work with nested arrays of objects', () => {
     const state = reactive<any>({
@@ -246,7 +303,6 @@ describe('reactive - nested objects and arrays', () => {
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toReversed)('toReversed should return reactive array', () => {
     const array = reactive([1, { val: 2 }]);
-    // @ts-ignore
     const result = computed(() => array.toReversed());
     expect(result.value).toStrictEqual([{ val: 2 }, 1]);
     expect(isReactive(result.value[0])).toBe(true);
@@ -264,32 +320,29 @@ describe('reactive - nested objects and arrays', () => {
 
     const shallow = shallowReactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
     let result;
-    // @ts-ignore
     result = computed(() => shallow.toSorted((a, b) => a.val - b.val));
-    expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
 
     shallow[0].val = 4;
-    expect(result.value.map(x => x.val)).toStrictEqual([1, 4, 3]);
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 4, 3]);
 
     shallow.pop();
-    expect(result.value.map(x => x.val)).toStrictEqual([1, 4]);
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 4]);
 
     const deep = reactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
-    // @ts-ignore
     result = computed(() => deep.toSorted((a, b) => a.val - b.val));
-    expect(result.value.map(x => x.val)).toStrictEqual([1, 2, 3]);
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
 
     deep[0].val = 4;
-    expect(result.value.map(x => x.val)).toStrictEqual([1, 4, 3]);
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 4, 3]);
   });
 
   // Node 20+
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toSpliced)('toSpliced should return reactive array', () => {
     const array = reactive([1, 2, 3]);
-    // @ts-ignore
     const result = computed(() => array.toSpliced(1, 1, -2));
     expect(result.value).toStrictEqual([1, -2, 3]);
 
@@ -638,6 +691,60 @@ describe('reactive Arrays with Effects', () => {
     expect(effectFn).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('reactive Arrays - element identity after non-mutating methods', () => {
+  // Regression: slice/concat/filter/map/flatMap/flat must preserve reactive
+  // item identity. Previously they applied on the raw array, silently
+  // returning non-reactive items and breaking downstream mutation tracking.
+  it('slice returns an array whose object items are still reactive proxies', () => {
+    const items = [{ n: 1 }, { n: 2 }];
+    const state = reactive(items);
+    const sliced = state.slice();
+
+    expect(sliced).toHaveLength(2);
+    expect(isReactive(sliced[0])).toBe(true);
+    expect(isReactive(sliced[1])).toBe(true);
+  });
+
+  it('mutating an item obtained via slice triggers effects subscribed to that item', () => {
+    const state = reactive([{ label: 'a' }, { label: 'b' }]);
+    const spy = vi.fn(() => state[0].label);
+    effect(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    const sliced = state.slice();
+    sliced[0].label = 'A';
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(state[0].label).toBe('A');
+  });
+
+  it('filter preserves reactive item identity', () => {
+    const state = reactive([{ id: 1 }, { id: 2 }, { id: 3 }]);
+    const filtered = state.filter((item) => item.id > 1);
+
+    expect(filtered).toHaveLength(2);
+    expect(isReactive(filtered[0])).toBe(true);
+    expect(toRaw(filtered[0])).toBe(toRaw(state[1]));
+  });
+
+  it('map yields reactive items to its callback', () => {
+    const state = reactive([{ n: 1 }, { n: 2 }]);
+    const seen: boolean[] = [];
+    state.map((item) => seen.push(isReactive(item)));
+
+    expect(seen).toEqual([true, true]);
+  });
+
+  it('concat yields reactive items for elements from the source array', () => {
+    const state = reactive([{ n: 1 }]);
+    const result = state.concat([{ n: 2 }]);
+
+    expect(isReactive(result[0])).toBe(true);
+    // The appended element is freshly supplied by the caller and is not
+    // auto-wrapped — that matches native concat semantics.
+  });
+});
 describe('reactive Set with Effects', () => {
   let state: Set<number>;
   let effectFn;
@@ -656,6 +763,15 @@ describe('reactive Set with Effects', () => {
     state.add(4);
     expect(state.has(4)).toBe(true);
     expect(effectFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('should not trigger effect when adding an existing Set value', () => {
+    expect(effectFn).toHaveBeenCalledTimes(1);
+
+    state.add(2);
+
+    expect(state.has(2)).toBe(true);
+    expect(effectFn).toHaveBeenCalledTimes(1);
   });
 
   it('should handle delete and trigger effect', () => {
@@ -682,7 +798,7 @@ describe('reactive Set with Effects', () => {
     expect(sum).toBe(6);
     expect(effectFn).toHaveBeenCalledTimes(1);
 
-    state.add(2);
+    state.add(4);
 
     expect(sum).toBe(6);
     expect(effectFn).toHaveBeenCalledTimes(2);
@@ -821,6 +937,19 @@ describe('reactive Map with Effects', () => {
     expect(size).toBe(3);
     expect(effectFn).toHaveBeenCalledTimes(1); // size shouldn't trigger effect
   });
+
+  it('should wrap object keys and values when iterating Map entries', () => {
+    const rawKey = { id: 1 };
+    const rawValue = { label: 'entry' };
+    const map = reactive(new Map([[rawKey, rawValue]]));
+    const [[entryKey, entryValue]] = Array.from(map.entries());
+
+    expect(isReactive(entryKey)).toBe(true);
+    expect(isReactive(entryValue)).toBe(true);
+
+    entryValue.label = 'updated';
+    expect(rawValue.label).toBe('updated');
+  });
 });
 describe('reactive WeakSet with Effects', () => {
   let state: WeakSet<object>;
@@ -859,6 +988,21 @@ describe('reactive WeakSet with Effects', () => {
     const hasValue = state.has(obj2);
     expect(hasValue).toBe(true);
     expect(effectFn).toHaveBeenCalledTimes(1); // has shouldn't trigger effect
+  });
+
+  it('should normalize reactive keys for WeakMap lookups and deletes', () => {
+    const rawKey = {};
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new WeakMap<object, { count: number }>([[rawKey, { count: 1 }]]));
+
+    const value = map.get(proxyKey);
+
+    expect(value).toBeDefined();
+    expect(isReactive(value)).toBe(true);
+    expect(value?.count).toBe(1);
+    expect(map.has(proxyKey)).toBe(true);
+    expect(map.delete(proxyKey)).toBe(true);
+    expect(map.has(rawKey)).toBe(false);
   });
 });
 describe('reactive WeakMap with Effects', () => {
@@ -1244,12 +1388,11 @@ describe('reactive - edge cases', () => {
     });
 
     it('should handle frozen objects', () => {
-      const frozen = Object.freeze({ value: 1 });
-      const state = reactive<Record<string, unknown>>({ frozen });
+      const frozen: Readonly<{ value: number }> = Object.freeze({ value: 1 });
+      const state = reactive({ frozen });
 
       // The frozen object itself cannot be modified
       expect(() => {
-        // @ts-ignore
         state.frozen.value = 2;
       }).toThrow();
 
@@ -1272,7 +1415,6 @@ describe('reactive - edge cases', () => {
 
       // Cannot add new properties
       expect(() => {
-        // @ts-ignore
         state.sealed.newProp = 3;
       }).toThrow();
     });
@@ -1326,8 +1468,8 @@ describe('reactive - edge cases', () => {
     });
 
     it('should handle empty objects and arrays', () => {
-      const emptyObj = reactive<Record<string, unknown>>({});
-      const emptyArr = reactive<unknown[]>([]);
+      const emptyObj = reactive({});
+      const emptyArr = reactive<number[]>([]);
 
       expect(isReactive(emptyObj)).toBe(true);
       expect(isReactive(emptyArr)).toBe(true);
@@ -1349,7 +1491,7 @@ describe('reactive - edge cases', () => {
         configurable: true,
       });
 
-      const state = reactive<Record<string, unknown>>(obj);
+      const state = reactive(obj);
 
       expect(state.hidden).toBe('secret');
 

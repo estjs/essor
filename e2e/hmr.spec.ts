@@ -159,7 +159,7 @@ test.describe('HMR Example', () => {
     const counterSection = page.locator('.counter-component');
 
     // Verify border and padding are applied
-    const counterStyles = await counterSection.evaluate(el => {
+    const counterStyles = await counterSection.evaluate((el) => {
       const styles = window.getComputedStyle(el);
       return {
         border: styles.border,
@@ -174,7 +174,7 @@ test.describe('HMR Example', () => {
     // Check HelloWorld styling
     const helloWorldSection = page.locator('.hello-world-component');
 
-    const helloWorldStyles = await helloWorldSection.evaluate(el => {
+    const helloWorldStyles = await helloWorldSection.evaluate((el) => {
       const styles = window.getComputedStyle(el);
       return {
         background: styles.background,

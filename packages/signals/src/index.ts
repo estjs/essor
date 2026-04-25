@@ -4,7 +4,7 @@ export {
   isSignal,
   type Signal,
   type SignalValue,
-  SignalType,
+  type SignalType,
 } from './signal';
 
 export {

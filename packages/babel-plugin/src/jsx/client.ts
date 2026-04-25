@@ -11,7 +11,7 @@ import {
 import { types as t } from '@babel/core';
 import { addImport, importMap } from '../import';
 import {
-  BUILT_IN_COMPONENTS,
+  BUILTIN_COMPONENTS,
   CLASS_NAME,
   CREATE_COMPONENT_NAME,
   EVENT_ATTR_NAME,
@@ -100,7 +100,7 @@ export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode)
           nodesId,
           t.callExpression(state.imports.mapNodes, [
             elementId,
-            t.arrayExpression(indexMap.map(idx => t.numericLiteral(idx))),
+            t.arrayExpression(indexMap.map((idx) => t.numericLiteral(idx))),
           ]),
         ),
       ]),
@@ -180,7 +180,7 @@ function createComponentExpression(node: TreeNode, componentProps: Record<string
   addImport(importMap.createComponent);
 
   // Built-in components
-  const isBuiltIn = BUILT_IN_COMPONENTS.includes(node.tag!);
+  const isBuiltIn = BUILTIN_COMPONENTS.includes(node.tag!);
   if (isBuiltIn) {
     addImport(importMap[node.tag!]);
   }
@@ -943,7 +943,7 @@ function generateUnifiedMemoizedEffect(
   const effectFunction = t.arrowFunctionExpression([t.identifier('_p$')], effectBody);
 
   // Create initial state object
-  const initialStateProperties = reactiveOperations.map(op =>
+  const initialStateProperties = reactiveOperations.map((op) =>
     t.objectProperty(t.identifier(op.propKey), t.identifier('undefined')),
   );
   const initialState = t.objectExpression(initialStateProperties);
@@ -1139,7 +1139,7 @@ function generateDynamic(node: TreeNode) {
     }
 
     if (node.children && node.children.length) {
-      node.children.forEach(child => {
+      node.children.forEach((child) => {
         if (isTreeNode(child)) {
           walk(child as TreeNode, node);
         }

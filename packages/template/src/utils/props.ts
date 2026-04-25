@@ -19,7 +19,7 @@ export function omitProps<T extends object, K extends keyof T>(target: T, keys: 
 
     // Intercept property enumeration (for...in, Object.keys, etc.)
     ownKeys(obj) {
-      return Reflect.ownKeys(obj).filter(key => !excludeSet.has(key as K));
+      return Reflect.ownKeys(obj).filter((key) => !excludeSet.has(key as K));
     },
 
     // Intercept property descriptor retrieval

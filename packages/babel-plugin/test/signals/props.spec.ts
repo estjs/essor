@@ -142,35 +142,35 @@ describe('signals/props', () => {
   });
 
   // Computed properties are currently not supported and skipped (removed from signature)
-  // it('skips computed properties', () => {
-  //   const code = `
-  //     function Component({ [key]: value }) {
-  //       return <div>{value}</div>;
-  //     }
-  //   `;
-  //   const output = runTransform(code);
-  //   // Computed properties should remain in destructuring
-  //   expect(output).toContain(`function Component({`);
-  //   expect(output).toContain(`[key]: value`);
-  //   expect(output).toContain(`})`);
-  // });
+  it('skips computed properties', () => {
+    const code = `
+      function Component({ [key]: value }) {
+        return <div>{value}</div>;
+      }
+    `;
+    const output = runTransform(code);
+    // Computed properties should remain in destructuring
+    expect(output).toContain(`function Component({`);
+    expect(output).toContain(`[key]: value`);
+    expect(output).toContain(`})`);
+  });
 
   // Nested rest parameters are currently not supported
-  // it('transforms nested rest parameters', () => {
-  //   const code = `
-  //     function Component({ user: { name, ...userRest }, ...rest }) {
-  //       return <div {...rest} {...userRest}>{name}</div>;
-  //     }
-  //   `;
-  //   const output = runTransform(code);
-  //   expect(output).toContain(
-  //     `const userRest = omitProps(${TRANSFORM_PROPERTY_NAME}.user, ["name"]);`,
-  //   );
-  //   expect(output).toContain(`const rest = omitProps(${TRANSFORM_PROPERTY_NAME}, ["user"]);`);
-  //   expect(output).toContain(
-  //     `return <div {...rest} {...userRest}>{${TRANSFORM_PROPERTY_NAME}.user.name}</div>;`,
-  //   );
-  // });
+  it('transforms nested rest parameters', () => {
+    const code = `
+      function Component({ user: { name, ...userRest }, ...rest }) {
+        return <div {...rest} {...userRest}>{name}</div>;
+      }
+    `;
+    const output = runTransform(code);
+    expect(output).toContain(
+      `const userRest = omitProps(${TRANSFORM_PROPERTY_NAME}.user, ["name"]);`,
+    );
+    expect(output).toContain(`const rest = omitProps(${TRANSFORM_PROPERTY_NAME}, ["user"]);`);
+    expect(output).toContain(
+      `return <div {...rest} {...userRest}>{${TRANSFORM_PROPERTY_NAME}.user.name}</div>;`,
+    );
+  });
 
   it('warns about signal prefix in props', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});

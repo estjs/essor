@@ -72,7 +72,7 @@ function executeHooks(
     try {
       const result = hooks[i]();
       if (isPromise(result)) {
-        const safePromise = result.catch(error_ => {
+        const safePromise = result.catch((error_) => {
           if (__DEV__) {
             error(`Scope(${scopeId}): Async ${phase} hook rejected:`, error_);
           }
@@ -117,7 +117,7 @@ export function onMount(hook: LifecycleHook): void {
     try {
       const result = hook();
       if (isPromise(result)) {
-        result.catch(error_ => {
+        result.catch((error_) => {
           if (__DEV__) error(`Scope(${scope.id}): Async ${LIFECYCLE.mount} hook rejected:`, error_);
         });
       }

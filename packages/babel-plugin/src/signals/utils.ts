@@ -108,7 +108,7 @@ export function checkHasJSXReturn(
           returnPath.stop();
         }
       },
-      'FunctionDeclaration|FunctionExpression|ArrowFunctionExpression': nestedPath => {
+      'FunctionDeclaration|FunctionExpression|ArrowFunctionExpression': (nestedPath) => {
         nestedPath.skip();
       },
     });

@@ -27,7 +27,7 @@ export function createImportIdentifier(path: babel.NodePath, importName: string)
     ImportDeclaration(importPath) {
       if (importPath.node.source.value === source) {
         const specifier = importPath.node.specifiers.find(
-          spec =>
+          (spec) =>
             t.isImportSpecifier(spec) &&
             t.isIdentifier(spec.imported) &&
             spec.imported.name === importName,
@@ -111,7 +111,7 @@ export const transformProgram = {
     // const mode = (opts?.mode || RENDER_MODE.CLIENT) as RENDER_MODE;
 
     // Find optimal insertion point after imports but before other code
-    const insertIndex = path.node.body.findIndex(node => !t.isImportDeclaration(node));
+    const insertIndex = path.node.body.findIndex((node) => !t.isImportDeclaration(node));
 
     // Insert template declarations for reactive components
     if (declarations?.length) {
@@ -129,7 +129,7 @@ export const transformProgram = {
     if (events && events.size > 0) {
       const eventsDeclaration = t.expressionStatement(
         t.callExpression(imports.delegateEvents, [
-          t.arrayExpression(Array.from(events).map(event => t.stringLiteral(event))),
+          t.arrayExpression(Array.from(events).map((event) => t.stringLiteral(event))),
         ]),
       );
       addImport(importMap.delegateEvents);

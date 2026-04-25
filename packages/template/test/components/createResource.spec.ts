@@ -37,7 +37,7 @@ describe('createResource', () => {
         expect(resource.state.value).toBe('pending');
 
         // Wait for promise to resolve
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('test data');
         expect(resource.loading.value).toBe(false);
@@ -64,7 +64,7 @@ describe('createResource', () => {
 
         expect(resource()).toBe('initial');
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('fetched data');
         expect(resource.loading.value).toBe(false);
@@ -157,7 +157,7 @@ describe('createResource', () => {
 
         expect(resource.loading.value).toBe(true);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource.loading.value).toBe(false);
       });
@@ -185,7 +185,7 @@ describe('createResource', () => {
 
         states.push(resource.state.value);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         states.push(resource.state.value);
 
@@ -200,7 +200,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve('original');
         const [resource, { mutate }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource()).toBe('original');
 
         mutate('mutated');
@@ -218,7 +218,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve(`data-${++counter}`);
         const [resource, { refetch }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource()).toBe('data-1');
 
         await refetch();
@@ -234,7 +234,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve('data');
         const [resource, { refetch }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource.loading.value).toBe(false);
 
         const refetchPromise = refetch();
@@ -253,7 +253,7 @@ describe('createResource', () => {
         const resolvers: Array<(value: string) => void> = [];
         const fetcher = () => {
           fetchCount++;
-          return new Promise<string>(resolve => {
+          return new Promise<string>((resolve) => {
             resolvers.push(resolve);
           });
         };
@@ -261,13 +261,13 @@ describe('createResource', () => {
         const [resource, { refetch }] = createResource(fetcher);
 
         // Wait a bit for initial fetch to start
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
 
         // Start second fetch before first completes
         const refetchPromise = refetch();
 
         // Wait a bit for refetch to start
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
 
         expect(resolvers.length).toBe(2);
 
@@ -279,7 +279,7 @@ describe('createResource', () => {
 
         // Resolve first fetch - should be ignored
         resolvers[0]('first');
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('second'); // Should still be 'second'
 
@@ -310,7 +310,7 @@ describe('createResource', () => {
         expect(resource.error.value).toBe(null);
 
         // Wait for first fetch to reject (it will be caught internally)
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
 
         // Error should still be null
         expect(resource()).toBe('success');

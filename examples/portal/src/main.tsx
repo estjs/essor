@@ -9,7 +9,11 @@ function App() {
         <Portal target="#portal-target">
           <div>
             <p>{value.value}</p>
-            <input type="text" value={value.value} oninput={e => (value.value = e.target.value)} />
+            <input
+              type="text"
+              value={value.value}
+              oninput={(e) => (value.value = e.target.value)}
+            />
           </div>
         </Portal>
       </div>

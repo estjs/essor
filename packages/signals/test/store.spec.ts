@@ -18,7 +18,7 @@ describe('store - Basic Functionality', () => {
       const useStore = createStore({
         state: { count: 0 },
         getters: {
-          doubleCount: state => state.count * 2,
+          doubleCount: (state) => state.count * 2,
         },
         actions: {
           increment() {
@@ -77,6 +77,19 @@ describe('store - Basic Functionality', () => {
       expect(store.user.name).toBe('John');
       expect(store.user.address.city).toBe('NYC');
     });
+
+    it('should keep top-level state properties in sync with the state object', () => {
+      const useStore = createStore({
+        state: { count: 0 },
+      });
+      const store = useStore();
+
+      store.count = 1;
+      expect(store.state.count).toBe(1);
+
+      store.state.count = 2;
+      expect(store.count).toBe(2);
+    });
   });
 
   describe('class-based Store', () => {
@@ -110,7 +123,7 @@ describe('store - Basic Functionality', () => {
       const useStore = createStore({
         state: { count: 0 },
         getters: {
-          doubled: state => state.count * 2,
+          doubled: (state) => state.count * 2,
         },
       });
       const store = useStore();
@@ -124,8 +137,8 @@ describe('store - Basic Functionality', () => {
       const useStore = createStore({
         state: { count: 10 },
         getters: {
-          doubled: state => state.count * 2,
-          tripled: state => state.count * 3,
+          doubled: (state) => state.count * 2,
+          tripled: (state) => state.count * 3,
         },
       });
       const store = useStore();
@@ -138,7 +151,7 @@ describe('store - Basic Functionality', () => {
       const useStore = createStore({
         state: { firstName: 'John', lastName: 'Doe' },
         getters: {
-          fullName: state => `${state.firstName} ${state.lastName}`,
+          fullName: (state) => `${state.firstName} ${state.lastName}`,
         },
       });
       const store = useStore();
@@ -146,6 +159,29 @@ describe('store - Basic Functionality', () => {
       expect(store.fullName).toBe('John Doe');
       store.state.firstName = 'Jane';
       expect(store.fullName).toBe('Jane Doe');
+    });
+
+    it('should cache getter computed instances across repeated reads', () => {
+      let getterRuns = 0;
+      const useStore = createStore({
+        state: { count: 2 },
+        getters: {
+          doubled: (state) => {
+            getterRuns += 1;
+            return state.count * 2;
+          },
+        },
+      });
+      const store = useStore();
+
+      expect(store.doubled).toBe(4);
+      expect(store.doubled).toBe(4);
+      expect(getterRuns).toBe(1);
+
+      store.state.count = 3;
+
+      expect(store.doubled).toBe(6);
+      expect(getterRuns).toBe(2);
     });
   });
 
@@ -208,7 +244,7 @@ describe('store - Basic Functionality', () => {
         state: { data: null as string | null },
         actions: {
           async fetchData() {
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await new Promise((resolve) => setTimeout(resolve, 10));
             this.data = 'fetched';
           },
         },
@@ -388,6 +424,25 @@ describe('store - Built-in Methods', () => {
       expect(subscribeCallback).toHaveBeenCalledTimes(1);
       expect(actionCallback).toHaveBeenCalledTimes(1);
     });
+
+    it('should allow removing action callbacks', () => {
+      const useStore = createStore({
+        state: { count: 0 },
+        actions: {
+          increment() {
+            this.count++;
+          },
+        },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+
+      store.onAction$(callback);
+      store.offAction$(callback);
+      store.increment();
+
+      expect(callback).not.toHaveBeenCalled();
+    });
   });
 
   describe('reset$', () => {
@@ -431,6 +486,23 @@ describe('store - Built-in Methods', () => {
       store.reset$();
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 0 }));
+    });
+
+    it('should notify action callbacks with the restored snapshot on reset', () => {
+      const useStore = createStore({
+        state: { count: 1 },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+
+      store.onAction$(callback);
+      store.patch$({ count: 5 });
+      callback.mockClear();
+
+      store.reset$();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
     });
   });
 });
@@ -603,7 +675,7 @@ describe('store - Edge Cases', () => {
       const useStore = createStore({
         state: { value: null as string | null },
         getters: {
-          getValue: state => state.value,
+          getValue: (state) => state.value,
         },
       });
       const store = useStore();
@@ -615,7 +687,7 @@ describe('store - Edge Cases', () => {
       const useStore = createStore({
         state: { value: undefined as string | undefined },
         getters: {
-          getValue: state => state.value,
+          getValue: (state) => state.value,
         },
       });
       const store = useStore();
@@ -627,7 +699,7 @@ describe('store - Edge Cases', () => {
       const useStore = createStore({
         state: { count: 5 },
         getters: {
-          status: state => (state.count > 10 ? 'high' : 'low'),
+          status: (state) => (state.count > 10 ? 'high' : 'low'),
         },
       });
       const store = useStore();
@@ -838,7 +910,7 @@ describe('store - Performance & Optimization', () => {
       const useStore = createStore({
         state: { count: 0 },
         getters: {
-          doubled: state => state.count * 2,
+          doubled: (state) => state.count * 2,
         },
       });
       const store = useStore();
@@ -854,7 +926,7 @@ describe('store - Performance & Optimization', () => {
       const useStore = createStore({
         state: { count: 0 },
         getters: {
-          doubled: state => state.count * 2,
+          doubled: (state) => state.count * 2,
         },
       });
       const store = useStore();
@@ -924,7 +996,7 @@ describe('store - Complex Scenarios', () => {
       const useStore = createStore({
         state: { firstName: 'John', lastName: 'Doe', age: 30 },
         getters: {
-          fullInfo: state => `${state.firstName} ${state.lastName}, ${state.age} years old`,
+          fullInfo: (state) => `${state.firstName} ${state.lastName}, ${state.age} years old`,
         },
       });
       const store = useStore();
@@ -938,8 +1010,8 @@ describe('store - Complex Scenarios', () => {
       const useStore = createStore({
         state: { numbers: [1, 2, 3, 4, 5] },
         getters: {
-          evenNumbers: state => state.numbers.filter(n => n % 2 === 0),
-          sum: state => state.numbers.reduce((a, b) => a + b, 0),
+          evenNumbers: (state) => state.numbers.filter((n) => n % 2 === 0),
+          sum: (state) => state.numbers.reduce((a, b) => a + b, 0),
         },
       });
       const store = useStore();
@@ -1005,7 +1077,7 @@ describe('store - Complex Scenarios', () => {
       });
       const store = useStore();
 
-      store.subscribe$(state => {
+      store.subscribe$((state) => {
         state.doubled = state.count * 2;
       });
 
@@ -1020,8 +1092,8 @@ describe('store - Complex Scenarios', () => {
       const store = useStore();
 
       const results: number[] = [];
-      store.subscribe$(state => results.push(state.value * 2));
-      store.subscribe$(state => results.push(state.value * 3));
+      store.subscribe$((state) => results.push(state.value * 2));
+      store.subscribe$((state) => results.push(state.value * 3));
 
       store.patch$({ value: 5 });
       expect(results).toEqual([10, 15]);

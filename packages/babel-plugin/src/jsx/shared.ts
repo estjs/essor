@@ -393,7 +393,7 @@ export function deepCheckObjectDynamic(node: t.ObjectExpression): boolean {
 
     // 2. Object / Array expressions continue searching downward
     if (t.isObjectExpression(current)) {
-      current.properties.forEach(prop => {
+      current.properties.forEach((prop) => {
         if (t.isObjectProperty(prop)) walk(prop.value);
         if (t.isSpreadElement(prop)) walk(prop.argument);
       });
@@ -401,7 +401,7 @@ export function deepCheckObjectDynamic(node: t.ObjectExpression): boolean {
     }
 
     if (t.isArrayExpression(current)) {
-      current.elements.forEach(el => el && walk(el));
+      current.elements.forEach((el) => el && walk(el));
       return;
     }
 
@@ -826,7 +826,7 @@ export function normalizeProps(raw: Record<string, unknown>): Record<string, unk
 
   if (classBuffer.length) normalized[CLASS_NAME] = classBuffer.join(' ').trim();
   if (styleBuffer.length) {
-    const s = styleBuffer.map(str => (str.endsWith(';') ? str : `${str};`)).join('');
+    const s = styleBuffer.map((str) => (str.endsWith(';') ? str : `${str};`)).join('');
     normalized[STYLE_NAME] = s;
   }
 
@@ -871,7 +871,7 @@ export function createPropsObjectExpression(
     // Process spread attribute
     if (propName === SPREAD_NAME) {
       if (isArray(propValue)) {
-        propValue.forEach(val => {
+        propValue.forEach((val) => {
           const astValue = convertValueToASTNode(val, transformJSX);
           objectProperties.push(t.spreadElement(astValue));
         });
@@ -914,7 +914,7 @@ export function convertValueToASTNode(
   }
 
   if (isArray(value)) {
-    return t.arrayExpression(value.map(item => convertValueToASTNode(item, transformJSX)));
+    return t.arrayExpression(value.map((item) => convertValueToASTNode(item, transformJSX)));
   }
 
   if (isObject(value)) {
@@ -1040,7 +1040,7 @@ export function isDynamicExpression(node: t.Node | null | undefined): boolean {
     return deepCheckObjectDynamic(node);
   }
   if (t.isArrayExpression(node)) {
-    return node.elements.some(el => el != null && t.isNode(el) && isDynamicExpression(el));
+    return node.elements.some((el) => el != null && t.isNode(el) && isDynamicExpression(el));
   }
 
   // Literals/null are static
@@ -1069,7 +1069,7 @@ export function hasPureStringChildren(node: TreeNode): boolean {
     return false;
   }
 
-  return node.children.every(child => {
+  return node.children.every((child) => {
     if (isString(child)) {
       return true;
     }
@@ -1092,7 +1092,7 @@ export function extractStringChildren(node: TreeNode): string {
   }
 
   return node.children
-    .map(child => {
+    .map((child) => {
       if (isString(child)) {
         return child;
       }

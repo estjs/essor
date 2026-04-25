@@ -54,11 +54,11 @@ describe('eventHandlers module', () => {
       const eventTypes = ['click', 'mousedown', 'keypress', 'focus', 'blur'];
       const addEventSpy = vi.spyOn(element, 'addEventListener');
 
-      eventTypes.forEach(type => {
+      eventTypes.forEach((type) => {
         addEvent(element, type, listener);
       });
 
-      eventTypes.forEach(type => {
+      eventTypes.forEach((type) => {
         expect(addEventSpy).toHaveBeenCalledWith(type, listener, undefined);
       });
     });

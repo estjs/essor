@@ -1,307 +1,416 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`hMR - Vite Platform > should work with vite 1`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
-const componentRegistry = /* @__PURE__ */ new Map();
+"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+//#region \\0virtual:essor-hmr
+/**
+* Essor HMR Runtime - Signal-based Hot Module Replacement
+*
+* This runtime enables precise component-level HMR updates without full page reloads:
+*
+* 1. **Signal Wrapping**: Each component is wrapped in a reactive signal
+* 2. **Signature Tracking**: Components are tracked by code signatures (from babel plugin)
+* 3. **Precise Updates**: Only components with changed signatures are updated
+* 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
+* 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
+*/
+/**
+* Global component registry for HMR tracking
+*
+* Maps hmrId -> ComponentInfo where:
+* - hmrId: Unique identifier for component (fileHash:componentName)
+* - componentSignal: Reactive signal holding the current component function
+* - signature: Hash of component code (changes when code changes)
+* - instances: Set of active component instances
+* - cleanups: Map of cleanup functions for each instance's effect
+*/
+var componentRegistry = /* @__PURE__ */ new Map();
+/**
+* Create HMR-enabled component wrapper
+*
+* This function wraps a component to enable HMR:
+* 1. Creates or retrieves component registry entry
+* 2. Wraps component function to always read from latest signal value
+* 3. Sets up reactive effect to auto-update component when signal changes
+* 4. Returns regular component instance that auto-updates on HMR
+*
+* @param componentFn - Component function with __hmrId and __signature
+* @param props - Component props
+* @returns Component instance that responds to HMR updates
+*/
 function createHMRComponent(componentFn, props) {
-  const { __hmrId: hmrId, __signature: signature } = componentFn;
-  if (!hmrId) {
-    return createComponent(componentFn, props);
-  }
-  let info = componentRegistry.get(hmrId);
-  if (!info) {
-    info = {
-      componentSignal: signal(componentFn),
-      signature,
-      instances: /* @__PURE__ */ new Set(),
-      // Track all instances
-      cleanups: /* @__PURE__ */ new Map()
-      // Store cleanup for each instance
-    };
-    componentRegistry.set(hmrId, info);
-  }
-  const component = createComponent(componentFn, props);
-  info.instances.add(component);
-  let initialized = false;
-  const cleanup = effect(() => {
-    const currentComponentFn = info.componentSignal.value;
-    if (!initialized) {
-      initialized = true;
-      return;
-    }
-    try {
-      component.component = currentComponentFn;
-      component.forceUpdate();
-    } catch (error) {
-      console.error(\`[Essor HMR] Failed to update component instance:\`, error);
-    }
-  });
-  info.cleanups.set(component, cleanup);
-  const originalOnBeforeUnmount = component.onBeforeUnmount;
-  component.onBeforeUnmount = function() {
-    if (originalOnBeforeUnmount) {
-      originalOnBeforeUnmount.call(this);
-    }
-    const cleanupFn = info.cleanups.get(component);
-    if (cleanupFn) {
-      cleanupFn();
-      info.cleanups.delete(component);
-    }
-    info.instances.delete(component);
-  };
-  return component;
+	const { __hmrId: hmrId, __signature: signature } = componentFn;
+	if (!hmrId) return createComponent(componentFn, props);
+	let info = componentRegistry.get(hmrId);
+	if (!info) {
+		info = {
+			componentSignal: signal(componentFn),
+			signature,
+			instances: /* @__PURE__ */ new Set(),
+			cleanups: /* @__PURE__ */ new Map()
+		};
+		componentRegistry.set(hmrId, info);
+	}
+	const component = createComponent(componentFn, props);
+	info.instances.add(component);
+	let initialized = false;
+	const cleanup = effect(() => {
+		const currentComponentFn = info.componentSignal.value;
+		if (!initialized) {
+			initialized = true;
+			return;
+		}
+		try {
+			component.component = currentComponentFn;
+			component.forceUpdate();
+		} catch (error) {
+			console.error(\`[Essor HMR] Failed to update component instance:\`, error);
+		}
+	});
+	info.cleanups.set(component, cleanup);
+	const originalOnBeforeUnmount = component.onBeforeUnmount;
+	component.onBeforeUnmount = function() {
+		if (originalOnBeforeUnmount) originalOnBeforeUnmount.call(this);
+		const cleanupFn = info.cleanups.get(component);
+		if (cleanupFn) {
+			cleanupFn();
+			info.cleanups.delete(component);
+		}
+		info.instances.delete(component);
+	};
+	return component;
 }
-const _$tmpl = template("<div>Foo</div>"), _$tmpl2 = template("<div>Bar</div>"), _$tmpl3 = template("<div></div>");
+//#endregion
+//#region packages/unplugin/test/fixtures/basic.tsx
+var _$tmpl = template("<div>Foo</div>"), _$tmpl2 = template("<div>Bar</div>"), _$tmpl3 = template("<div></div>");
 function Foo() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+	return _$tmpl();
 }
 Foo.__signature = "174rcvv";
 Foo.__hmrId = "35tyqe:Foo";
 function Bar() {
-  return (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })();
+	return _$tmpl2();
 }
 Bar.__signature = "k90znw";
 Bar.__hmrId = "35tyqe:Bar";
 function App() {
-  return (() => {
-    const _$el3 = _$tmpl3();
-    const _$nodes3 = mapNodes(_$el3, [1]);
-    insert(_$nodes3[0], createHMRComponent(Foo, {}));
-    insert(_$nodes3[0], createHMRComponent(Bar, {}));
-    return _$el3;
-  })();
+	return (() => {
+		const _$el3 = _$tmpl3();
+		const _$nodes3 = mapNodes(_$el3, [1]);
+		insert(_$nodes3[0], createHMRComponent(Foo, {}));
+		insert(_$nodes3[0], createHMRComponent(Bar, {}));
+		return _$el3;
+	})();
 }
 App.__signature = "1i25p8q";
 App.__hmrId = "35tyqe:App";
 createApp(createHMRComponent(App), "#root");
+//#endregion
 "
 `;
 
 exports[`hMR - Vite Platform > should work with vite 2`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
-const componentRegistry = /* @__PURE__ */ new Map();
+"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+//#region \\0virtual:essor-hmr
+/**
+* Essor HMR Runtime - Signal-based Hot Module Replacement
+*
+* This runtime enables precise component-level HMR updates without full page reloads:
+*
+* 1. **Signal Wrapping**: Each component is wrapped in a reactive signal
+* 2. **Signature Tracking**: Components are tracked by code signatures (from babel plugin)
+* 3. **Precise Updates**: Only components with changed signatures are updated
+* 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
+* 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
+*/
+/**
+* Global component registry for HMR tracking
+*
+* Maps hmrId -> ComponentInfo where:
+* - hmrId: Unique identifier for component (fileHash:componentName)
+* - componentSignal: Reactive signal holding the current component function
+* - signature: Hash of component code (changes when code changes)
+* - instances: Set of active component instances
+* - cleanups: Map of cleanup functions for each instance's effect
+*/
+var componentRegistry = /* @__PURE__ */ new Map();
+/**
+* Create HMR-enabled component wrapper
+*
+* This function wraps a component to enable HMR:
+* 1. Creates or retrieves component registry entry
+* 2. Wraps component function to always read from latest signal value
+* 3. Sets up reactive effect to auto-update component when signal changes
+* 4. Returns regular component instance that auto-updates on HMR
+*
+* @param componentFn - Component function with __hmrId and __signature
+* @param props - Component props
+* @returns Component instance that responds to HMR updates
+*/
 function createHMRComponent(componentFn, props) {
-  const { __hmrId: hmrId, __signature: signature } = componentFn;
-  if (!hmrId) {
-    return createComponent(componentFn, props);
-  }
-  let info = componentRegistry.get(hmrId);
-  if (!info) {
-    info = {
-      componentSignal: signal(componentFn),
-      signature,
-      instances: /* @__PURE__ */ new Set(),
-      // Track all instances
-      cleanups: /* @__PURE__ */ new Map()
-      // Store cleanup for each instance
-    };
-    componentRegistry.set(hmrId, info);
-  }
-  const component = createComponent(componentFn, props);
-  info.instances.add(component);
-  let initialized = false;
-  const cleanup = effect(() => {
-    const currentComponentFn = info.componentSignal.value;
-    if (!initialized) {
-      initialized = true;
-      return;
-    }
-    try {
-      component.component = currentComponentFn;
-      component.forceUpdate();
-    } catch (error) {
-      console.error(\`[Essor HMR] Failed to update component instance:\`, error);
-    }
-  });
-  info.cleanups.set(component, cleanup);
-  const originalOnBeforeUnmount = component.onBeforeUnmount;
-  component.onBeforeUnmount = function() {
-    if (originalOnBeforeUnmount) {
-      originalOnBeforeUnmount.call(this);
-    }
-    const cleanupFn = info.cleanups.get(component);
-    if (cleanupFn) {
-      cleanupFn();
-      info.cleanups.delete(component);
-    }
-    info.instances.delete(component);
-  };
-  return component;
+	const { __hmrId: hmrId, __signature: signature } = componentFn;
+	if (!hmrId) return createComponent(componentFn, props);
+	let info = componentRegistry.get(hmrId);
+	if (!info) {
+		info = {
+			componentSignal: signal(componentFn),
+			signature,
+			instances: /* @__PURE__ */ new Set(),
+			cleanups: /* @__PURE__ */ new Map()
+		};
+		componentRegistry.set(hmrId, info);
+	}
+	const component = createComponent(componentFn, props);
+	info.instances.add(component);
+	let initialized = false;
+	const cleanup = effect(() => {
+		const currentComponentFn = info.componentSignal.value;
+		if (!initialized) {
+			initialized = true;
+			return;
+		}
+		try {
+			component.component = currentComponentFn;
+			component.forceUpdate();
+		} catch (error) {
+			console.error(\`[Essor HMR] Failed to update component instance:\`, error);
+		}
+	});
+	info.cleanups.set(component, cleanup);
+	const originalOnBeforeUnmount = component.onBeforeUnmount;
+	component.onBeforeUnmount = function() {
+		if (originalOnBeforeUnmount) originalOnBeforeUnmount.call(this);
+		const cleanupFn = info.cleanups.get(component);
+		if (cleanupFn) {
+			cleanupFn();
+			info.cleanups.delete(component);
+		}
+		info.instances.delete(component);
+	};
+	return component;
 }
-const _$tmpl = template("<div>A</div>"), _$tmpl2 = template("<div>B</div>"), _$tmpl3 = template("<div></div>");
+//#endregion
+//#region packages/unplugin/test/fixtures/exports.tsx
+var _$tmpl = template("<div>A</div>"), _$tmpl2 = template("<div>B</div>"), _$tmpl3 = template("<div></div>");
 function ComponentA() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+	return _$tmpl();
 }
 ComponentA.__signature = "szj98";
 ComponentA.__hmrId = "35tyqe:ComponentA";
-const ComponentB = () => (() => {
-  const _$el2 = _$tmpl2();
-  return _$el2;
-})();
+var ComponentB = () => _$tmpl2();
 ComponentB.__signature = "1xhowjs";
 ComponentB.__hmrId = "35tyqe:ComponentB";
 function App() {
-  return (() => {
-    const _$el3 = _$tmpl3();
-    const _$nodes3 = mapNodes(_$el3, [1]);
-    insert(_$nodes3[0], createHMRComponent(ComponentA, {}));
-    insert(_$nodes3[0], createHMRComponent(ComponentB, {}));
-    return _$el3;
-  })();
+	return (() => {
+		const _$el3 = _$tmpl3();
+		const _$nodes3 = mapNodes(_$el3, [1]);
+		insert(_$nodes3[0], createHMRComponent(ComponentA, {}));
+		insert(_$nodes3[0], createHMRComponent(ComponentB, {}));
+		return _$el3;
+	})();
 }
 App.__signature = "1gy08hq";
 App.__hmrId = "35tyqe:App";
 createApp(createHMRComponent(App), "#root");
-export {
-  ComponentA,
-  ComponentB,
-  App as default
-};
+//#endregion
+export { ComponentA, ComponentB, App as default };
 "
 `;
 
 exports[`hMR - Vite Platform > should work with vite 3`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from "essor";
-const componentRegistry = /* @__PURE__ */ new Map();
+"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+//#region \\0virtual:essor-hmr
+/**
+* Essor HMR Runtime - Signal-based Hot Module Replacement
+*
+* This runtime enables precise component-level HMR updates without full page reloads:
+*
+* 1. **Signal Wrapping**: Each component is wrapped in a reactive signal
+* 2. **Signature Tracking**: Components are tracked by code signatures (from babel plugin)
+* 3. **Precise Updates**: Only components with changed signatures are updated
+* 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
+* 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
+*/
+/**
+* Global component registry for HMR tracking
+*
+* Maps hmrId -> ComponentInfo where:
+* - hmrId: Unique identifier for component (fileHash:componentName)
+* - componentSignal: Reactive signal holding the current component function
+* - signature: Hash of component code (changes when code changes)
+* - instances: Set of active component instances
+* - cleanups: Map of cleanup functions for each instance's effect
+*/
+var componentRegistry = /* @__PURE__ */ new Map();
+/**
+* Create HMR-enabled component wrapper
+*
+* This function wraps a component to enable HMR:
+* 1. Creates or retrieves component registry entry
+* 2. Wraps component function to always read from latest signal value
+* 3. Sets up reactive effect to auto-update component when signal changes
+* 4. Returns regular component instance that auto-updates on HMR
+*
+* @param componentFn - Component function with __hmrId and __signature
+* @param props - Component props
+* @returns Component instance that responds to HMR updates
+*/
 function createHMRComponent(componentFn, props) {
-  const { __hmrId: hmrId, __signature: signature } = componentFn;
-  if (!hmrId) {
-    return createComponent(componentFn, props);
-  }
-  let info = componentRegistry.get(hmrId);
-  if (!info) {
-    info = {
-      componentSignal: signal(componentFn),
-      signature,
-      instances: /* @__PURE__ */ new Set(),
-      // Track all instances
-      cleanups: /* @__PURE__ */ new Map()
-      // Store cleanup for each instance
-    };
-    componentRegistry.set(hmrId, info);
-  }
-  const component = createComponent(componentFn, props);
-  info.instances.add(component);
-  let initialized = false;
-  const cleanup = effect(() => {
-    const currentComponentFn = info.componentSignal.value;
-    if (!initialized) {
-      initialized = true;
-      return;
-    }
-    try {
-      component.component = currentComponentFn;
-      component.forceUpdate();
-    } catch (error) {
-      console.error(\`[Essor HMR] Failed to update component instance:\`, error);
-    }
-  });
-  info.cleanups.set(component, cleanup);
-  const originalOnBeforeUnmount = component.onBeforeUnmount;
-  component.onBeforeUnmount = function() {
-    if (originalOnBeforeUnmount) {
-      originalOnBeforeUnmount.call(this);
-    }
-    const cleanupFn = info.cleanups.get(component);
-    if (cleanupFn) {
-      cleanupFn();
-      info.cleanups.delete(component);
-    }
-    info.instances.delete(component);
-  };
-  return component;
+	const { __hmrId: hmrId, __signature: signature } = componentFn;
+	if (!hmrId) return createComponent(componentFn, props);
+	let info = componentRegistry.get(hmrId);
+	if (!info) {
+		info = {
+			componentSignal: signal(componentFn),
+			signature,
+			instances: /* @__PURE__ */ new Set(),
+			cleanups: /* @__PURE__ */ new Map()
+		};
+		componentRegistry.set(hmrId, info);
+	}
+	const component = createComponent(componentFn, props);
+	info.instances.add(component);
+	let initialized = false;
+	const cleanup = effect(() => {
+		const currentComponentFn = info.componentSignal.value;
+		if (!initialized) {
+			initialized = true;
+			return;
+		}
+		try {
+			component.component = currentComponentFn;
+			component.forceUpdate();
+		} catch (error) {
+			console.error(\`[Essor HMR] Failed to update component instance:\`, error);
+		}
+	});
+	info.cleanups.set(component, cleanup);
+	const originalOnBeforeUnmount = component.onBeforeUnmount;
+	component.onBeforeUnmount = function() {
+		if (originalOnBeforeUnmount) originalOnBeforeUnmount.call(this);
+		const cleanupFn = info.cleanups.get(component);
+		if (cleanupFn) {
+			cleanupFn();
+			info.cleanups.delete(component);
+		}
+		info.instances.delete(component);
+	};
+	return component;
 }
-const _$tmpl = template("<div>Hello</div>");
+//#endregion
+//#region packages/unplugin/test/fixtures/props.tsx
+var _$tmpl = template("<div>Hello</div>");
 function PropsComponent(props) {
-  return (() => {
-    const _$el = _$tmpl();
-    const _$nodes = mapNodes(_$el, [1]);
-    insert(_$nodes[0], () => props.name);
-    return _$el;
-  })();
+	return (() => {
+		const _$el = _$tmpl();
+		insert(mapNodes(_$el, [1])[0], () => props.name);
+		return _$el;
+	})();
 }
 PropsComponent.__signature = "eh956m";
 PropsComponent.__hmrId = "35tyqe:PropsComponent";
-createApp(createHMRComponent(() => createHMRComponent(PropsComponent, {
-  "name": "World"
-})), "#root");
+createApp(createHMRComponent(() => createHMRComponent(PropsComponent, { "name": "World" })), "#root");
+//#endregion
 "
 `;
 
 exports[`hMR - Vite Platform > should work with vite 4`] = `
-"import { createComponent, signal, effect, template, createApp, delegateEvents, mapNodes, insert } from "essor";
-const componentRegistry = /* @__PURE__ */ new Map();
+"import { createApp, createComponent, delegateEvents, effect, insert, mapNodes, signal, template } from "essor";
+//#region \\0virtual:essor-hmr
+/**
+* Essor HMR Runtime - Signal-based Hot Module Replacement
+*
+* This runtime enables precise component-level HMR updates without full page reloads:
+*
+* 1. **Signal Wrapping**: Each component is wrapped in a reactive signal
+* 2. **Signature Tracking**: Components are tracked by code signatures (from babel plugin)
+* 3. **Precise Updates**: Only components with changed signatures are updated
+* 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
+* 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
+*/
+/**
+* Global component registry for HMR tracking
+*
+* Maps hmrId -> ComponentInfo where:
+* - hmrId: Unique identifier for component (fileHash:componentName)
+* - componentSignal: Reactive signal holding the current component function
+* - signature: Hash of component code (changes when code changes)
+* - instances: Set of active component instances
+* - cleanups: Map of cleanup functions for each instance's effect
+*/
+var componentRegistry = /* @__PURE__ */ new Map();
+/**
+* Create HMR-enabled component wrapper
+*
+* This function wraps a component to enable HMR:
+* 1. Creates or retrieves component registry entry
+* 2. Wraps component function to always read from latest signal value
+* 3. Sets up reactive effect to auto-update component when signal changes
+* 4. Returns regular component instance that auto-updates on HMR
+*
+* @param componentFn - Component function with __hmrId and __signature
+* @param props - Component props
+* @returns Component instance that responds to HMR updates
+*/
 function createHMRComponent(componentFn, props) {
-  const { __hmrId: hmrId, __signature: signature } = componentFn;
-  if (!hmrId) {
-    return createComponent(componentFn, props);
-  }
-  let info = componentRegistry.get(hmrId);
-  if (!info) {
-    info = {
-      componentSignal: signal(componentFn),
-      signature,
-      instances: /* @__PURE__ */ new Set(),
-      // Track all instances
-      cleanups: /* @__PURE__ */ new Map()
-      // Store cleanup for each instance
-    };
-    componentRegistry.set(hmrId, info);
-  }
-  const component = createComponent(componentFn, props);
-  info.instances.add(component);
-  let initialized = false;
-  const cleanup = effect(() => {
-    const currentComponentFn = info.componentSignal.value;
-    if (!initialized) {
-      initialized = true;
-      return;
-    }
-    try {
-      component.component = currentComponentFn;
-      component.forceUpdate();
-    } catch (error) {
-      console.error(\`[Essor HMR] Failed to update component instance:\`, error);
-    }
-  });
-  info.cleanups.set(component, cleanup);
-  const originalOnBeforeUnmount = component.onBeforeUnmount;
-  component.onBeforeUnmount = function() {
-    if (originalOnBeforeUnmount) {
-      originalOnBeforeUnmount.call(this);
-    }
-    const cleanupFn = info.cleanups.get(component);
-    if (cleanupFn) {
-      cleanupFn();
-      info.cleanups.delete(component);
-    }
-    info.instances.delete(component);
-  };
-  return component;
+	const { __hmrId: hmrId, __signature: signature } = componentFn;
+	if (!hmrId) return createComponent(componentFn, props);
+	let info = componentRegistry.get(hmrId);
+	if (!info) {
+		info = {
+			componentSignal: signal(componentFn),
+			signature,
+			instances: /* @__PURE__ */ new Set(),
+			cleanups: /* @__PURE__ */ new Map()
+		};
+		componentRegistry.set(hmrId, info);
+	}
+	const component = createComponent(componentFn, props);
+	info.instances.add(component);
+	let initialized = false;
+	const cleanup = effect(() => {
+		const currentComponentFn = info.componentSignal.value;
+		if (!initialized) {
+			initialized = true;
+			return;
+		}
+		try {
+			component.component = currentComponentFn;
+			component.forceUpdate();
+		} catch (error) {
+			console.error(\`[Essor HMR] Failed to update component instance:\`, error);
+		}
+	});
+	info.cleanups.set(component, cleanup);
+	const originalOnBeforeUnmount = component.onBeforeUnmount;
+	component.onBeforeUnmount = function() {
+		if (originalOnBeforeUnmount) originalOnBeforeUnmount.call(this);
+		const cleanupFn = info.cleanups.get(component);
+		if (cleanupFn) {
+			cleanupFn();
+			info.cleanups.delete(component);
+		}
+		info.instances.delete(component);
+	};
+	return component;
 }
-const _$tmpl = template("<div>Count:</div>");
+//#endregion
+//#region packages/unplugin/test/fixtures/signals.tsx
+var _$tmpl = template("<div>Count:</div>");
 function SignalComponent() {
-  const count = signal(0);
-  return (() => {
-    const _$el = _$tmpl();
-    const _$nodes = mapNodes(_$el, [1]);
-    insert(_$nodes[0], () => count.value);
-    _$nodes[0]["_$click"] = () => count.value++;
-    return _$el;
-  })();
+	const count = signal(0);
+	return (() => {
+		const _$el = _$tmpl();
+		const _$nodes = mapNodes(_$el, [1]);
+		insert(_$nodes[0], () => count.value);
+		_$nodes[0]["_$click"] = () => count.value++;
+		return _$el;
+	})();
 }
 SignalComponent.__signature = "dtx8aj";
 SignalComponent.__hmrId = "35tyqe:SignalComponent";
 createApp(createHMRComponent(SignalComponent), "#root");
 delegateEvents(["click"]);
+//#endregion
 "
 `;

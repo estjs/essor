@@ -2,7 +2,7 @@ import { type NodePath, types as t } from '@babel/core';
 import { isObject, isPrimitive, isString, isSymbol } from '@estjs/shared';
 import { addImport, importMap } from '../import';
 import {
-  BUILT_IN_COMPONENTS,
+  BUILTIN_COMPONENTS,
   EVENT_ATTR_NAME,
   FRAGMENT_NAME,
   NODE_TYPE,
@@ -41,7 +41,7 @@ export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode
   if (treeNode.type === NODE_TYPE.COMPONENT) {
     const componentProps = { ...treeNode.props, children: treeNode.children };
     // Built-in components
-    const isBuiltIn = BUILT_IN_COMPONENTS.includes(treeNode.tag!);
+    const isBuiltIn = BUILTIN_COMPONENTS.includes(treeNode.tag!);
     if (isBuiltIn) {
       addImport(importMap[treeNode.tag!]);
     }
@@ -62,7 +62,7 @@ export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode
     const tmplId = path.scope.generateUidIdentifier('_tmpl$');
 
     // create template string array expression
-    const templateNode = t.arrayExpression(templates.map(str => t.stringLiteral(str)));
+    const templateNode = t.arrayExpression(templates.map((str) => t.stringLiteral(str)));
     state.declarations.push(t.variableDeclarator(tmplId, templateNode));
 
     args.push(tmplId);
@@ -75,16 +75,16 @@ export function transformJSXToSSG(path: NodePath<JSXElement>, treeNode: TreeNode
   addImport(importMap.getHydrationKey);
 
   // Attributes should be placed before text content
-  const textDynamics = dynamics.filter(d => d.type === 'text');
-  const attrDynamics = dynamics.filter(d => d.type === 'attr');
+  const textDynamics = dynamics.filter((d) => d.type === 'text');
+  const attrDynamics = dynamics.filter((d) => d.type === 'attr');
 
   // Add attribute dynamic content
-  attrDynamics.forEach(dynamic => {
+  attrDynamics.forEach((dynamic) => {
     args.push(dynamic.node);
   });
 
   // Add text dynamic content
-  textDynamics.forEach(dynamic => {
+  textDynamics.forEach((dynamic) => {
     args.push(dynamic.node);
   });
 
@@ -234,7 +234,7 @@ const handleExpression = (node: TreeNode, result: transformResult): void => {
         if (t.isJSXElement(mapCallback.body)) {
           jsxElement = mapCallback.body;
         } else if (t.isBlockStatement(mapCallback.body)) {
-          const returnStmt = mapCallback.body.body.find(stmt => t.isReturnStatement(stmt));
+          const returnStmt = mapCallback.body.body.find((stmt) => t.isReturnStatement(stmt));
           if (
             returnStmt &&
             t.isReturnStatement(returnStmt) &&
@@ -260,7 +260,7 @@ const handleExpression = (node: TreeNode, result: transformResult): void => {
 
           // Extract props
           const props: Record<string, any> = {};
-          jsxElement.openingElement.attributes.forEach(attr => {
+          jsxElement.openingElement.attributes.forEach((attr) => {
             if (t.isJSXAttribute(attr)) {
               const name = attr.name.name as string;
               if (t.isJSXExpressionContainer(attr.value)) {
@@ -348,7 +348,7 @@ const handleElement = (node: TreeNode, result: transformResult): void => {
  * Process children for SSG
  */
 const processChildren = (children: (TreeNode | string)[], result: transformResult): void => {
-  children.forEach(child => {
+  children.forEach((child) => {
     if (isTreeNode(child)) {
       walkTreeNode(child, result);
     } else if (isString(child)) {
@@ -398,7 +398,7 @@ const processDynamicAttributes = (
   dynamicAttrs: Array<{ name: string; value: t.Expression }>,
   result: transformResult,
 ): void => {
-  dynamicAttrs.forEach(attr => {
+  dynamicAttrs.forEach((attr) => {
     const { state } = getContext();
     addImport(importMap.patchAttr);
     addImport(importMap.escapeHTML);

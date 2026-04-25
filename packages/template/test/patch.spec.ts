@@ -361,7 +361,7 @@ describe('patch', () => {
 
       // Reverse order
       const reversed = items.slice().reverse();
-      const newItems = reversed.map(item => {
+      const newItems = reversed.map((item) => {
         const el = document.createElement('div');
         setNodeKey(el, getNodeKey(item));
         return el;
@@ -540,7 +540,7 @@ describe('patch', () => {
       // Multiple rapid updates
       for (let round = 0; round < 5; round++) {
         const shuffled = items.slice().sort(() => Math.random() - 0.5);
-        const newItems = shuffled.map(item => {
+        const newItems = shuffled.map((item) => {
           const el = document.createElement('div');
           setNodeKey(el, getNodeKey(item));
           return el;
@@ -576,7 +576,7 @@ describe('patch', () => {
       expect(oldNode.dataset.html).toBe('<script>alert("xss")</script>');
     });
   });
-  describe(' LIS algorithm correctness', () => {
+  describe('lIS algorithm correctness', () => {
     /**
      * Helper function to verify that the returned indices form a valid increasing subsequence
      */
@@ -649,7 +649,7 @@ describe('patch', () => {
         [1, 1, 1, 1],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
 
         // Property 1: Result should be a valid increasing subsequence
@@ -670,7 +670,7 @@ describe('patch', () => {
         [42],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const int32Arr = new Int32Array(arr);
         const result = getSequence(int32Arr);
 
@@ -692,7 +692,7 @@ describe('patch', () => {
         [0, 0, 0],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
 
         // No index in result should point to a zero value
@@ -727,7 +727,7 @@ describe('patch', () => {
     it('should handle arrays with all zeros', () => {
       const testArrays = [[0], [0, 0], [0, 0, 0], [0, 0, 0, 0, 0], new Array(10).fill(0)];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
         // All zeros should result in empty sequence
         expect(result).toEqual([]);
@@ -737,7 +737,7 @@ describe('patch', () => {
     it('should handle already sorted arrays', () => {
       const testArrays = [[1, 2, 3, 4, 5], [1, 3, 5, 7, 9], [10, 20, 30, 40], [1], [1, 2], []];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
 
         // For strictly increasing array, LIS should be the entire array
@@ -758,7 +758,7 @@ describe('patch', () => {
         [2, 1],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
 
         // For strictly decreasing array, LIS length should be 1
@@ -778,7 +778,7 @@ describe('patch', () => {
         [1, 2, 1, 2, 1, 2],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result = getSequence(arr);
 
         // Should be valid increasing subsequence (strictly increasing)
@@ -832,7 +832,7 @@ describe('patch', () => {
         [0, 1, 0, 3, 0, 2, 3],
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const result1 = getSequence(arr);
         const result2 = getSequence(arr);
 
@@ -849,7 +849,7 @@ describe('patch', () => {
         Array.from({ length: 200 }, (_, i) => (i * 7) % 100),
       ];
 
-      testArrays.forEach(arr => {
+      testArrays.forEach((arr) => {
         const startTime = performance.now();
         const result = getSequence(arr);
         const endTime = performance.now();

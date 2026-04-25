@@ -93,6 +93,7 @@ describe('node-operations', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const node = document.createElement('div');
       removeNode(node);
+      expect(consoleSpy).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });
@@ -147,6 +148,7 @@ describe('node-operations', () => {
       const root = createTestRoot();
       const node = document.createElement('div');
       replaceNode(root, node, document.createElement('span'));
+      expect(consoleSpy).not.toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
   });

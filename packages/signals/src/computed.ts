@@ -88,7 +88,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   subLinkTail?: Link;
   flag: ReactiveFlags = ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY;
 
-  // @ts-ignore: used internally by isComputed typeguard
+  //@ts-ignore
   private readonly [SignalFlags.IS_COMPUTED] = true as const;
 
   //  Core properties
@@ -104,12 +104,12 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   private _value: T | typeof NO_VALUE = NO_VALUE;
 
   /**
-   * Create a Computed instance
+   * Create a Computed instance.
    *
-   * @param getter - The computation function
-   * @param setter - Optional setter function
-   * @param onTrack - Optional debug callback for dependency tracking
-   * @param onTrigger - Optional debug callback for triggers
+   * @param getter - The computation function.
+   * @param setter - Optional setter function.
+   * @param onTrack - Optional debug callback for dependency tracking.
+   * @param onTrigger - Optional debug callback for triggers.
    */
   constructor(
     getter: ComputedGetter<T>,
@@ -124,6 +124,11 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
     this.flag |= ReactiveFlags.DIRTY;
   }
 
+  /**
+   * Returns the current value.
+   *
+   * @returns {T} The current value.
+   */
   get value(): T {
     // Track dependencies if accessed within an effect or computed
     if (activeSub) {
@@ -159,9 +164,9 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   }
 
   /**
-   * Set value (only effective when setter is provided)
+   * Set value (only effective when setter is provided).
    *
-   * @param newValue - The new value
+   * @param newValue - The new value.
    */
   set value(newValue: T) {
     if (this.setter) {
@@ -176,9 +181,9 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   }
 
   /**
-   * Read value without tracking dependencies
+   * Read value without tracking dependencies.
    *
-   * @returns Current value
+   * @returns {T} The current value.
    */
   peek(): T {
     if (this._value === NO_VALUE) {
@@ -190,7 +195,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   /**
    * Recompute the value
    *
-   * computation logic:
+   *  computation logic:
    * 1. Start tracking dependencies
    * 2. Execute getter function
    * 3. Check if value changed using optimized comparison
@@ -255,7 +260,9 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
       const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
       this.flag &= clearMask;
 
-      // Force recompute on next access instead of setting DIRTY.
+      // Force recompute on next access instead of setting DIRTY,
+      // preventing "Clean subscriber with Dirty dependency" illegal state
+      // which would otherwise block propagation.
       this._value = NO_VALUE;
 
       if (__DEV__) {
@@ -280,11 +287,11 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   }
 
   /**
-   * Check if update is needed
+   * Check if update is needed.
    *
    * Internal use, called by reactive system.
    *
-   * @returns true if value changed
+   * @returns {boolean} True if value changed.
    */
   shouldUpdate(): boolean {
     const hadValue = this._value !== NO_VALUE;
@@ -301,10 +308,10 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
 }
 
 /**
- * Create a Computed value
+ * Create a Computed value.
  *
- * @param getterOrOptions - Computation function or configuration object
- * @returns Computed instance
+ * @param getterOrOptions - Computation function or configuration object.
+ * @returns {ComputedImpl<T>} Computed instance.
  *
  * @example
  * ```typescript
@@ -384,10 +391,11 @@ export function computed<T>(
 }
 
 /**
- * Type guard - Check if value is Computed
+ * Type guard - Check if value is a Computed instance.
  *
- * @param value - The value to check
- * @returns true if value is Computed
+ * @template T - The type of value held by the computed instance.
+ * @param value - The value to check.
+ * @returns {boolean} True if value is a Computed instance.
  */
 export function isComputed<T>(value: unknown): value is Computed<T> {
   return !!value && !!value[SignalFlags.IS_COMPUTED];

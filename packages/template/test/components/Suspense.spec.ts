@@ -83,7 +83,7 @@ describe('suspense component', () => {
   describe('async children handling', () => {
     it('should show fallback while Promise is pending', async () => {
       let resolveFn: (value: Node) => void;
-      const promise = new Promise<Node>(resolve => {
+      const promise = new Promise<Node>((resolve) => {
         resolveFn = resolve;
       });
 
@@ -374,7 +374,7 @@ describe('suspense component', () => {
     it('should handle promise resolution through register', async () => {
       let suspenseCtx: SuspenseContextType | null = null;
       let resolvePromise: () => void;
-      const promise = new Promise<void>(resolve => {
+      const promise = new Promise<void>((resolve) => {
         resolvePromise = resolve;
       });
 
@@ -460,7 +460,7 @@ describe('suspense component', () => {
 
     it('should not update after unmount when promise resolves', async () => {
       let resolvePromise: () => void;
-      const promise = new Promise<void>(resolve => {
+      const promise = new Promise<void>((resolve) => {
         resolvePromise = resolve;
       });
 
@@ -714,7 +714,7 @@ describe('suspense component', () => {
 
     it('should handle showChildren when resolvedChildren is set', async () => {
       let resolvePromise: (value: Node) => void;
-      const promise = new Promise<Node>(resolve => {
+      const promise = new Promise<Node>((resolve) => {
         resolvePromise = resolve;
       });
 
@@ -818,7 +818,7 @@ describe('suspense component', () => {
       // We need to trigger a scenario where renderChildren is called while isShowingFallback is true
       let suspenseCtx: SuspenseContextType | null = null;
       let resolvePromise: () => void;
-      const promise = new Promise<void>(resolve => {
+      const promise = new Promise<void>((resolve) => {
         resolvePromise = resolve;
       });
 
