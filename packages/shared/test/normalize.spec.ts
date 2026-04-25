@@ -1,11 +1,5 @@
 import { describe, it } from 'vitest';
-import {
-  normalizeClassName,
-  normalizeStyle,
-  parseStyleString,
-  styleObjectToString,
-  styleToString,
-} from '../src';
+import { normalizeClassName, normalizeStyle, parseStyleString, styleToString } from '../src';
 
 describe('normalizeStyle', () => {
   it('normalizes string style', () => {
@@ -20,6 +14,19 @@ describe('normalizeStyle', () => {
     expect(normalizeStyle([{ color: 'red' }, 'font-size: 14px'])).toEqual({
       'color': 'red',
       'font-size': '14px',
+    });
+  });
+
+  it('keeps later style entries overriding earlier values across mixed nesting', () => {
+    expect(
+      normalizeStyle([
+        'color: red; padding: 4px;',
+        [{ color: 'blue' }, ['margin: 0;', { padding: '8px' }]],
+      ]),
+    ).toEqual({
+      color: 'blue',
+      padding: '8px',
+      margin: '0',
     });
   });
 
@@ -144,28 +151,6 @@ describe('parseStyleString', () => {
   });
 });
 
-describe('styleObjectToString', () => {
-  it('converts object to string', () => {
-    expect(styleObjectToString({ color: 'red', fontSize: '14px' })).toBe(
-      'color:red;font-size:14px;',
-    );
-  });
-
-  it('handles CSS variables', () => {
-    expect(styleObjectToString({ '--custom-prop': 'value' })).toBe('--custom-prop:value;');
-  });
-
-  it('returns string as is', () => {
-    expect(styleObjectToString('color: red;')).toBe('color: red;');
-  });
-
-  it('returns empty string for falsy values', () => {
-    // @ts-ignore
-    expect(styleObjectToString(null)).toBe('');
-    expect(styleObjectToString(undefined)).toBe('');
-  });
-});
-
 describe('styleToString', () => {
   it('converts object to string', () => {
     expect(styleToString({ color: 'red', fontSize: '14px' })).toBe('color:red;font-size:14px;');
@@ -180,30 +165,23 @@ describe('styleToString', () => {
   });
 
   it('returns empty string for falsy values', () => {
-    // @ts-ignore
-    expect(styleToString(null)).toBe('');
+    expect(styleToString(null as any)).toBe('');
     expect(styleToString(undefined)).toBe('');
   });
 
   it('skips non-string/non-number values', () => {
     // Test with object values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', nested: { value: 'blue' } })).toBe('color:red;');
+    expect(styleToString({ color: 'red', nested: { value: 'blue' } } as any)).toBe('color:red;');
     // Test with array values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', items: ['a', 'b'] })).toBe('color:red;');
+    expect(styleToString({ color: 'red', items: ['a', 'b'] } as any)).toBe('color:red;');
     // Test with boolean values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', active: true })).toBe('color:red;');
+    expect(styleToString({ color: 'red', active: true } as any)).toBe('color:red;');
     // Test with null values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', empty: null })).toBe('color:red;');
+    expect(styleToString({ color: 'red', empty: null } as any)).toBe('color:red;');
     // Test with undefined values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', missing: undefined })).toBe('color:red;');
+    expect(styleToString({ color: 'red', missing: undefined } as any)).toBe('color:red;');
     // Test with function values - should be skipped
-    // @ts-ignore
-    expect(styleToString({ color: 'red', fn: () => {} })).toBe('color:red;');
+    expect(styleToString({ color: 'red', fn: () => {} } as any)).toBe('color:red;');
   });
 
   it('handles numeric values', () => {
@@ -226,6 +204,12 @@ describe('normalizeClassName', () => {
 
   it('normalizes nested array class', () => {
     expect(normalizeClassName(['foo', ['bar', { baz: true }]])).toBe('foo bar baz');
+  });
+
+  it('skips empty nested class values while preserving order', () => {
+    expect(
+      normalizeClassName(['foo', '', ['bar', null, ['baz']], { qux: true, nope: false }]),
+    ).toBe('foo bar baz qux');
   });
 
   it('converts number input to string', () => {

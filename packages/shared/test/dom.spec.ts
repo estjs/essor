@@ -6,12 +6,10 @@ import {
   isKnownHtmlAttr,
   isKnownSvgAttr,
   isMathMLTag,
-  isRenderAbleAttrValue,
   isSSRSafeAttrName,
   isSVGTag,
   isSelfClosingTag,
   isSpecialBooleanAttr,
-  isVoidTag,
   makeMap,
   propsToAttrMap,
 } from '../src/dom';
@@ -212,35 +210,11 @@ describe('dom utilities', () => {
       expect(isMathMLTag('div')).toBe(false);
     });
 
-    it('isVoidTag', () => {
-      voidTags.forEach((tag) => {
-        expect(isVoidTag(tag)).toBe(true);
-      });
-      expect(isVoidTag('div')).toBe(false);
-    });
-
     it('isSelfClosingTag', () => {
       selfClosingTags.forEach((tag) => {
         expect(isSelfClosingTag(tag)).toBe(true);
       });
       expect(isSelfClosingTag('div')).toBe(false);
-    });
-  });
-
-  describe('isRenderAbleAttrValue', () => {
-    const renderableValues = ['string', 42, true, false];
-    const nonRenderableValues = [null, undefined, {}, [], () => {}];
-
-    it('should identify renderable attribute values', () => {
-      renderableValues.forEach((value) => {
-        expect(isRenderAbleAttrValue(value)).toBe(true);
-      });
-    });
-
-    it('should identify non-renderable attribute values', () => {
-      nonRenderableValues.forEach((value) => {
-        expect(isRenderAbleAttrValue(value)).toBe(false);
-      });
     });
   });
 });
