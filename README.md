@@ -4,7 +4,7 @@
 
 ![Essor Logo](logo.svg)
 
-**🚀 It's just JavaScript - Instant start, ultimate performance, no complex concepts**
+**It's just JavaScript & JSX — fine-grained reactivity, no virtual DOM, ultimate performance**
 
 [![npm version](https://img.shields.io/npm/v/essor.svg)](https://www.npmjs.com/package/essor)
 [![npm downloads](https://img.shields.io/npm/dm/essor.svg)](https://www.npmjs.com/package/essor)
@@ -19,71 +19,99 @@ English | [简体中文](./README_CN.md)
 
 ## ✨ Features
 
-- 🚀 **Ultimate Performance** - Signal-based reactive system, no virtual DOM
-- 🎯 **Zero Config** - Works out of the box, no complex configuration
-- 🔧 **TypeScript** - Full TypeScript support
-- 🎨 **JSX Support** - Familiar JSX syntax, easy to learn
-- 📦 **Modular** - Tree-shakable, tiny bundle size
-- 🌐 **SSR/SSG** - Server-side rendering and static site generation support
-- 🔄 **HMR** - Hot module replacement, excellent development experience
-- 🛠️ **Toolchain** - Complete build toolchain support
-
+- 🚀 **Fine-grained Reactivity** — Signal-based system, no virtual DOM, surgical DOM updates
+- ✨ **`$` Prefix Magic** — Declare `const $count = 0` and it auto-becomes a signal via Babel transform
+- 🎯 **Zero Config** — Works out of the box with `npm create essor@latest`
+- 🔧 **TypeScript** — Full TypeScript support with strict mode
+- 🎨 **JSX Support** — Familiar JSX syntax with two-way binding via `bind:value`
+- 📦 **Modular** — Tree-shakable packages, tiny bundle size
+- 🌐 **SSR/SSG** — Server-side rendering and static site generation
+- 🔄 **HMR** — Hot module replacement with component-level granularity
+- 🛠️ **Universal Build** — Vite, Webpack, Rollup, Rspack, esbuild support
 
 ## 🚀 Quick Start
 
 ### 1. Create Project
 
 ```bash
-# Using create-essor
 npm create essor@latest my-app
-
-# Or install manually
-npm install essor
+cd my-app && npm install
 ```
 
-### 2. Write Component
+### 2. Write a Component
+
+The `$` prefix is the key concept — variables prefixed with `$` are automatically transformed into reactive signals by the Babel plugin:
 
 ```jsx
-import { signal } from 'essor';
+import { createApp } from 'essor';
 
 function Counter() {
-  const count = signal(0);
+  // $count becomes signal(0) automatically
+  const $count = 0;
 
   return (
     <div>
-      <h1>Count: {count}</h1>
-      <button onClick={() => count.value++}>
-        Increment
-      </button>
+      <h1>Count: {$count}</h1>
+      <button onClick={() => $count++}>Increment</button>
+    </div>
+  );
+}
+
+createApp(Counter, '#app');
+```
+
+### 3. Two-way Binding
+
+```jsx
+function Form() {
+  let $name = '';
+
+  return (
+    <div>
+      <input bind:value={$name} placeholder="Enter name" />
+      <p>Hello, {$name}!</p>
     </div>
   );
 }
 ```
 
-### 3. Start Development Server
+### 4. Start Development Server
 
 ```bash
 npm run dev
 ```
 
+## 📦 Packages
+
+| Package | Description |
+|---------|-------------|
+| `essor` | Main entry — auto-resolves browser/node exports |
+| `@estjs/signals` | Reactive primitives: signal, computed, effect, reactive, watch |
+| `@estjs/template` | Rendering, hydration, lifecycle, Suspense, Portal |
+| `@estjs/server` | SSR/SSG: `renderToString`, `createSSGComponent` |
+| `babel-plugin-essor` | JSX transform + `$` prefix auto-signal conversion |
+| `unplugin-essor` | Build integration + HMR runtime |
+
 ## 📚 Documentation
 
 - [Documentation](https://essor.netlify.app/)
 - [API Reference](https://essor.netlify.app/api)
-- [Examples](./examples)
 - [Online Playground](https://essor-playground.netlify.app/)
+- [Examples](./examples)
 
 ## 🎯 Examples
 
-Check out the [examples](./examples) directory for more examples:
+Check out the [examples](./examples) directory:
 
-- [Basic Example](./examples/basic) - Getting started
-- [Todo App](./examples/todo) - Complete application
-- [SSR Example](./examples/ssr) - Server-side rendering
-- [SSG Example](./examples/ssg) - Static site generation
-- [Suspense Example](./examples/suspense) - Async components
-- [Portal Example](./examples/portal) - Portal components
-
+- [Basic](./examples/basic) — Getting started with signals
+- [Todo App](./examples/todo) — Complete CRUD application
+- [Fragment](./examples/fragment) — Fragment components
+- [Portal](./examples/portal) — Portal components
+- [Provide/Inject](./examples/provide) — Dependency injection
+- [Suspense](./examples/suspense) — Async components with loading states
+- [HMR](./examples/hmr) — Hot module replacement demo
+- [SSR](./examples/ssr) — Server-side rendering
+- [SSG](./examples/ssg) — Static site generation
 
 ## 🤝 Contributing
 
@@ -97,30 +125,19 @@ We welcome all forms of contributions!
 ### Development Setup
 
 ```bash
-# Clone repository
 git clone https://github.com/estjs/essor.git
 cd essor
 
-# Install dependencies
 pnpm install
-
-# Start development mode
-pnpm dev
-
-# Run tests
-pnpm test
-
-# Build project
-pnpm build
+pnpm dev       # Watch mode
+pnpm test      # Unit tests
+pnpm test:e2e  # E2E tests
+pnpm build     # Build all packages
 ```
 
 ## 📄 License
 
 [MIT License](./LICENSE)
-
-## 🙏 Acknowledgments
-
-Thanks to all developers who contributed to Essor!
 
 ---
 
@@ -131,4 +148,3 @@ Thanks to all developers who contributed to Essor!
 [GitHub](https://github.com/estjs/essor) | [Documentation](https://essor.netlify.app/) | [Discussions](https://github.com/estjs/essor/discussions)
 
 </div>
-

@@ -4,7 +4,7 @@
 
 ![Essor Logo](logo.svg)
 
-**🚀 就是 JavaScript - 快速上手，极致性能，无需学习复杂概念**
+**就是 JavaScript & JSX — 细粒度响应式，无虚拟 DOM，极致性能**
 
 [![npm version](https://img.shields.io/npm/v/essor.svg)](https://www.npmjs.com/package/essor)
 [![npm downloads](https://img.shields.io/npm/dm/essor.svg)](https://www.npmjs.com/package/essor)
@@ -19,71 +19,99 @@
 
 ## ✨ 特性
 
-- 🚀 **极致性能** - 基于 Signal 的响应式系统，无虚拟 DOM
-- 🎯 **零配置** - 开箱即用，无需复杂配置
-- 🔧 **TypeScript** - 完全支持 TypeScript
-- 🎨 **JSX 支持** - 熟悉的 JSX 语法，易于上手
-- 📦 **模块化** - 支持 Tree-shaking，极小的包体积
-- 🌐 **SSR/SSG** - 支持服务端渲染和静态站点生成
-- 🔄 **HMR** - 热模块替换，卓越的开发体验
-- 🛠️ **工具链** - 完整的构建工具链支持
-
+- 🚀 **细粒度响应式** — 基于 Signal 的响应式系统，无虚拟 DOM，精准 DOM 更新
+- ✨ **`$` 前缀魔法** — 声明 `const $count = 0`，Babel 插件自动将其转换为 signal
+- 🎯 **零配置** — `npm create essor@latest` 开箱即用
+- 🔧 **TypeScript** — 完全支持 TypeScript 严格模式
+- 🎨 **JSX 支持** — 熟悉的 JSX 语法，支持 `bind:value` 双向绑定
+- 📦 **模块化** — 支持 Tree-shaking，极小的包体积
+- 🌐 **SSR/SSG** — 支持服务端渲染和静态站点生成
+- 🔄 **HMR** — 组件级热模块替换
+- 🛠️ **通用构建** — 支持 Vite、Webpack、Rollup、Rspack、esbuild
 
 ## 🚀 快速开始
 
 ### 1. 创建项目
 
 ```bash
-# 使用 create-essor
 npm create essor@latest my-app
-
-# 或者手动安装
-npm install essor
+cd my-app && npm install
 ```
 
 ### 2. 编写组件
 
+`$` 前缀是核心概念 — 带 `$` 前缀的变量会被 Babel 插件自动转换为响应式 signal：
+
 ```jsx
-import { signal } from 'essor';
+import { createApp } from 'essor';
 
 function Counter() {
-  const count = signal(0);
+  // $count 自动变为 signal(0)
+  const $count = 0;
 
   return (
     <div>
-      <h1>Count: {count}</h1>
-      <button onClick={() => count.value++}>
-        Increment
-      </button>
+      <h1>Count: {$count}</h1>
+      <button onClick={() => $count++}>+1</button>
+    </div>
+  );
+}
+
+createApp(Counter, '#app');
+```
+
+### 3. 双向绑定
+
+```jsx
+function Form() {
+  let $name = '';
+
+  return (
+    <div>
+      <input bind:value={$name} placeholder="输入名字" />
+      <p>你好，{$name}！</p>
     </div>
   );
 }
 ```
 
-### 3. 启动开发服务器
+### 4. 启动开发服务器
 
 ```bash
 npm run dev
 ```
 
+## 📦 包结构
+
+| 包名 | 描述 |
+|------|------|
+| `essor` | 主入口 — 自动解析浏览器/Node 导出 |
+| `@estjs/signals` | 响应式原语：signal、computed、effect、reactive、watch |
+| `@estjs/template` | 渲染、水合、生命周期、Suspense、Portal |
+| `@estjs/server` | SSR/SSG：`renderToString`、`createSSGComponent` |
+| `babel-plugin-essor` | JSX 转换 + `$` 前缀自动 signal 转换 |
+| `unplugin-essor` | 构建集成 + HMR 运行时 |
+
 ## 📚 文档
 
-- [文档](https://https://essor.netlify.app/)
-- [API 参考](https://https://essor.netlify.app/api)
+- [文档](https://essor.netlify.app/)
+- [API 参考](https://essor.netlify.app/api)
+- [在线演示](https://essor-playground.netlify.app/)
 - [示例](./examples)
-- [在线演示](https://https://essor-playground.netlify.app/)
 
 ## 🎯 示例
 
-查看 [examples](./examples) 目录获取更多示例：
+查看 [examples](./examples) 目录：
 
-- [基础示例](./examples/basic) - 入门指南
-- [Todo 应用](./examples/todo) - 完整应用
-- [SSR 示例](./examples/ssr) - 服务端渲染
-- [SSG 示例](./examples/ssg) - 静态站点生成
-- [Suspense 示例](./examples/suspense) - 异步组件
-- [Portal 示例](./examples/portal) - Portal 组件
-
+- [基础示例](./examples/basic) — Signal 入门
+- [Todo 应用](./examples/todo) — 完整 CRUD 应用
+- [Fragment](./examples/fragment) — Fragment 组件
+- [Portal](./examples/portal) — Portal 组件
+- [Provide/Inject](./examples/provide) — 依赖注入
+- [Suspense](./examples/suspense) — 异步组件与加载状态
+- [HMR](./examples/hmr) — 热模块替换演示
+- [SSR 示例](./examples/ssr) — 服务端渲染
+- [SSG 示例](./examples/ssg) — 静态站点生成
 
 ## 🤝 贡献
 
@@ -97,30 +125,19 @@ npm run dev
 ### 开发环境设置
 
 ```bash
-# 克隆仓库
 git clone https://github.com/estjs/essor.git
 cd essor
 
-# 安装依赖
 pnpm install
-
-# 启动开发模式
-pnpm dev
-
-# 运行测试
-pnpm test
-
-# 构建项目
-pnpm build
+pnpm dev       # 监听模式
+pnpm test      # 单元测试
+pnpm test:e2e  # E2E 测试
+pnpm build     # 构建所有包
 ```
 
 ## 📄 许可证
 
 [MIT License](./LICENSE)
-
-## 🙏 致谢
-
-感谢所有为 Essor 做出贡献的开发者！
 
 ---
 
