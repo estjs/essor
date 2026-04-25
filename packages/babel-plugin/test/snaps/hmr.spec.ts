@@ -35,6 +35,12 @@ describe('hMR transformation', () => {
             return <div>Counter</div>;
           }
           function App() {
+             function Counter1() {
+              function Counter2() {
+            return <div>Counter</div>;
+          }
+             return <div>Counter</div>;
+          }
             return <div>
               <Counter />
             </div>;

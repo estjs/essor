@@ -34,11 +34,9 @@ export const IMPORTS_MAPS = [
 
   // Template related
   'mapNodes',
-  'mapArray',
   'template',
   'delegateEvents',
-  // styled
-  'styled',
+
   // binding related
   'insert',
   'patchStyle',
