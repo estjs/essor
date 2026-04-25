@@ -123,7 +123,7 @@ declare let global: {};
 let _globalThis: unknown;
 /**
  * Gets the global object for the current environment
- * @returns {unknown } - The global object for the current environment
+ * @returns {unknown} - The global object for the current environment
  */
 export const getGlobalThis = (): unknown => {
   return (
