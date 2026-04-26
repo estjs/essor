@@ -9,7 +9,7 @@
  * 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
-import { createComponent, effect, signal } from 'essor';
+import { createComponent, effect, isFunction, signal } from 'essor';
 
 /**
  * Global component registry for HMR tracking
@@ -28,7 +28,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -153,7 +153,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -241,7 +241,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -254,7 +254,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
@@ -268,7 +268,7 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
       hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
@@ -283,7 +283,7 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();

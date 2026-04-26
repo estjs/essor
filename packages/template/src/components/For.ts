@@ -1,4 +1,5 @@
 import { type Signal, isSignal, memoEffect, untrack } from '@estjs/signals';
+import { isFunction } from '@estjs/shared';
 import {
   type Scope,
   createScope,
@@ -44,7 +45,7 @@ export function For<T>(props: ForProps<T>): Node {
   const getList = (): T[] => {
     const input = props.each;
     if (isSignal(input)) return (input as Signal<T[]>).value ?? [];
-    if (typeof input === 'function') return (input as () => T[])() ?? [];
+    if (isFunction(input)) return (input as () => T[])() ?? [];
     return (input as T[]) ?? [];
   };
 

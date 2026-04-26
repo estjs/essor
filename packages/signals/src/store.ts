@@ -288,11 +288,11 @@ function createClassStore<S extends State>(
   Object.getOwnPropertyNames(StoreClass.prototype).forEach((key) => {
     const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
     if (descriptor) {
-      if (typeof descriptor.get === 'function') {
+      if (isFunction(descriptor.get)) {
         getters[key] = function (this: S) {
           return descriptor.get!.call(this);
         };
-      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
+      } else if (isFunction(descriptor.value) && key !== 'constructor') {
         actions[key] = function (this: S, ...args: any[]) {
           return descriptor.value.apply(this, args);
         };

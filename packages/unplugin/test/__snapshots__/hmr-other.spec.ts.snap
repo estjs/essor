@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`hMR - Rollup Platform > should work with rollup 1`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from 'essor';
+"import { createComponent, signal, effect, isFunction, template, createApp, mapNodes, insert } from 'essor';
 
 /**
  * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -32,7 +32,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -157,7 +157,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -245,7 +245,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -258,7 +258,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
@@ -272,7 +272,7 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
       hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
@@ -287,7 +287,7 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
@@ -401,7 +401,7 @@ if (import.meta.hot) {
 `;
 
 exports[`hMR - Rollup Platform > should work with rollup 2`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from 'essor';
+"import { createComponent, signal, effect, isFunction, template, createApp, mapNodes, insert } from 'essor';
 
 /**
  * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -432,7 +432,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -557,7 +557,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -645,7 +645,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -658,7 +658,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
@@ -672,7 +672,7 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
       hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
@@ -687,7 +687,7 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
@@ -801,7 +801,7 @@ export { ComponentA, ComponentB, App as default };
 `;
 
 exports[`hMR - Rollup Platform > should work with rollup 3`] = `
-"import { createComponent, signal, effect, template, createApp, mapNodes, insert } from 'essor';
+"import { createComponent, signal, effect, isFunction, template, createApp, mapNodes, insert } from 'essor';
 
 /**
  * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -832,7 +832,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -957,7 +957,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -1045,7 +1045,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -1058,7 +1058,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
@@ -1072,7 +1072,7 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
       hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
@@ -1087,7 +1087,7 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
@@ -1186,7 +1186,7 @@ if (import.meta.hot) {
 `;
 
 exports[`hMR - Rollup Platform > should work with rollup 4`] = `
-"import { createComponent, signal, effect, template, createApp, delegateEvents, mapNodes, insert } from 'essor';
+"import { createComponent, signal, effect, isFunction, template, createApp, delegateEvents, mapNodes, insert } from 'essor';
 
 /**
  * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -1217,7 +1217,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -1342,7 +1342,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -1430,7 +1430,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -1443,7 +1443,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
@@ -1457,7 +1457,7 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
       hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
@@ -1472,7 +1472,7 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
+  if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
