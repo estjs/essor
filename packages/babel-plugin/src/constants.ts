@@ -1,22 +1,3 @@
-import type { PluginOptions } from './types';
-
-// default options
-export const DEFAULT_OPTIONS: PluginOptions = {
-  mode: 'client',
-  symbol: '$',
-  props: true,
-  hmr: true,
-  styled: false,
-  enableFor: false,
-};
-
-// Rendering mode
-export enum RENDER_MODE {
-  CLIENT = 'client',
-  SSR = 'ssr',
-  SSG = 'ssg',
-}
-
 export const IMPORTS_MAPS = [
   // Reactive API
   'signal',
@@ -24,6 +5,7 @@ export const IMPORTS_MAPS = [
   'reactive',
   'memoEffect',
   'omitProps',
+  'resolveDefaultProps',
 
   // component
   'createComponent',
@@ -47,24 +29,71 @@ export const IMPORTS_MAPS = [
   'addEventListener',
   // rendering related
   'render',
+  'convertTextChildToString',
   'escapeHTML',
   'getHydrationKey',
+  // server attr helpers
+  'ssrAttr',
+  'ssrClass',
+  'ssrStyle',
+  'ssrSpread',
+  // DOM navigation helpers
+  'child',
+  'next',
+  'nthChild',
 ] as const;
 
-// Static Site Generation API
-export const SSG_IMPORTS_MAPS = {
+/**
+ * Name remaps applied when compiling for RENDER_MODE.SERVER.
+ * Only entries whose runtime helper differs from the client name need listing.
+ */
+export const SERVER_IMPORT_REMAPS = {
   createComponent: 'createSSGComponent',
   patchAttr: 'setSSGAttr',
 } as const;
 
-// Server-side Rendering API
-export const SSR_IMPORTS_MAPS = {
-  mapNodes: 'mapSSRNodes',
+/**
+ * Name remaps applied when compiling for RENDER_MODE.HYDRATE.
+ * Only entries whose runtime helper differs from the client name need listing.
+ */
+export const HYDRATE_IMPORT_REMAPS = {
   template: 'getRenderedElement',
+  patchClass: 'patchClassHydrate',
+  patchAttr: 'patchAttrHydrate',
+  patchStyle: 'patchStyleHydrate',
 } as const;
 
-// transform property name
-export const TRANSFORM_PROPERTY_NAME = '__props';
+export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 
-// hmr component name
-export const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
+/**
+ * Resolved names that must be imported from `'essor/server'` in SERVER mode.
+ * Derived from IMPORTS_MAPS + SERVER_IMPORT_REMAPS so dead entries are impossible:
+ * only names reachable via useImport() appear here.
+ */
+const _serverRemapValues = new Set(Object.values(SERVER_IMPORT_REMAPS));
+export const SERVER_EXPORTS = new Set<string>([
+  ...IMPORTS_MAPS
+    .filter((name) => !Object.hasOwn(SERVER_IMPORT_REMAPS, name))
+    .filter((name) =>
+      name === 'render'
+      || name === 'convertTextChildToString'
+      || name === 'escapeHTML'
+      || name === 'Fragment'
+      || name === 'Portal'
+      || name === 'Suspense'
+      || name === 'getHydrationKey'
+      || name.startsWith('ssr'),
+    ),
+  ..._serverRemapValues,
+]);
+
+export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, name])) as Record<
+  IMPORT_MAP_NAMES,
+  IMPORT_MAP_NAMES
+>;
+
+// jsx function props transform property name
+export const TRANSFORM_PROPERTY_NAME = '__props';
+export const FRAGMENT_NAME = 'Fragment';
+export const UPDATE_PREFIX = 'update';
+export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;

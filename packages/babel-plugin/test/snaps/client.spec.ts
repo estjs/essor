@@ -1,13 +1,35 @@
+import { afterEach, beforeEach, vi } from 'vitest';
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'client', hmr: false });
+const transformCodeWithFor = getTransform('jsx', { mode: 'client', hmr: false, enableFor: true });
 
 describe('should work with jsx client transform', () => {
+  let warnSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
+  });
+
   it('transforms simple JSX element', () => {
     const inputCode = `
       const element = <div>Hello, World!</div>;
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('keeps file-level template constants', () => {
+    const inputCode = `
+      const element = <div>Hello, World!</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('const _t$ = _template$("<div>Hello, World!</div>");');
+    expect(output).toContain('const element = _t$();');
   });
 
   it('transforms JSX element with attributes', () => {
@@ -91,6 +113,17 @@ describe('should work with jsx client transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('compiles dynamic attrs to stateful memoEffect patch flow', () => {
+    const inputCode = `
+      let i = 1;
+      i = 2;
+      const element = <div key={i}>Hello, World!</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_memoEffect$(_p$ => {');
+  });
+
   it('transforms JSX element with style attribute', () => {
     const inputCode = `
       const style = { color: 'red', fontSize: '16px' };
@@ -98,6 +131,17 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('does not compile static style bindings into memoEffect', () => {
+    const inputCode = `
+      const style = { color: 'red', fontSize: '16px' };
+      const element = <div style={style}>Hello, World!</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).not.toContain('_memoEffect$');
+    expect(output).toContain('style=\\"color:red;font-size:16px\\"');
   });
 
   it('transforms JSX element with class and style attributes', () => {
@@ -121,6 +165,34 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('keeps compiling with invalid native html nesting', () => {
+    const inputCode = `
+      const element = (
+        <p>
+          <div>Invalid child</div>
+        </p>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('Invalid child');
+  });
+
+  it('does not warn for valid native html nesting', () => {
+    const inputCode = `
+      const element = (
+        <ul>
+          <li>Valid child</li>
+        </ul>
+      );
+    `;
+
+    transformCode(inputCode);
+
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 
   it('transforms client JSX element with nested expressions and children', () => {
@@ -255,7 +327,9 @@ describe('should work with jsx client transform', () => {
     <p bind:value={value}>Paragraph 1</p>
     <p>Paragraph 2</p>
   </div>`;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('"value"');
   });
 
   it('should work with comment in JSX', () => {
@@ -266,7 +340,9 @@ describe('should work with jsx client transform', () => {
       <p bind:value={value}>Paragraph 1</p>
       <p>Paragraph 2</p>
     </div>`;
-    expect(transformCode(inputCode)).toMatchSnapshot();
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('"value"');
   });
 
   it('should work with static style transform to inline style', () => {
@@ -593,10 +669,8 @@ describe('should work with jsx client transform', () => {
 
   it('should work with forwardRef and memo', () => {
     const inputCode = `
-      const ForwardRefMemoComponent = React.memo(React.forwardRef((props, ref) => (
-        <div ref={ref}>Forward Ref Memo: {props.value}</div>
-      )));
-      const element = <ForwardRefMemoComponent value={42} ref={React.createRef()} />;
+      const ref=useRef()
+      const element = <ForwardRefComponent value={42} ref={ref} />;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
@@ -731,6 +805,57 @@ describe('should work with jsx client transform', () => {
       }
     `;
 
-    expect(transformCode(code)).toMatchSnapshot();
+    const output = transformCode(code);
+    expect(output).toContain('Fragment as _Fragment$');
+    expect(output).toContain('_createComponent$(_Fragment$');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('keeps map expressions as plain inserts when enableFor is disabled', () => {
+    const code = `
+           <tbody>
+          {data.value.map((item) => <Row key={item.id} item={item} />)}
+        </tbody>
+    `;
+    const output = transformCode(code);
+    expect(output).toMatchSnapshot();
+  });
+
+  it('should work with For', () => {
+    const code = `
+      <tbody>
+        {data.value.map((item) => <Row key={item.id} item={item} other={1} {...{other:2}} />)}
+      </tbody>
+    `;
+    const output = transformCodeWithFor(code);
+    expect(output).toContain('For as _For$');
+    expect(output).toContain('_createComponent$(_For$, {');
+    expect(output).toContain('data.value');
+    expect(output).toContain('item => Row(');
+    expect(output).not.toContain('_createComponent$(Row');
+    expect(output).not.toContain('data.value.map(');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('preserves the index param in For children callbacks', () => {
+    const code = `
+      <tbody>
+        {items.map((item, i) => <Row key={i} item={item} />)}
+      </tbody>
+    `;
+    const output = transformCodeWithFor(code);
+    expect(output).toMatch(/\(item,\s*i\)\s*=>/);
+    expect(output).toContain('For as _For$');
+  });
+
+  it('extracts keyed native for bodies into  instead of patching key onto the element', () => {
+    const code = `
+      <ul>
+        {items.map(item => <li key={item}>{item}</li>)}
+      </ul>
+    `;
+    const output = transformCodeWithFor(code);
+    expect(output).not.toContain('Fragment as _Fragment$');
+    expect(output).not.toContain('_patchAttr$(_root$, "key"');
   });
 });

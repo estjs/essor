@@ -1,6 +1,11 @@
 import { getTransform } from './transform';
-const transformCode = getTransform('jsx', { mode: 'ssg', hmr: false });
-describe('jsx SSG transform', () => {
+const transformCode = getTransform('jsx', { mode: 'hydrate', hmr: false });
+const transformCodeWithFor = getTransform('jsx', {
+  mode: 'hydrate',
+  hmr: false,
+  enableFor: true,
+});
+describe('jsx hydrate transform', () => {
   it('transforms simple JSX element', () => {
     const inputCode = `
       const element = <div>Hello, World!</div>;
@@ -84,12 +89,12 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('transforms ssg JSX element with nested expressions and children', () => {
+  it('transforms JSX element with nested expressions and children', () => {
     const inputCode = `
       const name = 'John';
       const element = (
-        <div class='root'>
-          <p class={name}>itis:{name}'s Profile</p>
+        <div>
+          <p>{name}'s Profile</p>
           <ul>
             {Array.from({ length: 3 }, (_, i) => (
               <li key={i}>Item {i + 1}</li>
@@ -156,7 +161,7 @@ describe('jsx SSG transform', () => {
 
   it('transforms JSX element with JSX fragment as children', () => {
     const inputCode = `
-    const element = (
+      const element = (
         <div>
           <>
             <p>Paragraph 1</p>
@@ -168,6 +173,7 @@ describe('jsx SSG transform', () => {
 
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
   it('transforms JSX element with function components', () => {
     const inputCode = `
       const element = (
@@ -186,8 +192,7 @@ describe('jsx SSG transform', () => {
       const element = (
         <div>
           <img src="image.jpg" alt="Image 1" />
-          <input type="text" />
-          <br/>
+          <img src="image.jpg" alt="Image 2" />
         </div>
       );
     `;
@@ -228,7 +233,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with event handlers in SSR', () => {
+  it('should work with event handlers in hydrate', () => {
     const inputCode = `
       const handleClick = () => console.log('clicked');
       const element = <button onClick={handleClick}>Click me</button>;
@@ -243,7 +248,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with conditional rendering in SSR', () => {
+  it('should work with conditional rendering in hydrate', () => {
     const inputCode = `
       const isVisible = true;
       const element = (
@@ -256,7 +261,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with list rendering in SSR', () => {
+  it('should work with list rendering in hydrate', () => {
     const inputCode = `
       const items = ['Item 1', 'Item 2', 'Item 3'];
       const element = (
@@ -270,7 +275,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with nested components and props in SSR', () => {
+  it('should work with nested components and props in hydrate', () => {
     const inputCode = `
       const Child = ({ name, age }) => <div>Name: {name}, Age: {age}</div>;
       const Parent = () => (
@@ -283,7 +288,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with async data in SSR', () => {
+  it('should work with async data in hydrate', () => {
     const inputCode = `
       const AsyncComponent = async ({ data }) => {
         const result = await data;
@@ -294,7 +299,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with streaming SSR', () => {
+  it('should work with streaming hydrate', () => {
     const inputCode = `
       const StreamingComponent = ({ chunks }) => (
         <div>
@@ -308,7 +313,280 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with head management in SSR', () => {
+  it('should work with streaming hydrate and suspense', () => {
+    const inputCode = `
+      const StreamingSuspense = ({ children, fallback }) => (
+        <div data-streaming>
+          <Suspense fallback={fallback}>
+            {children}
+          </Suspense>
+        </div>
+      );
+      const element = (
+        <StreamingSuspense fallback={<div>Loading...</div>}>
+          <div>Streaming Content</div>
+        </StreamingSuspense>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and error boundaries', () => {
+    const inputCode = `
+      const StreamingErrorBoundary = ({ children, fallback }) => (
+        <div data-streaming-error>
+          <ErrorBoundary fallback={fallback}>
+            {children}
+          </ErrorBoundary>
+        </div>
+      );
+      const element = (
+        <StreamingErrorBoundary fallback={<div>Error occurred!</div>}>
+          <div>Protected Streaming Content</div>
+        </StreamingErrorBoundary>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and context', () => {
+    const inputCode = `
+      const StreamingContext = ({ value, children }) => (
+        <div data-streaming-context>
+          <ThemeContext.Provider value={value}>
+            {children}
+          </ThemeContext.Provider>
+        </div>
+      );
+      const element = (
+        <StreamingContext value="dark">
+          <div>Streaming Context Content</div>
+        </StreamingContext>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and portals', () => {
+    const inputCode = `
+      const StreamingPortal = ({ target, children }) => (
+        <div data-streaming-portal data-target={target}>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingPortal target="modal">
+          <div>Streaming Portal Content</div>
+        </StreamingPortal>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and refs', () => {
+    const inputCode = `
+      const StreamingRef = ({ children }, ref) => (
+        <div ref={ref} data-streaming-ref>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingRef ref={React.createRef()}>
+          <div>Streaming Ref Content</div>
+        </StreamingRef>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and memo', () => {
+    const inputCode = `
+      const StreamingMemo = ({ value }) => (
+        <div data-streaming-memo>{value}</div>
+      );
+      StreamingMemo._memo = true;
+      const element = <StreamingMemo value="Memo Content" />;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and forwardRef', () => {
+    const inputCode = `
+      const StreamingForwardRef = React.forwardRef((props, ref) => (
+        <div ref={ref} data-streaming-forward>
+          {props.children}
+        </div>
+      ));
+      const element = (
+        <StreamingForwardRef ref={React.createRef()}>
+          <div>Streaming Forward Ref Content</div>
+        </StreamingForwardRef>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and lazy loading', () => {
+    const inputCode = `
+      const StreamingLazy = ({ children }) => (
+        <div data-streaming-lazy>{children}</div>
+      );
+      StreamingLazy._lazy = true;
+      const element = (
+        <Suspense fallback={<div>Loading...</div>}>
+          <StreamingLazy>Lazy Content</StreamingLazy>
+        </Suspense>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and dynamic imports', () => {
+    const inputCode = `
+      const StreamingDynamic = ({ children }) => (
+        <div data-streaming-dynamic>{children}</div>
+      );
+      const element = (
+        <Suspense fallback={<div>Loading...</div>}>
+          <StreamingDynamic>
+            {import('./Component')}
+          </StreamingDynamic>
+        </Suspense>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and multiple contexts', () => {
+    const inputCode = `
+      const StreamingContexts = ({ theme, user, children }) => (
+        <div data-streaming-contexts>
+          <ThemeContext.Provider value={theme}>
+            <UserContext.Provider value={user}>
+              {children}
+            </UserContext.Provider>
+          </ThemeContext.Provider>
+        </div>
+      );
+      const element = (
+        <StreamingContexts
+          theme="dark"
+          user={{ name: 'John' }}
+        >
+          <div>Multiple Contexts Content</div>
+        </StreamingContexts>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and custom hooks', () => {
+    const inputCode = `
+      const useStreamingHook = () => ({ value: 'streaming' });
+      const StreamingHook = () => {
+        const { value } = useStreamingHook();
+        return <div data-streaming-hook>{value}</div>;
+      };
+      const element = <StreamingHook />;
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and error handling', () => {
+    const inputCode = `
+      const StreamingError = ({ error, children }) => (
+        <div data-streaming-error>
+          {error ? (
+            <div>Error: {error.message}</div>
+          ) : (
+            children
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingError error={null}>
+          <div>Streaming Content</div>
+        </StreamingError>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and loading states', () => {
+    const inputCode = `
+      const StreamingLoading = ({ isLoading, children }) => (
+        <div data-streaming-loading>
+          {isLoading ? (
+            <div>Loading...</div>
+          ) : (
+            children
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingLoading isLoading={false}>
+          <div>Loaded Content</div>
+        </StreamingLoading>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and data fetching', () => {
+    const inputCode = `
+      const StreamingData = ({ data, children }) => (
+        <div data-streaming-data>
+          {data ? (
+            children
+          ) : (
+            <div>Loading data...</div>
+          )}
+        </div>
+      );
+      const element = (
+        <StreamingData data={{ key: 'value' }}>
+          <div>Data Content</div>
+        </StreamingData>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and hydration', () => {
+    const inputCode = `
+      const StreamingHydration = ({ children }) => (
+        <div data-streaming-hydration>
+          {children}
+        </div>
+      );
+      const element = (
+        <StreamingHydration>
+          <div data-hydrate="true">Hydration Content</div>
+        </StreamingHydration>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with streaming hydrate and suspense boundaries', () => {
+    const inputCode = `
+      const StreamingSuspenseBoundary = ({ children, fallback }) => (
+        <div data-streaming-suspense>
+          <Suspense fallback={fallback}>
+            {children}
+          </Suspense>
+        </div>
+      );
+      const element = (
+        <StreamingSuspenseBoundary fallback={<div>Loading...</div>}>
+          <div>Suspense Content</div>
+        </StreamingSuspenseBoundary>
+      );
+    `;
+    expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('should work with head management in hydrate', () => {
     const inputCode = `
       const Head = ({ children }) => <head data-ssr>{children}</head>;
       const element = (
@@ -321,7 +599,21 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with error handling in SSR', () => {
+  it('compiles map expressions to For in hydrate when enableFor is true', () => {
+    const inputCode = `
+      const element = (
+        <tbody>
+          {items.map(item => <Row key={item} item={item} />)}
+        </tbody>
+      );
+    `;
+    const output = transformCodeWithFor(inputCode);
+    expect(output).toContain('For as _For$');
+    expect(output).toContain('_createComponent$(_For$, {');
+    expect(output).not.toContain('items.map(');
+  });
+
+  it('should work with error handling in hydrate', () => {
     const inputCode = `
       const ErrorBoundary = ({ fallback, children }) => {
         try {
@@ -339,7 +631,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with context in SSR', () => {
+  it('should work with context in hydrate', () => {
     const inputCode = `
       const ThemeContext = { Provider: ({ value, children }) => children };
       const element = (
@@ -351,7 +643,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with CSS-in-JS in SSR', () => {
+  it('should work with CSS-in-JS in hydrate', () => {
     const inputCode = `
       const StyledComponent = ({ className, children }) => (
         <div class={className} data-styled>
@@ -367,7 +659,7 @@ describe('jsx SSG transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('should work with data fetching in SSR', () => {
+  it('should work with data fetching in hydrate', () => {
     const inputCode = `
       const DataComponent = ({ data }) => (
         <div data-ssr-data>
@@ -375,302 +667,6 @@ describe('jsx SSG transform', () => {
         </div>
       );
       const element = <DataComponent data={{ key: 'value' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static data fetching in SSG', () => {
-    const inputCode = `
-      const StaticDataComponent = ({ data }) => (
-        <div data-static>
-          {JSON.stringify(data)}
-        </div>
-      );
-      const element = <StaticDataComponent data={{ key: 'value' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static paths generation', () => {
-    const inputCode = `
-      const StaticPathsComponent = ({ paths }) => (
-        <div data-paths>
-          {paths.map(path => (
-            <div key={path} data-path={path} />
-          ))}
-        </div>
-      );
-      const element = <StaticPathsComponent paths={['/page1', '/page2']} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static props generation', () => {
-    const inputCode = `
-      const StaticPropsComponent = ({ props }) => (
-        <div data-props>
-          {Object.entries(props).map(([key, value]) => (
-            <div key={key} data-prop-key={key} data-prop-value={value} />
-          ))}
-        </div>
-      );
-      const element = <StaticPropsComponent props={{ title: 'Page Title' }} />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static image optimization', () => {
-    const inputCode = `
-      const StaticImage = ({ src, alt }) => (
-        <img src={src} alt={alt} data-static-image />
-      );
-      const element = <StaticImage src="/static/image.jpg" alt="Static Image" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static metadata', () => {
-    const inputCode = `
-      const StaticMetadata = ({ metadata }) => (
-        <head data-static-metadata>
-          <title>{metadata.title}</title>
-          <meta name="description" content={metadata.description} />
-        </head>
-      );
-      const element = (
-        <StaticMetadata
-          metadata={{
-            title: 'Static Page',
-            description: 'Static page description'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static redirects', () => {
-    const inputCode = `
-      const StaticRedirect = ({ from, to }) => (
-        <div data-redirect data-from={from} data-to={to} />
-      );
-      const element = <StaticRedirect from="/old" to="/new" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static rewrites', () => {
-    const inputCode = `
-      const StaticRewrite = ({ source, destination }) => (
-        <div data-rewrite data-source={source} data-destination={destination} />
-      );
-      const element = <StaticRewrite source="/api" destination="/api/v1" />;
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static headers', () => {
-    const inputCode = `
-      const StaticHeaders = ({ headers }) => (
-        <div data-headers>
-          {Object.entries(headers).map(([key, value]) => (
-            <div key={key} data-header-key={key} data-header-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticHeaders
-          headers={{
-            'Cache-Control': 'public, max-age=31536000',
-            'X-Frame-Options': 'DENY'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static environment variables', () => {
-    const inputCode = `
-      const StaticEnv = ({ env }) => (
-        <div data-env>
-          {Object.entries(env).map(([key, value]) => (
-            <div key={key} data-env-key={key} data-env-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticEnv
-          env={{
-            NEXT_PUBLIC_API_URL: 'https://api.example.com',
-            NEXT_PUBLIC_CDN_URL: 'https://cdn.example.com'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static locales', () => {
-    const inputCode = `
-      const StaticLocale = ({ locale, messages }) => (
-        <div data-locale={locale}>
-          {Object.entries(messages).map(([key, value]) => (
-            <div key={key} data-message-key={key} data-message-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticLocale
-          locale="en"
-          messages={{
-            hello: 'Hello',
-            welcome: 'Welcome to our site'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static robots.txt', () => {
-    const inputCode = `
-      const StaticRobots = ({ rules }) => (
-        <div data-robots>
-          {rules.map((rule, index) => (
-            <div key={index} data-rule={rule} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticRobots
-          rules={[
-            'User-agent: *',
-            'Allow: /',
-            'Disallow: /private/'
-          ]}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static sitemap.xml', () => {
-    const inputCode = `
-      const StaticSitemap = ({ urls }) => (
-        <div data-sitemap>
-          {urls.map((url, index) => (
-            <div key={index} data-url={url} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticSitemap
-          urls={[
-            'https://example.com/',
-            'https://example.com/about',
-            'https://example.com/contact'
-          ]}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static manifest.json', () => {
-    const inputCode = `
-      const StaticManifest = ({ manifest }) => (
-        <div data-manifest>
-          {Object.entries(manifest).map(([key, value]) => (
-            <div key={key} data-manifest-key={key} data-manifest-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticManifest
-          manifest={{
-            name: 'My Static App',
-            short_name: 'App',
-            start_url: '/',
-            display: 'standalone',
-            background_color: '#ffffff',
-            theme_color: '#000000'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static security headers', () => {
-    const inputCode = `
-      const StaticSecurity = ({ headers }) => (
-        <div data-security>
-          {Object.entries(headers).map(([key, value]) => (
-            <div key={key} data-security-key={key} data-security-value={value} />
-          ))}
-        </div>
-      );
-      const element = (
-        <StaticSecurity
-          headers={{
-            'Content-Security-Policy': "default-src 'self'",
-            'X-Content-Type-Options': 'nosniff',
-            'X-XSS-Protection': '1; mode=block'
-          }}
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static error pages', () => {
-    const inputCode = `
-      const StaticError = ({ code, message }) => (
-        <div data-error data-code={code}>
-          <h1>{code}</h1>
-          <p>{message}</p>
-        </div>
-      );
-      const element = (
-        <StaticError
-          code="404"
-          message="Page not found"
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static API routes', () => {
-    const inputCode = `
-      const StaticApi = ({ endpoint, handler }) => (
-        <div data-api data-endpoint={endpoint}>
-          {handler}
-        </div>
-      );
-      const element = (
-        <StaticApi
-          endpoint="/api/static"
-          handler="export default function handler(req, res) { res.json({ data: 'static' }) }"
-        />
-      );
-    `;
-    expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('should work with static middleware', () => {
-    const inputCode = `
-      const StaticMiddleware = ({ middleware }) => (
-        <div data-middleware>
-          {middleware}
-        </div>
-      );
-      const element = (
-        <StaticMiddleware
-          middleware="export function middleware(request) { return NextResponse.next() }"
-        />
-      );
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });

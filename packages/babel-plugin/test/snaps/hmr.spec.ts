@@ -5,7 +5,7 @@ import pluginFactory from '../../src';
 describe('hMR transformation', () => {
   const transform = async (code: string, hmr = true) => {
     const result = await transformAsync(code, {
-      plugins: [[pluginFactory, { hmr }]],
+      plugins: [[pluginFactory, { hmr, bundler: 'vite' }]],
       filename: 'test.tsx',
       parserOpts: {
         plugins: ['jsx', 'typescript'],
@@ -51,6 +51,34 @@ describe('hMR transformation', () => {
     const output = await transform(input);
 
     expect(output).toMatchSnapshot();
+  });
+
+  it('only registers top-level components for HMR metadata', async () => {
+    const input = `
+          function Counter() {
+            return <div>Counter</div>;
+          }
+          function App() {
+             function Counter1() {
+              function Counter2() {
+                return <div>Counter</div>;
+              }
+              return <div>Counter</div>;
+            }
+            return <div>
+              <Counter />
+            </div>;
+          }
+          createApp(App, 'root');
+    `;
+
+    const output = await transform(input);
+
+    expect(output).toContain('Counter.__signature');
+    expect(output).toContain('App.__signature');
+    expect(output).not.toContain('Counter1.__signature');
+    expect(output).not.toContain('Counter2.__signature');
+    expect(output).toContain('const __$registry$__ = [Counter, App];');
   });
 
   it('should add HMR metadata to components', async () => {

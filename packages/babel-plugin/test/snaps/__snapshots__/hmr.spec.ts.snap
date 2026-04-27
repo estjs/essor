@@ -2,105 +2,78 @@
 
 exports[`hMR transformation > should add HMR metadata to components 1`] = `
 "import { template as _template$ } from "essor";
+const _t$ = _template$("<div>Hello</div>");
 import { createComponent } from 'essor';
-const _$tmpl = _template$("<div>Hello</div>");
 function App() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+  return _t$();
 }
-App.__signature = "rzhl1b";
-App.__hmrId = "35tyqe:App";
+App.__signature = "1b4tsqg";
+App.__hmrId = "1q9dts2:App";
 const __$registry$__ = [App];"
 `;
 
 exports[`hMR transformation > should handle multiple createComponent aliases 1`] = `
-"import { template as _template$, createComponent as _createComponent$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+"import { template as _template$, child as _child$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+const _t$2 = _template$("<div><!></div>");
+const _t$ = _template$("<div>Counter</div>");
 import { createApp, signal } from 'essor';
-const _$tmpl = _template$("<div>Counter</div>"),
-  _$tmpl2 = _template$("<div>Counter</div>"),
-  _$tmpl3 = _template$("<div>Counter</div>"),
-  _$tmpl4 = _template$("<div></div>");
 function Counter() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+  return _t$();
 }
-Counter.__signature = "1b90ocp";
-Counter.__hmrId = "35tyqe:Counter";
+Counter.__signature = "1dpi21a";
+Counter.__hmrId = "1q9dts2:Counter";
 function App() {
   function Counter1() {
     function Counter2() {
-      return (() => {
-        const _$el2 = _$tmpl2();
-        return _$el2;
-      })();
+      return _t$();
     }
-    Counter2.__signature = "1b90ocp";
-    Counter2.__hmrId = "35tyqe:Counter2";
-    return (() => {
-      const _$el3 = _$tmpl3();
-      return _$el3;
-    })();
+    return _t$();
   }
-  Counter1.__signature = "urxb6o";
-  Counter1.__hmrId = "35tyqe:Counter1";
   return (() => {
-    const _$el4 = _$tmpl4();
-    const _$nodes4 = _mapNodes$(_$el4, [1]);
-    _insert$(_$nodes4[0], __$createHMRComponent$__(Counter, {}));
-    return _$el4;
+    const _root$ = _t$2();
+    const _n$ = _child$(_root$);
+    _insert$(_root$, __$createHMRComponent$__(Counter, {}), _n$);
+    return _root$;
   })();
 }
-App.__signature = "o5vgkn";
-App.__hmrId = "35tyqe:App";
+App.__signature = "jtt6lc";
+App.__hmrId = "1q9dts2:App";
 createApp(__$createHMRComponent$__(App), 'root');
-const __$registry$__ = [Counter, App, Counter1, Counter2];"
+const __$registry$__ = [Counter, App];"
 `;
 
 exports[`hMR transformation > should not transform when HMR is disabled 1`] = `
 "import { template as _template$ } from "essor";
+const _t$ = _template$("<div>Hello</div>");
 import { createComponent as cc } from 'essor';
-const _$tmpl = _template$("<div>Hello</div>");
 function App() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+  return _t$();
 }
 cc(App);"
 `;
 
 exports[`hMR transformation > should replace user import alias (cc) with HMR component 1`] = `
 "import { template as _template$ } from "essor";
+const _t$ = _template$("<div>Hello</div>");
 import { createComponent as cc } from 'essor';
-const _$tmpl = _template$("<div>Hello</div>");
 function App() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+  return _t$();
 }
-App.__signature = "rzhl1b";
-App.__hmrId = "35tyqe:App";
+App.__signature = "1b4tsqg";
+App.__hmrId = "1q9dts2:App";
 cc(App);
 const __$registry$__ = [App];"
 `;
 
 exports[`hMR transformation > should transform createApp to create with HMR component 1`] = `
 "import { template as _template$ } from "essor";
+const _t$ = _template$("<div>Hello</div>");
 import { createApp } from 'essor';
-const _$tmpl = _template$("<div>Hello</div>");
 function App() {
-  return (() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })();
+  return _t$();
 }
-App.__signature = "rzhl1b";
-App.__hmrId = "35tyqe:App";
+App.__signature = "1b4tsqg";
+App.__hmrId = "1q9dts2:App";
 createApp(__$createHMRComponent$__(App), 'root');
 const __$registry$__ = [App];"
 `;

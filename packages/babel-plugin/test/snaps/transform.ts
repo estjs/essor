@@ -1,66 +1,22 @@
 import babel from '@babel/core';
-import { transformProgram } from '../../src/program';
-import { transformProps } from '../../src/signals/props';
-import {
-  replaceSymbol,
-  symbolArrayPattern,
-  symbolIdentifier,
-  symbolObjectPattern,
-} from '../../src/signals/symbol';
-import { transformJSX } from '../../src/jsx';
-const transforms = {
-  jsx: {
-    Program: transformProgram,
-    JSXElement: transformJSX,
-    JSXFragment: transformJSX,
-  },
+import myPlugin from '../../src/index';
 
-  props: {
-    Program: transformProgram,
-    FunctionDeclaration: transformProps,
-    FunctionExpression: transformProps,
-    ArrowFunctionExpression: transformProps,
-  },
-  symbol: {
-    Program: transformProgram,
-    VariableDeclarator: replaceSymbol,
-    Identifier: symbolIdentifier,
-    ObjectPattern: symbolObjectPattern,
-    ArrayPattern: symbolArrayPattern,
-    FunctionDeclaration: transformProps,
-  },
-};
-
+/**
+ * 为了尽可能少地修改几百个测试用例文件，这里保留旧版的签名 getTransform(name, opts)。
+ * 新版架构由于高度凝聚（Signal pass + JSX pass + HMR pass 构成一条流水线），
+ * 我们将不再区分独立的 jsx 或 symbol transform 测试跑法，而是统一返回主插件。
+ */
 export function getTransform(
   transformName: string | string[],
-  opts: Record<string, any> = {},
+  opts: Record<string, unknown> = {},
 ): (code: string) => string {
-  const transform = Array.isArray(transformName)
-    ? transformName.reduce((obj, key) => {
-        Object.assign(obj, transforms[key]);
-        return obj;
-      }, {})
-    : transforms[transformName];
-  if (!transform) {
-    throw new Error(`Unsupported transform: ${transformName}`);
-  }
-
-  const babelPlugin = {
-    name: 'babel-plugin-essor',
-    manipulateOptions({ filename }, parserOpts) {
-      if (filename.endsWith('.ts') || filename.endsWith('.tsx')) {
-        parserOpts.plugins.push('typescript');
-      }
-      parserOpts.plugins.push('jsx');
-    },
-    visitor: transform,
-  };
-  return (code) => {
+  return code => {
     const result = babel.transformSync(code, {
       filename: 'test.jsx',
       sourceType: 'module',
-      plugins: [[babelPlugin, opts]],
+      plugins: [[myPlugin, opts]],
     });
+
     if (result?.code) {
       return result.code;
     }
