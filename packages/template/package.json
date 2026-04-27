@@ -21,6 +21,16 @@
   "module": "./dist/template.esm.js",
   "types": "./dist/template.d.ts",
   "exports": {
+    "./internal": {
+      "development": {
+        "types": "./src/internal.ts",
+        "require": "./src/internal.ts",
+        "import": "./src/internal.ts"
+      },
+      "types": "./dist/internal.d.ts",
+      "require": "./dist/internal.cjs.js",
+      "import": "./dist/internal.esm.js"
+    },
     ".": {
       "browser": {
         "development": {

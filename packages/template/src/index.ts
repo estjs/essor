@@ -1,4 +1,4 @@
-export { template, createApp } from './renderer';
+export { template, createApp, hydrate } from './renderer';
 
 export { Component, createComponent, isComponent } from './component';
 
@@ -6,28 +6,18 @@ export { onMount, onDestroy, onUpdate } from './lifecycle';
 
 export { provide, inject, type InjectionKey } from './provide';
 
-export { addEventListener, bindElement, insert, mapNodes } from './binding';
+export { bindElement, insert, next, child, nthChild } from './binding';
 
-export { delegateEvents } from './events';
+export { delegateEvents, clearDelegatedEvents, addEventListener } from './events';
 
-// Props utilities
-export { omitProps } from './utils/props';
-
-// DOM utilities
-export { removeNode, insertNode, replaceNode, getFirstDOMNode } from './utils/dom';
-
-// Node utilities
-export { normalizeNode, isSameNode, shallowCompare } from './utils/node';
+export { omitProps } from './utils';
 
 export {
   isHydrating,
-  startHydration,
+  beginHydration,
   endHydration,
   getHydrationKey,
   resetHydrationKey,
-  hydrate,
-  mapSSRNodes,
-  getRenderedElement,
 } from './hydration';
 
 export {
@@ -41,27 +31,15 @@ export {
 
 export {
   Fragment,
-  FragmentProps,
   isFragment,
   Portal,
-  PortalProps,
   isPortal,
   Suspense,
-  SuspenseProps,
   isSuspense,
   createResource,
+  defineAsyncComponent,
+  type AsyncComponentOptions,
+  For,
 } from './components';
 
-export { ComponentProps, ComponentFn } from './types';
-
-export {
-  Scope,
-  createScope,
-  runWithScope,
-  disposeScope,
-  getActiveScope,
-  setActiveScope,
-  onCleanup,
-} from './scope';
-
-export { For, type ForProps } from './components/For';
+export type { ComponentProps, ComponentFn } from './types';

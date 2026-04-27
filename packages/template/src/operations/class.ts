@@ -1,21 +1,22 @@
-import { normalizeClassName } from '@estjs/shared';
-import { isHydrating } from '../hydration/shared';
+import { isString, normalizeClassName } from '@estjs/shared';
 
 /**
- * Type definition for class values
- * @public
+ * Supported value types for the class patch layer.
  */
 export type ClassValue = string | Record<string, boolean> | ClassValue[] | null | undefined;
 
 /**
- * Patches the class attribute of an element
- * Supports silent hydration (skips DOM updates during hydration phase)
+ * Applies a minimal class update to an element.
  *
- * @param el - The element to patch classes on
- * @param prev - Previous class value for diffing
- * @param next - New class value to apply
- * @param isSVG - Whether the element is an SVG element
- * @public
+ * Class values are normalized into a string first, then written through
+ * `className` or `setAttribute('class')` depending on the element type.
+ * Hydration stays silent and reuses the server-rendered result by default.
+ *
+ * @param el - The element to patch.
+ * @param prev - Previous class value.
+ * @param next - Next class value.
+ * @param isSVG - Whether the element is an SVG element.
+ * @returns {void}
  */
 export function patchClass(
   el: Element,
@@ -26,20 +27,22 @@ export function patchClass(
   if (prev === next) {
     return;
   }
-  if (isHydrating()) {
-    return;
-  }
+
   const normalizedNext = normalizeClass(next);
-  const normalizedPrev = normalizeClass(prev);
-  // Skip DOM update if classes haven't changed
-  if (normalizedNext && normalizedPrev === normalizedNext) {
+  if (!normalizedNext) {
+    el.removeAttribute('class');
     return;
   }
 
-  // Apply classes based on element type
-  if (!normalizedNext) {
-    el.removeAttribute('class');
-  } else if (isSVG) {
+  // Skip DOM write if normalized values are identical.
+  // For string prev, it's already normalized; otherwise normalize.
+  const normalizedPrev = isString(prev) ? prev : normalizeClass(prev);
+  if (normalizedPrev === normalizedNext) {
+    return;
+  }
+
+  // SVG nodes cannot rely on `className` consistently, so use the attribute path.
+  if (isSVG) {
     el.setAttribute('class', normalizedNext);
   } else {
     el.className = normalizedNext;
@@ -47,13 +50,6 @@ export function patchClass(
 }
 
 /**
- * Normalizes different class value formats into a single string
- * Re-exports normalizeClassName from shared as normalizeClass for backward compatibility
- *
- * @param value - The class value to normalize
- * @returns A normalized class string
- * @public
+ * Normalizes supported class inputs into a single string.
  */
-export function normalizeClass(value: unknown): string {
-  return normalizeClassName(value);
-}
+export const normalizeClass = normalizeClassName;

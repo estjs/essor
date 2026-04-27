@@ -96,7 +96,7 @@ describe('babel plugin direct helpers', () => {
       expect(ir.binds).toEqual([expect.objectContaining({ name: 'value' })]);
       expect(ir.spreads).toHaveLength(1);
       expect(ctx.delegateEvents.has('click')).toBe(true);
-      expect(ir.children.map(child => child.type)).toEqual([IRType.TEXT, IRType.EXPRESSION]);
+      expect(ir.children.map((child) => child.type)).toEqual([IRType.TEXT, IRType.EXPRESSION]);
     });
 
     it('lowers component bindings and map children into component and for IR nodes', () => {
@@ -130,7 +130,7 @@ describe('babel plugin direct helpers', () => {
         throw new Error('Expected component IR');
       }
 
-      expect(ir.props.map(prop => prop.name)).toEqual(
+      expect(ir.props.map((prop) => prop.name)).toEqual(
         expect.arrayContaining(['onClick', `${UPDATE_PREFIX}:model`]),
       );
       expect(ir.spreads).toHaveLength(1);

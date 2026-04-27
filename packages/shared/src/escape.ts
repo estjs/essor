@@ -85,7 +85,7 @@ export const cssVarNameEscapeSymbolsRE = /[ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g;
  * @returns The escaped CSS variable name.
  */
 export function getEscapedCssVarName(key: string, doubleEscape: boolean): string {
-  return key.replaceAll(cssVarNameEscapeSymbolsRE, s =>
+  return key.replaceAll(cssVarNameEscapeSymbolsRE, (s) =>
     doubleEscape ? (s === '"' ? '\\\\\\"' : `\\\\${s}`) : `\\${s}`,
   );
 }

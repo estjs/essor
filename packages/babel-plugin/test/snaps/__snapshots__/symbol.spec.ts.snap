@@ -117,6 +117,12 @@ const $a = _signal$([1]);
 console.log($a.value[0]);"
 `;
 
+exports[`transform symbol > should work with array index 1`] = `
+"import { signal as _signal$ } from "essor";
+const $a = _signal$([1]);
+console.log($a.value[0]);"
+`;
+
 exports[`transform symbol > should work with basic types 1`] = `
 "import { signal as _signal$ } from "essor";
 const $a = _signal$(false);

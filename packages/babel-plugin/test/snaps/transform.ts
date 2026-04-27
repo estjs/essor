@@ -10,7 +10,7 @@ export function getTransform(
   transformName: string | string[],
   opts: Record<string, unknown> = {},
 ): (code: string) => string {
-  return code => {
+  return (code) => {
     const result = babel.transformSync(code, {
       filename: 'test.jsx',
       sourceType: 'module',

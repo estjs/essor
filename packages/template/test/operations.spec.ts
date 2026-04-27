@@ -2,8 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchAttr } from '../src/operations/attr';
 import { normalizeClass, patchClass } from '../src/operations/class';
 import { addEvent } from '../src/operations/event';
-import { patchStyle } from '../src/operations/styles';
-import { getNodeKey } from '../src/key';
+import { patchStyle } from '../src/operations/style';
 import { resetEnvironment } from './test-utils';
 
 describe('dOM operations', () => {
@@ -23,7 +22,7 @@ describe('dOM operations', () => {
     expect(el.hasAttribute('disabled')).toBe(true);
 
     patchAttr(el, 'key', null, 'node-key');
-    expect(getNodeKey(el)).toBe('node-key'); // key is set via setNodeKey
+    expect(el.getAttribute('key')).toBe('node-key'); // key is set via setNodeKey
 
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     patchAttr(svg, 'xlink:href', null, '#id');

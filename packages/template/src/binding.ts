@@ -1,126 +1,215 @@
-import {
-  coerceArray,
-  isFunction,
-  isHtmlInputElement,
-  isHtmlSelectElement,
-  isHtmlTextAreaElement,
-} from '@estjs/shared';
+import { coerceArray, isFunction, isString } from '@estjs/shared';
 import { effect } from '@estjs/signals';
-import { normalizeNode } from './utils/node';
-import { removeNode } from './utils/dom';
-import { patchChildren } from './patch';
-import { getActiveScope, onCleanup, runWithScope } from './scope';
+import { addEventListener } from './events';
+import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
+import { normalizeNode, removeNode } from './dom';
+import { reconcileArrays } from './reconcile';
+import { isHydrating } from './hydration';
 import type { AnyNode } from './types';
 
-/**
- * Add event listener with automatic cleanup on scope destruction
- *
- * @param element - Element to attach listener to
- * @param event - Event name
- * @param handler - Event handler function
- * @param options - Event listener options
- */
-export function addEventListener(
-  element: Element,
-  event: string,
-  handler: EventListener,
-  options?: AddEventListenerOptions,
-): void {
-  element.addEventListener(event, handler, options);
-
-  onCleanup(() => {
-    element.removeEventListener(event, handler, options);
-  });
+export interface BindModifiers {
+  trim?: boolean;
+  number?: boolean;
+  lazy?: boolean;
 }
 
 /**
- * Bind an element to a setter function for two-way data binding
+ * Returns the first child of a node.
  *
- * @param node - The element to bind
- * @param key - The property key (unused, kept for API compatibility)
- * @param defaultValue - Default value (unused, kept for API compatibility)
- * @param setter - The setter function to call when the element's value changes
+ * @param node - The node to get the child from.
+ * @returns The first child node or null.
+ */
+export function child(node: Node | null): Node | null {
+  return node?.firstChild || null;
+}
+
+/**
+ * Returns the next sibling after advancing by `step`.
+ *
+ * @param node - The starting node.
+ * @param step - Number of steps to advance.
+ * @returns The resulting sibling node or null.
+ */
+export function next(node: Node | null, step: number = 1): Node | null {
+  while (node && step > 0) {
+    node = node.nextSibling;
+    step--;
+  }
+  return node || null;
+}
+
+/**
+ * Returns the child node at the requested index.
+ *
+ * @param node - The parent node.
+ * @param index - The child index.
+ * @returns The child node at index or null.
+ */
+export function nthChild(node: Node | null, index: number): Node | null {
+  if (!node || index < 0) return null;
+  let current = node.firstChild;
+  while (current && index > 0) {
+    current = current.nextSibling;
+    index--;
+  }
+  return current || null;
+}
+
+/**
+ * Synchronizes a DOM element property with a model getter and setter.
+ *
+ * @param node - The element to bind.
+ * @param prop - The property name to bind.
+ * @param getter - The value getter or static value.
+ * @param setter - The value setter.
+ * @param modifiers - Optional binding modifiers.
+ * @returns {void}
  */
 export function bindElement(
-  node: Element,
-  key: string,
-  defaultValue: unknown,
+  node: Element | null,
+  prop: 'value' | 'checked' | 'files' | string,
+  getter: (() => unknown) | unknown,
   setter: (value: unknown) => void,
+  modifiers: BindModifiers = {},
 ): void {
-  if (isHtmlInputElement(node)) {
-    bindInputElement(node, setter);
-  } else if (isHtmlSelectElement(node)) {
-    bindSelectElement(node, setter);
-  } else if (isHtmlTextAreaElement(node)) {
-    addEventListener(node, 'input', () => {
-      setter((node as HTMLTextAreaElement).value);
-    });
-  }
-}
+  if (!node) return;
+  let syncingFromModel = false;
 
-/**
- * Bind input element based on its type
- */
-function bindInputElement(node: HTMLInputElement, setter: (value: unknown) => void): void {
-  switch (node.type) {
-    case 'checkbox':
-      addEventListener(node, 'change', () => {
-        setter(Boolean(node.checked));
-      });
-      break;
-
-    case 'radio':
-      addEventListener(node, 'change', () => {
-        setter(node.checked ? node.value : '');
-      });
-      break;
-
-    case 'file':
-      addEventListener(node, 'change', () => {
-        setter(node.files);
-      });
-      break;
-
-    case 'number':
-    case 'range':
-      addEventListener(node, 'input', () => {
-        setter(node.value || '');
-      });
-      break;
-
-    case 'date':
-    case 'datetime-local':
-    case 'month':
-    case 'time':
-    case 'week':
-      addEventListener(node, 'change', () => {
-        setter(node.value || '');
-      });
-      break;
-
-    default:
-      // text, email, password, search, tel, url, etc.
-      addEventListener(node, 'input', () => {
-        setter(node.value);
-      });
-      break;
-  }
-}
-
-/**
- * Bind select element
- */
-function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => void): void {
-  addEventListener(node, 'change', () => {
-    if (node.multiple) {
-      const values = Array.from(node.options)
-        .filter((option) => option.selected)
-        .map((option) => option.value);
-      setter(values);
-    } else {
-      setter(node.value);
+  /**
+   * Applies trim and number modifiers to an incoming bound value.
+   */
+  const processValue = (val: unknown): unknown => {
+    if (!isString(val)) return val;
+    const result = modifiers.trim ? val.trim() : val;
+    if (modifiers.number && result !== '') {
+      const parsed = Number(result);
+      if (!Number.isNaN(parsed)) return parsed;
     }
-  });
+    return result;
+  };
+
+  const nodeName = node.nodeName;
+  const isInput = nodeName === 'INPUT';
+  const isSelect = nodeName === 'SELECT';
+  const isTextArea = nodeName === 'TEXTAREA';
+  const inputType = isInput ? (node as HTMLInputElement).type : '';
+
+  /**
+   * Reads the current value from the element.
+   */
+  const readFromElement = (): unknown => {
+    if (isInput) {
+      const input = node as HTMLInputElement;
+      if (inputType === 'checkbox') return input.checked;
+      if (inputType === 'radio') return input.checked ? input.value : '';
+      if (inputType === 'file') return input.files;
+      return input.value;
+    }
+    if (isSelect) {
+      const select = node as HTMLSelectElement;
+      return select.multiple
+        ? Array.from(select.selectedOptions).map((opt) => opt.value)
+        : select.value;
+    }
+    if (isTextArea) return (node as HTMLTextAreaElement).value;
+    return (node as any)[prop];
+  };
+
+  /**
+   * Writes the current model value back to the element.
+   */
+  const writeToElement = (modelValue: unknown): void => {
+    syncingFromModel = true;
+    try {
+      if (isInput) {
+        const input = node as HTMLInputElement;
+        if (inputType === 'checkbox') {
+          const nextValue = Boolean(modelValue);
+          if (input.checked !== nextValue) input.checked = nextValue;
+          return;
+        }
+        if (inputType === 'radio') {
+          const nextValue = String(modelValue) === input.value;
+          if (input.checked !== nextValue) input.checked = nextValue;
+          return;
+        }
+        if (inputType === 'file') return;
+
+        const nextValue = modelValue == null ? '' : String(modelValue);
+        if (input.value !== nextValue) input.value = nextValue;
+        return;
+      }
+
+      if (isSelect) {
+        const select = node as HTMLSelectElement;
+        if (select.multiple && Array.isArray(modelValue)) {
+          const selected = new Set(modelValue.map((v) => String(v)));
+          for (const option of Array.from(select.options)) {
+            option.selected = selected.has(option.value);
+          }
+          return;
+        }
+        const nextValue = modelValue == null ? '' : String(modelValue);
+        if (select.value !== nextValue) select.value = nextValue;
+        return;
+      }
+
+      if (isTextArea) {
+        const textarea = node as HTMLTextAreaElement;
+        const nextValue = modelValue == null ? '' : String(modelValue);
+        if (textarea.value !== nextValue) textarea.value = nextValue;
+        return;
+      }
+
+      (node as any)[prop] = modelValue;
+    } finally {
+      syncingFromModel = false;
+    }
+  };
+
+  /**
+   * Reads the current model value.
+   */
+  const readModel = () => (isFunction(getter) ? (getter as () => unknown)() : getter);
+
+  /**
+   * Pushes element changes back into the bound model.
+   */
+  const onInput = () => {
+    if (syncingFromModel) return;
+    const rawValue = readFromElement();
+    if (rawValue === undefined) return;
+
+    if (isInput && inputType === 'file') {
+      setter(rawValue);
+      return;
+    }
+
+    const nextValue = processValue(rawValue);
+    if (!isFunction(getter)) {
+      setter(nextValue);
+      return;
+    }
+
+    const prevValue = readModel();
+    if (!Object.is(prevValue, nextValue)) setter(nextValue);
+  };
+
+  const forceChangeEvent =
+    isSelect ||
+    (isInput && (inputType === 'checkbox' || inputType === 'radio' || inputType === 'file'));
+  const eventName = forceChangeEvent || modifiers.lazy ? 'change' : 'input';
+
+  addEventListener(node, eventName, onInput as EventListener);
+  if (isInput && inputType === 'file' && eventName !== 'input') {
+    addEventListener(node, 'input', onInput as EventListener);
+  }
+
+  const stopEffect = effect(() => writeToElement(readModel()));
+
+  if (getActiveScope()) {
+    onCleanup(() => stopEffect.stop());
+  }
 }
 
 /**
@@ -129,7 +218,6 @@ function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => 
  * @param parent Parent node
  * @param nodeFactory Node factory function or static node
  * @param before Reference node for insertion position
- *
  * @example
  * ```typescript
  * insert(container, () => message.value, null);
@@ -139,68 +227,51 @@ function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => 
  */
 export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
+  // Capture owner scope at call time - this is critical for correct context inheritance
+  // When dynamic components are created inside effects, they need to inherit from
+  // the scope that was active when insert() was called, not when the effect runs
+  const ownerScope: Scope | null = getActiveScope();
 
-  let renderedNodes: AnyNode[] = [];
-  const currentScope = getActiveScope();
+  let renderedNodes: Node[] = [];
+  let isFirstRun = true;
+
   // Create effect for reactive updates
-  const cleanup = effect(() => {
-    const run = () => {
+  const effectRunner = effect(() => {
+    const executeUpdate = () => {
       const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
       const nodes = coerceArray(rawNodes as unknown)
         .map((item) => (isFunction(item) ? item() : item))
-        .flatMap(normalizeNode) as AnyNode[];
-
-      renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
+        .flatMap((i) => i)
+        .map(normalizeNode) as Node[];
+      // Hydration mode: skip DOM operations on first run only when every
+      // node already exists under the target parent. Component instances and
+      // fallback CSR nodes still need the normal reconcile path.
+      if (
+        isFirstRun &&
+        isHydrating() &&
+        nodes.every((node) => node instanceof Node && node.parentNode === parent)
+      ) {
+        renderedNodes = nodes;
+        isFirstRun = false;
+        return;
+      }
+      renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
+      isFirstRun = false;
     };
-    if (currentScope) {
-      runWithScope(currentScope, run);
+
+    // If we have an owner scope, run within it to maintain context hierarchy
+    if (ownerScope && !ownerScope.isDestroyed) {
+      runWithScope(ownerScope, executeUpdate);
     } else {
-      run();
+      executeUpdate();
     }
   });
 
   onCleanup(() => {
-    cleanup();
+    effectRunner.stop();
     renderedNodes.forEach((node) => removeNode(node));
     renderedNodes.length = 0;
   });
 
   return renderedNodes;
-}
-
-/**
- * Map nodes from template by indexes
- *
- * @param template - Template node to traverse
- * @param indexes - Array of indexes to map
- * @returns Array of mapped nodes
- */
-export function mapNodes(template: Node, indexes: number[]): Node[] {
-  const len = indexes.length;
-  const tree = new Array<Node>(len);
-  const indexSet = new Set(indexes);
-
-  let index = 1;
-  let found = 0;
-
-  const walk = (node: Node): boolean => {
-    if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-      if (indexSet.has(index)) {
-        tree[found++] = node;
-        if (found === len) return true;
-      }
-      index++;
-    }
-
-    let child = node.firstChild;
-    while (child) {
-      if (walk(child)) return true;
-      child = child.nextSibling;
-    }
-
-    return false;
-  };
-
-  walk(template);
-  return tree;
 }

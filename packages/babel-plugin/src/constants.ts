@@ -66,26 +66,30 @@ export const HYDRATE_IMPORT_REMAPS = {
 export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 
 /**
- * Resolved names that must be imported from `'essor/server'` in SERVER mode.
- * Derived from IMPORTS_MAPS + SERVER_IMPORT_REMAPS so dead entries are impossible:
- * only names reachable via useImport() appear here.
+ * Canonical (pre-remap) names of helpers that live in `'essor/server'`.
+ * TypeScript enforces that every entry is a valid IMPORT_MAP_NAMES.
+ * SERVER_IMPORT_REMAPS is applied below so the set contains resolved names.
  */
-const _serverRemapValues = new Set(Object.values(SERVER_IMPORT_REMAPS));
-export const SERVER_EXPORTS = new Set<string>([
-  ...IMPORTS_MAPS
-    .filter((name) => !Object.hasOwn(SERVER_IMPORT_REMAPS, name))
-    .filter((name) =>
-      name === 'render'
-      || name === 'convertTextChildToString'
-      || name === 'escapeHTML'
-      || name === 'Fragment'
-      || name === 'Portal'
-      || name === 'Suspense'
-      || name === 'getHydrationKey'
-      || name.startsWith('ssr'),
-    ),
-  ..._serverRemapValues,
-]);
+const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
+  'render',
+  'convertTextChildToString',
+  'escapeHTML',
+  'Fragment',
+  'Portal',
+  'Suspense',
+  'getHydrationKey',
+  'ssrAttr',
+  'ssrClass',
+  'ssrStyle',
+  'ssrSpread',
+  'createComponent',
+  'patchAttr',
+];
+
+const _remaps = SERVER_IMPORT_REMAPS as Partial<Record<IMPORT_MAP_NAMES, string>>;
+export const SERVER_EXPORTS = new Set(
+  SERVER_ONLY_NAMES.map((name) => _remaps[name] ?? name),
+);
 
 export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, name])) as Record<
   IMPORT_MAP_NAMES,

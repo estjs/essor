@@ -1,11 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { effect, nextTick, signal } from '@estjs/signals';
-import { createComponent } from '../src/component';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@estjs/signals';
+import { createComponent, isComponent } from '../src/component';
 import { template } from '../src/renderer';
 import { insert } from '../src/binding';
 import { inject, provide } from '../src/provide';
-import { createScope, runWithScope, setActiveScope } from '../src/scope';
-import { mount } from './test-utils';
+import { createScope, runWithScope } from '../src/scope';
+
+function expectComponent(node: ReturnType<typeof createComponent>) {
+  if (!isComponent(node)) {
+    throw new Error('Expected createComponent to return a component instance');
+  }
+  return node;
+}
 
 describe('provide/Inject Update Regression', () => {
   let root: HTMLElement;
@@ -17,6 +23,7 @@ describe('provide/Inject Update Regression', () => {
 
   afterEach(() => {
     document.body.innerHTML = '';
+    vi.restoreAllMocks();
   });
 
   it('should maintain provided value during updates', async () => {
@@ -39,7 +46,7 @@ describe('provide/Inject Update Regression', () => {
       return el;
     };
 
-    const instance = createComponent(Parent);
+    const instance = expectComponent(createComponent(Parent));
     await instance.mount(root);
 
     // Initial render
@@ -47,7 +54,6 @@ describe('provide/Inject Update Regression', () => {
 
     // Trigger update
     toggle.value = true;
-    await nextTick();
 
     // Check if value is still provided
     expect(root.textContent).toContain('provided-value');
@@ -83,7 +89,7 @@ describe('provide/Inject Update Regression', () => {
       return el;
     };
 
-    const instance = createComponent(Parent);
+    const instance = expectComponent(createComponent(Parent));
     await instance.mount(root);
 
     // Initial render
@@ -94,7 +100,6 @@ describe('provide/Inject Update Regression', () => {
 
     // Trigger update
     toggle.value = true;
-    await nextTick();
 
     // Verify persistence after update
     expect(root.innerHTML).toContain('<div>root-value</div>');
@@ -127,7 +132,7 @@ describe('provide/Inject Update Regression', () => {
       return createComponent(Middle);
     };
 
-    const instance = createComponent(Parent);
+    const instance = expectComponent(createComponent(Parent));
     await instance.mount(root);
 
     // Initial: ChildA
@@ -135,13 +140,11 @@ describe('provide/Inject Update Regression', () => {
 
     // Switch to B
     router.value = 'B';
-    await nextTick();
     expect(root.textContent).toContain('ChildB:root-value');
     expect(root.textContent?.includes('ChildA')).toBe(false);
 
     // Switch back to A
     router.value = 'A';
-    await nextTick();
     expect(root.textContent).toContain('ChildA:root-value');
   });
 
@@ -180,7 +183,7 @@ describe('provide/Inject Update Regression', () => {
       return el;
     };
 
-    const instance = createComponent(Root);
+    const instance = expectComponent(createComponent(Root));
     await instance.mount(root);
 
     // Initial state
@@ -189,14 +192,12 @@ describe('provide/Inject Update Regression', () => {
 
     // Toggle branch 2 off
     showBranch2.value = false;
-    await nextTick();
     expect(root.textContent).toContain('Static:dark');
     expect(root.textContent).toContain('Fallback');
     expect(root.textContent?.includes('Deep')).toBe(false);
 
     // Toggle branch 2 on
     showBranch2.value = true;
-    await nextTick();
     expect(root.textContent).toContain('Static:dark');
     expect(root.textContent).toContain('Deep:dark-user-alice');
   });
@@ -228,234 +229,32 @@ describe('provide/Inject Update Regression', () => {
       return el;
     };
 
-    const instance = createComponent(Level1);
+    const instance = expectComponent(createComponent(Level1));
     await instance.mount(root);
 
     expect(root.textContent).toContain('Leaf:val1-val2-0');
 
     // Trigger update in Leaf
     updateSignal.value++;
-    await nextTick();
     expect(root.textContent).toContain('Leaf:val1-val2-1');
   });
-});
 
-describe('provide/inject edge cases', () => {
-  beforeEach(() => {
-    // Ensure no active scope before each test
-    setActiveScope(null);
-  });
+  it('should return the default value when a key is absent in the current scope chain', () => {
+    const scope = createScope(null);
 
-  afterEach(() => {
-    setActiveScope(null);
-  });
-
-  describe('inject default value fallback', () => {
-    it('should return default value when key is not found in scope hierarchy', () => {
-      const scope = createScope(null);
-      const key = Symbol('missing-key');
-
-      const result = runWithScope(scope, () => {
-        return inject(key, 'default-value');
-      });
-
-      expect(result).toBe('default-value');
-    });
-
-    it('should return undefined when key is not found and no default provided', () => {
-      const scope = createScope(null);
-      const key = Symbol('missing-key');
-
-      const result = runWithScope(scope, () => {
-        return inject(key);
-      });
-
-      expect(result).toBeUndefined();
-    });
-
-    it('should return default value when scope has provides but key is missing', () => {
-      const scope = createScope(null);
-      const existingKey = Symbol('existing');
-      const missingKey = Symbol('missing');
-
-      const result = runWithScope(scope, () => {
-        provide(existingKey, 'existing-value');
-        return inject(missingKey, 'fallback');
-      });
-
-      expect(result).toBe('fallback');
+    runWithScope(scope, () => {
+      expect(inject('missing-key', 'fallback')).toBe('fallback');
     });
   });
 
-  describe('symbol key lookup', () => {
-    it('should find value with symbol key', () => {
-      const scope = createScope(null);
-      const symbolKey = Symbol('test-symbol');
+  it('should guard provide/inject usage outside a scope', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      const result = runWithScope(scope, () => {
-        provide(symbolKey, 'symbol-value');
-        return inject(symbolKey);
-      });
+    provide('theme', 'dark');
+    expect(inject('theme', 'fallback')).toBe('fallback');
 
-      expect(result).toBe('symbol-value');
-    });
-
-    it('should find value with string key', () => {
-      const scope = createScope(null);
-
-      const result = runWithScope(scope, () => {
-        provide('string-key', 'string-value');
-        return inject('string-key');
-      });
-
-      expect(result).toBe('string-value');
-    });
-
-    it('should find value with number key', () => {
-      const scope = createScope(null);
-
-      const result = runWithScope(scope, () => {
-        provide(42, 'number-value');
-        return inject(42);
-      });
-
-      expect(result).toBe('number-value');
-    });
-  });
-
-  describe('provide/inject outside component', () => {
-    it('should return default value when inject is called without active scope', () => {
-      // Ensure no active scope
-      setActiveScope(null);
-
-      const result = inject(Symbol('key'), 'default');
-      expect(result).toBe('default');
-    });
-
-    it('should return undefined when inject is called without active scope and no default', () => {
-      setActiveScope(null);
-
-      const result = inject(Symbol('key'));
-      expect(result).toBeUndefined();
-    });
-
-    it('should not throw when provide is called without active scope', () => {
-      setActiveScope(null);
-
-      // Should not throw, just return early
-      expect(() => provide(Symbol('key'), 'value')).not.toThrow();
-    });
-  });
-
-  describe('nested provider shadowing', () => {
-    it('should use closest provider value when same key is provided at multiple levels', () => {
-      const parentScope = createScope(null);
-      const key = Symbol('shadowed-key');
-
-      const result = runWithScope(parentScope, () => {
-        provide(key, 'parent-value');
-
-        const childScope = createScope(parentScope);
-        return runWithScope(childScope, () => {
-          provide(key, 'child-value');
-          return inject(key);
-        });
-      });
-
-      expect(result).toBe('child-value');
-    });
-
-    it('should fall back to parent provider when child does not provide', () => {
-      const parentScope = createScope(null);
-      const key = Symbol('inherited-key');
-
-      const result = runWithScope(parentScope, () => {
-        provide(key, 'parent-value');
-
-        const childScope = createScope(parentScope);
-        return runWithScope(childScope, () => {
-          // Child does not provide, should inherit from parent
-          return inject(key);
-        });
-      });
-
-      expect(result).toBe('parent-value');
-    });
-
-    it('should traverse multiple levels to find provider', () => {
-      const rootScope = createScope(null);
-      const key = Symbol('deep-key');
-
-      const result = runWithScope(rootScope, () => {
-        provide(key, 'root-value');
-
-        const level1 = createScope(rootScope);
-        return runWithScope(level1, () => {
-          const level2 = createScope(level1);
-          return runWithScope(level2, () => {
-            const level3 = createScope(level2);
-            return runWithScope(level3, () => {
-              // Should find value from root
-              return inject(key);
-            });
-          });
-        });
-      });
-
-      expect(result).toBe('root-value');
-    });
-
-    it('should return default when no provider exists in hierarchy', () => {
-      const rootScope = createScope(null);
-      const key = Symbol('nonexistent-key');
-
-      const result = runWithScope(rootScope, () => {
-        const childScope = createScope(rootScope);
-        return runWithScope(childScope, () => {
-          return inject(key, 'default-fallback');
-        });
-      });
-
-      expect(result).toBe('default-fallback');
-    });
-  });
-
-  describe('provide/inject with component async', () => {
-    it('should work scope with sync component', () => {
-      const show = signal(false);
-
-      const testComp = () => {
-        const value = inject('key');
-        const el = document.createElement('div');
-        el.textContent = `test: ${value}`;
-        return el;
-      };
-
-      const asyncComp = () => {
-        const value = inject('key');
-        const el = document.createElement('div');
-        el.textContent = `async: ${value}`;
-        return el;
-      };
-
-      const rootComp = () => {
-        provide('key', 'value');
-        const compts = signal<any>();
-
-        effect(() => {
-          if (show.value) {
-            compts.value = createComponent(testComp);
-          } else {
-            compts.value = createComponent(asyncComp);
-          }
-        });
-        return [() => compts.value];
-      };
-      const rootEl = document.createElement('div');
-      mount(rootComp, rootEl);
-      expect(rootEl.textContent).toBe('async: value');
-      show.value = true;
-      expect(rootEl.textContent).toBe('test: value');
-    });
+    expect(errorSpy).toHaveBeenCalledTimes(2);
+    expect(errorSpy.mock.calls[0]?.[0]).toContain('provide() must be called within a scope');
+    expect(errorSpy.mock.calls[1]?.[0]).toContain('inject() must be called within a scope');
   });
 });

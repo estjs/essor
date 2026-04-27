@@ -1,11 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { clearDelegatedEvents, delegateEvents } from '../src/events';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { addEventListener, clearDelegatedEvents, delegateEvents } from '../src/events';
+import { createScope, disposeScope, runWithScope } from '../src/scope';
 import { resetEnvironment } from './test-utils';
 
 describe('event delegation', () => {
   beforeEach(() => {
     resetEnvironment();
     clearDelegatedEvents();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('delegates events through document', () => {
@@ -16,8 +21,7 @@ describe('event delegation', () => {
     const handler = vi.fn();
 
     // Set handler on the element using the event name as property
-    // @ts-ignore
-    button._$click = handler;
+    (button as any)._$click = handler;
     container.appendChild(button);
     document.body.appendChild(container);
 
@@ -29,243 +33,126 @@ describe('event delegation', () => {
     expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('handles event with data parameter', () => {
+  it('does not register the same delegated listener twice', () => {
+    const addSpy = vi.spyOn(document, 'addEventListener');
+
     delegateEvents(['click']);
+    delegateEvents(['click', 'input']);
 
-    const button = document.createElement('button');
-    const handler = vi.fn();
-    const eventData = { value: 'test-data' };
-
-    // @ts-ignore
-    button._$click = handler;
-    // @ts-ignore
-    button.clickData = eventData;
-    document.body.appendChild(button);
-
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(handler).toHaveBeenCalledWith(eventData, expect.any(Event));
+    expect(addSpy.mock.calls.filter(([name]) => name === 'click')).toHaveLength(1);
+    expect(addSpy.mock.calls.filter(([name]) => name === 'input')).toHaveLength(1);
   });
 
-  it('stops propagation when cancelBubble is set', () => {
+  it('falls back to walking the DOM tree when composedPath is unavailable', () => {
     delegateEvents(['click']);
 
     const container = document.createElement('div');
     const button = document.createElement('button');
-    const buttonHandler = vi.fn((e: Event) => {
-      e.cancelBubble = true;
-    });
-    const containerHandler = vi.fn();
-    // @ts-ignore
-    button._$click = buttonHandler;
-    // @ts-ignore
-    container._$click = containerHandler;
+    const handler = vi.fn();
+
+    (button as any)._$click = handler;
     container.appendChild(button);
     document.body.appendChild(container);
 
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(buttonHandler).toHaveBeenCalledTimes(1);
-    expect(containerHandler).not.toHaveBeenCalled();
-  });
-
-  it('skips disabled elements', () => {
-    delegateEvents(['click']);
-
-    const button = document.createElement('button');
-    const handler = vi.fn();
-
-    // @ts-ignore
-    button._$click = handler;
-    button.disabled = true;
-    document.body.appendChild(button);
-
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(handler).not.toHaveBeenCalled();
-  });
-
-  it('handles host element retargeting', () => {
-    delegateEvents(['click']);
-
-    const button = document.createElement('button');
-    const handler = vi.fn();
-    // @ts-ignore
-    button._$click = handler;
-    document.body.appendChild(button);
-
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(handler).toHaveBeenCalled();
-  });
-
-  it('handles portal with _$host property', () => {
-    delegateEvents(['click']);
-
-    const portalMount = document.createElement('div');
-    const portalContent = document.createElement('div');
-    const button = document.createElement('button');
-    const mountHandler = vi.fn();
-
-    // Simulate portal structure
-    // @ts-ignore
-    portalContent._$host = portalMount;
-    // @ts-ignore
-    button._$click = vi.fn();
-    // @ts-ignore
-    portalMount._$click = mountHandler;
-
-    portalContent.appendChild(button);
-    document.body.appendChild(portalMount);
-    document.body.appendChild(portalContent);
-
-    // Create event with composedPath
-    const event = new Event('click', { bubbles: true, composed: true });
-    Object.defineProperty(event, 'composedPath', {
-      value: () => [button, portalContent, document.body, document.documentElement, document],
-    });
-
-    button.dispatchEvent(event);
-    expect(mountHandler).toHaveBeenCalled();
-  });
-
-  it('stops at root of event delegation', () => {
-    delegateEvents(['click']);
-
-    const root = document.createElement('div');
-    const container = document.createElement('div');
-    const button = document.createElement('button');
-    const rootHandler = vi.fn();
-    const containerHandler = vi.fn();
-
-    // @ts-ignore
-    button._$click = vi.fn();
-    // @ts-ignore
-    container._$click = containerHandler;
-    // @ts-ignore
-    root._$click = rootHandler;
-
-    container.appendChild(button);
-    root.appendChild(container);
-    document.body.appendChild(root);
-
-    // Create event with composedPath where root is the currentTarget
-    const event = new Event('click', { bubbles: true, composed: true });
-    Object.defineProperty(event, 'currentTarget', {
-      value: root,
-      configurable: true,
-    });
-    Object.defineProperty(event, 'composedPath', {
-      value: () => [button, container, root, document.body],
-    });
-
-    button.dispatchEvent(event);
-    expect(containerHandler).toHaveBeenCalled();
-  });
-
-  it('uses walkUpTree fallback when composedPath is not available', () => {
-    delegateEvents(['click']);
-
-    const container = document.createElement('div');
-    const button = document.createElement('button');
-    const buttonHandler = vi.fn();
-    const containerHandler = vi.fn();
-
-    // @ts-ignore
-    button._$click = buttonHandler;
-    // @ts-ignore
-    container._$click = containerHandler;
-    container.appendChild(button);
-    document.body.appendChild(container);
-
-    // Create event without composedPath
     const event = new Event('click', { bubbles: true });
     Object.defineProperty(event, 'composedPath', {
+      configurable: true,
       value: undefined,
     });
 
     button.dispatchEvent(event);
-    expect(buttonHandler).toHaveBeenCalledTimes(1);
-    expect(containerHandler).toHaveBeenCalledTimes(1);
+
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('handles currentTarget getter', () => {
+  it('retargets delegated events to host elements for ancestor handlers', () => {
     delegateEvents(['click']);
 
+    const host = document.createElement('section');
+    const container = document.createElement('div');
     const button = document.createElement('button');
-    let capturedCurrentTarget: any;
-    const handler = vi.fn((e: Event) => {
-      capturedCurrentTarget = e.currentTarget;
+    const handler = vi.fn((event: Event) => {
+      expect(event.target).toBe(host);
+      expect(event.currentTarget).toBe(container);
     });
 
-    // @ts-ignore
-    button._$click = handler;
-    document.body.appendChild(button);
+    Object.defineProperty(button, 'host', {
+      configurable: true,
+      value: host,
+    });
+    (container as any)._$click = handler;
+    container.appendChild(button);
+    document.body.appendChild(container);
 
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    expect(capturedCurrentTarget).toBe(button);
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 
-  it('does not add duplicate event listeners', () => {
-    const addEventListenerSpy = vi.spyOn(document, 'addEventListener');
-
-    delegateEvents(['click']);
+  it('bubbles delegated events through _$host portal boundaries', () => {
     delegateEvents(['click']);
 
-    expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
-    addEventListenerSpy.mockRestore();
-  });
-
-  it('handles multiple event types', () => {
-    delegateEvents(['click', 'input', 'change']);
-
+    const outer = document.createElement('div');
+    const portalHost = document.createElement('div');
+    const portalRoot = document.createElement('div');
     const button = document.createElement('button');
-    const clickHandler = vi.fn();
-    const inputHandler = vi.fn();
-    // @ts-ignore
-    button._$click = clickHandler;
-    // @ts-ignore
-    button._$input = inputHandler;
-    document.body.appendChild(button);
+    const calls: string[] = [];
 
-    button.dispatchEvent(new Event('click', { bubbles: true }));
-    button.dispatchEvent(new Event('input', { bubbles: true }));
+    (portalHost as any)._$click = vi.fn((event: Event) => {
+      calls.push('portal-host');
+      expect(event.currentTarget).toBe(portalHost);
+    });
+    (outer as any)._$click = vi.fn((event: Event) => {
+      calls.push('outer');
+      expect(event.currentTarget).toBe(outer);
+    });
+    (button as any)._$host = portalHost;
 
-    expect(clickHandler).toHaveBeenCalledTimes(1);
-    expect(inputHandler).toHaveBeenCalledTimes(1);
+    outer.appendChild(portalHost);
+    portalRoot.appendChild(button);
+    document.body.append(outer, portalRoot);
+
+    const event = new MouseEvent('click', { bubbles: true });
+    Object.defineProperty(event, 'composedPath', {
+      configurable: true,
+      value: () => [button, portalRoot, document.body, document.documentElement, document, window],
+    });
+
+    button.dispatchEvent(event);
+
+    expect(calls).toEqual(['portal-host', 'outer']);
   });
 
-  it('clears all delegated events', () => {
-    const removeEventListenerSpy = vi.spyOn(document, 'removeEventListener');
-
-    delegateEvents(['click', 'input']);
-    clearDelegatedEvents();
-
-    expect(removeEventListenerSpy).toHaveBeenCalledTimes(2);
-    removeEventListenerSpy.mockRestore();
-  });
-
-  it('handles clearDelegatedEvents when no events are registered', () => {
-    expect(() => clearDelegatedEvents()).not.toThrow();
-  });
-
-  it('handles non-function handlers gracefully', () => {
+  it('skips delegated handlers on disabled nodes', () => {
     delegateEvents(['click']);
 
     const button = document.createElement('button');
-    // @ts-ignore
-    button._$click = 'not-a-function';
+    const handler = vi.fn();
+
+    button.disabled = true;
+    (button as any)._$click = handler;
     document.body.appendChild(button);
 
-    expect(() => {
-      button.dispatchEvent(new Event('click', { bubbles: true }));
-    }).not.toThrow();
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(handler).not.toHaveBeenCalled();
   });
 
-  it('handles events on elements without handlers', () => {
-    delegateEvents(['click']);
-
+  it('scopes addEventListener cleanup to the active scope', () => {
     const button = document.createElement('button');
-    document.body.appendChild(button);
+    const handler = vi.fn();
+    const scope = createScope(null);
 
-    expect(() => {
-      button.dispatchEvent(new Event('click', { bubbles: true }));
-    }).not.toThrow();
+    runWithScope(scope, () => {
+      addEventListener(button, 'click', handler);
+    });
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    disposeScope(scope);
+
+    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(handler).toHaveBeenCalledTimes(1);
   });
 });

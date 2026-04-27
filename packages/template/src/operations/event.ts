@@ -1,30 +1,32 @@
 /**
- * Extended event options with delegation support
- * @public
+ * Extended listener options with optional event delegation support.
  */
 export interface EventOptions extends AddEventListenerOptions {
   /**
-   * CSS selector for event delegation
-   * When provided, the event will only trigger if the target matches this selector
+   * Selector used for event delegation.
+   *
+   * When provided, the handler only runs if the event target matches the selector.
    */
   delegate?: string;
 }
 
 /**
- * Event handler cleanup function
- * @public
+ * Cleanup function signature for event listeners.
  */
 export type EventCleanup = () => void;
 
 /**
- * Adds an event listener to an element with optional delegation
+ * Adds an event listener to an element with optional simple delegation.
  *
- * @param el - The element to attach the event to
- * @param event - The event name (e.g., 'click', 'input')
- * @param handler - The event handler function
- * @param options - Additional event options including delegation
- * @returns A cleanup function to remove the event listener
- * @public
+ * Without `delegate`, this is a thin wrapper around native `addEventListener()`.
+ * When `delegate` is provided, the runtime first checks the selector match before
+ * dispatching the real handler to the caller.
+ *
+ * @param el - The element to add the listener to.
+ * @param event - The name of the event to listen for.
+ * @param handler - The event handler function.
+ * @param options - Optional event listener options.
+ * @returns A cleanup function that removes the listener.
  */
 export function addEvent(
   el: Element,
@@ -37,8 +39,11 @@ export function addEvent(
     return () => el.removeEventListener(event, handler, options);
   }
 
-  // Delegation path: use simple wrapper
+  // Delegation path: match the selector first, then forward the event to the caller.
   const selector = options.delegate;
+  /**
+   * Dispatches delegated events only for matching descendants.
+   */
   const wrappedHandler = (e: Event) => {
     const target = e.target as Element;
     if (target.matches(selector) || target.closest(selector)) {
@@ -46,15 +51,12 @@ export function addEvent(
     }
   };
 
-  // Clean options object by removing delegate property
-  const cleanOptions = { ...options };
-  cleanOptions.delegate = undefined;
+  // Extract delegate from options and pass the rest to addEventListener
+  const { delegate: _, ...nativeOptions } = options;
 
-  // Add the event listener with the wrapped handler
-  el.addEventListener(event, wrappedHandler, cleanOptions);
+  el.addEventListener(event, wrappedHandler, nativeOptions);
 
-  // Return cleanup function
   return () => {
-    el.removeEventListener(event, wrappedHandler, cleanOptions);
+    el.removeEventListener(event, wrappedHandler, nativeOptions);
   };
 }

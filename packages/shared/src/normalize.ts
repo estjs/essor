@@ -41,7 +41,7 @@ export function parseStyleString(cssText: string): NormalizedStyle {
   cssText
     .replaceAll(STYLE_COMMENT_REGEX, '')
     .split(STYLE_SEPARATOR_REGEX)
-    .forEach(styleItem => {
+    .forEach((styleItem) => {
       if (styleItem) {
         const parts = styleItem.split(PROPERTY_VALUE_SEPARATOR_REGEX);
         if (parts.length > 1) {

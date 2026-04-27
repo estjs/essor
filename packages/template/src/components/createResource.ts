@@ -21,31 +21,12 @@ export interface ResourceOptions<T> {
 }
 
 /**
- * Create a resource for async data fetching
- * Inspired by SolidJS createResource
+ * Create a resource for async data fetching.
+ * Inspired by SolidJS createResource.
  *
- * @param fetcher - Function that returns a Promise with the data
- * @param options - Optional configuration
- * @returns Tuple of [resource, actions]
- *
- * @example
- * ```typescript
- * const [data, { refetch, mutate }] = createResource(
- *   () => fetch('/api/user').then(r => r.json()),
- *   { initialValue: null }
- * );
- *
- * // Access data
- * console.log(data());
- * console.log(data.loading.value);
- * console.log(data.state.value);
- *
- * // Refetch data
- * await refetch();
- *
- * // Update data directly
- * mutate({ name: 'John' });
- * ```
+ * @param fetcher - Function that returns a Promise with the data.
+ * @param options - Optional configuration.
+ * @returns {[Resource<T>, ResourceActions<T>]} Tuple of [resource, actions].
  */
 export function createResource<T>(
   fetcher: () => Promise<T>,
@@ -60,17 +41,27 @@ export function createResource<T>(
   let fetchId = 0;
 
   let currentPromise: Promise<void> | null = null;
+  let suspenseRegistered = false;
+  const suspenseContext = inject<any>(SuspenseContext, null);
 
-  // Fetch function
+  /**
+   * Fetch function.
+   */
   const fetch = async (): Promise<void> => {
     const currentFetchId = ++fetchId;
     loading.value = true;
     state.value = 'pending';
     error.value = null;
+    suspenseRegistered = false;
+    if (suspenseContext) {
+      // Let Suspense control fallback visibility for this fetch cycle.
+      suspenseContext.increment();
+    }
 
     try {
       const promise = fetcher();
-      currentPromise = promise.then(() => {}).catch(() => {}); // Ensure promise is handled
+      currentPromise = promise as any; // Track original promise for Suspense
+      promise.catch(() => {}); // Prevent unhandled rejection
       const result = await promise;
 
       // Only update if this is still the latest fetch
@@ -86,6 +77,10 @@ export function createResource<T>(
         state.value = 'errored';
         loading.value = false;
       }
+    } finally {
+      if (suspenseContext) {
+        suspenseContext.decrement();
+      }
     }
   };
 
@@ -94,13 +89,11 @@ export function createResource<T>(
 
   // Resource accessor function
   const resource = (() => {
-    // If we are loading and have a suspense context, register the promise
-    if (loading.value && currentPromise) {
-      const suspenseContext = inject(SuspenseContext, null);
-      if (suspenseContext) {
-        // @ts-ignore
-        suspenseContext.register(currentPromise);
-      }
+    // Register with Suspense only once per fetch cycle
+    if (!suspenseRegistered && loading.value && currentPromise && suspenseContext) {
+      suspenseRegistered = true;
+      // @ts-ignore
+      suspenseContext.register(currentPromise);
     }
     return value.value;
   }) as Resource<T>;

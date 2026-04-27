@@ -1,59 +1,78 @@
-import { type Scope, createScope, disposeScope, runWithScope, setActiveScope } from '../src/scope';
-import { triggerMountHooks } from '../src/lifecycle';
-import { insert } from '../src';
-
-let testRoots: HTMLElement[] = [];
+import babel from '@babel/core';
+import babelPlugin from 'babel-plugin-essor';
+import {
+  type Scope,
+  createScope,
+  disposeScope,
+  getActiveScope,
+  setActiveScope,
+} from '../src/scope';
 
 /**
- * Create a test root element for mounting components
- * @param id - Optional ID for the root element
- * @returns HTML element to use as a root
+ * Mount a component to a container for testing
+ * @param componentFn - Component function to mount
+ * @param container - Container element to mount into
  */
-export function createTestRoot(id?: string): HTMLElement {
-  const root = document.createElement('div');
-  if (id) {
+import { insert } from '../src/binding';
+
+export function createContext(parent: Scope | null = null): Scope {
+  return createScope(parent ?? getActiveScope());
+}
+
+export function pushContextStack(context: Scope): void {
+  setActiveScope(context);
+}
+
+export function popContextStack(): void {
+  const current = getActiveScope();
+  setActiveScope(current?.parent ?? null);
+}
+
+export function cleanupContext(context: Scope): void {
+  disposeScope(context);
+}
+
+export function createTestRoot(id = 'app'): HTMLElement {
+  let root = document.querySelector(`#${id}`) as HTMLElement | null;
+  if (!root) {
+    root = document.createElement('div');
     root.id = id;
+    document.body.appendChild(root);
   }
-  document.body.appendChild(root);
-  testRoots.push(root);
+  root.innerHTML = '';
   return root;
 }
 
-/**
- * Reset the test environment by removing all test roots
- * and clearing any global state
- */
 export function resetEnvironment(): void {
-  // Remove all test roots
-  for (const root of testRoots) {
-    root.remove();
-  }
-  testRoots = [];
-
-  // Clear any active scope
-  setActiveScope(null);
+  document.body.innerHTML = '';
 }
 
-/**
- * Mount a component function with a scope
- * @param fn - The component function to mount
- * @param root - The root element to mount to
- * @returns The scope for cleanup
- */
-export function mount(fn: any, root: HTMLElement): Scope {
-  const scope = createScope(null);
-  runWithScope(scope, () => {
-    const result = fn();
-    insert(root, result);
+export function transform(code: string, opts): string {
+  const result = babel.transformSync(code, {
+    filename: 'test.jsx',
+    sourceType: 'module',
+    plugins: [[babelPlugin, opts]],
   });
-  triggerMountHooks(scope);
-  return scope;
+  if (result?.code) {
+    return result.code;
+  }
+  return code;
 }
 
 /**
- * Unmount a component by disposing its scope
- * @param scope - The scope to dispose
+ * Mount a component to a container for testing
+ * @param componentFn - Component function to mount
+ * @param container - Container element to mount into
  */
-export function unmount(scope: Scope): void {
+export function mount(componentFn: () => any, container: HTMLElement): Scope {
+  const context = createContext(null);
+  pushContextStack(context);
+  insert(container, componentFn);
+  popContextStack();
+  return context;
+}
+
+export function unmount(scope: Scope | null | undefined): void {
+  if (!scope) return;
   disposeScope(scope);
 }

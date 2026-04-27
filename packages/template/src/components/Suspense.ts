@@ -1,13 +1,30 @@
-import { isArray, isPromise, isUndefined, warn } from '@estjs/shared';
+import { isArray, isFunction, isPromise, warn } from '@estjs/shared';
+import { isComputed, isSignal } from '@estjs/signals';
+import { insertNode, normalizeNode } from '../dom';
 import { provide } from '../provide';
-import { isComponent } from '../component';
-import { normalizeNode } from '../utils/node';
 import { onDestroy } from '../lifecycle';
-import { getActiveScope } from '../scope';
-import { insertNode } from '../utils/dom';
 import { SUSPENSE_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
 
+/** Clear all children from an element */
+function clearContainer(el: HTMLElement): void {
+  while (el.firstChild) {
+    el.removeChild(el.firstChild);
+  }
+}
+export function resolveNodeValue(value: unknown): unknown {
+  let current = value;
+
+  while (isFunction(current)) {
+    current = (current as Function)();
+  }
+
+  if (isSignal(current) || isComputed(current)) {
+    return resolveNodeValue((current as any).value);
+  }
+
+  return current;
+}
 export interface SuspenseProps {
   /** The content to render. Can be a Promise for async loading. */
   children?: AnyNode | AnyNode[] | Promise<AnyNode | AnyNode[]>;
@@ -17,19 +34,6 @@ export interface SuspenseProps {
   key?: string;
 }
 
-/**
- * Suspense component - handles async content with a fallback UI
- *
- * @param props - Component props with children, fallback, and optional key
- * @returns Placeholder node or fallback content
- *
- * @example
- * ```tsx
- * <Suspense fallback={<div>Loading...</div>}>
- *   {asyncContent}
- * </Suspense>
- * ```
- */
 export const SuspenseContext = Symbol('SuspenseContext');
 
 export interface SuspenseContextType {
@@ -39,10 +43,10 @@ export interface SuspenseContextType {
 }
 
 /**
- * Suspense component - handles async content with a fallback UI
+ * Suspense component - handles async content with a fallback UI.
  *
- * @param props - Component props with children, fallback, and optional key
- * @returns Placeholder node or fallback content
+ * @param props - Component props with children, fallback, and optional key.
+ * @returns {AnyNode} Placeholder node or fallback content.
  *
  * @example
  * ```tsx
@@ -52,14 +56,11 @@ export interface SuspenseContextType {
  * ```
  */
 export function Suspense(props: SuspenseProps): AnyNode {
-  // Check if we're in SSR mode (no document)
-  if (isUndefined(document)) {
-    // In SSR, return fallback as string if available
-    const fallback = props.fallback;
-    if (fallback) {
-      return String(fallback || '');
-    }
-    return '';
+  // Check if we're in SSR mode (no DOM globals)
+  if (typeof document === 'undefined') {
+    // In SSR, keep structure deterministic and never touch DOM APIs.
+    // Suspense boundary renders fallback while async resources are unresolved.
+    return props.fallback ?? '';
   }
 
   // Create a container to manage content swapping
@@ -73,44 +74,79 @@ export function Suspense(props: SuspenseProps): AnyNode {
 
   let resolvedChildren: AnyNode | AnyNode[] | null = null;
 
-  const showFallback = () => {
-    if (isShowingFallback) return;
-    isShowingFallback = true;
+  /**
+   * Materializes child.
+   */
+  const materializeChild = (value: AnyNode): AnyNode => {
+    const current = resolveNodeValue(value);
 
-    // Clear container
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
+    if (isArray(current)) {
+      const nodes: AnyNode[] = [];
+      for (const item of current as AnyNode[]) {
+        const materialized = materializeChild(item);
+        if (isArray(materialized)) {
+          nodes.push(...(materialized as AnyNode[]));
+        } else {
+          nodes.push(materialized);
+        }
+      }
+      return nodes as AnyNode;
     }
 
-    if (props.fallback != null) {
-      const normalized = normalizeNode(props.fallback);
-      if (normalized) {
-        insertNode(container, normalized);
+    return normalizeNode(current);
+  };
+
+  /**
+   * Inserts a materialized child or child list into the container.
+   */
+  const insertMaterializedChild = (value: AnyNode) => {
+    const normalized = materializeChild(value);
+    const nodes = isArray(normalized) ? normalized : [normalized];
+
+    for (const node of nodes) {
+      if (node != null) {
+        insertNode(container, node);
       }
     }
   };
 
+  /**
+   * Renders fallback content.
+   */
+  const renderFallbackContent = () => {
+    clearContainer(container);
+
+    if (props.fallback != null) {
+      insertMaterializedChild(props.fallback);
+    }
+  };
+
+  /**
+   * Switches the boundary into its fallback view.
+   */
+  const showFallback = () => {
+    if (isShowingFallback) return;
+    isShowingFallback = true;
+    renderFallbackContent();
+  };
+
+  /**
+   * Restores the resolved children when the boundary can leave fallback mode.
+   */
   const showChildren = () => {
     if (!isShowingFallback) return;
 
     // Check if we have something to show
-    // If children is a promise, we need resolvedChildren.
-    // If children is not a promise, we use it directly.
     const hasContent = resolvedChildren || (props.children != null && !isPromise(props.children));
 
     if (!hasContent) {
-      // If we don't have content (e.g. promise rejected), keep fallback
       return;
     }
 
     isShowingFallback = false;
 
-    // Clear container (remove fallback)
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
+    clearContainer(container);
 
-    // Simple implementation: Re-render children
     if (resolvedChildren) {
       renderChildren(resolvedChildren);
     } else if (props.children != null && !isPromise(props.children)) {
@@ -119,49 +155,29 @@ export function Suspense(props: SuspenseProps): AnyNode {
   };
 
   /**
-   * Render children into the container
+   * Render children into the container.
+   *
+   * @param children - The children to render.
+   * @returns {void}
    */
   const renderChildren = (children: AnyNode | AnyNode[]): void => {
-    // Clear existing content
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
+    // Guard: don't render children if we should be showing fallback
+    if (isShowingFallback) return;
+
+    clearContainer(container);
 
     if (children == null) return;
 
-    const currentScope = getActiveScope();
     const childArray = isArray(children) ? children : [children];
-    childArray.forEach((child) => {
+    for (const child of childArray) {
       if (child != null) {
-        // Reparent component to current context to ensure it can access SuspenseContext
-        // This is necessary because children are created in the parent scope
-        if (isComponent(child)) {
-          // @ts-ignore
-          child.parentContext = currentScope;
-        }
-
-        const normalized = normalizeNode(child);
-        if (normalized) {
-          insertNode(container, normalized);
-        }
+        insertMaterializedChild(child);
       }
-    });
+    }
 
-    // Fix: If a child suspended during insertion, we might have both fallback and children in the container.
-    // We need to ensure that if we are in fallback mode, only fallback is shown.
+    // Resource registration may flip to fallback while children are mounting.
     if (isShowingFallback) {
-      // We are in fallback mode.
-      // Clear everything (including the just-inserted children)
-      while (container.firstChild) {
-        container.removeChild(container.firstChild);
-      }
-      // Re-insert fallback
-      if (props.fallback != null) {
-        const normalized = normalizeNode(props.fallback);
-        if (normalized) {
-          insertNode(container, normalized);
-        }
-      }
+      renderFallbackContent();
     }
   };
 
@@ -196,7 +212,7 @@ export function Suspense(props: SuspenseProps): AnyNode {
       showFallback();
     },
     decrement: () => {
-      pendingCount--;
+      pendingCount = Math.max(0, pendingCount - 1);
       if (pendingCount === 0) {
         showChildren();
       }
@@ -229,10 +245,8 @@ export function Suspense(props: SuspenseProps): AnyNode {
 
   onDestroy(() => {
     isMounted = false;
-    // Clear container
-    while (container.firstChild) {
-      container.removeChild(container.firstChild);
-    }
+    clearContainer(container);
+    container.remove();
   });
 
   return container;
@@ -241,9 +255,10 @@ export function Suspense(props: SuspenseProps): AnyNode {
 Suspense[SUSPENSE_COMPONENT] = true;
 
 /**
- * Check if a node is a Suspense component
- * @param node - Node to check
- * @returns true if node is a Suspense
+ * Check if a node is a Suspense component.
+ *
+ * @param node - Node to check.
+ * @returns {boolean} True if node is a Suspense.
  */
 export function isSuspense(node: unknown): boolean {
   return !!node && !!node[SUSPENSE_COMPONENT];

@@ -41,9 +41,11 @@ export const XLINK_NAMESPACE = 'http://www.w3.org/2000/xlink';
  */
 export const XMLNS_NAMESPACE = 'http://www.w3.org/2000/xmlns/';
 
-/**
- * Defines various states of components for state management and debugging
- */
+export const NORMAL_COMPONENT = Symbol(__DEV__ ? 'Normal Component' : '');
+export const FRAGMENT_COMPONENT = Symbol(__DEV__ ? 'Fragment Component' : '');
+export const PORTAL_COMPONENT = Symbol(__DEV__ ? 'Portal Component' : '');
+export const SUSPENSE_COMPONENT = Symbol(__DEV__ ? 'Suspense Component' : '');
+export const FOR_COMPONENT = Symbol(__DEV__ ? 'For Component' : '');
 export enum COMPONENT_STATE {
   /** Initial state */
   INITIAL,
@@ -58,9 +60,10 @@ export enum COMPONENT_STATE {
   /** destroy */
   DESTROYED,
 }
-
-export const NORMAL_COMPONENT = Symbol(__DEV__ ? 'Normal Component' : '');
-export const FRAGMENT_COMPONENT = Symbol(__DEV__ ? 'Fragment Component' : '');
-export const PORTAL_COMPONENT = Symbol(__DEV__ ? 'Portal Component' : '');
-export const SUSPENSE_COMPONENT = Symbol(__DEV__ ? 'Suspense Component' : '');
-export const FOR_COMPONENT = Symbol(__DEV__ ? 'For Component' : '');
+export enum COMPONENT_TYPE {
+  NORMAL = 'normal',
+  FRAGMENT = 'fragment',
+  PORTAL = 'portal',
+  SUSPENSE = 'suspense',
+  FOR = 'for',
+}

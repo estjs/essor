@@ -1,8 +1,5 @@
-import { isArray, isString, warn } from '@estjs/shared';
-import { insertNode } from '../utils/dom';
-import { normalizeNode } from '../utils/node';
-import { onMount } from '../lifecycle';
-import { onCleanup } from '../scope';
+import { isString, warn } from '@estjs/shared';
+import { insert } from '../binding';
 import { PORTAL_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
 
@@ -13,10 +10,10 @@ export interface PortalProps {
 }
 
 /**
- * Portal component - renders children into a different DOM node
+ * Portal component - renders children into a different DOM node.
  *
- * @param props - Component props with children and target
- * @returns Comment node as placeholder in parent tree
+ * @param props - Component props with children and target.
+ * @returns {Comment | string} Comment node as placeholder in parent tree.
  *
  * @example
  * ```tsx
@@ -25,45 +22,36 @@ export interface PortalProps {
  * </Portal>
  */
 export function Portal(props: PortalProps): Comment | string {
+  if (typeof document === 'undefined') {
+    const children = props.children;
+    if (Array.isArray(children)) {
+      return children.map((child) => (child == null ? '' : String(child))).join('');
+    }
+    return children == null ? '' : String(children);
+  }
+
   // Create placeholder comment for parent tree
   const placeholder = document.createComment('portal');
   placeholder[PORTAL_COMPONENT] = true;
   const children = props.children;
+
   if (children) {
-    const childArray = isArray(children) ? children : [children];
-    const nodes: (Node | string)[] = [];
+    // Get target element
+    const targetElement = isString(props.target)
+      ? document.querySelector(props.target)
+      : props.target;
 
-    onMount(() => {
-      // Get target element
-      const targetElement = isString(props.target)
-        ? document.querySelector(props.target)
-        : props.target;
-
-      if (!targetElement) {
-        if (__DEV__) {
-          warn(`[Portal] Target element not found: ${props.target}`);
-        }
-        return;
+    if (!targetElement) {
+      if (__DEV__) {
+        warn(`[Portal] Target element not found: ${props.target}`);
       }
+      return placeholder;
+    }
 
-      childArray.forEach((child) => {
-        if (child != null) {
-          const normalized = normalizeNode(child);
-          if (normalized) {
-            insertNode(targetElement as Node, normalized);
-            nodes.push(normalized);
-          }
-        }
-      });
-
-      onCleanup(() => {
-        nodes.forEach((node) => {
-          if (!isString(node) && node.parentNode === targetElement) {
-            targetElement.removeChild(node);
-          }
-        });
-      });
-    });
+    // insert() runs inside Portal's scope. Because the factory is a function,
+    // it sets up an effect whose cleanup removes the mounted nodes from the
+    // target when Portal itself unmounts — no extra onCleanup needed here.
+    insert(targetElement, () => children);
   }
 
   return placeholder;
@@ -72,9 +60,10 @@ export function Portal(props: PortalProps): Comment | string {
 Portal[PORTAL_COMPONENT] = true;
 
 /**
- * Check if a node is a Portal component
- * @param node - Node to check
- * @returns true if node is a Portal
+ * Check if a node is a Portal component.
+ *
+ * @param node - Node to check.
+ * @returns {boolean} True if node is a Portal.
  */
 export function isPortal(node: unknown): boolean {
   return !!node && !!node[PORTAL_COMPONENT];

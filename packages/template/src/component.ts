@@ -1,95 +1,88 @@
 import { isComputed, isSignal, shallowReactive } from '@estjs/signals';
-import {
-  coerceArray,
-  hasChanged,
-  isArray,
-  isFunction,
-  isHTMLElement,
-  isObject,
-  isPromise,
-  startsWith,
-} from '@estjs/shared';
-import {
-  type Scope,
-  createScope,
-  disposeScope,
-  getActiveScope,
-  runWithScope,
-  setActiveScope,
-} from './scope';
-import { COMPONENT_STATE, EVENT_PREFIX, NORMAL_COMPONENT, REF_KEY } from './constants';
-import { addEventListener, insert } from './binding';
-import { getComponentKey, normalizeKey } from './key';
-import { getFirstDOMNode, insertNode, removeNode } from './utils/dom';
-import { shallowCompare } from './utils/node';
+import { isFunction, isOn } from '@estjs/shared';
+
+import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
+import { insertNode, removeNode } from './dom';
+import { createScope, disposeScope, getActiveScope, runWithScope } from './scope';
+import { type EventCleanup, addEvent } from './operations/event';
+import { insert } from './binding';
 import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
+import type { Scope } from './scope';
 
-export class Component<P extends ComponentProps = ComponentProps> {
-  // Component rendered nodes (supports arrays and fragments)
-  protected renderedNodes: AnyNode[] = [];
+/**
+ * Install every own-key descriptor from `source` onto `target` verbatim
+ * (getters stay getters), optionally deleting any target key not present
+ * in the incoming source.
+ *
+ * Preserving getter descriptors is the whole reason the component body can
+ * read `props.foo` and transparently get the latest reactive value — the
+ * compiler emits dynamic props as `{ get foo() { return signal.value } }`.
+ * `{ ...props }` would snapshot each getter once and kill reactivity;
+ * `defineProperty` keeps it alive.
+ */
+function syncDescriptors(target: object, source: object, pruneMissing = false): void {
+  const seen = pruneMissing ? new Set<string>() : null;
+  for (const key of Object.getOwnPropertyNames(source)) {
+    seen?.add(key);
+    Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)!);
+  }
+  if (seen) {
+    for (const key of Object.getOwnPropertyNames(target)) {
+      if (!seen.has(key)) delete (target as Record<string, unknown>)[key];
+    }
+  }
+}
 
-  // Component scope (unified context management)
-  protected scope: Scope | null = null;
+/**
+ * Read a prop value through its descriptor so dynamic getters (ref/event
+ * handlers emitted as `get onClick() { ... }`) resolve to the latest value.
+ */
+function readProp(source: object, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(source, key)!;
+  return descriptor.get ? descriptor.get.call(source) : descriptor.value;
+}
 
-  // Component parent node
+export class Component<P extends ComponentProps = {}> {
+  public readonly [COMPONENT_TYPE.NORMAL] = true;
+
+  public scope: Scope | null = null;
+  public state: COMPONENT_STATE = COMPONENT_STATE.INITIAL;
+  public beforeNode: Node | undefined = undefined;
+  public renderedNodes: Node[] = [];
+  public firstChild: Node | undefined = undefined;
+
   protected parentNode: Node | undefined = undefined;
 
-  // Component before node
-  public beforeNode: Node | undefined = undefined;
-
-  // Component props (reactive and snapshot)
-  private reactiveProps: Record<string, any> = {};
-  private _propSnapshots: Record<string, any> = {};
-
-  // Component key for reconciliation
-  public readonly key: string | undefined;
-
-  // Component lifecycle state
-  protected state: number = COMPONENT_STATE.INITIAL;
-
-  // Parent scope captured at construction time for correct hierarchy
-  protected parentScope: Scope | null = null;
-
-  // @ts-ignore
-  public readonly [NORMAL_COMPONENT] = true;
-
-  get isConnected(): boolean {
-    return this.state === COMPONENT_STATE.MOUNTED;
-  }
-
-  get firstChild(): Node | undefined {
-    // Get the first meaningful DOM node from rendered nodes
-    for (const node of this.renderedNodes) {
-      const dom = getFirstDOMNode(node);
-      if (dom) return dom;
-    }
-    return undefined;
-  }
+  private readonly parentScope: Scope | null;
+  private readonly reactiveProps: P;
+  private rootEventCleanups: EventCleanup[] = [];
+  private rootRefCleanup?: () => void;
 
   constructor(
-    public component: ComponentFn<P>,
+    public readonly component: ComponentFn<P>,
     public props: P = {} as P,
   ) {
-    this.key = props.key ? normalizeKey(props.key) : getComponentKey(component);
-    this.reactiveProps = shallowReactive({ ...props }) as P;
     this.parentScope = getActiveScope();
-
-    // Initialize snapshots for object/array props to track mutations
-    for (const key in props) {
-      const val = props[key];
-      if (isObject(val)) {
-        this._propSnapshots[key] = isArray(val) ? [...val] : { ...val };
-      }
-    }
+    // Shallow-reactive container that inherits the raw props' descriptors.
+    // The component body reads from this container; `update()` re-installs
+    // new descriptors in-place so existing closures keep working.
+    const container = {} as P;
+    syncDescriptors(container, props);
+    this.reactiveProps = shallowReactive(container) as P;
   }
 
+  /**
+   * Mount the component into `parentNode` (optionally before `beforeNode`).
+   * If already rendered, the existing DOM is re-inserted without re-running
+   * the component function.
+   */
   mount(parentNode: Node, beforeNode?: Node): AnyNode[] {
     this.parentNode = parentNode;
     this.beforeNode = beforeNode;
     this.state = COMPONENT_STATE.MOUNTING;
 
-    // if the component already has rendered nodes, re-insert them
+    // Fast path: already rendered — just move the nodes.
     if (this.renderedNodes.length > 0) {
       for (const node of this.renderedNodes) {
         insertNode(parentNode, node, beforeNode);
@@ -98,271 +91,158 @@ export class Component<P extends ComponentProps = ComponentProps> {
       return this.renderedNodes;
     }
 
-    const parentScope = this.parentScope ?? getActiveScope();
-    this.scope = createScope(parentScope);
-    setActiveScope(this.scope);
-    let result = this.component(this.reactiveProps as P);
+    const scope = createScope(this.parentScope ?? getActiveScope());
+    this.scope = scope;
 
-    // Unwrap function (render function pattern)
-    if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps);
-    }
+    const renderedNodes = runWithScope(scope, () => {
+      let result: unknown = this.component(this.reactiveProps);
 
-    // Unwrap signals and computed values
-    if (isSignal<Element>(result) || isComputed<Element>(result)) {
-      result = result.value;
-    }
+      // Render-function pattern: a component may return a factory instead of
+      // the element directly.
+      if (isFunction(result)) {
+        result = (result as Function)(this.reactiveProps);
+      }
 
-    const renderedNodes = insert(parentNode, result, beforeNode) ?? [];
+      // Unwrap signal / computed — only their current value reaches the DOM.
+      if (isSignal<Element>(result) || isComputed<Element>(result)) {
+        result = result.value;
+      }
+
+      return insert(parentNode, result as AnyNode, beforeNode) ?? [];
+    });
 
     this.renderedNodes = renderedNodes;
+    this.firstChild = renderedNodes[0];
 
-    // Apply props (events, refs) after renderedNodes is set
+    // Wire refs/events only after renderedNodes/firstChild are set.
+    this.syncSpecialProps(this.props);
 
-    this.applyProps(this.props);
-
-    // Update state to mounted
     this.state = COMPONENT_STATE.MOUNTED;
-
-    // Trigger mount lifecycle hooks
-    triggerMountHooks(this.scope);
+    triggerMountHooks(scope);
 
     return this.renderedNodes;
   }
 
-  update<T extends ComponentProps>(prevNode: Component<T>): Component<T> {
-    // if key is different, mount the component
-    if (this.key !== prevNode.key) {
-      this.mount(prevNode.parentNode!, prevNode.beforeNode);
-      return this as unknown as Component<T>;
-    }
+  /**
+   * Re-install props into the same `reactiveProps` container (preserving
+   * any closures already holding a reference to it) and re-apply
+   * refs/events against the current root element.
+   */
+  update(props: P): void {
+    this.props = props;
+    const scope = this.scope;
+    if (!scope || scope.isDestroyed) return;
 
-    // Take previous node's properties and reactive state
-    this.parentNode = prevNode.parentNode;
-    this.beforeNode = prevNode.beforeNode;
-    this.scope = prevNode.scope; // Reuse existing scope
-    this.parentScope = prevNode.parentScope;
-    this.renderedNodes = prevNode.renderedNodes;
-    this.state = prevNode.state;
-    this.reactiveProps = prevNode.reactiveProps; // Reuse same reactive object
-    this._propSnapshots = prevNode._propSnapshots;
+    syncDescriptors(this.reactiveProps as object, props ?? {}, /* pruneMissing */ true);
+    this.syncSpecialProps(props);
 
-    // Update reactive props with shallow comparison for objects
-    this._updateReactiveProps(this.props);
-
-    // Mount component if not connected
-    if (!this.isConnected && this.parentNode) {
-      this.mount(this.parentNode, this.beforeNode);
-      return this as unknown as Component<T>;
-    }
-
-    // Apply props and trigger update lifecycle
-    if (this.scope) {
-      setActiveScope(this.scope);
-      this.applyProps(this.props);
-      triggerUpdateHooks(this.scope);
-    }
-
-    return this as unknown as Component<T>;
+    triggerUpdateHooks(scope);
   }
 
   /**
-   * Update reactive props by comparing with current values
+   * Tear down and re-mount the component at its current insertion point.
+   * No-op if the component has never been mounted.
    */
-  private _updateReactiveProps(props: P): void {
-    for (const key in props) {
-      if (key === 'key') continue;
-
-      const newValue = props[key];
-      const oldValue = this.reactiveProps[key];
-
-      // Early return: if values are strictly equal, skip processing
-      // Note: If we have a snapshot, we might still need to check for mutations (same ref but content changed)
-      if (newValue === oldValue && !this._propSnapshots[key]) continue;
-
-      // Cache type check to avoid repeated calls
-      const isNewValueObject = isObject(newValue);
-
-      if (isNewValueObject) {
-        // For objects/arrays: compare with snapshot to detect mutations
-        const snapshot = this._propSnapshots[key];
-
-        // Early return: if snapshot exists and content is the same, skip update
-        if (snapshot && shallowCompare(newValue, snapshot)) continue;
-
-        // Create new snapshot efficiently
-        const newSnapshot = isArray(newValue) ? [...newValue] : { ...newValue };
-        this.reactiveProps[key] = newSnapshot;
-        this._propSnapshots[key] = newSnapshot;
-      } else {
-        // For primitives: hasChanged check (handles NaN, +0/-0, etc.)
-        if (hasChanged(newValue, oldValue)) {
-          this.reactiveProps[key] = newValue;
-          // Clean up snapshot if it exists (type may have changed from object to primitive)
-          if (this._propSnapshots[key]) {
-            delete this._propSnapshots[key];
-          }
-        }
-      }
-    }
-  }
-
-  private unwrapRenderResult(result: any): AnyNode[] {
-    if (isFunction(result)) {
-      result = (result as Function)(this.reactiveProps);
-    }
-
-    // Unwrap signals and computed values
-    if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
-      result = result.value;
-    }
-    if (isComponent(result)) {
-      result = result.mount(this.parentNode!, this.beforeNode);
-    }
-
-    if (isPromise(result)) {
-      result = result.then((r) => this.unwrapRenderResult(r));
-    }
-
-    return result;
-  }
-
   forceUpdate(): void {
-    if (this.state === COMPONENT_STATE.DESTROYED || !this.parentNode || !this.scope) {
-      return;
-    }
+    if (!this.parentNode) return;
+    const parent = this.parentNode;
+    const before = this.beforeNode;
+    this.destroy();
+    this.mount(parent, before);
+  }
 
-    const originalNodes = [...this.renderedNodes];
+  /**
+   * Dispose the scope, remove all rendered nodes, and clear bookkeeping.
+   * Idempotent: subsequent calls are no-ops.
+   */
+  destroy(): void {
+    const scope = this.scope;
+    if (!scope || scope.isDestroyed) return;
+    this.scope = null;
+    this.releaseSpecialProps();
+    disposeScope(scope);
+    for (const node of this.renderedNodes) removeNode(node);
+    this.renderedNodes = [];
+    this.firstChild = undefined;
+    this.parentNode = undefined;
+  }
 
-    try {
-      runWithScope(this.scope, () => {
-        // Re-render and get new nodes
-        let result = this.component(this.reactiveProps as P);
+  /**
+   * Apply props that bind to the root DOM element rather than flowing into
+   * the component body: `ref` (signal/function) and `onXxx` event handlers.
+   * The render-facing `reactiveProps` already has those keys; here we just
+   * wire them to the actual DOM node.
+   */
+  private syncSpecialProps(props: P): void {
+    if (!props) return;
+    const root = this.firstChild as Element | undefined;
+    if (!root) return;
 
-        // Unwrap function (render function pattern)
-        if (isFunction(result)) {
-          result = (result as Function)(this.reactiveProps);
-        }
+    this.releaseSpecialProps();
 
-        // Unwrap signals and computed values
-        if (isSignal<AnyNode>(result) || isComputed<AnyNode>(result)) {
-          result = result.value;
-        }
+    for (const key of Object.getOwnPropertyNames(props)) {
+      const value = readProp(props, key);
 
-        const newNodes = coerceArray(result) as AnyNode[];
-
-        // Calculate anchor position for insertion
-        const anchor = this._getAnchorNode();
-
-        // Replace old nodes with new ones
-        if (!this.parentNode) return;
-
-        // Remove old nodes
-        for (const node of this.renderedNodes) {
-          removeNode(node);
-        }
-
-        // Insert new nodes
-        for (const node of newNodes) {
-          insertNode(this.parentNode, node, anchor);
-        }
-
-        this.renderedNodes = newNodes;
-      });
-
-      if (this.scope) {
-        triggerUpdateHooks(this.scope);
+      if (key === REF_KEY) {
+        this.rootRefCleanup = this.bindRootRef(value, root);
+        continue;
       }
-    } catch (error) {
-      // Rollback on error
-      this.renderedNodes = originalNodes;
-      throw error;
+
+      if (isOn(key) && isFunction(value)) {
+        const eventName = key.slice(2).toLowerCase();
+        this.rootEventCleanups.push(addEvent(root, eventName, value as EventListener));
+      }
     }
   }
 
   /**
-   * Get anchor node for insertion
+   * Remove all listeners/ref bindings currently attached to the root element.
    */
-  private _getAnchorNode(): Node | undefined {
-    if (this.beforeNode) return this.beforeNode;
+  private releaseSpecialProps(): void {
+    for (const cleanup of this.rootEventCleanups) {
+      cleanup();
+    }
+    this.rootEventCleanups.length = 0;
 
-    if (this.renderedNodes.length > 0) {
-      const lastNode = this.renderedNodes[this.renderedNodes.length - 1];
-      const lastDom = getFirstDOMNode(lastNode);
-      if (lastDom) {
-        return lastDom.nextSibling as Node | undefined;
-      }
+    if (this.rootRefCleanup) {
+      this.rootRefCleanup();
+      this.rootRefCleanup = undefined;
+    }
+  }
+
+  /**
+   * Bind the root ref prop and return a cleanup that restores the previous ref state.
+   */
+  private bindRootRef(value: unknown, root: Element): (() => void) | undefined {
+    if (isFunction(value)) {
+      value(root);
+      return () => value(null);
+    }
+
+    if (isSignal(value)) {
+      const previousValue = value.value;
+      value.value = root;
+      return () => {
+        if (value.value === root) {
+          value.value = previousValue;
+        }
+      };
     }
 
     return undefined;
   }
-
-  /**
-   * Destroy component
-   */
-  destroy(): void {
-    // Prevent duplicate destruction
-    if (this.state === COMPONENT_STATE.DESTROYING || this.state === COMPONENT_STATE.DESTROYED) {
-      return;
-    }
-
-    this.state = COMPONENT_STATE.DESTROYING;
-
-    // Remove all rendered nodes
-    for (const node of this.renderedNodes) {
-      removeNode(node);
-    }
-
-    const scope = this.scope;
-    if (scope) {
-      disposeScope(scope);
-      this.scope = null;
-    }
-    // Reset all component properties
-    this.renderedNodes = [];
-    this.parentNode = undefined;
-    this.beforeNode = undefined;
-    this.parentScope = null;
-    this.reactiveProps = {} as P;
-    this.props = {} as P;
-    this.state = COMPONENT_STATE.DESTROYED;
-  }
-
-  applyProps(props: P): void {
-    if (!props) return;
-
-    const firstElement = this.firstChild;
-
-    // Apply event listeners and refs
-    for (const [propName, propValue] of Object.entries(props)) {
-      if (startsWith(propName, EVENT_PREFIX)) {
-        if (!firstElement || !isHTMLElement(firstElement)) return;
-
-        const eventName = propName.slice(EVENT_PREFIX.length).toLowerCase();
-        addEventListener(firstElement, eventName, propValue as EventListener);
-      } else if (propName === REF_KEY && isSignal(propValue)) {
-        propValue.value = firstElement;
-      }
-    }
-
-    this.props = props;
-  }
 }
 
 /**
- * check if a node is a component
- * @param {unknown} node - the node to check
- * @returns {boolean} true if the node is a component, false otherwise
+ * Check if a value is a Component instance.
  */
 export function isComponent(node: unknown): node is Component {
-  return !!node && !!node[NORMAL_COMPONENT];
+  return !!node && !!(node as Record<PropertyKey, unknown>)[COMPONENT_TYPE.NORMAL];
 }
 
 /**
- * create a component
- * @param {Function} componentFn - the component function
- * @param {ComponentProps} props - the component props
- * @returns {Component} the component
+ * Wrap a component function in a Component instance, or pass an existing
+ * Component instance through unchanged.
  */
 export function createComponent<P extends ComponentProps>(
   componentFn: ComponentFn<P>,

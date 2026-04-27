@@ -14,35 +14,79 @@ import {
   XLINK_NAMESPACE,
   XMLNS_NAMESPACE,
 } from '../constants';
-import { setNodeKey } from '../key';
-import { isHydrating } from '../hydration/shared';
 
+/**
+ * Supported value types for the attribute patch layer.
+ *
+ * In addition to primitive values, spread objects are also accepted, so the
+ * type keeps `Record<string, unknown>`.
+ */
 export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 
+/**
+ * Applies a minimal attribute update to an element.
+ *
+ * This is the most general-purpose attribute updater in the template runtime.
+ * It is responsible for:
+ * - skipping internal reserved fields;
+ * - expanding spread attribute objects;
+ * - handling boolean attributes and SVG / xlink / xmlns namespaces;
+ * - applying basic dangerous-URL protection;
+ * - refusing raw HTML sinks such as `innerHTML` / `srcdoc`;
+ * - staying silent during hydration to avoid overwriting SSR DOM.
+ *
+ * @param el - The element to patch.
+ * @param key - The attribute key.
+ * @param prev - Previous attribute value.
+ * @param next - Next attribute value.
+ */
 export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrValue) {
   if (key === KEY_PROP) {
     if (next == null) {
-      setNodeKey(el, undefined);
+      el.removeAttribute(key);
     } else {
-      setNodeKey(el, String(next));
+      el.setAttribute(key, String(next));
     }
     return;
   }
   if (key === SPREAD_NAME) {
+    const prevObj = isObject(prev) ? (prev as Record<string, unknown>) : null;
+    const nextObj = isObject(next) ? (next as Record<string, unknown>) : null;
+
     if (__DEV__) {
-      if (!isObject(next)) {
+      if (next != null && !nextObj) {
         warn('spread attribute must be an object');
       }
     }
-    Object.keys(next as Record<string, unknown>).forEach((k) => {
-      patchAttr(el, k, prev?.[k], next?.[k]);
-    });
+
+    if (prevObj) {
+      for (const attrKey in prevObj) {
+        if (attrKey === SPREAD_NAME) {
+          if (__DEV__) {
+            warn('nested spread attributes are ignored');
+          }
+          continue;
+        }
+        if (!nextObj || !(attrKey in nextObj)) {
+          patchAttr(el, attrKey, prevObj[attrKey] as AttrValue, null);
+        }
+      }
+    }
+
+    if (nextObj) {
+      for (const attrKey in nextObj) {
+        if (attrKey === SPREAD_NAME) {
+          if (__DEV__) {
+            warn('nested spread attributes are ignored');
+          }
+          continue;
+        }
+        patchAttr(el, attrKey, prevObj?.[attrKey] as AttrValue, nextObj[attrKey] as AttrValue);
+      }
+    }
     return;
   }
 
-  if (isHydrating()) {
-    return;
-  }
   const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
   const isXlink = elementIsSVG && key.startsWith('xlink:');
   const isXmlns = elementIsSVG && key.startsWith('xmlns:');
@@ -54,16 +98,18 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     return;
   }
 
-  // Compute lowerKey only when needed (after early exits)
-  const lowerKey = key.toLowerCase();
-
-  // Cache event handler check (faster than regex for common case)
-  if (lowerKey.length > 2 && lowerKey.charCodeAt(0) === 111 && lowerKey.charCodeAt(1) === 110) {
-    // 'on'
+  // Event attributes are handled by the dedicated event layer, so skip them here.
+  if (key.length > 2 && key.charCodeAt(0) === 111 && key.charCodeAt(1) === 110) {
     return;
   }
 
-  if (lowerKey === 'innerhtml') {
+  // Lowercase only after early returns, since it is only needed for specific checks like href.
+  const lowerKey = key.toLowerCase();
+
+  if (lowerKey === 'innerhtml' || lowerKey === 'srcdoc') {
+    if (__DEV__) {
+      warn(`${key} updates are ignored by patchAttr`);
+    }
     return;
   }
 
@@ -79,16 +125,6 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     return;
   }
 
-  if (isXlink) {
-    el.setAttributeNS(XLINK_NAMESPACE, key, String(next));
-    return;
-  }
-
-  if (isXmlns) {
-    el.setAttributeNS(XMLNS_NAMESPACE, key, String(next));
-    return;
-  }
-
   if (isBoolean) {
     if (includeBooleanAttr(next)) {
       el.setAttribute(key, '');
@@ -100,12 +136,29 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
 
   const attrValue = isSymbol(next) ? String(next) : next;
 
-  const isUrlAttr = lowerKey === 'href' || lowerKey === 'src' || lowerKey === 'xlink:href';
+  // Basic safety guard: block dangerous protocols on common URL attributes.
+  const isUrlAttr =
+    lowerKey === 'href' ||
+    lowerKey === 'src' ||
+    lowerKey === 'xlink:href' ||
+    lowerKey === 'action' ||
+    lowerKey === 'formaction' ||
+    lowerKey === 'poster';
   if (isUrlAttr && isString(attrValue)) {
     const v = attrValue.trim().toLowerCase();
     if (v.startsWith('javascript:') || v.startsWith('data:')) {
       return;
     }
+  }
+
+  if (isXlink) {
+    el.setAttributeNS(XLINK_NAMESPACE, key, String(attrValue));
+    return;
+  }
+
+  if (isXmlns) {
+    el.setAttributeNS(XMLNS_NAMESPACE, key, String(attrValue));
+    return;
   }
 
   if (elementIsSVG) {

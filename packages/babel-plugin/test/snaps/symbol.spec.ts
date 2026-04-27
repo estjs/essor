@@ -69,7 +69,7 @@ describe('transform symbol', () => {
     expect(transformCode(input)).toMatchSnapshot();
   });
 
-  it('should work with array index ', () => {
+  it('should work with array index', () => {
     const input = `
       const $a = [1];
       console.log($a[0]);

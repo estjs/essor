@@ -312,7 +312,7 @@ describe('base Utils', () => {
       // Call multiple times to ensure caching works
       const results = Array.from({ length: 10 }, () => getGlobalThis());
       // All results should be the same object
-      results.forEach(result => {
+      results.forEach((result) => {
         expect(result).toBe(results[0]);
       });
     });

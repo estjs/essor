@@ -66,14 +66,14 @@ function composePropsExpression(
   // If no spreads, simple object
   if (spreads.length === 0) {
     if (props.length === 0) return t.objectExpression([]);
-    return t.objectExpression(props.map(p => createPropNode(p.name, p.value, p.kind, options)));
+    return t.objectExpression(props.map((p) => createPropNode(p.name, p.value, p.kind, options)));
   }
 
   // With spreads: interleave props and spreads in order
   // We create Object.assign({}, propsObj, spread1, propsObj2, spread2, ...)
   // For simplicity, put all props first then spreads
   const parts: t.Expression[] = [];
-  const propNodes = props.map(p => createPropNode(p.name, p.value, p.kind, options));
+  const propNodes = props.map((p) => createPropNode(p.name, p.value, p.kind, options));
 
   if (propNodes.length > 0) {
     parts.push(t.objectExpression(propNodes));
@@ -142,7 +142,7 @@ export function buildComponentPropsExpression(
   if (isObjectAssignCall(baseProps)) {
     return t.callExpression(t.cloneNode(baseProps.callee, true), [
       ...baseProps.arguments.map(
-        argument => t.cloneNode(argument, true) as t.Expression | t.SpreadElement,
+        (argument) => t.cloneNode(argument, true) as t.Expression | t.SpreadElement,
       ),
       t.objectExpression([childrenNode]),
     ]);
