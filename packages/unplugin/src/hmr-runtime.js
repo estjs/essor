@@ -9,8 +9,9 @@
  * 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
-import { createComponent, effect, isFunction, signal } from 'essor';
+import { createComponent, effect, signal } from 'essor';
 
+const isFunction = (value) => typeof value === 'function';
 /**
  * Global component registry for HMR tracking
  *

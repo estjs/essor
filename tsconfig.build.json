@@ -3,7 +3,8 @@
   "compilerOptions": {
     "declaration": true,
     "declarationMap": true,
-    "stripInternal": true
+    "stripInternal": true,
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["**/node_modules/**", "dist", "./dist/**/*", "docs", "examples"]
 }

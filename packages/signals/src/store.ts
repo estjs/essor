@@ -249,7 +249,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     for (const key in actions) {
       const action = actions[key];
       if (action) {
-        store[key] = (...args: any[]) => {
+        (store as Record<string, any>)[key] = (...args: any[]) => {
           const result = action.apply(store, args);
           actionCallbacks.forEach((callback) => callback(reactiveState));
           return result;

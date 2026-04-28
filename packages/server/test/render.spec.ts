@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getHydrationKey } from '@estjs/template';
 import { createSSGComponent, render, renderToString } from '../src/render';
+import { convertTextChildToString } from '../src/utils';
 
 describe('server/render', () => {
   describe('renderToString', () => {
@@ -12,6 +13,11 @@ describe('server/render', () => {
     it('passes props to component', () => {
       const Component = (props: any) => `<div>${props.msg}</div>`;
       expect(renderToString(Component, { msg: 'hello' })).toBe('<div>hello</div>');
+    });
+
+    it('keeps raw HTML returned by components untouched', () => {
+      const Component = () => '<div><strong>safe</strong></div>';
+      expect(renderToString(Component)).toBe('<div><strong>safe</strong></div>');
     });
 
     it('resets hydration key before render', () => {
@@ -61,8 +67,6 @@ describe('server/render', () => {
       const comp3 = '!';
 
       const result = render(templates, '0', comp1, comp2, comp3);
-      // Expected: <div data-hk="0">hello<span>world</span>!</div>
-      // Note: addAttributes adds data-hk to the root element
       expect(result).toBe('<div data-hk="0">hello<span>world</span>!</div>');
     });
 
@@ -70,6 +74,12 @@ describe('server/render', () => {
       const templates = ['<div>', '</div>'];
       const result = render(templates, '0');
       expect(result).toBe('<div data-hk="0"></div>');
+    });
+
+    it('escapes text child expressions before interpolation', () => {
+      const templates = ['<div>', '</div>'];
+      const result = render(templates, '0', convertTextChildToString('<img src=x onerror=1>'));
+      expect(result).toBe('<div data-hk="0">&lt;img src=x onerror=1&gt;</div>');
     });
   });
 });

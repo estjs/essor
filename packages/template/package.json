@@ -23,9 +23,9 @@
   "exports": {
     "./internal": {
       "development": {
-        "types": "./src/internal.ts",
-        "require": "./src/internal.ts",
-        "import": "./src/internal.ts"
+        "types": "./dist/internal.d.ts",
+        "require": "./dist/internal.dev.cjs.js",
+        "import": "./dist/internal.dev.esm.js"
       },
       "types": "./dist/internal.d.ts",
       "require": "./dist/internal.cjs.js",

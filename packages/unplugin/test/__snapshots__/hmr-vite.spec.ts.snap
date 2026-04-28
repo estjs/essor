@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`hMR - Vite Platform > should work with vite 1`] = `
-"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+"import { child, createApp, createComponent, effect, insert, next, signal, template } from "essor";
 //#region \\0virtual:essor-hmr
 /**
 * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -82,35 +82,38 @@ function createHMRComponent(componentFn, props) {
 }
 //#endregion
 //#region packages/unplugin/test/fixtures/basic.tsx
-var _$tmpl = template("<div>Foo</div>"), _$tmpl2 = template("<div>Bar</div>"), _$tmpl3 = template("<div></div>");
+var _t$3 = template("<div><!><!></div>");
+var _t$2 = template("<div>Bar</div>");
+var _t$ = template("<div>Foo</div>");
 function Foo() {
-	return _$tmpl();
+	return _t$();
 }
-Foo.__signature = "174rcvv";
-Foo.__hmrId = "35tyqe:Foo";
+Foo.__signature = "1xlg7qu";
+Foo.__hmrId = "urv0gf:Foo";
 function Bar() {
-	return _$tmpl2();
+	return _t$2();
 }
-Bar.__signature = "k90znw";
-Bar.__hmrId = "35tyqe:Bar";
+Bar.__signature = "1x88ld0";
+Bar.__hmrId = "urv0gf:Bar";
 function App() {
 	return (() => {
-		const _$el3 = _$tmpl3();
-		const _$nodes3 = mapNodes(_$el3, [1]);
-		insert(_$nodes3[0], createHMRComponent(Foo, {}));
-		insert(_$nodes3[0], createHMRComponent(Bar, {}));
-		return _$el3;
+		const _root$ = _t$3();
+		const _n$ = child(_root$);
+		const _n$2 = next(_n$, 1);
+		insert(_root$, createHMRComponent(Foo, {}), _n$);
+		insert(_root$, createHMRComponent(Bar, {}), _n$2);
+		return _root$;
 	})();
 }
-App.__signature = "1i25p8q";
-App.__hmrId = "35tyqe:App";
+App.__signature = "5wjnx8";
+App.__hmrId = "urv0gf:App";
 createApp(createHMRComponent(App), "#root");
 //#endregion
 "
 `;
 
 exports[`hMR - Vite Platform > should work with vite 2`] = `
-"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+"import { child, createApp, createComponent, effect, insert, next, signal, template } from "essor";
 //#region \\0virtual:essor-hmr
 /**
 * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -191,26 +194,29 @@ function createHMRComponent(componentFn, props) {
 }
 //#endregion
 //#region packages/unplugin/test/fixtures/exports.tsx
-var _$tmpl = template("<div>A</div>"), _$tmpl2 = template("<div>B</div>"), _$tmpl3 = template("<div></div>");
+var _t$3 = template("<div><!><!></div>");
+var _t$2 = template("<div>B</div>");
+var _t$ = template("<div>A</div>");
 function ComponentA() {
-	return _$tmpl();
+	return _t$();
 }
-ComponentA.__signature = "szj98";
-ComponentA.__hmrId = "35tyqe:ComponentA";
-var ComponentB = () => _$tmpl2();
-ComponentB.__signature = "1xhowjs";
-ComponentB.__hmrId = "35tyqe:ComponentB";
+ComponentA.__signature = "1divye3";
+ComponentA.__hmrId = "12f9iaq:ComponentA";
+var ComponentB = () => _t$2();
+ComponentB.__signature = "y6w14u";
+ComponentB.__hmrId = "12f9iaq:ComponentB";
 function App() {
 	return (() => {
-		const _$el3 = _$tmpl3();
-		const _$nodes3 = mapNodes(_$el3, [1]);
-		insert(_$nodes3[0], createHMRComponent(ComponentA, {}));
-		insert(_$nodes3[0], createHMRComponent(ComponentB, {}));
-		return _$el3;
+		const _root$ = _t$3();
+		const _n$ = child(_root$);
+		const _n$2 = next(_n$, 1);
+		insert(_root$, createHMRComponent(ComponentA, {}), _n$);
+		insert(_root$, createHMRComponent(ComponentB, {}), _n$2);
+		return _root$;
 	})();
 }
-App.__signature = "1gy08hq";
-App.__hmrId = "35tyqe:App";
+App.__signature = "1crwd39";
+App.__hmrId = "12f9iaq:App";
 createApp(createHMRComponent(App), "#root");
 //#endregion
 export { ComponentA, ComponentB, App as default };
@@ -218,7 +224,7 @@ export { ComponentA, ComponentB, App as default };
 `;
 
 exports[`hMR - Vite Platform > should work with vite 3`] = `
-"import { createApp, createComponent, effect, insert, mapNodes, signal, template } from "essor";
+"import { child, createApp, createComponent, effect, insert, next, signal, template } from "essor";
 //#region \\0virtual:essor-hmr
 /**
 * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -299,23 +305,23 @@ function createHMRComponent(componentFn, props) {
 }
 //#endregion
 //#region packages/unplugin/test/fixtures/props.tsx
-var _$tmpl = template("<div>Hello</div>");
+var _t$ = template("<div>Hello <!></div>");
 function PropsComponent(props) {
 	return (() => {
-		const _$el = _$tmpl();
-		insert(mapNodes(_$el, [1])[0], () => props.name);
-		return _$el;
+		const _root$ = _t$();
+		insert(_root$, () => props.name, next(child(_root$), 1));
+		return _root$;
 	})();
 }
-PropsComponent.__signature = "eh956m";
-PropsComponent.__hmrId = "35tyqe:PropsComponent";
-createApp(createHMRComponent(() => createHMRComponent(PropsComponent, { "name": "World" })), "#root");
+PropsComponent.__signature = "1xietpz";
+PropsComponent.__hmrId = "1q4f2mz:PropsComponent";
+createApp(createHMRComponent(() => createHMRComponent(PropsComponent, { name: "World" })), "#root");
 //#endregion
 "
 `;
 
 exports[`hMR - Vite Platform > should work with vite 4`] = `
-"import { createApp, createComponent, delegateEvents, effect, insert, mapNodes, signal, template } from "essor";
+"import { child, createApp, createComponent, delegateEvents, effect, insert, next, signal, template } from "essor";
 //#region \\0virtual:essor-hmr
 /**
 * Essor HMR Runtime - Signal-based Hot Module Replacement
@@ -396,19 +402,19 @@ function createHMRComponent(componentFn, props) {
 }
 //#endregion
 //#region packages/unplugin/test/fixtures/signals.tsx
-var _$tmpl = template("<div>Count:</div>");
+var _t$ = template("<div>Count: <!></div>");
 function SignalComponent() {
 	const count = signal(0);
 	return (() => {
-		const _$el = _$tmpl();
-		const _$nodes = mapNodes(_$el, [1]);
-		insert(_$nodes[0], () => count.value);
-		_$nodes[0]["_$click"] = () => count.value++;
-		return _$el;
+		const _root$ = _t$();
+		const _n$2 = next(child(_root$), 1);
+		_root$["_$click"] = () => count.value++;
+		insert(_root$, () => count.value, _n$2);
+		return _root$;
 	})();
 }
-SignalComponent.__signature = "dtx8aj";
-SignalComponent.__hmrId = "35tyqe:SignalComponent";
+SignalComponent.__signature = "15fgcfq";
+SignalComponent.__hmrId = "j9twu0:SignalComponent";
 createApp(createHMRComponent(SignalComponent), "#root");
 delegateEvents(["click"]);
 //#endregion

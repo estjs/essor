@@ -136,7 +136,10 @@ export function onDestroy(hook: LifecycleHook): void {
  * @returns A promise if any hooks are asynchronous, or undefined.
  */
 export function triggerMountHooks(scope: Scope): void | Promise<void> {
-  if (scope.isDestroyed || !scope.onMount || scope.onMount.length === 0) {
+  if (scope.isDestroyed) {
+    return;
+  }
+  if (!scope.onMount || scope.onMount.length === 0) {
     scope.isMounted = true;
     return;
   }

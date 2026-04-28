@@ -87,7 +87,6 @@ function traverse(value: any, seen?: Set<any>) {
 function cloneValue<T>(value: T): T {
   // Avoid deep cloning to fix major performance bottleneck (Issue 8).
   // For primitive values or when returning the same reference, this is sufficient.
-  // Vue's watch passes the same reference for newValue and oldValue when mutations occur on objects.
   return value;
 }
 
@@ -161,9 +160,6 @@ export function watch<T = any>(
     // Run effect to get new value.
     const newValue = currentEffect.run();
 
-    // If value has changed, or if we are deep watching / returning an object (which could have mutated)
-    // we execute the callback. This matches Vue's semantics where internal object mutations
-    // trigger the watcher even if the object reference remains the same.
     if (deep || isObject(newValue) || hasChanged(newValue, oldValue)) {
       callback(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : (oldValue as T));
       // Update oldValue for next comparison (clone to snapshot current state).

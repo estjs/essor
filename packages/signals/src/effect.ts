@@ -141,6 +141,10 @@ export class EffectImpl<T = any> implements ReactiveNode {
   readonly options?: EffectOptions;
   private _flushScheduler?: () => void | Promise<void>;
 
+  // Debug callbacks (only in development)
+  onTrack?: (event: DebuggerEvent) => void;
+  onTrigger?: (event: DebuggerEvent) => void;
+
   //  State management
   private _active = true;
 

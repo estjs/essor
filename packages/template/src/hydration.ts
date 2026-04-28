@@ -72,6 +72,64 @@ function gatherHydratable(root: Element): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Teleport (Portal) hydration anchors
+// ---------------------------------------------------------------------------
+
+/** FIFO queue of `<!--teleport-anchor-->` comments at Portal call sites. */
+const _teleportCallsiteAnchors: Comment[] = [];
+
+/** Per-target FIFO of `<!--teleport-start-->` comments inside teleport targets. */
+const _teleportTargetStarts = new Map<Element, Comment[]>();
+
+/** Scan `document.body` for teleport comment markers, classifying each into its queue. */
+function gatherTeleportAnchors(): void {
+  if (typeof document === 'undefined') return;
+  const walker = document.createNodeIterator(document.body, NodeFilter.SHOW_COMMENT);
+  let node: Comment | null;
+  // eslint-disable-next-line no-cond-assign
+  while ((node = walker.nextNode() as Comment | null)) {
+    const data = node.data;
+    if (data === 'teleport-anchor') {
+      _teleportCallsiteAnchors.push(node);
+    } else if (data === 'teleport-start') {
+      const parent = node.parentElement;
+      if (!parent) continue;
+      let bucket = _teleportTargetStarts.get(parent);
+      if (!bucket) {
+        bucket = [];
+        _teleportTargetStarts.set(parent, bucket);
+      }
+      bucket.push(node);
+    }
+  }
+}
+
+/** Pop the next call-site anchor comment, or `null` if exhausted. */
+export function consumeTeleportAnchor(): Comment | null {
+  return _teleportCallsiteAnchors.shift() ?? null;
+}
+
+/** Pop the next teleport block from `target`, returning start/end markers and inner nodes. */
+export function consumeTeleportBlock(
+  target: Element,
+): { start: Comment; end: Comment; nodes: Node[] } | null {
+  const bucket = _teleportTargetStarts.get(target);
+  const start = bucket?.shift();
+  if (!start) return null;
+
+  const nodes: Node[] = [];
+  let cursor: Node | null = start.nextSibling;
+  while (cursor) {
+    if (cursor.nodeType === Node.COMMENT_NODE && (cursor as Comment).data === 'teleport-end') {
+      return { start, end: cursor as Comment, nodes };
+    }
+    nodes.push(cursor);
+    cursor = cursor.nextSibling;
+  }
+  return { start, end: start, nodes };
+}
+
 /**
  * Begins hydration.
  *
@@ -81,7 +139,10 @@ export function beginHydration(root: Element): void {
   _isHydrating = true;
   _hydrationKey = 0;
   _registry.clear();
+  _teleportCallsiteAnchors.length = 0;
+  _teleportTargetStarts.clear();
   gatherHydratable(root);
+  gatherTeleportAnchors();
 }
 
 /**
@@ -92,6 +153,8 @@ export function beginHydration(root: Element): void {
 export function endHydration(): void {
   _isHydrating = false;
   _registry.clear();
+  _teleportCallsiteAnchors.length = 0;
+  _teleportTargetStarts.clear();
 }
 
 /**

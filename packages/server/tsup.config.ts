@@ -19,13 +19,13 @@ export default defineConfig({
   sourcemap: isDev,
   minify: !isDev,
   tsconfig: '../../tsconfig.build.json',
-  external: ['@estjs/shared', '@estjs/template'],
+  external: ['@estjs/shared', '@estjs/template', '@estjs/signals'],
   define: {
     __DEV__: isDev ? 'true' : 'false',
   },
   outExtension({ format }) {
     return {
-      js: `.${format}.js`,
+      js: `${isDev ? '.dev' : ''}.${format}.js`,
     };
   },
 });

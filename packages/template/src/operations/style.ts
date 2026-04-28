@@ -56,14 +56,15 @@ export function patchStyle(el: HTMLElement, prev: unknown, next?: unknown) {
     }
   } else if (prev && isString(prev)) {
     // When the previous value is a string, approximate its keys and remove missing ones.
-    const prevStyles = prev.split(';');
-    for (const stylePart of prevStyles) {
-      const colonIndex = stylePart.indexOf(':');
-      if (colonIndex > 0) {
-        const key = stylePart.slice(0, colonIndex).trim();
-        if (next && isObject(next) && (next as Record<string, unknown>)[key] == null) {
-          setStyle(style, key, '');
-        }
+    // Match only CSS property-name tokens (letters/digits/hyphens before a colon).
+    // This is linear and ignores semicolons inside url() or quoted values because
+    // those fragments never match /letter+:/.
+    const declRE = /(?:^|;)\s*([a-z][a-z\d-]*)\s*:/gi;
+    let match: RegExpExecArray | null;
+    while ((match = declRE.exec(prev)) !== null) {
+      const key = match[1].trim();
+      if (key && next && isObject(next) && (next as Record<string, unknown>)[key] == null) {
+        setStyle(style, key, '');
       }
     }
   }

@@ -1,23 +1,47 @@
-import { error, isFunction } from '@estjs/shared';
+import { error, isFunction, isPromise } from '@estjs/shared';
+import { type ComponentFn, type ComponentProps, resetHydrationKey } from '@estjs/template';
 import {
-  type ComponentFn,
-  type ComponentProps,
+  type Scope,
   createScope,
   disposeScope,
-  resetHydrationKey,
+  getActiveScope,
   runWithScope,
-} from '@estjs/template';
+} from '@estjs/template/internal';
+import { type SSRContext, runWithSSRContext } from './context';
 import { addAttributes, convertToString } from './utils';
 
 /**
- * Render a component to HTML string
- * @param {ComponentFn} component - the component to render
- * @param {ComponentProps} props - the props to pass to the component
- * @returns {string} the rendered HTML string
+ * Runs `fn` inside a freshly created scope whose parent is the currently
+ * active scope (if any). The scope is always disposed, even when `fn` throws,
+ * so `provide` / `inject` state from one render cannot leak into another.
+ */
+function runInFreshScope<T>(fn: () => T, parent: Scope | null = getActiveScope()): T {
+  const scope = createScope(parent);
+  try {
+    return runWithScope(scope, fn);
+  } finally {
+    disposeScope(scope);
+  }
+}
+
+/**
+ * Render a component to HTML string.
+ *
+ * Each invocation runs inside its own root scope so that `provide()` calls
+ * stay isolated between independent `renderToString` calls.
+ *
+ * @param component - The component to render.
+ * @param props - The props to pass to the component.
+ * @param context - Optional {@link SSRContext} that collects out-of-tree
+ *   render output (currently: `Portal`/`Teleport` content). The same context
+ *   is visible to nested `createSSGComponent` calls; the caller integrates
+ *   `context.teleports[selector]` into the final document.
+ * @returns {string} The rendered HTML string.
  */
 export function renderToString<P extends ComponentProps = ComponentProps>(
   component: ComponentFn<P>,
   props: P | ComponentProps = {},
+  context: SSRContext | null = null,
 ): string {
   if (!isFunction(component)) {
     error('Component must be a function');
@@ -27,16 +51,13 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
   // Reset the hydration key counter
   resetHydrationKey();
 
-  // Create root scope for SSR to support provide/inject
-  const scope = createScope(null);
+  // Render the component within a fresh root scope (parent: null).
+  const result = runWithSSRContext(context, () =>
+    runInFreshScope(() => component(props as P), null),
+  );
 
-  let result: unknown;
-  try {
-    // Render the component within scope
-    result = runWithScope(scope, () => component(props as P));
-  } finally {
-    // Clean up scope after rendering
-    disposeScope(scope);
+  if (__DEV__ && isPromise(result)) {
+    error('renderToString received a Promise — use renderToStringAsync for async components.');
   }
 
   // Convert the result to string
@@ -44,11 +65,12 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
 }
 
 /**
- * Render template with components (used by babel plugin in SSG mode)
- * @param {string[]} templates - the template fragments
- * @param {string} hydrationKey - the hydration key
- * @param {...string[]} components - the rendered component strings
- * @returns {string} the rendered HTML string
+ * Render template with components (used by babel plugin in SSG mode).
+ *
+ * @param templates - The template fragments.
+ * @param hydrationKey - The hydration key.
+ * @param components - The rendered component strings.
+ * @returns {string} The rendered HTML string.
  */
 export function render(templates: string[], hydrationKey: string, ...components: string[]): string {
   /**
@@ -78,7 +100,7 @@ export function render(templates: string[], hydrationKey: string, ...components:
    * }
    */
 
-  // Build content using array join for better performance
+  // Build content using array join for better performance.
   const parts: string[] = [];
   const templateLen = templates.length;
   const componentLen = components.length;
@@ -92,15 +114,75 @@ export function render(templates: string[], hydrationKey: string, ...components:
 
   const content = parts.join('');
 
-  // Add hydration key attribute
+  // Add hydration key attribute (data-hk) to the root element
   return addAttributes(content, hydrationKey);
 }
 
 /**
- * Create a SSG component (renders component to string)
- * @param {ComponentFn} component - the component to create
- * @param {ComponentProps} props - the props to pass to the component
- * @returns {string} the rendered component as a string
+ * Async variant of {@link renderToString}. Awaits component results so that
+ * `async` components and promise-returning expressions can participate in SSR.
+ *
+ * The awaited value is passed through the same {@link convertToString}
+ * pipeline as the synchronous path, which itself transparently awaits any
+ * nested promises (arrays of promises, promise-returning thunks, etc.).
+ */
+export async function renderToStringAsync<P extends ComponentProps = ComponentProps>(
+  component: ComponentFn<P>,
+  props: P | ComponentProps = {},
+  context: SSRContext | null = null,
+): Promise<string> {
+  if (!isFunction(component)) {
+    error('Component must be a function');
+    return '';
+  }
+
+  resetHydrationKey();
+
+  const scope = createScope(null);
+  let result: unknown;
+  try {
+    // The synchronous portion of the component must observe both the SSR
+    // context (for Portal teleports) and its scope (for provide/inject).
+    // Once the sync render completes, the active context/scope are restored
+    // and remaining work is pure string assembly without component reentry.
+    result = runWithSSRContext(context, () => runWithScope(scope, () => component(props as P)));
+    if (isPromise(result)) {
+      result = await result;
+    }
+    return await convertToStringAsync(result);
+  } finally {
+    disposeScope(scope);
+  }
+}
+
+/**
+ * Promise-aware variant of `convertToString` used by {@link renderToStringAsync}.
+ * Recursively unwraps promises and arrays of promises.
+ */
+async function convertToStringAsync(content: unknown): Promise<string> {
+  if (isPromise(content)) {
+    return convertToStringAsync(await content);
+  }
+  if (Array.isArray(content)) {
+    const parts = await Promise.all(content.map((c) => convertToStringAsync(c)));
+    return parts.join('');
+  }
+  if (isFunction(content)) {
+    return convertToStringAsync((content as () => unknown)());
+  }
+  return convertToString(content);
+}
+
+/**
+ * Create a SSG component (renders component to string).
+ *
+ * The component executes inside a child scope that inherits from the current
+ * active scope, so `inject()` calls can resolve values from ancestor
+ * `provide()` calls, and `provide()` inside the component is scoped to it.
+ *
+ * @param component - The component to create.
+ * @param props - The props to pass to the component.
+ * @returns {string} The rendered component as a string.
  */
 export function createSSGComponent<P extends ComponentProps = ComponentProps>(
   component: ComponentFn<P>,
@@ -111,18 +193,10 @@ export function createSSGComponent<P extends ComponentProps = ComponentProps>(
     return '';
   }
 
-  // Create child scope inheriting from current active scope (if any)
-  // This allows nested components to access parent's provided values
-  const scope = createScope();
-
-  let result: unknown;
-  try {
-    // Render the component within scope
-    result = runWithScope(scope, () => component(props as P));
-  } finally {
-    // Clean up scope after rendering
-    disposeScope(scope);
-  }
+  // Inherit the active scope (set by the enclosing renderToString call or by
+  // an outer createSSGComponent) so that provide/inject follow the component
+  // tree hierarchy.
+  const result = runInFreshScope(() => component(props as P));
 
   return convertToString(result);
 }

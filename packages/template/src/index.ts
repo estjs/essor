@@ -18,6 +18,8 @@ export {
   endHydration,
   getHydrationKey,
   resetHydrationKey,
+  consumeTeleportAnchor,
+  consumeTeleportBlock,
 } from './hydration';
 
 export {

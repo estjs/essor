@@ -93,7 +93,6 @@ function renderInto<P extends ComponentProps>(
  * Compatible with client, SSR, and SSG. Integrates with `<Suspense>` via
  * `SuspenseContext` when rendered inside a Suspense boundary.
  *
- * API mirrors Vue 3's `defineAsyncComponent`.
  *
  * @param loader - The async loader function.
  * @param options - Configuration options.
@@ -164,7 +163,7 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
         .then((mod) => {
           ssrResolved = resolveModule(mod);
         })
-        .catch(() => {});
+        .catch(() => { });
       return ssrPromise;
     };
 
@@ -304,24 +303,24 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
      */
     const retryWith =
       (retryProps: P): (() => void) =>
-      () => {
-        loadPromise = null;
-        cachedStatus = 'pending';
-        cachedError = null;
-        if (options.loading) swap(options.loading);
-        load().then(() => {
-          if (cachedStatus === 'resolved' && cachedComponent) {
-            swap(cachedComponent, retryProps);
-          } else if (cachedStatus === 'errored' && cachedError) {
-            if (options.error) {
-              swap(options.error, {
-                error: cachedError,
-                retry: retryWith(retryProps),
-              });
+        () => {
+          loadPromise = null;
+          cachedStatus = 'pending';
+          cachedError = null;
+          if (options.loading) swap(options.loading);
+          load().then(() => {
+            if (cachedStatus === 'resolved' && cachedComponent) {
+              swap(cachedComponent, retryProps);
+            } else if (cachedStatus === 'errored' && cachedError) {
+              if (options.error) {
+                swap(options.error, {
+                  error: cachedError,
+                  retry: retryWith(retryProps),
+                });
+              }
             }
-          }
-        });
-      };
+          });
+        };
 
     onDestroy(() => {
       alive = false;
@@ -397,7 +396,6 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
     return container;
   }
 
-  // Brand marker (mirrors Vue 3 internals)
   (AsyncWrapper as any).__asyncLoader = load;
   (AsyncWrapper as any).__asyncResolved = () => cachedComponent;
 

@@ -693,8 +693,9 @@ describe('should work with jsx client transform', () => {
       const Portal = ({ children, target }, ref) => (
         <div ref={ref} data-portal-target={target}>{children}</div>
       );
+      const ref =useRef()
       const element = (
-        <Portal target="modal" ref={React.createRef()}>
+        <Portal target="modal" ref={ref}>
           <div>Modal Content with Ref</div>
         </Portal>
       );

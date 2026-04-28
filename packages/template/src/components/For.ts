@@ -246,16 +246,6 @@ export function For<T>(props: ForProps<T>): Node {
     for (const entry of toRemove) disposeItem(entry);
 
     // ===== Position correction with LIS =====
-    //
-    // Strategy (SolidJS / Vue 3):
-    //   1. When nothing moved (`!moved`), every reused entry is already in
-    //      its relative position — only freshly-created entries need to be
-    //      inserted. We skip the LIS computation entirely.
-    //   2. Otherwise compute the LIS over `newIndexToOldIndex`. The entries
-    //      whose new-index is in the LIS form a stable "skeleton" already
-    //      in correct relative order; they do not need to be touched.
-    //      Every other entry is moved via `insertBefore`.
-    //
     // We walk the new array right-to-left using `marker` as the initial
     // anchor, which lets us use `insertBefore(node, nextNode)` uniformly.
     const lis = moved ? getSequence(newIndexToOldIndex) : [];

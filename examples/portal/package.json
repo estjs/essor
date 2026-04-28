@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite --open --port 3001",
+    "dev": "vite --port 3004",
     "typecheck": "tsc  --noEmit",
     "preview": "vite preview",
     "test": "vitest -r test"

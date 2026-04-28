@@ -155,6 +155,18 @@ export interface ReactiveNode {
    * Optional debugging hook called when reactive changes are triggered.
    */
   onTrigger?: (event: DebuggerEvent) => void;
+
+  /**
+   * When true, this node is a pure dependency (leaf); it should not receive
+   * a DIRTY flag during invalidation because it has no derived value to recompute.
+   */
+  isDep?: boolean;
+
+  /**
+   * Deduplication stamp used during batch notification.
+   * Prevents the same effect from being pushed into the pending queue twice.
+   */
+  _triggerVersion?: number;
 }
 
 /**
