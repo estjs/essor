@@ -87,7 +87,7 @@ function gatherTeleportAnchors(): void {
   if (typeof document === 'undefined') return;
   const walker = document.createNodeIterator(document.body, NodeFilter.SHOW_COMMENT);
   let node: Comment | null;
-  // eslint-disable-next-line no-cond-assign
+
   while ((node = walker.nextNode() as Comment | null)) {
     const data = node.data;
     if (data === 'teleport-anchor') {

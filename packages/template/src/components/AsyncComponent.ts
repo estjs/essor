@@ -163,7 +163,7 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
         .then((mod) => {
           ssrResolved = resolveModule(mod);
         })
-        .catch(() => { });
+        .catch(() => {});
       return ssrPromise;
     };
 
@@ -303,24 +303,24 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
      */
     const retryWith =
       (retryProps: P): (() => void) =>
-        () => {
-          loadPromise = null;
-          cachedStatus = 'pending';
-          cachedError = null;
-          if (options.loading) swap(options.loading);
-          load().then(() => {
-            if (cachedStatus === 'resolved' && cachedComponent) {
-              swap(cachedComponent, retryProps);
-            } else if (cachedStatus === 'errored' && cachedError) {
-              if (options.error) {
-                swap(options.error, {
-                  error: cachedError,
-                  retry: retryWith(retryProps),
-                });
-              }
+      () => {
+        loadPromise = null;
+        cachedStatus = 'pending';
+        cachedError = null;
+        if (options.loading) swap(options.loading);
+        load().then(() => {
+          if (cachedStatus === 'resolved' && cachedComponent) {
+            swap(cachedComponent, retryProps);
+          } else if (cachedStatus === 'errored' && cachedError) {
+            if (options.error) {
+              swap(options.error, {
+                error: cachedError,
+                retry: retryWith(retryProps),
+              });
             }
-          });
-        };
+          }
+        });
+      };
 
     onDestroy(() => {
       alive = false;

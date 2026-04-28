@@ -41,7 +41,12 @@ export function getExamplePort(exampleName: ExampleName): number {
 export const generateWebServers = () => {
   const filterRaw = process.env.E2E_EXAMPLES ?? process.env.E2E_EXAMPLE;
   const filter = filterRaw
-    ? new Set(filterRaw.split(',').map((s) => s.trim()).filter(Boolean))
+    ? new Set(
+        filterRaw
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean),
+      )
     : null;
 
   return Object.entries(EXAMPLE_PORT_MAP)

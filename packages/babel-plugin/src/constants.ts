@@ -87,9 +87,7 @@ const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
 ];
 
 const _remaps = SERVER_IMPORT_REMAPS as Partial<Record<IMPORT_MAP_NAMES, string>>;
-export const SERVER_EXPORTS = new Set(
-  SERVER_ONLY_NAMES.map((name) => _remaps[name] ?? name),
-);
+export const SERVER_EXPORTS = new Set(SERVER_ONLY_NAMES.map((name) => _remaps[name] ?? name));
 
 export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, name])) as Record<
   IMPORT_MAP_NAMES,

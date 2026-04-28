@@ -64,7 +64,7 @@ createApp(Counter, '#app');
 
 ```jsx
 function Form() {
-  let $name = '';
+  const $name = '';
 
   return (
     <div>

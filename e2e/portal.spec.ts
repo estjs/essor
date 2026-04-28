@@ -27,9 +27,7 @@ test.describe('Portal example', () => {
     await page.click('[data-test="toggle-disabled"]');
     // Inline render: portal-target loses the content, origin gains it.
     await expect(page.locator('#portal-target [data-test="portal-content"]')).toHaveCount(0);
-    await expect(page.locator('#origin [data-test="portal-content"]')).toHaveText(
-      'Hello, World!',
-    );
+    await expect(page.locator('#origin [data-test="portal-content"]')).toHaveText('Hello, World!');
 
     // Toggle back: returns to the target.
     await page.click('[data-test="toggle-disabled"]');
