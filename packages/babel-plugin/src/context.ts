@@ -40,7 +40,7 @@ export function getCompileContext(): CompileContext {
  * @returns {void}
  */
 export function setCompileContext(context: CompileContext | null) {
-  if (typeof __DEV__ !== 'undefined' && __DEV__ && context && currentCompileContext) {
+  if (__DEV__ && context && currentCompileContext) {
     error('setCompileContext: overwriting existing context — possible concurrent file processing');
   }
   currentCompileContext = context;

@@ -1,4 +1,4 @@
-import { isArray, isString, isUndefined } from './is';
+import { isArray, isString } from './is';
 
 /**
  * Reference to Object.prototype.toString
@@ -77,7 +77,7 @@ export function generateUniqueId(): string {
  * @returns True if in a browser environment, false otherwise.
  */
 export function isBrowser(): boolean {
-  return !isUndefined(window) && !isUndefined(document);
+  return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
 /**

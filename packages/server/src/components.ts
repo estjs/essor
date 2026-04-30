@@ -1,4 +1,4 @@
-import { isFunction, isNil, isString, warn } from '@estjs/shared';
+import { isFunction, isNil, isObject, isString, warn } from '@estjs/shared';
 import { convertToString } from './utils';
 import { getSSRContext } from './context';
 
@@ -98,7 +98,7 @@ export interface SSRForProps<T> {
 function resolveList<T>(input: SSRForProps<T>['each']): T[] {
   if (isNil(input)) return [];
   // Duck-type signal check — avoids importing @estjs/signals on the server.
-  if (typeof input === 'object' && input !== null && 'value' in input) {
+  if (isObject(input) && 'value' in input) {
     return ((input as { value: T[] }).value ?? []) as T[];
   }
   if (isFunction(input)) {
