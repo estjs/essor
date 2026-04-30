@@ -31,7 +31,11 @@ export function createSSRContext(): SSRContext {
 /**
  * Async-safe SSR context propagation.
  */
-const store = new AsyncLocalStorage<SSRContext | null>();
+interface ContextStore {
+  getStore(): SSRContext | null | undefined;
+  run<T>(ctx: SSRContext | null, fn: () => T): T;
+}
+const store: ContextStore = new AsyncLocalStorage<SSRContext | null>();
 
 /**
  * Get the current SSR context, if any. Returns `null` when called outside of
