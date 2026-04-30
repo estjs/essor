@@ -27,9 +27,9 @@ export function resolveNodeValue(value: unknown): unknown {
 }
 export interface SuspenseProps {
   /** The content to render. Can be a Promise for async loading. */
-  children?: AnyNode | AnyNode[] | Promise<AnyNode | AnyNode[]>;
+  children?: Node | Node[] | Promise<Node | Node[]>;
   /** Fallback content to display while children is loading (Promise pending). */
-  fallback?: AnyNode;
+  fallback?: Node;
   /** Optional key for reconciliation. */
   key?: string;
 }
@@ -55,14 +55,7 @@ export interface SuspenseContextType {
  * </Suspense>
  * ```
  */
-export function Suspense(props: SuspenseProps): AnyNode {
-  // Check if we're in SSR mode (no DOM globals)
-  if (typeof document === 'undefined') {
-    // In SSR, keep structure deterministic and never touch DOM APIs.
-    // Suspense boundary renders fallback while async resources are unresolved.
-    return props.fallback ?? '';
-  }
-
+export function Suspense(props: SuspenseProps): Node {
   // Create a container to manage content swapping
   const container = document.createElement('div');
   container.style.display = 'contents'; // Invisible wrapper
