@@ -1,4 +1,8 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
+// Use bare specifier (not `node:async_hooks`) as a workaround for tsup's
+// dts worker on TS 6.x, which reports TS2591 against the `node:` prefix
+// in some CI environments.
+// eslint-disable-next-line unicorn/prefer-node-protocol
+import { AsyncLocalStorage } from 'async_hooks';
 
 /**
  * SSR rendering context.
