@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Essor Hydrate Example</title>
+  </head>
+  <body>
+    <div id="app"><main data-test="example-root" class="page" data-hk="0"><h1>Hydrate Example</h1><p class="note">A static shell becomes interactive after hydration.</p><section class="stack"><p>Status: <strong data-test="hydration-status"><span></span></strong></p><p>Preview: <strong data-test="draft-preview"><span></span></strong></p><div class="row"><button aria-pressed="true">Show overview</button><button aria-pressed="false">Show logs</button><button>Load note</button><button>Clear note</button></div><section class="stack" data-test="overview-view"><h2>Overview</h2><p>The server and client render the same shell.</p></section><section class="stack" data-test="logs-view" hidden><h2>Logs</h2><ul><li>The shell loads first.</li><li>Event listeners attach after hydration.</li><li>The same DOM keeps working after state changes.</li></ul></section></section></main></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

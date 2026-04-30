@@ -1,0 +1,20 @@
+{
+  "name": "essor-example-todo-mvc",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
+    "unplugin-essor": "workspace:*",
+    "vite": "^8.0.10"
+  }
+}

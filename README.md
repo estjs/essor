@@ -103,15 +103,15 @@ npm run dev
 
 Check out the [examples](./examples) directory:
 
-- [Basic](./examples/basic) — Getting started with signals
-- [Todo App](./examples/todo) — Complete CRUD application
-- [Fragment](./examples/fragment) — Fragment components
-- [Portal](./examples/portal) — Portal components
-- [Provide/Inject](./examples/provide) — Dependency injection
-- [Suspense](./examples/suspense) — Async components with loading states
-- [HMR](./examples/hmr) — Hot module replacement demo
-- [SSR](./examples/ssr) — Server-side rendering
-- [SSG](./examples/ssg) — Static site generation
+- [Signals](./examples/signals) — Signal state, computed outputs, and batch updates
+- [TodoMVC](./examples/todo-mvc) — Basic todo flows with add, edit, filter, toggle, and clear
+- [Fragment](./examples/fragment) — Wrapper-free table rows with conditional detail blocks
+- [Binding](./examples/binding) — Bind API across text, select, range, and files
+- [Provide](./examples/provide) — Scoped dependency injection with nested overrides
+- [Portal](./examples/portal) — Target switching and inline fallback for teleported content
+- [Suspense](./examples/suspense) — Async boundaries with focused loading fallbacks
+- [HMR](./examples/hmr) — Stateful hot-refresh demo
+- [Hydrate](./examples/hydrate) — SSR shell and client hydration flow
 
 ## 🤝 Contributing
 

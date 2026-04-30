@@ -103,15 +103,15 @@ npm run dev
 
 查看 [examples](./examples) 目录：
 
-- [基础示例](./examples/basic) — Signal 入门
-- [Todo 应用](./examples/todo) — 完整 CRUD 应用
-- [Fragment](./examples/fragment) — Fragment 组件
-- [Portal](./examples/portal) — Portal 组件
-- [Provide/Inject](./examples/provide) — 依赖注入
-- [Suspense](./examples/suspense) — 异步组件与加载状态
-- [HMR](./examples/hmr) — 热模块替换演示
-- [SSR 示例](./examples/ssr) — 服务端渲染
-- [SSG 示例](./examples/ssg) — 静态站点生成
+- [Signals](./examples/signals) — Signal 状态、computed 输出与批量更新
+- [TodoMVC](./examples/todo-mvc) — 基础待办流程：新增、编辑、筛选、切换与清理
+- [Fragment](./examples/fragment) — 无包裹节点的表格行组合
+- [Binding](./examples/binding) — text、select、range、files 等绑定能力
+- [Provide](./examples/provide) — 带嵌套覆盖的依赖注入作用域
+- [Portal](./examples/portal) — 传送目标切换与行内回退
+- [Suspense](./examples/suspense) — 聚焦异步边界与 loading fallback
+- [HMR](./examples/hmr) — 有状态热更新演示
+- [Hydrate](./examples/hydrate) — SSR 壳体与客户端水合流程
 
 ## 🤝 贡献
 

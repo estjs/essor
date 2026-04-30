@@ -1,6 +1,6 @@
 import process from 'node:process';
 import { defineConfig, devices } from '@playwright/test';
-import { generateWebServers } from './e2e/test-utils';
+import { getE2eReadyUrl } from './e2e/example-registry';
 
 /**
  * Read environment variables from file.
@@ -75,5 +75,10 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests */
-  webServer: generateWebServers(),
+  webServer: {
+    command: 'pnpm exec tsx e2e/web-server.ts',
+    url: getE2eReadyUrl(),
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
 });
