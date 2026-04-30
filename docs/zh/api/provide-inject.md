@@ -94,11 +94,3 @@ function provide<T>(key: string | symbol, value: T): void;
 function inject<T>(key: string | symbol, defaultValue?: T): T | undefined;
 ```
 
-## 与 Vue 的差异
-
-| 特性 | Essor | Vue 3 |
-|------|-------|-------|
-| 响应性 | 需手动传递 signal / getter | 自动解包 ref / reactive |
-| 作用域 | 基于 scope 树 | 基于组件实例 |
-| API | `provide(key, value)` | `provide(key, value)` |
-| 注入 | `inject(key)` | `inject(key, default)` |

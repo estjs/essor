@@ -94,11 +94,3 @@ function provide<T>(key: string | symbol, value: T): void;
 function inject<T>(key: string | symbol, defaultValue?: T): T | undefined;
 ```
 
-## Differences from Vue
-
-| Feature | Essor | Vue 3 |
-|---------|-------|-------|
-| Reactivity | Must manually pass signal / getter | Auto-unwraps ref / reactive |
-| Scope | Based on scope tree | Based on component instance |
-| API | `provide(key, value)` | `provide(key, value)` |
-| Injection | `inject(key)` | `inject(key, default)` |
