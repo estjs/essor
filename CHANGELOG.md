@@ -5,6 +5,16 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.15-beta.16](https://github.com/estjs/essor/compare/v0.0.15-beta.15...v0.0.15-beta.16) `2026-04-30`
+
+
+### Bug Fixes
+
+* **server:** fix server types ([7c158ae](https://github.com/estjs/essor/commit/7c158ae4f62e9fd73c876234c6565afb280cd9a3))
+
+
+
+
 
 
 
