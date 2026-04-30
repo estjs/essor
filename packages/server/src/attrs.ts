@@ -1,10 +1,17 @@
 import { isComputed, isSignal } from '@estjs/signals';
-import { isString, normalizeClassName, normalizeStyle, styleToString } from '@estjs/shared';
+import {
+  escapeHTML,
+  isString,
+  normalizeClassName,
+  normalizeStyle,
+  styleToString,
+} from '@estjs/shared';
 
 /**
  * Normalize component properties
  *
- * Special handling for class and style attributes, converting them to normalized format
+ * Special handling for class and style attributes, converting them to normalized format.
+ * Returns a new object when normalization is needed, preserving the original.
  *
  * @param props - Original component properties
  * @returns Normalized component properties
@@ -15,18 +22,25 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
   }
 
   const { class: className, style } = props;
+  const needsClassNorm = className && !isString(className);
+  const needsStyleNorm = !!style;
 
-  // Normalize class attribute
-  if (className && !isString(className)) {
-    props.class = normalizeClassName(className);
+  if (!needsClassNorm && !needsStyleNorm) {
+    return props;
   }
 
-  // Normalize style attribute
-  if (style) {
-    props.style = normalizeStyle(style);
+  // Shallow copy to avoid mutating the caller's props
+  const result = { ...props };
+
+  if (needsClassNorm) {
+    result.class = normalizeClassName(className);
   }
 
-  return props;
+  if (needsStyleNorm) {
+    result.style = normalizeStyle(style);
+  }
+
+  return result;
 }
 
 /**
@@ -40,13 +54,12 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
  *
  * @param attrName - Attribute name
  * @param attrValue - Attribute value
- * @param hydrationId - Hydration ID (for client-side reuse)
  * @returns Formatted HTML attribute string
  */
-export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string): string {
+export function setSSGAttr(attrName: string, attrValue: any): string {
   // Handle reactive values (signals or computed values)
   if (isSignal(attrValue) || isComputed(attrValue)) {
-    return setSSGAttr(attrName, attrValue.value, hydrationId);
+    return setSSGAttr(attrName, attrValue.value);
   }
 
   // Ignore null, undefined, and false value attributes
@@ -84,6 +97,6 @@ export function setSSGAttr(attrName: string, attrValue: any, hydrationId: string
     return ` ${attrName}`;
   }
 
-  // Standard attribute handling
-  return ` ${attrName}="${attrValue}"`;
+  // Standard attribute handling — escape to prevent attribute injection (XSS)
+  return ` ${attrName}="${escapeHTML(String(attrValue))}"`;  
 }

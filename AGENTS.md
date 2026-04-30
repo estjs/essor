@@ -35,7 +35,7 @@ essor-monorepo/
 │   ├── shared/        # @estjs/shared — common utilities
 │   ├── babel-plugin/  # babel-plugin-essor — JSX transform + $ prefix
 │   └── unplugin/      # unplugin-essor — build integration + HMR runtime
-├── examples/          # basic, todo, fragment, portal, provide, suspense, hmr, ssr, ssg
+├── examples/          # basic, todo, fragment, portal, provide, suspense, hmr
 └── e2e/               # Playwright tests
 ```
 
@@ -165,3 +165,4 @@ pnpm vitest --reporter=verbose
 - **GitHub**: https://github.com/estjs/essor
 - **Docs**: https://essor.netlify.app/
 - **NPM**: https://www.npmjs.com/package/essor
+

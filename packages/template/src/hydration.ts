@@ -64,7 +64,7 @@ const _registry = new Map<string, Element>();
  */
 function gatherHydratable(root: Element): void {
   const nodes = root.querySelectorAll('[data-hk]');
-  for (const node of Array.from(nodes)) {
+  for (const node of nodes) {
     const key = (node as HTMLElement).dataset.hk;
     if (key != null && !_registry.has(key)) {
       _registry.set(key, node as Element);

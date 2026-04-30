@@ -100,19 +100,18 @@ export function render(templates: string[], hydrationKey: string, ...components:
    * }
    */
 
-  // Build content using array join for better performance.
-  const parts: string[] = [];
+  // Direct string concatenation — avoids array allocation + join overhead
+  // for typical 2-4 template fragments.
   const templateLen = templates.length;
   const componentLen = components.length;
+  let content = '';
 
   for (let i = 0; i < templateLen; i++) {
-    parts.push(templates[i]);
+    content += templates[i];
     if (i < componentLen && components[i]) {
-      parts.push(convertToString(components[i]));
+      content += convertToString(components[i]);
     }
   }
-
-  const content = parts.join('');
 
   // Add hydration key attribute (data-hk) to the root element
   return addAttributes(content, hydrationKey);
@@ -139,17 +138,17 @@ export async function renderToStringAsync<P extends ComponentProps = ComponentPr
   resetHydrationKey();
 
   const scope = createScope(null);
-  let result: unknown;
   try {
-    // The synchronous portion of the component must observe both the SSR
-    // context (for Portal teleports) and its scope (for provide/inject).
-    // Once the sync render completes, the active context/scope are restored
-    // and remaining work is pure string assembly without component reentry.
-    result = runWithSSRContext(context, () => runWithScope(scope, () => component(props as P)));
-    if (isPromise(result)) {
-      result = await result;
-    }
-    return await convertToStringAsync(result);
+    // Keep both the SSR context and the reactive scope active for the entire
+    // async render lifetime. This ensures that Portal() calls after an `await`
+    // inside async components can still access `getSSRContext()`.
+    return await runWithSSRContext(context, async () => {
+      let result: unknown = runWithScope(scope, () => component(props as P));
+      if (isPromise(result)) {
+        result = await result;
+      }
+      return convertToStringAsync(result);
+    });
   } finally {
     disposeScope(scope);
   }

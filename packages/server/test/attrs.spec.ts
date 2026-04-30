@@ -55,65 +55,71 @@ describe('server/attrs', () => {
 
   describe('setSSGAttr', () => {
     it('handles standard attributes', () => {
-      expect(setSSGAttr('id', 'test', '1')).toBe(' id="test"');
+      expect(setSSGAttr('id', 'test')).toBe(' id="test"');
     });
 
     it('handles boolean attributes', () => {
-      expect(setSSGAttr('disabled', true, '1')).toBe(' disabled');
-      expect(setSSGAttr('disabled', false, '1')).toBe('');
+      expect(setSSGAttr('disabled', true)).toBe(' disabled');
+      expect(setSSGAttr('disabled', false)).toBe('');
     });
 
     it('handles style attribute', () => {
-      expect(setSSGAttr('style', { color: 'red' }, '1')).toBe(' style="color:red;"');
-      expect(setSSGAttr('style', 'color: red;', '1')).toBe(' style="color: red;"');
+      expect(setSSGAttr('style', { color: 'red' })).toBe(' style="color:red;"');
+      expect(setSSGAttr('style', 'color: red;')).toBe(' style="color: red;"');
     });
 
     it('handles class attribute', () => {
-      expect(setSSGAttr('class', ['foo', 'bar'], '1')).toBe(' class="foo bar"');
+      expect(setSSGAttr('class', ['foo', 'bar'])).toBe(' class="foo bar"');
     });
 
     it('ignores event listeners', () => {
-      expect(setSSGAttr('onClick', () => {}, '1')).toBe('');
+      expect(setSSGAttr('onClick', () => {})).toBe('');
     });
 
     it('unwraps signals', () => {
       const count = signal(0);
-      expect(setSSGAttr('data-count', count, '1')).toBe(' data-count="0"');
+      expect(setSSGAttr('data-count', count)).toBe(' data-count="0"');
     });
 
     it('unwraps computed', () => {
       const count = signal(1);
       const double = computed(() => count.value * 2);
-      expect(setSSGAttr('data-double', double, '1')).toBe(' data-double="2"');
+      expect(setSSGAttr('data-double', double)).toBe(' data-double="2"');
     });
 
     it('returns empty string for null/undefined values', () => {
-      expect(setSSGAttr('data-test', null, '1')).toBe('');
-      expect(setSSGAttr('data-test', undefined, '1')).toBe('');
+      expect(setSSGAttr('data-test', null)).toBe('');
+      expect(setSSGAttr('data-test', undefined)).toBe('');
     });
 
     it('returns empty string for style that normalizes to undefined', () => {
       // normalizeStyle returns undefined for non-array, non-string, non-object values
       // Numbers, booleans, etc. will cause normalizeStyle to return undefined
-      expect(setSSGAttr('style', 123, '1')).toBe('');
-      expect(setSSGAttr('style', true, '1')).toBe('');
+      expect(setSSGAttr('style', 123)).toBe('');
+      expect(setSSGAttr('style', true)).toBe('');
     });
 
     it('handles empty style object by returning empty style attribute', () => {
       // Empty object {} is truthy, so normalizeStyle returns it, then styleToString returns ''
-      expect(setSSGAttr('style', {}, '1')).toBe(' style=""');
+      expect(setSSGAttr('style', {})).toBe(' style=""');
     });
 
     it('handles zero value for attributes', () => {
-      expect(setSSGAttr('data-count', 0, '1')).toBe(' data-count="0"');
+      expect(setSSGAttr('data-count', 0)).toBe(' data-count="0"');
     });
 
     it('returns empty string for empty class', () => {
-      expect(setSSGAttr('class', '', '1')).toBe('');
+      expect(setSSGAttr('class', '')).toBe('');
     });
 
     it('returns empty string for class object with all false values', () => {
-      expect(setSSGAttr('class', { active: false, disabled: false }, '1')).toBe('');
+      expect(setSSGAttr('class', { active: false, disabled: false })).toBe('');
+    });
+
+    it('escapes special characters in standard attribute values (XSS prevention)', () => {
+      expect(setSSGAttr('title', '"break" <out>')).toBe(
+        ' title="&quot;break&quot; &lt;out&gt;"',
+      );
     });
   });
 });

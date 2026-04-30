@@ -53,12 +53,14 @@ export function convertTextChildToString(content: unknown): string {
 }
 
 /**
- * Combined regex that matches either a `data-idx="<digits>"` attribute or an
- * HTML comment in a single scan. Capture groups:
+ * Combined regex that matches either a `data-idx="<digits>"` attribute or a
+ * hydration comment marker (numeric body only) in a single scan. Capture groups:
  *   1. data-idx index value (if attribute matched)
- *   2. comment body (if comment matched)
+ *   2. numeric comment body (if hydration marker matched)
+ *
+ * Non-numeric comments (e.g. `<!-- user content -->`) are preserved unchanged.
  */
-const HYDRATION_REWRITE_REGEX = /data-idx="(\d+)"|<!--(.*?)-->/g;
+const HYDRATION_REWRITE_REGEX = /data-idx="(\d+)"|<!--(\d+)-->/g;
 
 /**
  * Inject the root hydration attribute into the opening tag without corrupting

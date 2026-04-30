@@ -72,5 +72,10 @@ describe('server/ssr-utils', () => {
       const html = '<div><!--0--></div>';
       expect(addAttributes(html, '1')).toBe('<div data-hk="1"><!--1-0--></div>');
     });
+
+    it('preserves non-numeric HTML comments unchanged', () => {
+      const html = '<div><!-- TODO: fix this --></div>';
+      expect(addAttributes(html, '1')).toBe('<div data-hk="1"><!-- TODO: fix this --></div>');
+    });
   });
 });

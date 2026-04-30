@@ -101,8 +101,13 @@ function normalizeClassSSR(value: unknown): string {
 }
 
 /**
+ * Matches uppercase characters for camelCase to kebab-case conversion.
+ */
+const UPPER_RE = /[A-Z]/g;
+
+/**
  * Converts a camelCase CSS property into kebab-case.
  */
 function camelToKebab(str: string): string {
-  return str.replaceAll(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+  return str.replaceAll(UPPER_RE, (m) => `-${m.toLowerCase()}`);
 }
