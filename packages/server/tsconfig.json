@@ -4,10 +4,9 @@
     "types": ["node"],
     "declaration": true,
     "declarationMap": true,
-    "stripInternal": true,
-    "ignoreDeprecations": "6.0"
+    "stripInternal": true
   },
-  "include": ["src/**/*", "../globals.d.ts"],
+  "include": ["src/**/*", "../../globals.d.ts"],
   "exclude": [
     "**/node_modules/**",
     "dist",

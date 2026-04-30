@@ -8,7 +8,6 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "types": ["./packages/globals.d.ts"],
     "strict": true,
     "strictPropertyInitialization": false,
     "noImplicitAny": false,
@@ -23,6 +22,7 @@
     "skipLibCheck": true,
     "ignoreDeprecations": "6.0"
   },
+  "include": ["src/**/*", "globals.d.ts"],
   "exclude": [
     "**/node_modules/**",
     "dist",

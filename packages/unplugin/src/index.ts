@@ -2,6 +2,7 @@ import { createUnplugin } from 'unplugin';
 import * as babel from '@babel/core';
 import essorBabelPlugin from 'babel-plugin-essor';
 import { createFilter } from 'vite';
+// @ts-ignore - resolved by esbuild raw plugin at build time
 import hmrRuntimeCode from './hmr-runtime.js?raw';
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin';
 import type { Options } from './types';
