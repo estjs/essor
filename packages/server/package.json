@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@estjs/shared": "workspace:*",
-    "@estjs/template": "workspace:*"
+    "@estjs/template": "workspace:*",
+    "@types/node": "^25.6.0"
   }
 }
