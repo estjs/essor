@@ -79,18 +79,6 @@ export default function Home() {
 _delegateEvents$(["click"]);"
 `;
 
-exports[`should work with jsx client transform > should treat lowercase HTML-style event handlers as events (not attrs) 1`] = `
-"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
-const _t$ = _template$("<input/>");
-const element = (() => {
-  const _root$ = _t$();
-  _root$["_$input"] = e => console.log(e.target.value);
-  _root$["_$click"] = () => console.log('clicked');
-  return _root$;
-})();
-_delegateEvents$(["input", "click"]);"
-`;
-
 exports[`should work with jsx client transform > should work with CSS Variables transform to inline style 1`] = `
 "import { template as _template$ } from "essor";
 const _t$ = _template$("<div style=\\"--color: red\\">Hello, World!</div>");

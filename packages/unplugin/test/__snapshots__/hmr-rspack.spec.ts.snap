@@ -11,13 +11,13 @@ import { createApp } from "essor";
 function Foo() {
     return _t$();
 }
-Foo.__signature = "1xlg7qu";
-Foo.__hmrId = "urv0gf:Foo";
+Foo.__signature = "1lygndc";
+Foo.__hmrId = "me1pwu:Foo";
 function Bar() {
     return _t$2();
 }
-Bar.__signature = "1x88ld0";
-Bar.__hmrId = "urv0gf:Bar";
+Bar.__signature = "u5b22v";
+Bar.__hmrId = "me1pwu:Bar";
 function App() {
     return function() {
         var _root$ = _t$3();
@@ -28,8 +28,8 @@ function App() {
         return _root$;
     }();
 }
-App.__signature = "5wjnx8";
-App.__hmrId = "urv0gf:App";
+App.__signature = "uvdrlt";
+App.__hmrId = "me1pwu:App";
 createApp(__$createHMRComponent$__(App), "#root");
 var __$registry$__ = [
     Foo,
@@ -55,13 +55,13 @@ import { createApp } from 'essor';
 export function ComponentA() {
     return _t$();
 }
-ComponentA.__signature = "1divye3";
-ComponentA.__hmrId = "12f9iaq:ComponentA";
+ComponentA.__signature = "yeg9zu";
+ComponentA.__hmrId = "ydmpkz:ComponentA";
 export var ComponentB = function() {
     return _t$2();
 };
-ComponentB.__signature = "y6w14u";
-ComponentB.__hmrId = "12f9iaq:ComponentB";
+ComponentB.__signature = "1vo7hf2";
+ComponentB.__hmrId = "ydmpkz:ComponentB";
 export default function App() {
     return function() {
         var _root$ = _t$3();
@@ -72,8 +72,8 @@ export default function App() {
         return _root$;
     }();
 }
-App.__signature = "1crwd39";
-App.__hmrId = "12f9iaq:App";
+App.__signature = "1q4priw";
+App.__hmrId = "ydmpkz:App";
 createApp(__$createHMRComponent$__(App), '#root');
 var __$registry$__ = [
     ComponentA,
@@ -105,8 +105,8 @@ function PropsComponent(props) {
         return _root$;
     }();
 }
-PropsComponent.__signature = "1xietpz";
-PropsComponent.__hmrId = "1q4f2mz:PropsComponent";
+PropsComponent.__signature = "kth069";
+PropsComponent.__hmrId = "1dblsze:PropsComponent";
 createApp(__$createHMRComponent$__(function() {
     return __$createHMRComponent$__(PropsComponent, {
         name: "World"
@@ -144,8 +144,8 @@ function SignalComponent() {
         return _root$;
     }();
 }
-SignalComponent.__signature = "15fgcfq";
-SignalComponent.__hmrId = "j9twu0:SignalComponent";
+SignalComponent.__signature = "182rwo7";
+SignalComponent.__hmrId = "1xegm1l:SignalComponent";
 createApp(__$createHMRComponent$__(SignalComponent), '#root');
 var __$registry$__ = [
     SignalComponent
