@@ -118,6 +118,47 @@ describe('portal — hydration', () => {
       document.body.innerHTML = `<!--teleport-anchor-->`;
       expect(consumeTeleportAnchor()).toBeNull();
     });
+
+    it('returns null for malformed blocks missing teleport-end', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      withHydration(`<div id="t"><!--teleport-start--><p>orphaned</p></div>`, () => {
+        const t = document.querySelector('#t') as Element;
+        const block = consumeTeleportBlock(t);
+        expect(block).toBeNull();
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('orphaned <!--teleport-start-->'),
+        );
+      });
+      warnSpy.mockRestore();
+    });
+
+    it('handles multiple blocks with varying content sizes', () => {
+      const html =
+        `<!--teleport-anchor--><!--teleport-anchor--><!--teleport-anchor-->` +
+        `<div id="t">${ssrBlocks(
+          '<span>one</span>',
+          '<span>two</span><span>three</span>',
+          '',
+        )}</div>`;
+
+      withHydration(html, () => {
+        // Consume all three anchors
+        expect(consumeTeleportAnchor()).not.toBeNull();
+        expect(consumeTeleportAnchor()).not.toBeNull();
+        expect(consumeTeleportAnchor()).not.toBeNull();
+        expect(consumeTeleportAnchor()).toBeNull();
+
+        const t = document.querySelector('#t') as Element;
+        const b1 = consumeTeleportBlock(t);
+        const b2 = consumeTeleportBlock(t);
+        const b3 = consumeTeleportBlock(t);
+
+        expect(b1!.nodes).toHaveLength(1);
+        expect(b2!.nodes).toHaveLength(2);
+        expect(b3!.nodes).toHaveLength(0);
+        expect(consumeTeleportBlock(t)).toBeNull();
+      });
+    });
   });
 
   // --- Portal hydrate path ---
@@ -223,6 +264,54 @@ describe('portal — hydration', () => {
           cleanupContext(ctx);
         },
       );
+    });
+
+    it('warns when target is not found during hydration', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      withHydration(`<section><!--teleport-anchor--></section>`, () => {
+        const ctx = createContext(null);
+        pushContextStack(ctx);
+        const placeholder = Portal({
+          target: '#nonexistent',
+          children: document.createElement('div'),
+        }) as Comment;
+        popContextStack();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('hydration mismatch: target not found'),
+        );
+        // Falls back to CSR placeholder
+        expect(placeholder.data).toBe('portal');
+
+        cleanupContext(ctx);
+      });
+      warnSpy.mockRestore();
+    });
+
+    it('warns when target has no teleport-start block', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      withHydration(
+        `<section><!--teleport-anchor--></section>` +
+          `<div id="t"><!-- no teleport blocks here --></div>`,
+        () => {
+          const ctx = createContext(null);
+          pushContextStack(ctx);
+          const placeholder = Portal({
+            target: '#t',
+            children: document.createElement('div'),
+          }) as Comment;
+          popContextStack();
+
+          expect(warnSpy).toHaveBeenCalledWith(
+            expect.stringContaining('hydration mismatch: no <!--teleport-start-->'),
+          );
+          // Falls back to CSR placeholder
+          expect(placeholder.data).toBe('portal');
+
+          cleanupContext(ctx);
+        },
+      );
+      warnSpy.mockRestore();
     });
   });
 });

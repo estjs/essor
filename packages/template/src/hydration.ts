@@ -127,7 +127,14 @@ export function consumeTeleportBlock(
     nodes.push(cursor);
     cursor = cursor.nextSibling;
   }
-  return { start, end: start, nodes };
+
+  // Malformed block — no <!--teleport-end--> found. Return null to signal
+  // a hydration mismatch rather than returning `{ start, end: start }` which
+  // would be semantically incorrect.
+  if (__DEV__) {
+    warn('[Portal] hydration: orphaned <!--teleport-start--> without matching <!--teleport-end-->');
+  }
+  return null;
 }
 
 /**

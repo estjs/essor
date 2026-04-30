@@ -1,4 +1,4 @@
-import { isFunction, isNil, isString } from '@estjs/shared';
+import { isFunction, isNil, isString, warn } from '@estjs/shared';
 import { convertToString } from './utils';
 import { getSSRContext } from './context';
 
@@ -19,8 +19,17 @@ export function Fragment(props: SSRComponentProps): string {
 // ---------------------------------------------------------------------------
 
 export interface SSRPortalProps extends SSRComponentProps {
-  target?: string | unknown;
-  disabled?: boolean;
+  /**
+   * Teleport target — only CSS selector strings are meaningful on the server.
+   * Element references are silently inlined (they have no server-side meaning).
+   */
+  target?: string;
+  /**
+   * When truthy, children render inline instead of being teleported.
+   * The babel plugin resolves reactive getters before reaching the component,
+   * so only a plain boolean is needed on the server.
+   */
+  disabled?: boolean | (() => boolean);
 }
 
 export const TELEPORT_CALLSITE_ANCHOR = '<!--teleport-anchor-->';
@@ -35,8 +44,13 @@ export const TELEPORT_BLOCK_END = '<!--teleport-end-->';
  * Disabled / no-target / no-context falls back to inline rendering.
  */
 export function Portal(props: SSRPortalProps): string {
-  const { target, disabled, children } = props;
+  const { target, children } = props;
   const rendered = convertToString(children);
+
+  // Unwrap disabled getter (for API parity with client)
+  const disabled = isFunction(props.disabled)
+    ? !!(props.disabled as () => boolean)()
+    : !!props.disabled;
 
   if (disabled || !target) return rendered;
 
@@ -44,7 +58,12 @@ export function Portal(props: SSRPortalProps): string {
   if (!ctx) return rendered;
 
   // Only string selectors are meaningful for SSR; DOM nodes are inlined.
-  if (!isString(target)) return rendered;
+  if (!isString(target)) {
+    if (__DEV__) {
+      warn('[Portal] SSR only supports string selector targets; rendering inline.');
+    }
+    return rendered;
+  }
 
   ctx.teleports[target] =
     (ctx.teleports[target] ?? '') + TELEPORT_BLOCK_START + rendered + TELEPORT_BLOCK_END;

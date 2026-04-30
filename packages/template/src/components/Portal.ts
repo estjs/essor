@@ -58,16 +58,7 @@ function evalDisabled(props: PortalProps): boolean {
  * </Portal>
  * ```
  */
-export function Portal(props: PortalProps): Comment | string {
-  // SSR fallback — the full SSR Portal lives in `@estjs/server`.
-  if (typeof document === 'undefined') {
-    const { children } = props;
-    if (Array.isArray(children)) {
-      return children.map((c) => (c == null ? '' : String(c))).join('');
-    }
-    return children == null ? '' : String(children);
-  }
-
+export function Portal(props: PortalProps): Comment {
   // Hydration: adopt SSR-emitted anchors + target block.
   if (isHydrating()) {
     const adopted = tryHydratePortal(props);
@@ -83,6 +74,11 @@ export function Portal(props: PortalProps): Comment | string {
   const ownerScope = getActiveScope();
   let innerScope: Scope | null = null;
 
+  /**
+   * Mount children into the given parent, inside a fresh inner scope
+   * that inherits from the owning scope. This allows `insert()` effects
+   * to be properly disposed on teardown.
+   */
   const mountAt = (parent: Node, before?: Node): void => {
     innerScope = createScope(ownerScope);
     runWithScope(innerScope, () => {
@@ -90,6 +86,10 @@ export function Portal(props: PortalProps): Comment | string {
     });
   };
 
+  /**
+   * Tear down the inner scope, removing all mounted children and their
+   * reactive effects.
+   */
   const teardown = (): void => {
     if (innerScope) {
       disposeScope(innerScope);
@@ -97,18 +97,21 @@ export function Portal(props: PortalProps): Comment | string {
     }
   };
 
-  /** Re-evaluate disabled/target and (re-)mount, tearing down the previous mount first. */
-  const apply = (): void => {
+  /**
+   * Evaluate disabled/target and (re-)mount, tearing down the previous
+   * mount first. Accepts pre-evaluated values to avoid redundant getter
+   * invocations when called from within the tracking effect.
+   */
+  const apply = (disabled: boolean, target: Element | null): void => {
     teardown();
 
-    if (evalDisabled(props)) {
+    if (disabled) {
       const parent = placeholder.parentNode;
       if (!parent) return;
       mountAt(parent, placeholder);
       return;
     }
 
-    const target = resolveTarget(props);
     if (!target) {
       if (__DEV__) {
         warn(`[Portal] Target element not found: ${String(props.target)}`);
@@ -118,26 +121,30 @@ export function Portal(props: PortalProps): Comment | string {
     mountAt(target);
   };
 
-  // Track reactive deps immediately but defer DOM work until placeholder is attached.
-  // On subsequent runs (reactive change) the effect runs apply() directly.
+  // Track reactive deps immediately but defer DOM work until placeholder
+  // is attached. On subsequent runs (reactive change) the effect runs
+  // apply() directly with the freshly evaluated values — no redundant
+  // double-evaluation.
   let mounted = false;
 
   effect(() => {
-    // Always touch deps so re-runs are scheduled on reactive changes.
-    evalDisabled(props);
-    resolveTarget(props);
+    const disabled = evalDisabled(props);
+    const target = disabled ? null : resolveTarget(props);
 
     if (mounted) {
-      apply();
+      apply(disabled, target);
     }
   });
 
   onMount(() => {
     mounted = true;
 
+    const disabled = evalDisabled(props);
+    const target = disabled ? null : resolveTarget(props);
+
     // Try mounting synchronously — works when target is already in the document.
-    if (evalDisabled(props) || resolveTarget(props)) {
-      apply();
+    if (disabled || target) {
+      apply(disabled, target);
       return;
     }
 
@@ -145,7 +152,7 @@ export function Portal(props: PortalProps): Comment | string {
     // Defer to microtask — flushes before paint.
     queueMicrotask(() => {
       if (!placeholder.parentNode) return;
-      apply();
+      apply(evalDisabled(props), resolveTarget(props));
     });
   });
 

@@ -23,11 +23,40 @@ describe('server/components/Portal', () => {
       expect(ctx.teleports).toEqual({});
     });
 
+    it('renders inline when disabled is a getter returning true', () => {
+      const ctx = createSSRContext();
+      const App = () =>
+        Portal({
+          target: '#m',
+          disabled: () => true,
+          children: '<p>gated</p>',
+        });
+      expect(renderToString(App, {}, ctx)).toBe('<p>gated</p>');
+      expect(ctx.teleports).toEqual({});
+    });
+
+    it('teleports when disabled getter returns false', () => {
+      const ctx = createSSRContext();
+      const App = () =>
+        Portal({
+          target: '#m',
+          disabled: () => false,
+          children: '<p>go</p>',
+        });
+      expect(renderToString(App, {}, ctx)).toBe('<!--teleport-anchor-->');
+      expect(ctx.teleports['#m']).toBe('<!--teleport-start--><p>go</p><!--teleport-end-->');
+    });
+
     it('emits anchors for empty children so hydration can pair them', () => {
       const ctx = createSSRContext();
       const App = () => Portal({ target: '#m', children: '' });
       expect(renderToString(App, {}, ctx)).toBe('<!--teleport-anchor-->');
       expect(ctx.teleports['#m']).toBe('<!--teleport-start--><!--teleport-end-->');
+    });
+
+    it('renders inline for nullish children without target', () => {
+      expect(Portal({ children: null })).toBe('');
+      expect(Portal({ children: undefined })).toBe('');
     });
   });
 
@@ -89,6 +118,43 @@ describe('server/components/Portal', () => {
 
       expect(Portal({ target: '#t', children: '<y/>' })).toBe('<y/>');
     });
+
+    it('handles deeply nested Portal children', () => {
+      const ctx = createSSRContext();
+      const App = () =>
+        Portal({
+          target: '#deep',
+          children: '<div><span><em>deep</em></span></div>',
+        });
+      renderToString(App, {}, ctx);
+      expect(ctx.teleports['#deep']).toBe(
+        '<!--teleport-start--><div><span><em>deep</em></span></div><!--teleport-end-->',
+      );
+    });
+
+    it('handles children that are arrays', () => {
+      const ctx = createSSRContext();
+      const App = () =>
+        Portal({
+          target: '#arr',
+          children: ['<span>1</span>', '<span>2</span>'],
+        });
+      renderToString(App, {}, ctx);
+      expect(ctx.teleports['#arr']).toBe(
+        '<!--teleport-start--><span>1</span><span>2</span><!--teleport-end-->',
+      );
+    });
+
+    it('handles children that are functions', () => {
+      const ctx = createSSRContext();
+      const App = () =>
+        Portal({
+          target: '#fn',
+          children: (() => '<b>lazy</b>') as any,
+        });
+      renderToString(App, {}, ctx);
+      expect(ctx.teleports['#fn']).toBe('<!--teleport-start--><b>lazy</b><!--teleport-end-->');
+    });
   });
 
   describe('async rendering', () => {
@@ -103,6 +169,43 @@ describe('server/components/Portal', () => {
 
       expect(html).toBe('<main><!--teleport-anchor--></main>');
       expect(ctx.teleports['#toast']).toBe('<!--teleport-start--><p>hello</p><!--teleport-end-->');
+    });
+
+    it('collects multiple teleports from async components', async () => {
+      const ctx = createSSRContext();
+      const AsyncBody = async () => {
+        const a = await Promise.resolve('alpha');
+        const b = await Promise.resolve('beta');
+        return `${Portal({ target: '#a', children: `<p>${a}</p>` })}${Portal({ target: '#b', children: `<p>${b}</p>` })}`;
+      };
+
+      await renderToStringAsync(AsyncBody as any, {}, ctx);
+
+      expect(ctx.teleports['#a']).toBe('<!--teleport-start--><p>alpha</p><!--teleport-end-->');
+      expect(ctx.teleports['#b']).toBe('<!--teleport-start--><p>beta</p><!--teleport-end-->');
+    });
+  });
+
+  describe('edge cases', () => {
+    it('disabled=false with target teleports normally', () => {
+      const ctx = createSSRContext();
+      const App = () => Portal({ target: '#t', disabled: false, children: '<ok/>' });
+      expect(renderToString(App, {}, ctx)).toBe('<!--teleport-anchor-->');
+      expect(ctx.teleports['#t']).toBe('<!--teleport-start--><ok/><!--teleport-end-->');
+    });
+
+    it('empty string target renders inline', () => {
+      const ctx = createSSRContext();
+      const App = () => Portal({ target: '', children: '<inline/>' });
+      expect(renderToString(App, {}, ctx)).toBe('<inline/>');
+      expect(ctx.teleports).toEqual({});
+    });
+
+    it('children with numeric values are stringified', () => {
+      const ctx = createSSRContext();
+      const App = () => Portal({ target: '#num', children: 42 as any });
+      renderToString(App, {}, ctx);
+      expect(ctx.teleports['#num']).toBe('<!--teleport-start-->42<!--teleport-end-->');
     });
   });
 });
