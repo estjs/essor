@@ -32,7 +32,7 @@ function App() {
       <section class="stack">
         <label>
           <span>Name</span>
-          <input bind:value={$name} placeholder="Profile name" />
+          <input bind:value={[$name, { trim: true }]} placeholder="Profile name" />
         </label>
 
         <label>
