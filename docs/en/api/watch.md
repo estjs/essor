@@ -236,14 +236,6 @@ watch(count, newValue => {
 });
 ```
 
-## How It Works
-
-`watch` uses `effect` internally to track dependencies but adds the following features:
-
-1. Saves old values to provide in callbacks
-2. Only executes the callback when dependencies change, not when created
-3. Provides more options such as deep watching and immediate execution
-
 ## Performance Considerations
 
 1. **Avoid expensive operations in callbacks**: If you need to perform complex computations, consider using debouncing or throttling

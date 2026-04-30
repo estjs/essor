@@ -1,10 +1,10 @@
 # Suspense
 
-The `Suspense` component lets you display fallback content while waiting for async operations (such as data loading, lazy loading, etc.) to complete. It makes creating loading states and handling async dependencies simple and declarative.
+The `Suspense` component lets you display fallback content while waiting for async work — data loading, code-split components, lazy modules — to complete. It makes loading states declarative and keeps async dependencies easy to reason about.
 
 ## Basic Usage
 
-Use with lazy-loaded components:
+Use it with lazy-loaded components via `defineAsyncComponent`:
 
 ```tsx
 import { Suspense, defineAsyncComponent } from '@estjs/template';
@@ -23,25 +23,25 @@ function App() {
 }
 ```
 
-In this example, `Suspense` displays "Loading..." while `LazyComponent` is loading.
+While `LazyComponent` is loading, Suspense shows the `fallback`. Once the import resolves, the real component is rendered.
 
 ## Data Fetching
 
-Suspense works with `createResource` for async data fetching:
+Suspense pairs naturally with `createResource`. The resource registers its pending promise with the nearest Suspense boundary, so the fallback is shown until the data arrives:
 
 ```tsx
 import { Suspense, createResource } from '@estjs/template';
 
-function UserProfile({ userId }) {
-  const user = createResource(() => userId, async (id) => {
-    const res = await fetch(`/api/users/${id}`);
+function UserProfile({ userId }: { userId: string }) {
+  const [user] = createResource(async () => {
+    const res = await fetch(`/api/users/${userId}`);
     return res.json();
   });
 
   return (
     <div class="user-profile">
-      <h2>{user.value().name}</h2>
-      <p>{user.value().email}</p>
+      <h2>{user()?.name}</h2>
+      <p>{user()?.email}</p>
     </div>
   );
 }
@@ -58,9 +58,11 @@ function App() {
 }
 ```
 
+`createResource` returns a tuple `[resource, actions]`. The `resource` is callable — `user()` returns the current value (or `undefined` while pending). `actions.refetch()` and `actions.mutate(value)` are also available.
+
 ## Nested Suspense
 
-Suspense components can be nested. Each Suspense only handles the suspended state of its direct children:
+Suspense boundaries can be nested. Each boundary handles only its own subtree, so a slow widget never blocks the rest of the page:
 
 ```tsx
 function App() {
@@ -81,15 +83,20 @@ function App() {
 }
 ```
 
+When `MainContent` is loading, only the inner main-content fallback is shown — `Header`, `Sidebar`, and `Footer` continue to render normally.
+
 ## Error Handling
 
-Combine with an error boundary component to catch async errors:
+Async operations may fail. Combine Suspense with an error boundary to recover gracefully:
 
 ```tsx
+import { Suspense } from '@estjs/template';
+import { ErrorBoundary } from './ErrorBoundary';
+
 function App() {
   return (
     <div class="app">
-      <ErrorBoundary fallback={<div>Something went wrong!</div>}>
+      <ErrorBoundary fallback={<div>Something went wrong. Please try again.</div>}>
         <Suspense fallback={<div>Loading...</div>}>
           <AsyncComponent />
         </Suspense>
@@ -99,19 +106,34 @@ function App() {
 }
 ```
 
+You can also inspect the resource's `error` and `state` signals directly when you need finer-grained control:
+
+```tsx
+const [user] = createResource(/* ... */);
+
+return (
+  <>
+    {() => user.error.value && <p>Failed: {user.error.value.message}</p>}
+    {() => user.state.value === 'ready' && <Profile user={user()!} />}
+  </>
+);
+```
+
 ## API
 
 ### Props
 
 | Property | Type | Default | Description |
 | --- | --- | --- | --- |
-| `children` | `JSX.Element \| JSX.Element[] \| null` | - | Children that may suspend |
-| `fallback` | `JSX.Element \| JSX.Element[]` | - | Content shown while children are suspended |
+| `children` | `Node \| Node[] \| Promise<Node \| Node[]>` | - | Children that may suspend |
+| `fallback` | `Node \| Node[]` | - | Content shown while children are pending |
+| `key` | `string` | `undefined` | Optional unique identifier |
+
 
 ## Best Practices
 
-- Use Suspense for async components and data loading
+- Use Suspense for async components and resource loading
 - Provide meaningful fallback content for each Suspense boundary
-- Set Suspense boundaries at appropriate granularity so one component's loading doesn't stall the entire app
-- Combine with error boundaries to handle async errors gracefully
-- Consider using skeleton screens or spinners as fallback content rather than plain text
+- Place boundaries at appropriate granularity so a single slow request doesn't stall the whole page
+- Combine with error boundaries so failed promises don't leave the UI stuck on the fallback
+- Prefer skeleton screens or spinners over plain "Loading..." text for a better user experience

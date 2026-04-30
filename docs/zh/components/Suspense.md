@@ -1,13 +1,14 @@
 # Suspense
 
-`Suspense` 组件允许您在等待异步操作（如数据加载、代码分割等）完成时显示回退内容。这使得创建加载状态和处理异步依赖变得更加简单和声明式。
+`Suspense` 组件允许你在等待异步操作（数据加载、代码分割、懒加载组件等）完成时显示回退内容，让加载状态变得声明式，也让异步依赖更易于推理。
 
 ## 基本用法
 
-```jsx
+配合 `defineAsyncComponent` 使用，处理懒加载组件：
+
+```tsx
 import { Suspense, defineAsyncComponent } from '@estjs/template';
 
-// 懒加载组件
 const LazyComponent = defineAsyncComponent(() => import('./LazyComponent'));
 
 function App() {
@@ -22,25 +23,25 @@ function App() {
 }
 ```
 
-在这个例子中，当 `LazyComponent` 正在加载时，Suspense 组件会显示 "加载中..." 的回退内容。
+`LazyComponent` 加载期间，Suspense 会显示 `fallback`；模块加载完成后自动切换到真正的组件。
 
 ## 数据获取
 
-Suspense 也可以与 `createResource` 配合处理数据获取：
+Suspense 与 `createResource` 天然配合 —— 资源会把待处理的 Promise 注册到最近的 Suspense 边界上，直到数据返回前一直显示 fallback：
 
-```jsx
+```tsx
 import { Suspense, createResource } from '@estjs/template';
 
-function UserProfile({ userId }) {
-  const user = createResource(() => userId, async (id) => {
-    const res = await fetch(`/api/users/${id}`);
+function UserProfile({ userId }: { userId: string }) {
+  const [user] = createResource(async () => {
+    const res = await fetch(`/api/users/${userId}`);
     return res.json();
   });
 
   return (
     <div class="user-profile">
-      <h2>{user.value().name}</h2>
-      <p>{user.value().email}</p>
+      <h2>{user()?.name}</h2>
+      <p>{user()?.email}</p>
     </div>
   );
 }
@@ -57,15 +58,13 @@ function App() {
 }
 ```
 
-在这个例子中，当 `UserProfile` 组件正在加载数据时，Suspense 组件会显示 "加载用户数据中..." 的回退内容。数据加载完成后，会自动切换到实际的用户资料内容。
+`createResource` 返回 `[resource, actions]` 元组。`resource` 是可调用的 —— `user()` 返回当前值（pending 时为 `undefined`）。同时还能拿到 `actions.refetch()` 与 `actions.mutate(value)`。
 
 ## 嵌套 Suspense
 
-Suspense 组件可以嵌套使用，每个 Suspense 组件只处理其直接子组件的挂起状态：
+Suspense 可以嵌套使用，每个边界只处理自己的子树，因此慢加载的组件不会拖慢整个页面：
 
-```jsx
-import { Suspense } from '@estjs/template';
-
+```tsx
 function App() {
   return (
     <div class="app">
@@ -84,13 +83,13 @@ function App() {
 }
 ```
 
-在这个嵌套示例中，每个 Suspense 边界独立处理自己的加载状态。当 `MainContent` 加载时，只会显示 "加载主内容中..."，而不会影响 Header 或 Sidebar 的显示。
+当 `MainContent` 仍在加载时，只会显示主内容区的 fallback，`Header`、`Sidebar` 与 `Footer` 都能正常渲染。
 
 ## 错误处理
 
-Suspense 组件内部包含错误处理机制，当异步操作失败时，会显示回退内容并在控制台输出错误信息。您可以结合错误边界来捕获和处理这些错误：
+异步操作可能失败，配合错误边界可以优雅地恢复：
 
-```jsx
+```tsx
 import { Suspense } from '@estjs/template';
 import { ErrorBoundary } from './ErrorBoundary';
 
@@ -107,85 +106,33 @@ function App() {
 }
 ```
 
+如果需要更细粒度的控制，也可以直接读取资源的 `error` 与 `state` 信号：
+
+```tsx
+const [user] = createResource(/* ... */);
+
+return (
+  <>
+    {() => user.error.value && <p>请求失败：{user.error.value.message}</p>}
+    {() => user.state.value === 'ready' && <Profile user={user()!} />}
+  </>
+);
+```
+
 ## API 参考
 
 ### Props
 
 | 属性 | 类型 | 默认值 | 描述 |
 | --- | --- | --- | --- |
-| `children` | `JSX.Element \| JSX.Element[] \| (() => JSX.Element \| JSX.Element[]) \| null` | - | 可能会挂起的子元素 |
-| `fallback` | `JSX.Element \| JSX.Element[] \| (() => JSX.Element \| JSX.Element[])` | - | 在子元素挂起时显示的回退内容 |
-| `key` | `string \| number` | `undefined` | 可选的唯一标识符 |
-
-### 辅助函数
-
-#### suspend
-
-```typescript
-function suspend<T>(promise: Promise<T>): T;
-```
-
-`suspend` 函数用于挂起渲染，直到指定的 Promise 解决。如果 Promise 尚未解决，它会抛出该 Promise，被 Suspense 组件捕获并显示回退内容。
-
-### 返回值
-
-返回一个 `DocumentFragment` 实例，包含子元素或回退内容。
-
-## 实现原理
-
-Suspense 组件通过以下机制实现异步渲染：
-
-1. 创建一个状态对象来跟踪挂起的 Promise
-2. 尝试渲染子元素，如果子元素调用了 `suspend` 函数，会抛出一个 Promise
-3. 捕获这个 Promise，注册它，并渲染回退内容
-4. 当所有注册的 Promise 解决后，重新尝试渲染子元素
-
-```typescript
-// Suspense 组件的简化实现
-export function Suspense(props: SuspenseProps): DocumentFragment {
-  const fragment = document.createDocumentFragment();
-  const { state, register } = useSuspense();
-
-  try {
-    // 设置当前 Suspense 上下文
-    suspenseContext.current = state.value;
-
-    try {
-      // 尝试渲染子元素
-      if (state.value.resolved) {
-        insert(fragment, () => props.children);
-      } else {
-        throw new Promise(resolve => {
-          Promise.all(state.value.pending).finally(resolve);
-        });
-      }
-    } catch (error) {
-      if (error instanceof Promise) {
-        // 注册 Promise 并显示回退内容
-        register(error);
-        insert(fragment, () => props.fallback);
-      } else {
-        throw error;
-      }
-    }
-  } catch (error) {
-    // 处理其他错误
-    console.error('Suspense error:', error);
-    insert(fragment, () => props.fallback);
-  }
-
-  return fragment;
-}
-```
-
-## 性能优化
-
-Suspense 组件内部使用了 Promise 缓存机制，避免重复注册相同的 Promise，从而提高性能。此外，它还使用了微任务队列来批量处理 Promise 状态更新，减少不必要的重新渲染。
+| `children` | `Node \| Node[] \| Promise<Node \| Node[]>` | - | 可能挂起的子元素 |
+| `fallback` | `Node \| Node[]` | - | 子元素挂起时显示的回退内容 |
+| `key` | `string` | `undefined` | 可选的唯一标识符 |
 
 ## 最佳实践
 
-- 使用 Suspense 来处理异步加载的组件和数据
-- 为每个 Suspense 组件提供有意义的回退内容，提升用户体验
-- 合理设置 Suspense 的边界，避免一个组件的挂起影响整个应用
-- 结合错误边界来处理异步操作中的错误
-- 考虑使用骨架屏或加载指示器作为回退内容，而不是简单的加载文本
+- 使用 Suspense 来处理异步组件与资源加载
+- 为每个 Suspense 边界提供有意义的回退内容
+- 合理拆分边界，避免一个慢请求阻塞整个页面
+- 与错误边界配合，避免请求失败导致页面卡在 fallback
+- 优先使用骨架屏或加载指示器作为 fallback，而不是简单的「加载中」文字

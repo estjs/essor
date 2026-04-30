@@ -221,23 +221,6 @@ name.value = 'Jane';
 function untrack<T>(fn: () => T): T;
 ```
 
-## How It Works
-
-The `effect` function works through the following steps:
-
-1. Execute the provided function initially to collect dependencies
-2. Re-execute the function when dependencies change
-3. Before each re-execution, clear old dependencies and rebuild new dependency relationships
-
-```mermaid
-graph TD
-    A[Create effect] --> B[Execute function to collect dependencies]
-    B --> C[Wait for dependency changes]
-    C --> D[Dependency changed]
-    D --> E[Clear old dependencies]
-    E --> F[Re-execute function]
-    F --> C
-```
 
 ## Performance Considerations
 

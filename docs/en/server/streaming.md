@@ -24,27 +24,20 @@ import { Readable } from 'node:stream'
 import { renderToStream } from '@estjs/server'
 import App from './App'
 
+// Node.js
+
 const stream = renderToStream(App, { userId: '123' })
 const nodeStream = Readable.fromWeb(stream)
+
 nodeStream.pipe(res)
-```
 
-## How It Works
-
-### Rendering Flow
-
-```
-1. Synchronous content is rendered and sent immediately
-   ↓
-2. Encounter a Suspense boundary
-   ↓
-3. Render fallback and continue
-   ↓
-4. Async content is ready
-   ↓
-5. Send <template> + replacement script
-   ↓
-6. All boundaries complete, close the stream
+// Or use the Web Streams API
+const response = new Response(stream, {
+  headers: {
+    'Content-Type': 'text/html',
+    'Transfer-Encoding': 'chunked'
+  }
+})
 ```
 
 ### Example

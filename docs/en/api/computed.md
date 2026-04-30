@@ -149,13 +149,6 @@ user.value = { ...user.value, details: 'New detailed information' };
 console.log(displayText.value); // "Name: John, Details: New detailed information"
 ```
 
-## How It Works
-
-Computed properties use lazy evaluation and caching mechanisms, only recomputing their value when:
-
-1. The `.value` property is accessed for the first time
-2. The `.value` property is accessed after dependencies have changed
-
 ```mermaid
 graph TD
     A[Create computed] --> B[Execute getter function once]

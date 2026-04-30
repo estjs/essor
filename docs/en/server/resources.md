@@ -105,27 +105,6 @@ const [user, { refetch }] = createResource(
 )
 ```
 
-## How It Works
-
-### Server-Side Rendering (SSR)
-
-1. During server execution, `createResource` calls the fetcher function to fetch data
-2. The fetched data is serialized into the SSR context
-3. The SSR context is embedded into a `<script>` tag in the HTML
-
-### Client Hydration
-
-1. When the client loads, it restores the SSR context from the HTML
-2. `createResource` detects data in the SSR context
-3. It directly uses the cached data without refetching
-4. This avoids duplicate network requests
-
-### Client Navigation
-
-1. After hydration, the SSR context is cleared
-2. Subsequent `createResource` calls fetch data normally
-3. The single-flight mechanism ensures identical requests are only executed once
-
 ## Resource Object
 
 ### Accessor Function

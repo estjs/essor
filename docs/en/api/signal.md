@@ -159,21 +159,6 @@ user.value.name = 'Alice';
 user.value.profile.age = 31;
 ```
 
-## How It Works
-
-When a signal's `.value` is accessed, the currently active effect (if any) is recorded as a dependency of that signal. When the signal's value changes, all recorded dependencies are notified and re-executed.
-
-```mermaid
-graph TD
-    A[Signal Creation] --> B[Value Storage]
-    C[Read .value] --> D{Active Effect?}
-    D -->|Yes| E[Record Dependency]
-    D -->|No| F[Return Current Value]
-    G[Set .value] --> H{Value Changed?}
-    H -->|Yes| I[Update Value and Notify Dependencies]
-    H -->|No| J[Do Nothing]
-```
-
 ## Type Checking
 
 You can use the `isSignal` function to check if a value is a signal:
