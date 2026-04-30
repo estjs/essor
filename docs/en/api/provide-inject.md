@@ -68,8 +68,6 @@ For complex applications, it is recommended to use Symbols as keys:
 ```tsx
 // constants.ts
 // App.tsx
-import { ThemeKey, UserKey } from './constants';
-
 export const ThemeKey = Symbol('theme');
 export const UserKey = Symbol('user');
 

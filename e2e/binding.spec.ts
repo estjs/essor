@@ -1,8 +1,8 @@
 import { type Page, expect, test } from './test-utils';
 
 async function readSummary(page: Page) {
-  const json = await page.locator('[data-test="binding-summary"]').innerText();
-  return JSON.parse(json) as {
+  const json = await page.locator('[data-test="binding-summary"]').textContent();
+  return JSON.parse(json || '{}') as {
     name: string;
     age: string | number;
     subscribed: boolean;

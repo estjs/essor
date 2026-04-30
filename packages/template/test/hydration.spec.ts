@@ -85,7 +85,7 @@ describe('hydration utilities', () => {
     const second = factory();
 
     expect(first.tagName).toBe('BUTTON');
-    expect(first.dataset.role).toBe('action');
+    expect((first as HTMLElement).dataset.role).toBe('action');
     expect(first.isEqualNode(second)).toBe(true);
     expect(first).not.toBe(second);
   });

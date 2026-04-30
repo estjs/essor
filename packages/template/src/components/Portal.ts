@@ -1,6 +1,5 @@
 import { isFunction, isString, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
-import { insert } from '../binding';
 import { PORTAL_COMPONENT } from '../constants';
 import { consumeTeleportAnchor, consumeTeleportBlock, isHydrating } from '../hydration';
 import { onMount } from '../lifecycle';
@@ -12,6 +11,7 @@ import {
   onCleanup,
   runWithScope,
 } from '../scope';
+import { insert } from '../dom';
 import type { AnyNode } from '../types';
 
 export interface PortalProps {

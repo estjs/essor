@@ -1,7 +1,24 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createComponent } from '../src/component';
-import { insertNode, isSameNode, normalizeNode, removeNode, replaceNode } from '../src/dom';
-import { resetEnvironment } from './test-utils';
+import {
+  child,
+  insert,
+  insertNode,
+  isSameNode,
+  next,
+  normalizeNode,
+  nthChild,
+  removeNode,
+  replaceNode,
+} from '../src/dom';
+import {
+  cleanupContext,
+  createContext,
+  createTestRoot,
+  popContextStack,
+  pushContextStack,
+  resetEnvironment,
+} from './test-utils';
 
 describe('dom helpers', () => {
   beforeEach(() => {
@@ -89,5 +106,115 @@ describe('dom helpers', () => {
     expect(fromString.textContent).toBe('hello');
     expect(fromFalsy.nodeType).toBe(Node.TEXT_NODE);
     expect(fromFalsy.textContent).toBe('');
+  });
+
+  describe('tree traversal', () => {
+    it('child returns first child or null', () => {
+      const node = document.createElement('div');
+      expect(child(null)).toBeNull();
+      expect(child(node)).toBeNull();
+      const first = document.createElement('span');
+      node.appendChild(first);
+      expect(child(node)).toBe(first);
+    });
+
+    it('next returns sibling correctly', () => {
+      expect(next(null)).toBeNull();
+      const parent = document.createElement('div');
+      const n1 = document.createElement('span');
+      const n2 = document.createElement('a');
+      const n3 = document.createElement('p');
+      parent.appendChild(n1);
+      parent.appendChild(n2);
+      parent.appendChild(n3);
+
+      expect(next(n1)).toBe(n2);
+      expect(next(n1, 2)).toBe(n3);
+      expect(next(n3)).toBeNull();
+    });
+
+    it('nthChild returns correctly', () => {
+      expect(nthChild(null, 1)).toBeNull();
+      const parent = document.createElement('div');
+      expect(nthChild(parent, -1)).toBeNull();
+      const n1 = document.createElement('span');
+      const n2 = document.createElement('a');
+      const n3 = document.createElement('p');
+      parent.appendChild(n1);
+      parent.appendChild(n2);
+      parent.appendChild(n3);
+
+      expect(nthChild(parent, 0)).toBe(n1);
+      expect(nthChild(parent, 1)).toBe(n2);
+      expect(nthChild(parent, 2)).toBe(n3);
+      expect(nthChild(parent, 3)).toBeNull();
+      expect(nthChild(n1, 1)).toBeNull();
+    });
+  });
+
+  describe('insert', () => {
+    it('inserts reactive nodes and cleans on teardown', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      insert(root, () => document.createTextNode('content'));
+      popContextStack();
+
+      expect(root.textContent).toBe('content');
+      cleanupContext(context);
+    });
+
+    it('supports inserting static nodes', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const span = document.createElement('span');
+      span.textContent = 'static';
+      insert(root, span);
+      popContextStack();
+
+      expect(root.textContent).toBe('static');
+    });
+
+    it('supports inserting static strings', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      insert(root, 'Hello World');
+      popContextStack();
+
+      expect(root.textContent).toBe('Hello World');
+    });
+
+    it('handles insert when no active context exists', () => {
+      const root = createTestRoot();
+      expect(() => insert(root, document.createTextNode('no-context'))).not.toThrow();
+      expect(root.textContent).toBe('no-context');
+    });
+
+    it('ignores insert when parent is null', () => {
+      const context = createContext(null);
+      pushContextStack(context);
+      expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
+      popContextStack();
+    });
+
+    it('inserts nodes with before reference', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const first = document.createTextNode('first');
+      const second = document.createTextNode('second');
+      root.appendChild(second);
+
+      insert(root, first, second);
+      popContextStack();
+
+      expect(root.textContent).toBe('firstsecond');
+    });
   });
 });

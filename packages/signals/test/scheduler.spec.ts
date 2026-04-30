@@ -160,13 +160,13 @@ describe('scheduler Test Suite', () => {
 
   describe('createScheduler', () => {
     it('sync mode should execute effect immediately', () => {
-      const scheduler = createScheduler(() => mockEffect(), 'sync');
+      const scheduler = createScheduler(() => new mockEffect(), 'sync');
       scheduler();
       expect(mockEffect).toHaveBeenCalledTimes(1);
     });
 
     it('pre mode should execute effect in the next microtask', async () => {
-      const scheduler = createScheduler(() => mockEffect(), 'pre');
+      const scheduler = createScheduler(() => new mockEffect(), 'pre');
       scheduler();
       expect(mockEffect).not.toHaveBeenCalled();
 
@@ -175,7 +175,7 @@ describe('scheduler Test Suite', () => {
     });
 
     it('post mode should execute effect in the next microtask', async () => {
-      const scheduler = createScheduler(() => mockEffect(), 'post');
+      const scheduler = createScheduler(() => new mockEffect(), 'post');
       scheduler();
       expect(mockEffect).not.toHaveBeenCalled();
 

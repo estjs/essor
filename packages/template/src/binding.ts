@@ -1,77 +1,161 @@
-import {
-  coerceArray,
-  isBoolean,
-  isFunction,
-  isNull,
-  isNumber,
-  isString,
-  isUndefined,
-} from '@estjs/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { addEventListener } from './events';
-import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { normalizeNode, removeNode } from './dom';
-import { reconcileArrays } from './reconcile';
-import { isHydrating } from './hydration';
-import type { AnyNode } from './types';
+import { getActiveScope, onCleanup } from './scope';
 
+/**
+ * Modifiers supported by `bind:*` two-way bindings.
+ *
+ * - `trim`   strip surrounding whitespace from string values
+ * - `number` coerce numeric strings to numbers (no-op on `NaN`)
+ * - `lazy`   commit on `change` instead of `input`
+ */
 export interface BindModifiers {
   trim?: boolean;
   number?: boolean;
   lazy?: boolean;
+  [key: string]: boolean | undefined;
 }
 
-/**
- * Returns the first child of a node.
- *
- * @param node - The node to get the child from.
- * @returns The first child node or null.
- */
-export function child(node: Node | null): Node | null {
-  return node?.firstChild || null;
+// ─── Bind Strategy Table ───
+
+interface BindStrategy {
+  /** Default DOM event used to sync DOM → model. */
+  event: string;
+  read: (node: Element) => unknown;
+  write: (node: Element, value: unknown) => void;
+  /** Force using `change` even when not lazy (e.g. checkbox / select / file). */
+  forceChangeEvent?: boolean;
+  /** Element accepts free-form text and may emit composition events (IME). */
+  needsComposition?: boolean;
 }
 
+const INPUT_CHECKBOX_CHECKED: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => (n as HTMLInputElement).checked,
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = Boolean(v);
+    if (el.checked !== next) el.checked = next;
+  },
+};
+
+const INPUT_RADIO_CHECKED: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => {
+    const el = n as HTMLInputElement;
+    return el.checked ? el.value : '';
+  },
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = String(v) === el.value;
+    if (el.checked !== next) el.checked = next;
+  },
+};
+
+const INPUT_FILE_FILES: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => (n as HTMLInputElement).files,
+  // Browsers do not allow programmatic writes to <input type="file">.
+  write: () => {},
+};
+
+const INPUT_VALUE: BindStrategy = {
+  event: 'input',
+  needsComposition: true,
+  read: (n) => (n as HTMLInputElement).value,
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = v == null ? '' : String(v);
+    if (el.value !== next) el.value = next;
+  },
+};
+
+const SELECT_VALUE: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => {
+    const s = n as HTMLSelectElement;
+    return s.multiple ? Array.from(s.selectedOptions, (o) => o.value) : s.value;
+  },
+  write: (n, v) => {
+    const s = n as HTMLSelectElement;
+    if (s.multiple) {
+      const set = new Set((Array.isArray(v) ? v : []).map(String));
+      for (const opt of Array.from(s.options)) opt.selected = set.has(opt.value);
+    } else {
+      const next = v == null ? '' : String(v);
+      if (s.value !== next) s.value = next;
+    }
+  },
+};
+
+const TEXTAREA_VALUE: BindStrategy = {
+  event: 'input',
+  needsComposition: true,
+  read: (n) => (n as HTMLTextAreaElement).value,
+  write: (n, v) => {
+    const el = n as HTMLTextAreaElement;
+    const next = v == null ? '' : String(v);
+    if (el.value !== next) el.value = next;
+  },
+};
+
 /**
- * Returns the next sibling after advancing by `step`.
- *
- * @param node - The starting node.
- * @param step - Number of steps to advance.
- * @returns The resulting sibling node or null.
+ * Resolves the read/write/event strategy for a DOM element + prop combination.
  */
-export function next(node: Node | null, step: number = 1): Node | null {
-  while (node && step > 0) {
-    node = node.nextSibling;
-    step--;
+function resolveStrategy(node: Element, prop: string): BindStrategy {
+  const tag = node.nodeName;
+  if (tag === 'INPUT') {
+    const type = (node as HTMLInputElement).type;
+    if (prop === 'checked') {
+      return type === 'radio' ? INPUT_RADIO_CHECKED : INPUT_CHECKBOX_CHECKED;
+    }
+    if (prop === 'files') return INPUT_FILE_FILES;
+    return INPUT_VALUE;
   }
-  return node || null;
+  if (tag === 'SELECT') return SELECT_VALUE;
+  if (tag === 'TEXTAREA') return TEXTAREA_VALUE;
+  // Fallback for custom elements or contenteditable hosts.
+  return {
+    event: 'input',
+    read: (n) => (n as any)[prop],
+    write: (n, v) => {
+      (n as any)[prop] = v;
+    },
+  };
 }
 
 /**
- * Returns the child node at the requested index.
- *
- * @param node - The parent node.
- * @param index - The child index.
- * @returns The child node at index or null.
+ * Applies built-in modifiers (trim, number) to a raw value.
  */
-export function nthChild(node: Node | null, index: number): Node | null {
-  if (!node || index < 0) return null;
-  let current = node.firstChild;
-  while (current && index > 0) {
-    current = current.nextSibling;
-    index--;
+function castValue(val: unknown, trim?: boolean, number?: boolean): unknown {
+  if (!isString(val)) return val;
+  if (trim) val = (val as string).trim();
+  if (number && val !== '') {
+    const parsed = Number(val);
+    if (!Number.isNaN(parsed)) return parsed;
   }
-  return current || null;
+  return val;
+}
+
+/** Whether `node` is the currently focused element (Document / ShadowRoot aware). */
+function isFocused(node: Element): boolean {
+  const root = node.getRootNode();
+  return (root instanceof Document || root instanceof ShadowRoot) && root.activeElement === node;
 }
 
 /**
  * Synchronizes a DOM element property with a model getter and setter.
  *
- * @param node - The element to bind.
- * @param prop - The property name to bind.
- * @param getter - The value getter or static value.
- * @param setter - The value setter.
- * @param modifiers - Optional binding modifiers.
- * @returns {void}
+ * @param node      The element to bind. `null` is tolerated (no-op).
+ * @param prop      Bound property: `value` / `checked` / `files` / arbitrary.
+ * @param getter    Reactive getter or static initial value.
+ * @param setter    Receives the new value when the user edits the DOM.
+ * @param modifiers Optional `BindModifiers`.
  */
 export function bindElement(
   node: Element | null,
@@ -81,223 +165,76 @@ export function bindElement(
   modifiers: BindModifiers = {},
 ): void {
   if (!node) return;
-  let syncingFromModel = false;
 
-  /**
-   * Applies trim and number modifiers to an incoming bound value.
-   */
-  const processValue = (val: unknown): unknown => {
-    if (!isString(val)) return val;
-    const result = modifiers.trim ? val.trim() : val;
-    if (modifiers.number && result !== '') {
-      const parsed = Number(result);
-      if (!Number.isNaN(parsed)) return parsed;
-    }
-    return result;
-  };
+  const strategy = resolveStrategy(node, prop);
+  const { trim, number, lazy } = modifiers;
+  const isFiles = prop === 'files';
 
-  const nodeName = node.nodeName;
-  const isInput = nodeName === 'INPUT';
-  const isSelect = nodeName === 'SELECT';
-  const isTextArea = nodeName === 'TEXTAREA';
-  const inputType = isInput ? (node as HTMLInputElement).type : '';
+  const readModel = (): unknown => (isFunction(getter) ? (getter as () => unknown)() : getter);
 
-  /**
-   * Reads the current value from the element.
-   */
-  const readFromElement = (): unknown => {
-    if (isInput) {
-      const input = node as HTMLInputElement;
-      if (inputType === 'checkbox') return input.checked;
-      if (inputType === 'radio') return input.checked ? input.value : '';
-      if (inputType === 'file') return input.files;
-      return input.value;
-    }
-    if (isSelect) {
-      const select = node as HTMLSelectElement;
-      return select.multiple
-        ? Array.from(select.selectedOptions).map((opt) => opt.value)
-        : select.value;
-    }
-    if (isTextArea) return (node as HTMLTextAreaElement).value;
-    return (node as any)[prop];
-  };
+  // File inputs hold a `FileList` and never benefit from string casting.
+  const transform = (v: unknown): unknown => (isFiles ? v : castValue(v, trim, number));
 
-  /**
-   * Writes the current model value back to the element.
-   */
-  const writeToElement = (modelValue: unknown): void => {
-    syncingFromModel = true;
-    try {
-      if (isInput) {
-        const input = node as HTMLInputElement;
-        if (inputType === 'checkbox') {
-          const nextValue = Boolean(modelValue);
-          if (input.checked !== nextValue) input.checked = nextValue;
-          return;
-        }
-        if (inputType === 'radio') {
-          const nextValue = String(modelValue) === input.value;
-          if (input.checked !== nextValue) input.checked = nextValue;
-          return;
-        }
-        if (inputType === 'file') return;
+  // ── DOM → Model ──
+  const eventName = lazy || strategy.forceChangeEvent ? 'change' : strategy.event;
 
-        const nextValue = modelValue == null ? '' : String(modelValue);
-        if (input.value !== nextValue) input.value = nextValue;
-        return;
-      }
+  // Closure flag (avoids polluting the DOM node with a `_composing` property).
+  let composing = false;
 
-      if (isSelect) {
-        const select = node as HTMLSelectElement;
-        if (select.multiple && Array.isArray(modelValue)) {
-          const selected = new Set(modelValue.map((v) => String(v)));
-          for (const option of Array.from(select.options)) {
-            option.selected = selected.has(option.value);
-          }
-          return;
-        }
-        const nextValue = modelValue == null ? '' : String(modelValue);
-        if (select.value !== nextValue) select.value = nextValue;
-        return;
-      }
+  const syncFromDom = (): void => {
+    if (composing) return;
+    const raw = strategy.read(node);
+    if (raw === undefined) return;
 
-      if (isTextArea) {
-        const textarea = node as HTMLTextAreaElement;
-        const nextValue = modelValue == null ? '' : String(modelValue);
-        if (textarea.value !== nextValue) textarea.value = nextValue;
-        return;
-      }
-
-      (node as any)[prop] = modelValue;
-    } finally {
-      syncingFromModel = false;
-    }
-  };
-
-  /**
-   * Reads the current model value.
-   */
-  const readModel = () => (isFunction(getter) ? (getter as () => unknown)() : getter);
-
-  /**
-   * Pushes element changes back into the bound model.
-   */
-  const onInput = () => {
-    if (syncingFromModel) return;
-    const rawValue = readFromElement();
-    if (rawValue === undefined) return;
-
-    if (isInput && inputType === 'file') {
-      setter(rawValue);
+    if (isFiles) {
+      setter(raw);
       return;
     }
 
-    const nextValue = processValue(rawValue);
-    if (!isFunction(getter)) {
-      setter(nextValue);
-      return;
+    const next = transform(raw);
+    if (!Object.is(readModel(), next)) {
+      setter(next);
     }
-
-    const prevValue = readModel();
-    if (!Object.is(prevValue, nextValue)) setter(nextValue);
   };
 
-  const forceChangeEvent =
-    isSelect ||
-    (isInput && (inputType === 'checkbox' || inputType === 'radio' || inputType === 'file'));
-  const eventName = forceChangeEvent || modifiers.lazy ? 'change' : 'input';
+  addEventListener(node, eventName, syncFromDom);
 
-  addEventListener(node, eventName, onInput as EventListener);
-  if (isInput && inputType === 'file' && eventName !== 'input') {
-    addEventListener(node, 'input', onInput as EventListener);
+  // For trim/number, also normalize the displayed value on `change` (blur), so the
+  // input shows the canonical form (e.g. trimmed whitespace) even when bound lazily.
+  if (!lazy && !isFiles && (trim || number) && eventName !== 'change') {
+    addEventListener(node, 'change', () => {
+      strategy.write(node, transform(strategy.read(node)));
+    });
   }
 
-  const stopEffect = effect(() => writeToElement(readModel()));
+  // IME composition: pause sync during composition; resume on end.
+  if (strategy.needsComposition && !lazy) {
+    addEventListener(node, 'compositionstart', () => {
+      composing = true;
+    });
+    addEventListener(node, 'compositionend', () => {
+      if (!composing) return;
+      composing = false;
+      // Run the same sync path now that composition has finished.
+      syncFromDom();
+    });
+  }
+
+  // ── Model → DOM ──
+  const runner = effect(() => {
+    const value = readModel();
+
+    // Avoid disturbing the user while they are typing in a focused text input.
+    if (strategy.needsComposition && !lazy && isFocused(node)) {
+      if (composing) return;
+      const current = transform(strategy.read(node));
+      if (Object.is(current, value)) return;
+    }
+
+    strategy.write(node, value);
+  });
 
   if (getActiveScope()) {
-    onCleanup(() => stopEffect.stop());
+    onCleanup(() => runner.stop());
   }
-}
-
-/**
- * Reactive node insertion with binding support
- *
- * @param parent Parent node
- * @param nodeFactory Node factory function or static node
- * @param before Reference node for insertion position
- * @example
- * ```typescript
- * insert(container, () => message.value, null);
- * insert(container, staticElement, referenceNode);
- * insert(container, "Hello World", null); // Direct string support
- * ```
- */
-export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
-  if (!parent) return;
-  // Capture owner scope at call time - this is critical for correct context inheritance
-  // When dynamic components are created inside effects, they need to inherit from
-  // the scope that was active when insert() was called, not when the effect runs
-  const ownerScope: Scope | null = getActiveScope();
-
-  let renderedNodes: Node[] = [];
-  let isFirstRun = true;
-
-  /**
-   * Resolves a raw node value into a flat array of DOM Nodes.
-   * Fast-paths simple cases (single Node, single primitive) to avoid
-   * intermediate array allocations.
-   */
-  const resolveNodes = (raw: unknown): Node[] => {
-    // Fast path: already a DOM Node
-    if (raw instanceof Node) return [raw];
-
-    // Fast path: single primitive → text node
-    if (isNull(raw) || isUndefined(raw) || isString(raw) || isNumber(raw) || isBoolean(raw)) {
-      return [normalizeNode(raw)];
-    }
-
-    // General path: coerce, resolve nested functions, flatten, normalize
-    return coerceArray(raw)
-      .map((item) => (isFunction(item) ? item() : item))
-      .flatMap((i) => i)
-      .map(normalizeNode) as Node[];
-  };
-
-  // Create effect for reactive updates
-  const effectRunner = effect(() => {
-    const executeUpdate = () => {
-      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-      const nodes = resolveNodes(rawNodes);
-      // Hydration mode: skip DOM operations on first run only when every
-      // node already exists under the target parent. Component instances and
-      // fallback CSR nodes still need the normal reconcile path.
-      if (
-        isFirstRun &&
-        isHydrating() &&
-        nodes.every((node) => node instanceof Node && node.parentNode === parent)
-      ) {
-        renderedNodes = nodes;
-        isFirstRun = false;
-        return;
-      }
-      renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
-      isFirstRun = false;
-    };
-
-    // If we have an owner scope, run within it to maintain context hierarchy
-    if (ownerScope && !ownerScope.isDestroyed) {
-      runWithScope(ownerScope, executeUpdate);
-    } else {
-      executeUpdate();
-    }
-  });
-
-  onCleanup(() => {
-    effectRunner.stop();
-    for (const node of renderedNodes) removeNode(node);
-    renderedNodes = [];
-  });
-
-  return renderedNodes;
 }

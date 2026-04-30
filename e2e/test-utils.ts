@@ -43,6 +43,7 @@ export const test = base.extend<TestFixtures>({
     page.on('console', onConsole);
     page.on('pageerror', onPageError);
 
+    // eslint-disable-next-line require-await
     await use(async ({ ignorePatterns = [] } = {}) => {
       const unexpected = issues.filter(
         (issue) => !ignorePatterns.some((pattern) => pattern.test(issue)),

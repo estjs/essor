@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { bindElement, child, insert, next, nthChild } from '../src/binding';
+import { signal } from '@estjs/signals';
+import { bindElement } from '../src/binding';
 import { addEventListener } from '../src/events';
 import {
   cleanupContext,
   createContext,
-  createTestRoot,
   popContextStack,
   pushContextStack,
   resetEnvironment,
@@ -59,254 +59,319 @@ describe('binding utilities', () => {
     });
   });
 
-  describe('tree traversal', () => {
-    it('child returns first child or null', () => {
-      const node = document.createElement('div');
-      expect(child(null)).toBeNull();
-      expect(child(node)).toBeNull();
-      const first = document.createElement('span');
-      node.appendChild(first);
-      expect(child(node)).toBe(first);
-    });
-
-    it('next returns sibling correctly', () => {
-      expect(next(null)).toBeNull();
-      const parent = document.createElement('div');
-      const n1 = document.createElement('span');
-      const n2 = document.createElement('a');
-      const n3 = document.createElement('p');
-      parent.appendChild(n1);
-      parent.appendChild(n2);
-      parent.appendChild(n3);
-
-      expect(next(n1)).toBe(n2);
-      expect(next(n1, 2)).toBe(n3);
-      expect(next(n3)).toBeNull();
-    });
-
-    it('nthChild returns correctly', () => {
-      expect(nthChild(null, 1)).toBeNull();
-      const parent = document.createElement('div');
-      expect(nthChild(parent, -1)).toBeNull();
-      const n1 = document.createElement('span');
-      const n2 = document.createElement('a');
-      const n3 = document.createElement('p');
-      parent.appendChild(n1);
-      parent.appendChild(n2);
-      parent.appendChild(n3);
-
-      expect(nthChild(parent, 0)).toBe(n1);
-      expect(nthChild(parent, 1)).toBe(n2);
-      expect(nthChild(parent, 2)).toBe(n3);
-      expect(nthChild(parent, 3)).toBeNull();
-      expect(nthChild(n1, 1)).toBeNull(); // element with no children
-    });
-  });
-
-  describe('insert', () => {
-    it('inserts reactive nodes and cleans on teardown', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      insert(root, () => document.createTextNode('content'));
-      popContextStack();
-
-      expect(root.textContent).toBe('content');
-
-      // Cleanup should remove nodes
-      cleanupContext(context);
-      // Note: The cleanup behavior depends on preserveOnCleanup option
-      // By default (preserveOnCleanup: false), nodes should be removed
-    });
-
-    it('supports inserting static nodes', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      const span = document.createElement('span');
-      span.textContent = 'static';
-      insert(root, span);
-      popContextStack();
-
-      expect(root.textContent).toBe('static');
-    });
-
-    it('supports inserting static strings', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      insert(root, 'Hello World');
-      popContextStack();
-
-      expect(root.textContent).toBe('Hello World');
-    });
-
-    it('handles insert when no active context exists', () => {
-      const root = createTestRoot();
-      // Insert now succeeds even without context (creates implicit scope)
-      expect(() => insert(root, document.createTextNode('no-context'))).not.toThrow();
-      // The node is inserted successfully
-      expect(root.textContent).toBe('no-context');
-    });
-
-    it('ignores insert when parent is null', () => {
-      const context = createContext(null);
-      pushContextStack(context);
-      expect(() => insert(null as any, document.createTextNode('test'))).not.toThrow();
-      popContextStack();
-    });
-
-    it('inserts nodes with before reference', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      const first = document.createTextNode('first');
-      const second = document.createTextNode('second');
-      root.appendChild(second);
-
-      insert(root, first, second);
-      popContextStack();
-
-      expect(root.textContent).toBe('firstsecond');
-    });
-
-    it('handles reactive updates', () => {
-      const context = createContext(null);
-      const root = createTestRoot();
-      pushContextStack(context);
-
-      const counter = 0;
-      insert(root, () => document.createTextNode(`count: ${counter}`));
-      popContextStack();
-
-      expect(root.textContent).toBe('count: 0');
-    });
-  });
-
   describe('bindElement', () => {
-    it('binds checkbox input', () => {
-      const input = document.createElement('input');
-      input.type = 'checkbox';
+    it('is a no-op when node is null', () => {
       const setter = vi.fn();
-
-      bindElement(input, 'checked', false, setter);
-
-      input.checked = true;
-      input.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith(true);
-
-      input.checked = false;
-      input.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith(false);
+      expect(() => bindElement(null, 'value', '', setter)).not.toThrow();
+      expect(setter).not.toHaveBeenCalled();
     });
 
-    it('binds radio input', () => {
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.value = 'option1';
-      const setter = vi.fn();
+    describe('checkbox', () => {
+      it('binds DOM <-> model both ways', () => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        const s = signal(false);
 
-      bindElement(input, 'checked', '', setter);
+        bindElement(
+          input,
+          'checked',
+          () => s.value,
+          (v) => (s.value = v as boolean),
+        );
 
-      input.checked = true;
-      input.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith('option1');
+        // Model -> DOM
+        expect(input.checked).toBe(false);
+        s.value = true;
+        expect(input.checked).toBe(true);
 
-      input.checked = false;
-      input.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith('');
+        // DOM -> Model
+        input.checked = false;
+        input.dispatchEvent(new Event('change'));
+        expect(s.value).toBe(false);
+
+        input.checked = true;
+        input.dispatchEvent(new Event('change'));
+        expect(s.value).toBe(true);
+      });
     });
 
-    it('binds file input', () => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      const setter = vi.fn();
+    describe('radio', () => {
+      it('writes value when checked, empty string otherwise', () => {
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.value = 'option1';
+        const s = signal('');
 
-      bindElement(input, 'files', null, setter);
+        bindElement(
+          input,
+          'checked',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
 
-      // Mock files property since we can't easily set it programmatically in jsdom
-      Object.defineProperty(input, 'files', {
-        value: ['file1'],
-        writable: true,
+        input.checked = true;
+        input.dispatchEvent(new Event('change'));
+        expect(s.value).toBe('option1');
+
+        // Model drives DOM (matching value -> checked)
+        s.value = 'option1';
+        expect(input.checked).toBe(true);
+
+        s.value = 'other';
+        expect(input.checked).toBe(false);
+      });
+    });
+
+    describe('file', () => {
+      it('forwards FileList to setter on change', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        const setter = vi.fn();
+
+        bindElement(input, 'files', null, setter);
+
+        Object.defineProperty(input, 'files', {
+          configurable: true,
+          value: ['file1'],
+        });
+
+        input.dispatchEvent(new Event('change'));
+        expect(setter).toHaveBeenCalledWith(['file1']);
+      });
+    });
+
+    describe('text input', () => {
+      it('uses input event by default and updates signal', () => {
+        const input = document.createElement('input');
+        const s = signal('');
+
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
+
+        input.value = 'hello';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('hello');
+
+        s.value = 'world';
+        expect(input.value).toBe('world');
       });
 
-      input.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith(['file1']);
+      it('writes empty string when model is null/undefined', () => {
+        const input = document.createElement('input');
+        bindElement(input, 'value', () => null, vi.fn());
+        expect(input.value).toBe('');
+      });
     });
 
-    it('binds number input', () => {
-      const input = document.createElement('input');
-      input.type = 'number';
-      const setter = vi.fn();
+    describe('select', () => {
+      it('binds single-select on change', () => {
+        const select = document.createElement('select');
+        for (const v of ['a', 'b']) {
+          const opt = document.createElement('option');
+          opt.value = v;
+          select.appendChild(opt);
+        }
+        const s = signal('a');
 
-      bindElement(input, 'value', '', setter);
+        bindElement(
+          select,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
 
-      input.value = '123';
-      input.dispatchEvent(new Event('input'));
-      expect(setter).toHaveBeenCalledWith('123');
+        select.value = 'b';
+        select.dispatchEvent(new Event('change'));
+        expect(s.value).toBe('b');
+
+        s.value = 'a';
+        expect(select.value).toBe('a');
+      });
+
+      it('binds multi-select to an array model', () => {
+        const select = document.createElement('select');
+        select.multiple = true;
+        for (const v of ['a', 'b', 'c']) {
+          const opt = document.createElement('option');
+          opt.value = v;
+          select.appendChild(opt);
+        }
+        const s = signal<string[]>([]);
+
+        bindElement(
+          select,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string[]),
+        );
+
+        (select.options[0] as HTMLOptionElement).selected = true;
+        (select.options[2] as HTMLOptionElement).selected = true;
+        select.dispatchEvent(new Event('change'));
+        expect(s.value).toEqual(['a', 'c']);
+
+        // Model -> DOM
+        s.value = ['b'];
+        expect((select.options[0] as HTMLOptionElement).selected).toBe(false);
+        expect((select.options[1] as HTMLOptionElement).selected).toBe(true);
+        expect((select.options[2] as HTMLOptionElement).selected).toBe(false);
+      });
     });
 
-    it('binds select element (single)', () => {
-      const select = document.createElement('select');
-      const option1 = document.createElement('option');
-      option1.value = 'a';
-      const option2 = document.createElement('option');
-      option2.value = 'b';
-      select.appendChild(option1);
-      select.appendChild(option2);
+    describe('textarea', () => {
+      it('binds value via input event', () => {
+        const textarea = document.createElement('textarea');
+        const s = signal('');
 
-      const setter = vi.fn();
-      bindElement(select, 'value', '', setter);
+        bindElement(
+          textarea,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
 
-      select.value = 'b';
-      select.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith('b');
+        textarea.value = 'note';
+        textarea.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('note');
+      });
     });
 
-    it('binds select element (multiple)', () => {
-      const select = document.createElement('select');
-      select.multiple = true;
-      const option1 = document.createElement('option');
-      option1.value = 'a';
-      const option2 = document.createElement('option');
-      option2.value = 'b';
-      select.appendChild(option1);
-      select.appendChild(option2);
+    describe('modifiers', () => {
+      it('trim strips surrounding whitespace', () => {
+        const input = document.createElement('input');
+        const s = signal('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+          { trim: true },
+        );
 
-      const setter = vi.fn();
-      bindElement(select, 'value', [], setter);
+        input.value = '  hi  ';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('hi');
+      });
 
-      option1.selected = true;
-      option2.selected = true;
-      select.dispatchEvent(new Event('change'));
-      expect(setter).toHaveBeenCalledWith(['a', 'b']);
+      it('number coerces numeric strings', () => {
+        const input = document.createElement('input');
+        const s = signal<number | string>('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+          { number: true },
+        );
+
+        input.value = '42';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe(42);
+      });
+
+      it('number keeps original string when value is NaN', () => {
+        const input = document.createElement('input');
+        const s = signal<number | string>('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+          { number: true },
+        );
+
+        input.value = 'abc';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('abc');
+      });
+
+      it('lazy commits on change instead of input', () => {
+        const input = document.createElement('input');
+        const s = signal('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+          { lazy: true },
+        );
+
+        input.value = 'partial';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('');
+
+        input.dispatchEvent(new Event('change'));
+        expect(s.value).toBe('partial');
+      });
+
+      it('trim normalizes the displayed value on change', () => {
+        const input = document.createElement('input');
+        const s = signal('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+          { trim: true },
+        );
+
+        // Simulate user typing then blurring; raw value still has whitespace.
+        input.value = '  hi  ';
+        input.dispatchEvent(new Event('change'));
+        expect(input.value).toBe('hi');
+      });
     });
 
-    it('binds textarea', () => {
-      const textarea = document.createElement('textarea');
-      const setter = vi.fn();
+    describe('iME composition', () => {
+      it('does not commit while composing and commits on compositionend', () => {
+        const input = document.createElement('input');
+        const s = signal('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
 
-      bindElement(textarea, 'value', '', setter);
+        input.dispatchEvent(new Event('compositionstart'));
+        input.value = '中';
+        input.dispatchEvent(new Event('input'));
+        // Held back during composition.
+        expect(s.value).toBe('');
 
-      textarea.value = 'text';
-      textarea.dispatchEvent(new Event('input'));
-      expect(setter).toHaveBeenCalledWith('text');
+        input.dispatchEvent(new Event('compositionend'));
+        expect(s.value).toBe('中');
+      });
     });
 
-    it('binds text input (default)', () => {
-      const input = document.createElement('input');
-      input.type = 'text';
-      const setter = vi.fn();
+    describe('lifecycle', () => {
+      it('stops the model->DOM effect when scope is disposed', () => {
+        const input = document.createElement('input');
+        const s = signal('a');
 
-      bindElement(input, 'value', '', setter);
+        const ctx = createContext(null);
+        pushContextStack(ctx);
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
+        popContextStack();
 
-      input.value = 'hello';
-      input.dispatchEvent(new Event('input'));
-      expect(setter).toHaveBeenCalledWith('hello');
+        expect(input.value).toBe('a');
+        s.value = 'b';
+        expect(input.value).toBe('b');
+
+        cleanupContext(ctx);
+        s.value = 'c';
+        // Effect was disposed -> DOM no longer reacts.
+        expect(input.value).toBe('b');
+      });
     });
   });
 });

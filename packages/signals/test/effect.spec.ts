@@ -1450,7 +1450,7 @@ describe('memoEffect', () => {
             }
             return { prev: nextItems };
           },
-          { prev: null },
+          { prev: null } as any,
         );
 
         expect(runs).toBe(1);
@@ -1504,7 +1504,7 @@ describe('memoEffect', () => {
           }
           return { prev: nextItems };
         },
-        { prev: null },
+        { prev: null } as any,
       );
 
       expect(runs).toBe(1);

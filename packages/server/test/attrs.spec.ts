@@ -117,9 +117,7 @@ describe('server/attrs', () => {
     });
 
     it('escapes special characters in standard attribute values (XSS prevention)', () => {
-      expect(setSSGAttr('title', '"break" <out>')).toBe(
-        ' title="&quot;break&quot; &lt;out&gt;"',
-      );
+      expect(setSSGAttr('title', '"break" <out>')).toBe(' title="&quot;break&quot; &lt;out&gt;"');
     });
   });
 });

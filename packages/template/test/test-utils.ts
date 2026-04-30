@@ -13,7 +13,7 @@ import {
  * @param componentFn - Component function to mount
  * @param container - Container element to mount into
  */
-import { insert } from '../src/binding';
+import { insert } from '../src/dom';
 
 export function createContext(parent: Scope | null = null): Scope {
   return createScope(parent ?? getActiveScope());

@@ -47,7 +47,7 @@ import { createApp } from 'essor';
 
 function Counter() {
   // $count becomes signal(0) automatically
-  const $count = 0;
+  let $count = 0;
 
   return (
     <div>

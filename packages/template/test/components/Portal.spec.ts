@@ -172,7 +172,7 @@ describe('portal', () => {
       popContextStack();
     });
 
-    it('handles target getter returning null gracefully', async () => {
+    it('handles target getter returning null gracefully', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const $target = signal<string | null>('#portal-target');
 

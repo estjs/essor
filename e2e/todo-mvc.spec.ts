@@ -1,4 +1,5 @@
-import { type Locator, type Page, expect, test } from './test-utils';
+import { type Page, expect, test } from './test-utils';
+import type { Locator } from '@playwright/test';
 
 function escapeRegExp(value: string) {
   return value.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');

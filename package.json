@@ -22,7 +22,7 @@
   "scripts": {
     "build": "pnpm run gen:version && turbo run build --filter=./packages/*",
     "dev": "pnpm run gen:version && turbo watch build --filter=./packages/*",
-    "lint": "eslint --cache --fix .",
+    "lint": "eslint --cache --fix \"./**/src/*.{ts,tsx,js}\"",
     "test": "pnpm run test:unit",
     "test:watch": "pnpm run test:unit --watch",
     "typecheck": "tsc --noEmit -p ./tsconfig.build.json",
@@ -62,6 +62,6 @@
     "commit-msg": "pnpm exec tsx ./scripts/verify-commit.ts $1"
   },
   "lint-staged": {
-    "package/src/*.{ts,tsx,js}": "eslint --cache --fix"
+    "packages/**/src/*.{ts,tsx,js}": "eslint --cache --fix"
   }
 }

@@ -6,11 +6,13 @@ export { onMount, onDestroy, onUpdate } from './lifecycle';
 
 export { provide, inject, type InjectionKey } from './provide';
 
-export { bindElement, insert, next, child, nthChild } from './binding';
+export { bindElement } from './binding';
 
 export { delegateEvents, clearDelegatedEvents, addEventListener } from './events';
 
 export { omitProps } from './utils';
+
+export { insert, next, child, nthChild } from './dom';
 
 export {
   isHydrating,
@@ -18,6 +20,10 @@ export {
   endHydration,
   getHydrationKey,
   resetHydrationKey,
+  getRenderedElement,
+  patchClassHydrate,
+  patchAttrHydrate,
+  patchStyleHydrate,
   consumeTeleportAnchor,
   consumeTeleportBlock,
 } from './hydration';

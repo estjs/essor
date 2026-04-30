@@ -1,9 +1,8 @@
 import { isString, warn } from '@estjs/shared';
 import { type Component, createComponent, isComponent } from './component';
-import { insert } from './binding';
 import { createScope, disposeScope, runWithScope } from './scope';
 import { beginHydration, endHydration } from './hydration';
-import { insertNode } from './dom';
+import { insert, insertNode } from './dom';
 import type { ComponentFn, ComponentProps } from './types';
 
 /**

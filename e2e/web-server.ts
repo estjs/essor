@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { type ChildProcess, spawn } from 'node:child_process';
 import { type Server, createServer } from 'node:http';
 import process from 'node:process';

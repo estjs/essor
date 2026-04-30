@@ -514,6 +514,7 @@ describe('computed', () => {
     it('should return existing computed when passed computed', () => {
       const count = signal(0);
       const comp1 = computed(() => count.value * 2);
+      // @ts-ignore
       const comp2 = computed(comp1);
 
       expect(comp2).toBe(comp1);

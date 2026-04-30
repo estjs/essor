@@ -1,4 +1,4 @@
-import { isArray, isFunction, isPromise, warn } from '@estjs/shared';
+import { isArray, isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
 import { isComputed, isSignal } from '@estjs/signals';
 import { insertNode, normalizeNode } from '../dom';
 import { provide } from '../provide';
@@ -56,6 +56,12 @@ export interface SuspenseContextType {
  * ```
  */
 export function Suspense(props: SuspenseProps): Node {
+  // Check if we're in SSR mode (no DOM globals)
+  if (!isBrowser()) {
+    // In SSR, keep structure deterministic and never touch DOM APIs.
+    // Suspense boundary renders fallback while async resources are unresolved.
+    return props.fallback ?? ('' as unknown as Node);
+  }
   // Create a container to manage content swapping
   const container = document.createElement('div');
   container.style.display = 'contents'; // Invisible wrapper

@@ -98,5 +98,5 @@ export function setSSGAttr(attrName: string, attrValue: any): string {
   }
 
   // Standard attribute handling — escape to prevent attribute injection (XSS)
-  return ` ${attrName}="${escapeHTML(String(attrValue))}"`;  
+  return ` ${attrName}="${escapeHTML(String(attrValue))}"`;
 }

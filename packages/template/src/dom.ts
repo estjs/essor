@@ -1,6 +1,24 @@
-import { error, hasOwn, isFalsy, isHTMLElement, isObject, isPrimitive } from '@estjs/shared';
+import {
+  coerceArray,
+  error,
+  hasOwn,
+  isBoolean,
+  isFalsy,
+  isFunction,
+  isHTMLElement,
+  isNull,
+  isNumber,
+  isObject,
+  isPrimitive,
+  isString,
+  isUndefined,
+} from '@estjs/shared';
+import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { KEY_PROP } from './constants';
+import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
+import { isHydrating } from './hydration';
+import { reconcileArrays } from './reconcile';
 import type { AnyNode } from './types';
 
 /**
@@ -154,4 +172,126 @@ export function normalizeNode(node: unknown): Node {
   }
 
   return node as Node;
+}
+/**
+ * Reactive node insertion with binding support
+ *
+ * @param parent Parent node
+ * @param nodeFactory Node factory function or static node
+ * @param before Reference node for insertion position
+ * @example
+ * ```typescript
+ * insert(container, () => message.value, null);
+ * insert(container, staticElement, referenceNode);
+ * insert(container, "Hello World", null); // Direct string support
+ * ```
+ */
+export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
+  if (!parent) return;
+  // Capture owner scope at call time - this is critical for correct context inheritance
+  // When dynamic components are created inside effects, they need to inherit from
+  // the scope that was active when insert() was called, not when the effect runs
+  const ownerScope: Scope | null = getActiveScope();
+
+  let renderedNodes: Node[] = [];
+  let isFirstRun = true;
+
+  /**
+   * Resolves a raw node value into a flat array of DOM Nodes.
+   * Fast-paths simple cases (single Node, single primitive) to avoid
+   * intermediate array allocations.
+   */
+  const resolveNodes = (raw: unknown): Node[] => {
+    // Fast path: already a DOM Node
+    if (raw instanceof Node) return [raw];
+
+    // Fast path: single primitive → text node
+    if (isNull(raw) || isUndefined(raw) || isString(raw) || isNumber(raw) || isBoolean(raw)) {
+      return [normalizeNode(raw)];
+    }
+
+    // General path: coerce, resolve nested functions, flatten, normalize
+    return coerceArray(raw)
+      .map((item) => (isFunction(item) ? item() : item))
+      .flatMap((i) => i)
+      .map(normalizeNode) as Node[];
+  };
+
+  // Create effect for reactive updates
+  const effectRunner = effect(() => {
+    const executeUpdate = () => {
+      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+      const nodes = resolveNodes(rawNodes);
+      // Hydration mode: skip DOM operations on first run only when every
+      // node already exists under the target parent. Component instances and
+      // fallback CSR nodes still need the normal reconcile path.
+      if (
+        isFirstRun &&
+        isHydrating() &&
+        nodes.every((node) => node instanceof Node && node.parentNode === parent)
+      ) {
+        renderedNodes = nodes;
+        isFirstRun = false;
+        return;
+      }
+      renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
+      isFirstRun = false;
+    };
+
+    // If we have an owner scope, run within it to maintain context hierarchy
+    if (ownerScope && !ownerScope.isDestroyed) {
+      runWithScope(ownerScope, executeUpdate);
+    } else {
+      executeUpdate();
+    }
+  });
+
+  onCleanup(() => {
+    effectRunner.stop();
+    for (const node of renderedNodes) removeNode(node);
+    renderedNodes = [];
+  });
+
+  return renderedNodes;
+}
+/**
+ * Returns the first child of a node.
+ *
+ * @param node - The node to get the child from.
+ * @returns The first child node or null.
+ */
+export function child(node: Node | null): Node | null {
+  return node?.firstChild || null;
+}
+
+/**
+ * Returns the next sibling after advancing by `step`.
+ *
+ * @param node - The starting node.
+ * @param step - Number of steps to advance.
+ * @returns The resulting sibling node or null.
+ */
+export function next(node: Node | null, step: number = 1): Node | null {
+  while (node && step > 0) {
+    node = node.nextSibling;
+    step--;
+  }
+  return node || null;
+}
+
+/**
+ * Returns the child node at the requested index.
+ *
+ * @param node - The parent node.
+ * @param index - The child index.
+ * @returns The child node at index or null.
+ */
+export function nthChild(node: Node | null, index: number): Node | null {
+  if (!node || index < 0) return null;
+  let current = node.firstChild;
+  while (current && index > 0) {
+    current = current.nextSibling;
+    index--;
+  }
+  return current || null;
 }

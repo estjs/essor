@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
 import { createComponent, isComponent } from '../src/component';
 import { template } from '../src/renderer';
-import { insert } from '../src/binding';
+import { insert } from '../src/dom';
 import { inject, provide } from '../src/provide';
 import { createScope, runWithScope } from '../src/scope';
 

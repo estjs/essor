@@ -246,7 +246,7 @@ describe('watch', () => {
 
   it('should handle deep watch on cyclic objects without infinite loops', async () => {
     const obj = reactive({ name: 'A', nested: { count: 1 } });
-    obj.self = obj;
+    (obj as any).self = obj;
 
     const callback = vi.fn();
     const stop = watch(obj, callback, { deep: true });

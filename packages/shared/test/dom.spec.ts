@@ -172,7 +172,6 @@ describe('dom utilities', () => {
     const htmlTags = ['div', 'span', 'p', 'a', 'img'];
     const svgTags = ['svg', 'path', 'circle', 'rect'];
     const mathmlTags = ['math', 'mfrac', 'msqrt'];
-    const voidTags = ['img', 'input', 'br', 'hr'];
     const selfClosingTags = ['img', 'input', 'br', 'hr'];
 
     it('isKnownHtmlAttr', () => {

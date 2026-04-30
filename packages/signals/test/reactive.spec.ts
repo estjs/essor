@@ -269,6 +269,7 @@ describe('reactive - nested objects and arrays', () => {
         { id: 3, label: 'c' },
       ]);
 
+      // @ts-ignore - findLast is not in the type definition
       const found = computed(() => state.findLast((item: any) => item.id > 1));
       const value = found.value!;
 
@@ -303,6 +304,7 @@ describe('reactive - nested objects and arrays', () => {
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toReversed)('toReversed should return reactive array', () => {
     const array = reactive([1, { val: 2 }]);
+    // @ts-ignore - toReversed is not in the type definition
     const result = computed(() => array.toReversed());
     expect(result.value).toStrictEqual([{ val: 2 }, 1]);
     expect(isReactive(result.value[0])).toBe(true);
@@ -320,6 +322,7 @@ describe('reactive - nested objects and arrays', () => {
 
     const shallow = shallowReactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
     let result;
+    // @ts-ignore - toSorted is not in the type definition
     result = computed(() => shallow.toSorted((a, b) => a.val - b.val));
     expect(result.value.map((x) => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
@@ -331,6 +334,7 @@ describe('reactive - nested objects and arrays', () => {
     expect(result.value.map((x) => x.val)).toStrictEqual([1, 4]);
 
     const deep = reactive([{ val: 2 }, { val: 1 }, { val: 3 }]);
+    // @ts-ignore - toSorted is not in the type definition
     result = computed(() => deep.toSorted((a, b) => a.val - b.val));
     expect(result.value.map((x) => x.val)).toStrictEqual([1, 2, 3]);
     expect(isReactive(result.value[0])).toBe(true);
@@ -343,6 +347,7 @@ describe('reactive - nested objects and arrays', () => {
   // @ts-expect-error tests are not limited to es2016
   it.skipIf(!Array.prototype.toSpliced)('toSpliced should return reactive array', () => {
     const array = reactive([1, 2, 3]);
+    // @ts-ignore - toSpliced is not in the type definition
     const result = computed(() => array.toSpliced(1, 1, -2));
     expect(result.value).toStrictEqual([1, -2, 3]);
 
@@ -1393,6 +1398,7 @@ describe('reactive - edge cases', () => {
 
       // The frozen object itself cannot be modified
       expect(() => {
+        // @ts-ignore - testing frozen object
         state.frozen.value = 2;
       }).toThrow();
 
@@ -1415,6 +1421,7 @@ describe('reactive - edge cases', () => {
 
       // Cannot add new properties
       expect(() => {
+        // @ts-ignore - testing sealed object
         state.sealed.newProp = 3;
       }).toThrow();
     });
@@ -1475,7 +1482,9 @@ describe('reactive - edge cases', () => {
       expect(isReactive(emptyArr)).toBe(true);
 
       // Should be able to add properties
+      // @ts-ignore - testing dynamic property addition
       emptyObj.newProp = 'value';
+      // @ts-ignore - testing dynamic property addition
       expect(emptyObj.newProp).toBe('value');
 
       emptyArr.push(1);
@@ -1493,12 +1502,14 @@ describe('reactive - edge cases', () => {
 
       const state = reactive(obj);
 
+      // @ts-ignore - testing hidden property
       expect(state.hidden).toBe('secret');
-
+      // @ts-ignore - testing hidden property
       const mockFn = vi.fn(() => state.hidden);
       effect(mockFn);
       expect(mockFn).toHaveBeenCalledTimes(1);
 
+      // @ts-ignore - testing hidden property
       state.hidden = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
     });

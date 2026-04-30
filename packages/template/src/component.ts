@@ -2,10 +2,9 @@ import { isComputed, isSignal, shallowReactive } from '@estjs/signals';
 import { isFunction, isOn } from '@estjs/shared';
 
 import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
-import { insertNode, removeNode } from './dom';
+import { insert, insertNode, removeNode } from './dom';
 import { createScope, disposeScope, getActiveScope, runWithScope } from './scope';
 import { type EventCleanup, addEvent } from './operations/event';
-import { insert } from './binding';
 import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
 import type { Scope } from './scope';

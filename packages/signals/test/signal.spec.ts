@@ -70,6 +70,7 @@ describe('signal', () => {
     expect(testSignal.value).toEqual([10, 20, 30]);
     expect(testSignal.peek()).toEqual([10, 20, 30]);
 
+    // @ts-ignore - testing null assignment
     testSignal.value = null;
     expect(effectCount).toBe(6);
     expect(testSignal.value).toBeNull();
@@ -661,6 +662,7 @@ describe('signal optimization - on-demand _oldValue creation', () => {
     // First update should create _oldValue
     s.value = 20;
     expect('_oldValue' in impl).toBe(true);
+    // @ts-ignore - testing internal property
     expect(impl._oldValue).toBe(10);
   });
 
@@ -809,6 +811,7 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Setting a signal as value should unwrap it
+    // @ts-expect-error - testing signal unwrapping
     s.value = nested;
     expect(s.value).toBe(20);
     expect(typeof s.value).toBe('number');
@@ -846,6 +849,7 @@ describe('signal nested unwrapping', () => {
     const nested = signal(20);
 
     // Update function returning a signal should unwrap it
+    // @ts-expect-error - testing signal unwrapping
     s.update(() => nested);
     expect(s.value).toBe(20);
   });
@@ -863,6 +867,7 @@ describe('signal nested unwrapping', () => {
     expect(effectCount).toBe(1);
 
     // Updating outer should trigger effect
+    // @ts-ignore
     outer.value = 100;
     expect(effectCount).toBe(2);
     expect(outer.value).toBe(100);

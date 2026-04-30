@@ -3,6 +3,8 @@ import { createApp } from 'essor';
 function App() {
   const $name = 'Essor';
   const $age = 21;
+  const $bio = 'Signal-based reactivity.';
+  const $slug = '';
   const $subscribed = false;
   const $theme = 'day';
   const $focusAreas = ['signals'] as string[];
@@ -14,6 +16,8 @@ function App() {
       {
         name: $name,
         age: $age,
+        bio: $bio,
+        slug: $slug,
         subscribed: $subscribed,
         theme: $theme,
         focusAreas: [...$focusAreas],
@@ -38,6 +42,16 @@ function App() {
         <label>
           <span>Age</span>
           <input bind:value={[$age, { number: true }]} placeholder="Age" />
+        </label>
+
+        <label>
+          <span>Bio</span>
+          <textarea bind:value={$bio} rows={3} placeholder="Tell us a bit about yourself" />
+        </label>
+
+        <label>
+          <span>Slug (commits on blur)</span>
+          <input bind:value={[$slug, { lazy: true, trim: true }]} placeholder="my-page" />
         </label>
 
         <label>

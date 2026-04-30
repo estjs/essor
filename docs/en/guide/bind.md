@@ -104,7 +104,7 @@ let $theme = 'light'
 ### Select
 
 ```tsx
-let $city = 'beijing'
+const $city = 'beijing';
 
 <select bind:value={$city}>
   <option value='beijing'>Beijing</option>
@@ -115,7 +115,7 @@ let $city = 'beijing'
 ### Select Multiple
 
 ```tsx
-let $skills = ['ts']
+const $skills = ['ts'];
 
 <select multiple bind:value={$skills}>
   <option value='ts'>TypeScript</option>
@@ -127,14 +127,14 @@ let $skills = ['ts']
 ### Textarea
 
 ```tsx
-let $bio = ''
+const $bio = '';
 <textarea bind:value={$bio} />
 ```
 
 ### File Input
 
 ```tsx
-let $files: FileList | null = null
+const $files: FileList | null = null;
 <input type='file' bind:files={$files} />
 ```
 
@@ -164,6 +164,24 @@ function App() {
   return <MyInput bind:value={$name} />
 }
 ```
+
+## Behavior Notes
+
+`bind:` is implemented by `bindElement` and behaves like Vue's `v-model`:
+
+1. **IME composition**: while the user is composing (e.g. Chinese / Japanese
+   IME) the model is not updated until `compositionend` fires. This avoids
+   committing half-formed characters to the signal.
+2. **Cursor preservation**: when the bound text input is focused and its
+   on-screen value already matches the model (after applying `trim` /
+   `number`), the framework skips the DOM write. This prevents the caret
+   from jumping while the user is typing.
+3. **Trim/number normalization**: the displayed value is also normalized on
+   `change` (blur) so the input shows the canonical form even if the user
+   typed extra whitespace.
+4. **Disposal**: the reactive effect that drives DOM updates is registered
+   with the active scope, so unmounting the component automatically stops
+   it.
 
 ## Common Errors
 
