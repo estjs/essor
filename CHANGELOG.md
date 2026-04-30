@@ -5,6 +5,17 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.15-beta.14](https://github.com/estjs/essor/compare/v0.0.15-beta.13...v0.0.15-beta.14) `2026-03-06`
+
+
+### Bug Fixes
+
+* **shared:**  fix dom types ([4220378](https://github.com/estjs/essor/commit/4220378e61f0b88a5546aa307bd80dfb88eb3d36))
+* **template:** fix lifecycle test type ([2120eb5](https://github.com/estjs/essor/commit/2120eb5d5e890c6680ebb874fc9c815a973e9e75))
+
+
+
+
 
 
 
