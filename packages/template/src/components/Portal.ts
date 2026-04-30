@@ -127,7 +127,7 @@ export function Portal(props: PortalProps): Comment {
   // double-evaluation.
   let mounted = false;
 
-  effect(() => {
+  const effectRunner = effect(() => {
     const disabled = evalDisabled(props);
     const target = disabled ? null : resolveTarget(props);
 
@@ -156,7 +156,10 @@ export function Portal(props: PortalProps): Comment {
     });
   });
 
-  onCleanup(teardown);
+  onCleanup(() => {
+    effectRunner.stop();
+    teardown();
+  });
 
   return placeholder;
 }

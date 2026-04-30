@@ -123,14 +123,16 @@ export function For<T>(props: ForProps<T>): Node {
     if (!parent) {
       if (newItems.length === 0) {
         mountFallback(fragment, marker);
+      } else {
+        entries = new Array(newItems.length);
+        let idx = 0;
+        for (const newItem of newItems) {
+          entries[idx] = renderItem(newItem, idx, fragment, marker);
+          idx++;
+        }
       }
-
-      entries = new Array(newItems.length);
-      let idx = 0;
-      for (const newItem of newItems) {
-        entries[idx] = renderItem(newItem, idx, fragment, marker);
-        idx++;
-      }
+      // Skip reconcile on initial mount — entries are already created
+      return;
     }
 
     // Before the fragment is attached, `marker.parentNode` is the fragment
@@ -138,7 +140,7 @@ export function For<T>(props: ForProps<T>): Node {
     // mounted into). All reconciliation must target the live parent, or
     // `insertBefore(node, marker)` throws NotFoundError because `marker`
     // already moved out of the fragment on the first flush.
-    reconcile(parent ?? fragment, newItems);
+    reconcile(parent, newItems);
   });
 
   /**
@@ -215,9 +217,15 @@ export function For<T>(props: ForProps<T>): Node {
     let moved = false;
     let maxOldSeen = 0;
 
+    // Pre-compute keys for all new items to avoid redundant getKey calls
+    const newKeys = new Array<unknown>(newLen);
+    for (let i = 0; i < newLen; i++) {
+      newKeys[i] = getKey(newItems[i]);
+    }
+
     for (let i = 0; i < newLen; i++) {
       const item = newItems[i];
-      const key = getKey(item);
+      const key = newKeys[i];
       const oldList = oldKeyMap.get(key);
 
       if (oldList && oldList.length > 0) {
@@ -286,6 +294,7 @@ export function For<T>(props: ForProps<T>): Node {
     for (const entry of entries) {
       disposeItem(entry);
     }
+    entries = [];
     clearFallback();
     if (marker.parentNode) {
       marker.parentNode.removeChild(marker);

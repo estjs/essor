@@ -1,4 +1,12 @@
-import { coerceArray, isFunction, isString } from '@estjs/shared';
+import {
+  coerceArray,
+  isBoolean,
+  isFunction,
+  isNull,
+  isNumber,
+  isString,
+  isUndefined,
+} from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { addEventListener } from './events';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
@@ -235,14 +243,32 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   let renderedNodes: Node[] = [];
   let isFirstRun = true;
 
+  /**
+   * Resolves a raw node value into a flat array of DOM Nodes.
+   * Fast-paths simple cases (single Node, single primitive) to avoid
+   * intermediate array allocations.
+   */
+  const resolveNodes = (raw: unknown): Node[] => {
+    // Fast path: already a DOM Node
+    if (raw instanceof Node) return [raw];
+
+    // Fast path: single primitive → text node
+    if (isNull(raw) || isUndefined(raw) || isString(raw) || isNumber(raw) || isBoolean(raw)) {
+      return [normalizeNode(raw)];
+    }
+
+    // General path: coerce, resolve nested functions, flatten, normalize
+    return coerceArray(raw)
+      .map((item) => (isFunction(item) ? item() : item))
+      .flatMap((i) => i)
+      .map(normalizeNode) as Node[];
+  };
+
   // Create effect for reactive updates
   const effectRunner = effect(() => {
     const executeUpdate = () => {
       const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-      const nodes = coerceArray(rawNodes as unknown)
-        .map((item) => (isFunction(item) ? item() : item))
-        .flatMap((i) => i)
-        .map(normalizeNode) as Node[];
+      const nodes = resolveNodes(rawNodes);
       // Hydration mode: skip DOM operations on first run only when every
       // node already exists under the target parent. Component instances and
       // fallback CSR nodes still need the normal reconcile path.
@@ -269,8 +295,8 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
 
   onCleanup(() => {
     effectRunner.stop();
-    renderedNodes.forEach((node) => removeNode(node));
-    renderedNodes.length = 0;
+    for (const node of renderedNodes) removeNode(node);
+    renderedNodes = [];
   });
 
   return renderedNodes;

@@ -245,6 +245,8 @@ export function Suspense(props: SuspenseProps): AnyNode {
 
   onDestroy(() => {
     isMounted = false;
+    pendingCount = 0;
+    resolvedChildren = null;
     clearContainer(container);
     container.remove();
   });

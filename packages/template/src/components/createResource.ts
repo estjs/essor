@@ -54,7 +54,7 @@ export function createResource<T>(
     error.value = null;
     suspenseRegistered = false;
     if (suspenseContext) {
-      // Let Suspense control fallback visibility for this fetch cycle.
+      // Track pending fetches even when callers branch on loading/state before reading the resource.
       suspenseContext.increment();
     }
 

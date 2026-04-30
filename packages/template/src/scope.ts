@@ -143,32 +143,49 @@ export function disposeScope(scope: Scope): void {
     scope.children.clear();
   }
 
-  // Execute destroy lifecycle hooks
-  if (scope.onDestroy) {
-    for (let i = 0; i < scope.onDestroy.length; i++) {
-      try {
-        scope.onDestroy[i]();
-      } catch (error_) {
-        if (__DEV__) {
-          error(`Scope(${scope.id}): Error in destroy hook:`, error_);
+  // Execute destroy lifecycle hooks and cleanup functions within the scope's
+  // context so that inject/provide/getActiveScope work correctly in callbacks.
+  //
+  // We inline the scope-switching instead of calling `runWithScope()` to avoid
+  // an extra function frame on the teardown hot path (disposeScope is called
+  // recursively for every child scope in the tree).
+  //
+  // NOTE: `scope.isDestroyed` is already `true` at this point — this is
+  // intentional to prevent re-entrant `disposeScope()` calls from within
+  // hooks. Callbacks that inspect `getActiveScope()?.isDestroyed` should
+  // be aware of this.
+  const prevScope = activeScope;
+  activeScope = scope;
+  try {
+    // Execute destroy lifecycle hooks
+    if (scope.onDestroy) {
+      for (let i = 0; i < scope.onDestroy.length; i++) {
+        try {
+          scope.onDestroy[i]();
+        } catch (error_) {
+          if (__DEV__) {
+            error(`Scope(${scope.id}): Error in destroy hook:`, error_);
+          }
         }
       }
+      scope.onDestroy = null;
     }
-    scope.onDestroy.length = 0;
-  }
 
-  // Execute cleanup functions
-  if (scope.cleanup) {
-    for (let i = 0; i < scope.cleanup.length; i++) {
-      try {
-        scope.cleanup[i]();
-      } catch (error_) {
-        if (__DEV__) {
-          error(`Scope(${scope.id}): Error in cleanup:`, error_);
+    // Execute cleanup functions
+    if (scope.cleanup) {
+      for (let i = 0; i < scope.cleanup.length; i++) {
+        try {
+          scope.cleanup[i]();
+        } catch (error_) {
+          if (__DEV__) {
+            error(`Scope(${scope.id}): Error in cleanup:`, error_);
+          }
         }
       }
+      scope.cleanup = null;
     }
-    scope.cleanup.length = 0;
+  } finally {
+    activeScope = prevScope;
   }
 
   // Remove from parent's children
@@ -176,10 +193,14 @@ export function disposeScope(scope: Scope): void {
     scope.parent.children.delete(scope);
   }
 
-  // Clear all internal collections
-  scope.provides?.clear();
-  if (scope.onMount) scope.onMount.length = 0;
-  if (scope.onUpdate) scope.onUpdate.length = 0;
+  // Clear all internal collections to prevent memory leaks
+  if (scope.provides) {
+    scope.provides.clear();
+    scope.provides = null;
+  }
+  scope.onMount = null;
+  scope.onUpdate = null;
+  scope.children = null;
 
   // Break parent reference to prevent memory leaks
   scope.parent = null;

@@ -249,7 +249,7 @@ describe('createResource', () => {
   });
 
   describe('suspense integration', () => {
-    it('registers each fetch cycle with Suspense exactly once through the accessor', async () => {
+    it('tracks each fetch cycle for Suspense before the resource accessor is read', async () => {
       await runWithScope(scope, async () => {
         let resolveInitial!: (value: string) => void;
         let resolveRefetch!: (value: string) => void;
@@ -277,20 +277,76 @@ describe('createResource', () => {
         const [resource, { refetch }] = createResource(fetcher);
 
         expect(increment).toHaveBeenCalledTimes(1);
+        expect(register).toHaveBeenCalledTimes(0);
+        expect(resource.loading.value).toBe(true);
+        expect(resource.state.value).toBe('pending');
+
+        resolveInitial('first');
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
+        expect(decrement).toHaveBeenCalledTimes(1);
+
+        const refetchPromise = refetch();
+
+        expect(increment).toHaveBeenCalledTimes(2);
+        expect(register).toHaveBeenCalledTimes(0);
+        expect(resource.loading.value).toBe(true);
+        expect(resource.state.value).toBe('pending');
+
+        resolveRefetch('second');
+        await refetchPromise;
+
+        expect(decrement).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('tracks fetch cycles and registers the accessor once per cycle', async () => {
+      await runWithScope(scope, async () => {
+        let resolveInitial!: (value: string) => void;
+        let resolveRefetch!: (value: string) => void;
+        let fetchCount = 0;
+        const register = vi.fn();
+        const increment = vi.fn();
+        const decrement = vi.fn();
+
+        provide(SuspenseContext as any, {
+          register,
+          increment,
+          decrement,
+        });
+
+        const fetcher = () =>
+          new Promise<string>((resolve) => {
+            fetchCount++;
+            if (fetchCount === 1) {
+              resolveInitial = resolve;
+            } else {
+              resolveRefetch = resolve;
+            }
+          });
+
+        const [resource, { refetch }] = createResource(fetcher);
+
+        expect(increment).toHaveBeenCalledTimes(1);
+        expect(decrement).toHaveBeenCalledTimes(0);
+        expect(register).toHaveBeenCalledTimes(0);
         expect(resource()).toBeUndefined();
         expect(resource()).toBeUndefined();
         expect(register).toHaveBeenCalledTimes(1);
         expect(register.mock.calls[0]?.[0]).toBeInstanceOf(Promise);
 
         resolveInitial('first');
-        await Promise.resolve();
-        await Promise.resolve();
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
 
         expect(resource()).toBe('first');
         expect(decrement).toHaveBeenCalledTimes(1);
 
         const refetchPromise = refetch();
         expect(increment).toHaveBeenCalledTimes(2);
+        expect(register).toHaveBeenCalledTimes(1);
 
         resource();
         resource();

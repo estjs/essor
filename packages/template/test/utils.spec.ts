@@ -23,6 +23,14 @@ describe('template utils', () => {
       expect(shallowCompare({ a: 1, b: 'x' }, { a: 1, b: 'x' })).toBe(true);
       expect(shallowCompare(['a', 'b'], ['a', 'b'])).toBe(true);
     });
+
+    it('returns true for prototype-backed objects with matching inherited enumerable keys', () => {
+      const proto = { inherited: 1 };
+      const a = Object.create(proto);
+      const b = Object.create(proto);
+
+      expect(shallowCompare(a, b)).toBe(true);
+    });
   });
 
   describe('omitProps', () => {
