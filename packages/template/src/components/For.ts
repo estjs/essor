@@ -1,26 +1,29 @@
-import { type Signal, isSignal, memoEffect, untrack } from '@estjs/signals';
+import { type Signal, effect, isSignal } from '@estjs/signals';
+import { isFunction } from '@estjs/shared';
 import {
   type Scope,
   createScope,
   disposeScope,
   getActiveScope,
   onCleanup,
-  setActiveScope,
+  runWithScope,
 } from '../scope';
-import { isComponent } from '../component';
 import { FOR_COMPONENT } from '../constants';
+import { normalizeNode } from '../dom';
+import { getSequence } from '../reconcile';
 import type { AnyNode } from '../types';
 
 export interface ForProps<T> {
   each: T[] | Signal<T[]> | (() => T[]);
   children: (item: T, index: number) => AnyNode;
-  keyFn?: (item: T) => unknown;
+  key?: (item: T) => unknown;
   fallback?: () => AnyNode;
 }
 
 interface ItemEntry {
   key: unknown;
-  node: Node;
+  item: unknown;
+  nodes: Node[];
   scope: Scope; // Track scope for cleanup
 }
 
@@ -36,101 +39,117 @@ export function For<T>(props: ForProps<T>): Node {
   fragment.appendChild(marker);
 
   let entries: ItemEntry[] = [];
-  let fallbackNode: Node | null = null;
+  let fallbackNodes: Node[] = [];
 
-  const keyFn = props.keyFn;
+  const keyFn = props.key;
   const renderFn = props.children;
 
   const getList = (): T[] => {
     const input = props.each;
     if (isSignal(input)) return (input as Signal<T[]>).value ?? [];
-    if (typeof input === 'function') return (input as () => T[])() ?? [];
+    if (isFunction(input)) return (input as () => T[])() ?? [];
     return (input as T[]) ?? [];
   };
 
   const getKey = (item: T): unknown => (keyFn ? keyFn(item) : item);
 
+  const normalizeNodes = (value: AnyNode): Node[] => {
+    if (Array.isArray(value)) {
+      const nodes: Node[] = [];
+      for (const item of value) {
+        nodes.push(...normalizeNodes(item as AnyNode));
+      }
+      return nodes;
+    }
+    return [normalizeNode(value)];
+  };
+
+  const mountValue = (value: AnyNode, parent: Node, before: Node | null): Node[] => {
+    const nodes = normalizeNodes(value);
+    for (const node of nodes) {
+      if (before) {
+        parent.insertBefore(node, before);
+      } else {
+        parent.appendChild(node);
+      }
+    }
+    return nodes;
+  };
+
+  const mountFallback = (parent: Node, before: Node | null) => {
+    if (!props.fallback) return;
+    const nodes = mountValue(props.fallback(), parent, before);
+    fallbackNodes = nodes;
+  };
+
+  const clearFallback = () => {
+    for (const node of fallbackNodes) {
+      if (node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
+    }
+    fallbackNodes = [];
+  };
+
   /**
    * Render item with detached scope.
    */
   const renderItem = (item: T, index: number, parent: Node, before: Node | null): ItemEntry => {
-    const prevScope = getActiveScope();
+    const parentScope = getActiveScope();
+    const scope = createScope(parentScope);
+    let mountedNodes: Node[] = [];
+    runWithScope(scope, () => {
+      mountedNodes = mountValue(renderFn(item, index), parent, before);
+    });
 
-    const scope = createScope(prevScope);
-
-    setActiveScope(scope);
-
-    let node: AnyNode;
-    try {
-      const result = renderFn(item, index);
-      if (isComponent(result)) {
-        result.mount(parent, before as Node); // Cast null to Node is okay for beforeNode? mount expects Node|undefined
-        node = result.firstChild ?? document.createComment('empty');
-      } else {
-        node = result as Node;
-        // Insert node manually if not handled by Component.mount
-        if (!node.parentNode) {
-          if (before) {
-            parent.insertBefore(node, before);
-          } else {
-            parent.appendChild(node);
-          }
-        }
-      }
-    } finally {
-      setActiveScope(prevScope);
-    }
-
-    return { key: getKey(item), node: node! as Node, scope };
+    return { key: getKey(item), item, nodes: mountedNodes, scope };
   };
 
   const disposeItem = (entry: ItemEntry) => {
     disposeScope(entry.scope);
-    if (entry.node.parentNode) {
-      entry.node.parentNode.removeChild(entry.node);
+    for (const node of entry.nodes) {
+      if (node.parentNode) {
+        node.parentNode.removeChild(node);
+      }
     }
   };
 
-  memoEffect(
-    ({ prev }) => {
-      const newItems = getList();
+  const effectRunner = effect(() => {
+    const newItems = getList();
 
-      if (prev === newItems) return { prev: newItems };
+    const parent = marker.parentNode;
 
-      const parent = marker.parentNode;
-
-      // Initial mount (parent is null because fragment is not attached yet)
-      if (!parent) {
-        if (newItems.length === 0) {
-          if (props.fallback) {
-            const fb = props.fallback();
-            if (isComponent(fb)) {
-              fb.mount(fragment, marker);
-              fallbackNode = fb.firstChild ?? document.createComment('empty');
-            } else {
-              fallbackNode = fb as Node;
-              fragment.insertBefore(fallbackNode, marker);
-            }
-          }
-          return { prev: newItems };
-        }
-
+    // Initial mount (parent is null because fragment is not attached yet)
+    if (!parent) {
+      if (newItems.length === 0) {
+        mountFallback(fragment, marker);
+      } else {
         entries = new Array(newItems.length);
-
-        for (const [i, newItem] of newItems.entries()) {
-          entries[i] = renderItem(newItem, i, fragment, marker);
+        let idx = 0;
+        for (const newItem of newItems) {
+          entries[idx] = renderItem(newItem, idx, fragment, marker);
+          idx++;
         }
-        return { prev: newItems };
       }
+      // Skip reconcile on initial mount — entries are already created
+      return;
+    }
 
-      untrack(() => reconcile(parent, newItems));
-      return { prev: newItems };
-    },
-    {
-      prev: [] as T[],
-    },
-  );
+    // Before the fragment is attached, `marker.parentNode` is the fragment
+    // itself; afterwards it is the real host (e.g. the container the user
+    // mounted into). All reconciliation must target the live parent, or
+    // `insertBefore(node, marker)` throws NotFoundError because `marker`
+    // already moved out of the fragment on the first flush.
+    reconcile(parent, newItems);
+  });
 
+  /**
+   * Reconciles the rendered entries against the latest item list.
+   *
+   * @param parent - The parent node.
+   * @param newItems - The new items list.
+   * @returns {void}
+   */
   function reconcile(parent: Node, newItems: T[]): void {
     const oldLen = entries.length;
     const newLen = newItems.length;
@@ -142,24 +161,16 @@ export function For<T>(props: ForProps<T>): Node {
       }
       entries = [];
 
-      if (props.fallback && !fallbackNode) {
-        const fb = props.fallback();
-        if (isComponent(fb)) {
-          fb.mount(parent, marker);
-          fallbackNode = fb.firstChild ?? document.createComment('empty');
-        } else {
-          fallbackNode = fb as Node;
-          parent.insertBefore(fallbackNode, marker);
-        }
+      if (props.fallback && fallbackNodes.length === 0) {
+        mountFallback(parent, marker);
       }
       return;
     }
 
     // ===== FAST PATH 2: Create all (from empty/fallback) =====
-    if (oldLen === 0 || fallbackNode) {
-      if (fallbackNode) {
-        if (fallbackNode.parentNode) fallbackNode.parentNode.removeChild(fallbackNode);
-        fallbackNode = null;
+    if (oldLen === 0 || fallbackNodes.length > 0) {
+      if (fallbackNodes.length > 0) {
+        clearFallback();
       }
 
       entries = new Array(newLen);
@@ -177,67 +188,114 @@ export function For<T>(props: ForProps<T>): Node {
     }
 
     // ===== Keyed reconciliation =====
-    const oldKeyMap = new Map<unknown, ItemEntry[]>();
+    //
+    // Each `oldKeyMap` value preserves the entry together with its original
+    // index. The index is the fuel for the LIS-based move minimisation
+    // further down: by mapping each new position to an old position we can
+    // find the longest slice that is already in order and leave it alone.
+    const oldKeyMap = new Map<unknown, Array<[ItemEntry, number]>>();
     for (let i = 0; i < oldLen; i++) {
       const entry = entries[i];
       const list = oldKeyMap.get(entry.key);
-      if (list) {
-        list.push(entry);
-      } else {
-        oldKeyMap.set(entry.key, [entry]);
-      }
+      const pair: [ItemEntry, number] = [entry, i];
+      if (list) list.push(pair);
+      else oldKeyMap.set(entry.key, [pair]);
     }
 
     const newEntries: ItemEntry[] = new Array(newLen);
     const toRemove: ItemEntry[] = [];
 
-    // Batch new nodes in fragment
-    const batchFragment = document.createDocumentFragment();
+    // Batch new nodes in a fragment so multiple creations turn into a
+    // single native DOM insertion. Created lazily — only when a fresh
+    // item is actually rendered so we avoid the allocation when every
+    // entry is reused.
+    let batchFragment: DocumentFragment | null = null;
+
+    // `newIndexToOldIndex[i] === 0`  → newEntries[i] is freshly created.
+    // `newIndexToOldIndex[i] === k + 1` → reused from `entries[k]`.
+    const newIndexToOldIndex = new Int32Array(newLen);
+    let moved = false;
+    let maxOldSeen = 0;
+
+    // Pre-compute keys for all new items to avoid redundant getKey calls
+    const newKeys = new Array<unknown>(newLen);
+    for (let i = 0; i < newLen; i++) {
+      newKeys[i] = getKey(newItems[i]);
+    }
 
     for (let i = 0; i < newLen; i++) {
       const item = newItems[i];
-      const key = getKey(item);
+      const key = newKeys[i];
       const oldList = oldKeyMap.get(key);
 
       if (oldList && oldList.length > 0) {
-        newEntries[i] = oldList.shift()!;
+        const [reused, oldIndex] = oldList.shift()!;
+        if (Object.is(reused.item, item)) {
+          reused.item = item;
+          newEntries[i] = reused;
+          newIndexToOldIndex[i] = oldIndex + 1;
+          if (oldIndex < maxOldSeen) moved = true;
+          else maxOldSeen = oldIndex;
+        } else {
+          if (!batchFragment) batchFragment = document.createDocumentFragment();
+          disposeItem(reused);
+          newEntries[i] = renderItem(item, i, batchFragment, null);
+        }
       } else {
+        if (!batchFragment) batchFragment = document.createDocumentFragment();
         newEntries[i] = renderItem(item, i, batchFragment, null);
+        // newIndexToOldIndex[i] remains 0 (fresh entry).
       }
     }
 
     for (const list of oldKeyMap.values()) {
-      for (const entry of list) {
-        toRemove.push(entry);
+      for (const [entry] of list) toRemove.push(entry);
+    }
+    for (const entry of toRemove) disposeItem(entry);
+
+    // ===== Position correction with LIS =====
+    // We walk the new array right-to-left using `marker` as the initial
+    // anchor, which lets us use `insertBefore(node, nextNode)` uniformly.
+    const lis = moved ? getSequence(newIndexToOldIndex) : [];
+    let lisCursor = lis.length - 1;
+    let nextNode: Node = marker;
+
+    for (let i = newLen - 1; i >= 0; i--) {
+      const entry = newEntries[i];
+      const nodes = entry.nodes;
+      const isFresh = newIndexToOldIndex[i] === 0;
+      const inLis = !isFresh && moved && lisCursor >= 0 && i === lis[lisCursor];
+
+      if (inLis) {
+        // Stable skeleton — leave every node untouched, but still update
+        // `nextNode` so the next iteration has the correct anchor.
+        lisCursor--;
+        for (let j = nodes.length - 1; j >= 0; j--) nextNode = nodes[j];
+        continue;
       }
-    }
 
-    for (const entry of toRemove) {
-      disposeItem(entry);
-    }
-
-    // Efficient Reorder
-    // If we have new nodes in batchFragment, they are not yet in DOM.
-    // Existing nodes are in DOM.
-    // We iterate 0..newLen.
-    // If node is in batchFragment, we must insert it.
-    // If node is in DOM, we check order.
-
-    for (let i = 0; i < newLen; i++) {
-      const node = newEntries[i].node;
-      parent.insertBefore(node, marker);
+      // Fresh entry OR reused entry that is out of place → (re)insert each
+      // node. The nextSibling guard keeps us from redundant writes for
+      // multi-node rows whose internal order is already correct.
+      for (let j = nodes.length - 1; j >= 0; j--) {
+        const node = nodes[j];
+        if (node.nextSibling !== nextNode) {
+          parent.insertBefore(node, nextNode);
+        }
+        nextNode = node;
+      }
     }
 
     entries = newEntries;
   }
 
   onCleanup(() => {
+    effectRunner.stop();
     for (const entry of entries) {
       disposeItem(entry);
     }
-    if (fallbackNode && fallbackNode.parentNode) {
-      fallbackNode.parentNode.removeChild(fallbackNode);
-    }
+    entries = [];
+    clearFallback();
     if (marker.parentNode) {
       marker.parentNode.removeChild(marker);
     }

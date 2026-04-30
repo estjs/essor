@@ -77,12 +77,15 @@ npm run dev
 
 Check out the [examples](./examples) directory for more examples:
 
-- [Basic Example](./examples/basic) - Getting started
-- [Todo App](./examples/todo) - Complete application
-- [SSR Example](./examples/ssr) - Server-side rendering
-- [SSG Example](./examples/ssg) - Static site generation
-- [Suspense Example](./examples/suspense) - Async components
-- [Portal Example](./examples/portal) - Portal components
+- [Signals](./examples/signals) - Signal state, computed outputs, and batch updates
+- [TodoMVC](./examples/todo-mvc) - Basic todo flows
+- [Fragment](./examples/fragment) - Wrapper-free table rows
+- [Binding](./examples/binding) - Bind API across text, select, range, and files
+- [Provide](./examples/provide) - Scoped dependency injection
+- [Portal](./examples/portal) - Portal target switching and inline fallback
+- [Suspense](./examples/suspense) - Async boundaries with loading fallbacks
+- [HMR](./examples/hmr) - Stateful hot-refresh demo
+- [Hydrate](./examples/hydrate) - SSR shell and client hydration
 
 
 ## 🤝 Contributing
@@ -131,4 +134,3 @@ Thanks to all developers who contributed to Essor!
 [GitHub](https://github.com/estjs/essor) | [Documentation](https://essor.netlify.app/) | [Discussions](https://github.com/estjs/essor/discussions)
 
 </div>
-

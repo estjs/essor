@@ -3,8 +3,8 @@
  * Shared between template (client) and server packages
  */
 
-import { isArray, isNumber, isObject, isString } from './is';
 import { kebabCase } from './string';
+import { isArray, isNumber, isObject, isString } from './is';
 
 /**
  * Normalized style object type
@@ -30,10 +30,10 @@ const PROPERTY_VALUE_SEPARATOR_REGEX = /:([\s\S]+)/;
 const STYLE_COMMENT_REGEX = /\/\*[\s\S]*?\*\//g;
 
 /**
- * Parse CSS style string into object format
+ * Parse CSS style string into object format.
  *
- * @param cssText - CSS style string
- * @returns Normalized style object
+ * @param cssText - CSS style string.
+ * @returns {NormalizedStyle} Normalized style object.
  */
 export function parseStyleString(cssText: string): NormalizedStyle {
   const styleObject: NormalizedStyle = {};
@@ -41,7 +41,7 @@ export function parseStyleString(cssText: string): NormalizedStyle {
   cssText
     .replaceAll(STYLE_COMMENT_REGEX, '')
     .split(STYLE_SEPARATOR_REGEX)
-    .forEach(styleItem => {
+    .forEach((styleItem) => {
       if (styleItem) {
         const parts = styleItem.split(PROPERTY_VALUE_SEPARATOR_REGEX);
         if (parts.length > 1) {
@@ -54,10 +54,10 @@ export function parseStyleString(cssText: string): NormalizedStyle {
 }
 
 /**
- * Normalize style value to a unified format
+ * Normalize style value to a unified format.
  *
- * @param styleValue - Original style value (object, string, or array)
- * @returns Normalized style object or string
+ * @param styleValue - Original style value (object, string, or array).
+ * @returns {NormalizedStyle | string | undefined} Normalized style object or string.
  */
 export function normalizeStyle(styleValue: unknown): NormalizedStyle | string | undefined {
   // Handle array format styles
@@ -88,10 +88,10 @@ export function normalizeStyle(styleValue: unknown): NormalizedStyle | string | 
 }
 
 /**
- * Convert style object to CSS string
+ * Convert style object to CSS string.
  *
- * @param styleValue - Style object or string
- * @returns Formatted CSS string
+ * @param styleValue - Style object or string.
+ * @returns {string} Formatted CSS string.
  */
 export function styleToString(styleValue: NormalizedStyle | string | undefined): string {
   if (!styleValue) {
@@ -117,10 +117,10 @@ export function styleToString(styleValue: NormalizedStyle | string | undefined):
 }
 
 /**
- * Normalize class value to a unified string format
+ * Normalize class value to a unified string format.
  *
- * @param classValue - Original class value (string, array, or object)
- * @returns Normalized class name string
+ * @param classValue - Original class value (string, array, or object).
+ * @returns {string} Normalized class name string.
  */
 export function normalizeClassName(classValue: unknown): string {
   if (classValue == null) {
@@ -158,38 +158,4 @@ export function normalizeClassName(classValue: unknown): string {
   }
 
   return String(classValue).trim();
-}
-/**
- * Convert style object to CSS string
- *
- * Handle different types of style values, and apply CSS variable and kebab-case transformations
- *
- * @param styleValue Style object or string
- * @returns Formatted CSS string
- */
-export function styleObjectToString(styleValue: NormalizedStyle | string | undefined): string {
-  // Check for empty values
-  if (!styleValue) {
-    return '';
-  }
-
-  // Return string values directly
-  if (isString(styleValue)) {
-    return styleValue;
-  }
-
-  // Convert object to string
-  let cssText = '';
-  for (const propName in styleValue) {
-    const propValue = styleValue[propName];
-
-    // Only process valid string or number values
-    if (isString(propValue) || isNumber(propValue)) {
-      // Keep CSS variables as is, convert other properties to kebab-case
-      const normalizedPropName = propName.startsWith('--') ? propName : kebabCase(propName);
-      cssText += `${normalizedPropName}:${propValue};`;
-    }
-  }
-
-  return cssText;
 }

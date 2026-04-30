@@ -1,99 +1,96 @@
 import { isFunction, isString } from '@estjs/shared';
+import { addEvent } from './operations/event';
+import { getActiveScope, onCleanup } from './scope';
 
 /**
- * Retarget the event's target property
- * @param event - Event object to retarget
- * @param value - New target value
+ * Retargets an event to a delegated host node.
+ *
+ * @param e - The event object.
+ * @param value - The new target value.
+ * @returns {void}
  */
-function reTarget(event: Event, value: EventTarget): void {
-  Object.defineProperty(event, 'target', {
+function reTargetEvent(e: Event, value: EventTarget): void {
+  Object.defineProperty(e, 'target', {
     configurable: true,
     value,
   });
 }
 
 /**
- * Handle event on current node
- * @param node - Current node to handle
- * @param event - Event object
- * @param key - Event type key
- * @returns Whether to continue propagation
+ * Event handler for delegated events.
+ *
+ * @param e - The event object.
  */
-function handleNodeEvent(node: any, event: Event, key: string): boolean {
-  const handler = node[`_$${key}`];
-  if (handler && isFunction(handler) && !node.disabled) {
-    const data = node[`${key}Data`];
-    data ? handler.call(node, data, event) : handler.call(node, event);
-    if (event.cancelBubble) return false;
-  }
+function eventHandler(e: Event): void {
+  let node = e.target as any;
+  const key = e.type;
+  const oriTarget = e.target;
+  const oriCurrentTarget = e.currentTarget;
 
-  // Handle host element retargeting
-  if (
-    node.host &&
-    !isString(node.host) &&
-    !node.host._$host &&
-    isFunction(node.contains) &&
-    node.contains(event.target)
-  ) {
-    reTarget(event, node.host);
-  }
-  return true;
-}
+  /**
+   * Handle event on current node
+   * @returns {boolean} Whether to continue propagation
+   */
+  const handleNode = (): boolean => {
+    const handler = node[`_$${key}`];
+    if (handler && isFunction(handler) && !node.disabled) {
+      const data = node[`${key}Data`];
+      data ? handler.call(node, data, e) : handler.call(node, e);
+      if (e.cancelBubble) return false;
+    }
 
-/**
- * Walk up the DOM tree handling events
- * @param startNode - Initial node to start from
- * @param event - Event object
- * @param key - Event type key
- * @returns Final node after walking
- */
-function walkUpTree(startNode: any, event: Event, key: string): any {
-  let node = startNode;
-  while (handleNodeEvent(node, event, key) && (node = node._$host || node.parentNode || node.host));
-  return node;
-}
+    // Handle host element retargeting
+    if (
+      node.host &&
+      !isString(node.host) &&
+      !node.host._$host &&
+      isFunction(node.contains) &&
+      node.contains(e.target)
+    ) {
+      reTargetEvent(e, node.host);
+    }
+    return true;
+  };
 
-/**
- * Event handler for delegated events
- * @param event - The event object
- */
-function eventHandler(event): void {
-  let node = event.target;
-  const key = `${event.type}`;
-  const oriTarget = event.target;
-  const oriCurrentTarget = event.currentTarget;
+  /**
+   * Walk up the DOM tree handling events
+   */
+  const walkUpTree = (): void => {
+    while (handleNode() && (node = node._$host || node.parentNode || node.host));
+  };
 
-  // Simulate currentTarget
-  Object.defineProperty(event, 'currentTarget', {
+  // simulate currentTarget
+  Object.defineProperty(e, 'currentTarget', {
     configurable: true,
+    /**
+     * Returns the current delegated target for the event.
+     */
     get() {
       return node || document;
     },
   });
 
-  if (event.composedPath) {
-    const path = event.composedPath();
-    reTarget(event, path[0]);
+  if (e.composedPath) {
+    const path = e.composedPath();
+    reTargetEvent(e, path[0]);
     for (let i = 0; i < path.length - 2; i++) {
-      node = path[i];
-      if (!handleNodeEvent(node, event, key)) break;
+      node = path[i] as any;
+      if (!handleNode()) break;
       if (node._$host) {
         node = node._$host;
-        // Bubble up from portal mount instead of composedPath
-        node = walkUpTree(node, event, key);
+        // bubble up from portal mount instead of composedPath
+        walkUpTree();
         break;
       }
       if (node.parentNode === oriCurrentTarget) {
-        break; // Don't bubble above root of event delegation
+        break; // don't bubble above root of event delegation
       }
     }
-  } else {
-    // Fallback for browsers that don't support composedPath
-    node = walkUpTree(node, event, key);
   }
-
-  // Mixing portals and shadow dom can lead to a nonstandard target, so reset here
-  reTarget(event, oriTarget!);
+  // fallback for browsers that don't support composedPath
+  else walkUpTree();
+  // Mixing portals and shadow dom can lead to a nonstandard target, so reset here.
+  reTargetEvent(e, oriTarget!);
 }
 
 /**
@@ -102,9 +99,10 @@ function eventHandler(event): void {
 const $EVENTS = Symbol('_$EVENTS');
 
 /**
- * Set up event delegation for specified event types
- * @param {string[]} eventNames - Array of event names to delegate
- * @param {Document} document - Document to attach events to (defaults to window.document)
+ * Set up event delegation for specified event types.
+ *
+ * @param eventNames - Array of event names to delegate.
+ * @param document - Document to attach events to (defaults to window.document).
  */
 export function delegateEvents(eventNames: string[], document: Document = window.document): void {
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
@@ -119,8 +117,9 @@ export function delegateEvents(eventNames: string[], document: Document = window
 }
 
 /**
- * Clear all delegated events from document
- * @param {Document} document - Document to clear events from (defaults to window.document)
+ * Clear all delegated events from document.
+ *
+ * @param document - Document to clear events from (defaults to window.document).
  */
 export function clearDelegatedEvents(document: Document = window.document): void {
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
@@ -130,5 +129,26 @@ export function clearDelegatedEvents(document: Document = window.document): void
       document.removeEventListener(name, eventHandler);
     }
     delete docWithEvents[$EVENTS];
+  }
+}
+/**
+ * Registers an event listener and scopes its cleanup when needed.
+ *
+ * @param element - The element to add the listener to.
+ * @param event - The event name.
+ * @param handler - The event handler.
+ * @param options - Optional event listener options.
+ * @returns {void}
+ */
+export function addEventListener(
+  element: Element,
+  event: string,
+  handler: EventListener,
+  options?: AddEventListenerOptions,
+): void {
+  const cleanup = addEvent(element, event, handler, options);
+
+  if (getActiveScope()) {
+    onCleanup(cleanup);
   }
 }

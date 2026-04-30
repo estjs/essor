@@ -1,22 +1,3 @@
-import type { PluginOptions } from './types';
-
-// default options
-export const DEFAULT_OPTIONS: PluginOptions = {
-  mode: 'client',
-  symbol: '$',
-  props: true,
-  hmr: true,
-  styled: false,
-  enableFor: false,
-};
-
-// Rendering mode
-export enum RENDER_MODE {
-  CLIENT = 'client',
-  SSR = 'ssr',
-  SSG = 'ssg',
-}
-
 export const IMPORTS_MAPS = [
   // Reactive API
   'signal',
@@ -24,6 +5,7 @@ export const IMPORTS_MAPS = [
   'reactive',
   'memoEffect',
   'omitProps',
+  'resolveDefaultProps',
 
   // component
   'createComponent',
@@ -34,11 +16,9 @@ export const IMPORTS_MAPS = [
 
   // Template related
   'mapNodes',
-  'mapArray',
   'template',
   'delegateEvents',
-  // styled
-  'styled',
+
   // binding related
   'insert',
   'patchStyle',
@@ -49,24 +29,73 @@ export const IMPORTS_MAPS = [
   'addEventListener',
   // rendering related
   'render',
+  'convertTextChildToString',
   'escapeHTML',
   'getHydrationKey',
+  // server attr helpers
+  'ssrAttr',
+  'ssrClass',
+  'ssrStyle',
+  'ssrSpread',
+  // DOM navigation helpers
+  'child',
+  'next',
+  'nthChild',
 ] as const;
 
-// Static Site Generation API
-export const SSG_IMPORTS_MAPS = {
+/**
+ * Name remaps applied when compiling for RENDER_MODE.SERVER.
+ * Only entries whose runtime helper differs from the client name need listing.
+ */
+export const SERVER_IMPORT_REMAPS = {
   createComponent: 'createSSGComponent',
   patchAttr: 'setSSGAttr',
 } as const;
 
-// Server-side Rendering API
-export const SSR_IMPORTS_MAPS = {
-  mapNodes: 'mapSSRNodes',
+/**
+ * Name remaps applied when compiling for RENDER_MODE.HYDRATE.
+ * Only entries whose runtime helper differs from the client name need listing.
+ */
+export const HYDRATE_IMPORT_REMAPS = {
   template: 'getRenderedElement',
+  patchClass: 'patchClassHydrate',
+  patchAttr: 'patchAttrHydrate',
+  patchStyle: 'patchStyleHydrate',
 } as const;
 
-// transform property name
-export const TRANSFORM_PROPERTY_NAME = '__props';
+export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 
-// hmr component name
-export const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
+/**
+ * Canonical (pre-remap) names of helpers that live in `'essor/server'`.
+ * TypeScript enforces that every entry is a valid IMPORT_MAP_NAMES.
+ * SERVER_IMPORT_REMAPS is applied below so the set contains resolved names.
+ */
+const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
+  'render',
+  'convertTextChildToString',
+  'escapeHTML',
+  'Fragment',
+  'Portal',
+  'Suspense',
+  'getHydrationKey',
+  'ssrAttr',
+  'ssrClass',
+  'ssrStyle',
+  'ssrSpread',
+  'createComponent',
+  'patchAttr',
+];
+
+const _remaps = SERVER_IMPORT_REMAPS as Partial<Record<IMPORT_MAP_NAMES, string>>;
+export const SERVER_EXPORTS = new Set(SERVER_ONLY_NAMES.map((name) => _remaps[name] ?? name));
+
+export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, name])) as Record<
+  IMPORT_MAP_NAMES,
+  IMPORT_MAP_NAMES
+>;
+
+// jsx function props transform property name
+export const TRANSFORM_PROPERTY_NAME = '__props';
+export const FRAGMENT_NAME = 'Fragment';
+export const UPDATE_PREFIX = 'update';
+export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;

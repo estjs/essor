@@ -2,7 +2,7 @@ import process from 'node:process';
 import { defineConfig } from 'tsup';
 
 const env = process.env.NODE_ENV;
-
+const isDev = env !== 'production';
 export default defineConfig({
   entryPoints: {
     shared: './src/index.ts',
@@ -15,12 +15,12 @@ export default defineConfig({
   clean: true,
   sourcemap: true,
   cjsInterop: true,
-  minify: env === 'production',
+  minify: isDev,
   tsconfig: '../../tsconfig.build.json',
   splitting: false,
   outExtension({ format }) {
     return {
-      js: `${env !== 'production' ? '.dev' : ''}.${format}.js`,
+      js: `${isDev ? '.dev' : ''}.${format}.js`,
     };
   },
 });

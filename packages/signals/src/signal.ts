@@ -1,4 +1,14 @@
-import { hasChanged, isObject, warn } from '@estjs/shared';
+import {
+  hasChanged,
+  isArray,
+  isMap,
+  isObject,
+  isPlainObject,
+  isSet,
+  isWeakMap,
+  isWeakSet,
+  warn,
+} from '@estjs/shared';
 import { activeSub, linkReactiveNode, shallowPropagate } from './link';
 import { ReactiveFlags, SignalFlags } from './constants';
 import { isReactive, reactive, shallowReactive, toRaw } from './reactive';
@@ -89,8 +99,8 @@ export class SignalImpl<T> implements ReactiveNode {
 
   private readonly [SignalFlags.IS_SHALLOW]: boolean; // Mark whether it's shallow reactive
 
-  // @ts-ignore: used internally by isSignal typeguard
-  private readonly [SignalFlags.IS_SIGNAL] = true as const;
+  // @ts-ignore
+  private readonly [SignalFlags.IS_SIGNAL] = true as const; // Mark as Signal
 
   /**
    * Create a new Signal with the given initial value.
@@ -109,7 +119,7 @@ export class SignalImpl<T> implements ReactiveNode {
     this[SignalFlags.IS_SHALLOW] = shallow;
 
     // Fast path: if primitive, no proxy needed
-    if (!isObject(unwrapped)) {
+    if (!shouldWrapReactiveValue(unwrapped)) {
       this._value = unwrapped as T;
     } else {
       // If value is already reactive, reuse it directly instead of lookup
@@ -123,11 +133,20 @@ export class SignalImpl<T> implements ReactiveNode {
     }
   }
 
-  // dep getter, returns itself for dependency collection
+  /**
+   * Returns the dependency node used for tracking.
+   *
+   * @returns {this} The dependency node.
+   */
   get dep(): this {
     return this;
   }
 
+  /**
+   * Returns the current value.
+   *
+   * @returns {T} The current value.
+   */
   get value(): T {
     const sub = activeSub;
     if (sub) {
@@ -147,7 +166,11 @@ export class SignalImpl<T> implements ReactiveNode {
     return this._value;
   }
 
-  // value setter, triggers update when value changes
+  /**
+   * Updates the current value.
+   *
+   * @param newValue - The new value to set.
+   */
   set value(newValue: T) {
     // If the new value is another signal, unwrap it
     if (isSignal(newValue)) {
@@ -173,7 +196,7 @@ export class SignalImpl<T> implements ReactiveNode {
     this._rawValue = rawValue;
     this.flag |= ReactiveFlags.DIRTY;
 
-    if (!isObject(rawValue)) {
+    if (!shouldWrapReactiveValue(rawValue)) {
       // Primitive: no proxy needed
       this._value = rawValue as T;
     } else if (isReactive(originalValue)) {
@@ -194,7 +217,11 @@ export class SignalImpl<T> implements ReactiveNode {
     }
   }
 
-  // Check if the value should be updated
+  /**
+   * Check if the value should be updated.
+   *
+   * @returns {boolean} True if the value should be updated.
+   */
   shouldUpdate(): boolean {
     this.flag &= ~ReactiveFlags.DIRTY;
 
@@ -209,17 +236,31 @@ export class SignalImpl<T> implements ReactiveNode {
     return changed;
   }
 
-  // Get current value without triggering dependency tracking
+  /**
+   * Get current value without triggering dependency tracking.
+   *
+   * @returns {T} The current value.
+   */
   peek(): T {
     return this._value;
   }
 
-  // set method is an alias for the value setter
+  /**
+   * Sets the requested value.
+   *
+   * @param value - The new value to set.
+   * @returns {void}
+   */
   set(value: T): void {
     this.value = value;
   }
 
-  // Update value using an updater function
+  /**
+   * Update value using an updater function.
+   *
+   * @param updater - A function that receives the current value and returns the new value.
+   * @returns {void}
+   */
   update(updater: (prev: T) => T): void {
     const nextValue = updater(this.peek());
     // Handle case where updater function returns a signal
@@ -237,12 +278,30 @@ export class SignalImpl<T> implements ReactiveNode {
 }
 
 /**
+ * Checks whether a value should be wrapped in a reactive proxy.
+ *
+ * @param value - The value to check.
+ * @returns True if it should be wrapped.
+ */
+function shouldWrapReactiveValue(value: unknown): value is object {
+  if (!isObject(value)) return false;
+  return (
+    isArray(value) ||
+    isMap(value) ||
+    isSet(value) ||
+    isWeakMap(value) ||
+    isWeakSet(value) ||
+    isPlainObject(value)
+  );
+}
+
+/**
  * Create a new signal with the given initial value.
  * The signal will track all nested properties of object values.
  *
- * @template T - The type of value to store in the signal
- * @param value - Initial value (defaults to undefined)
- * @returns A new signal instance
+ * @template T - The type of value to store in the signal.
+ * @param value - Initial value (defaults to undefined).
+ * @returns A new signal instance.
  *
  * @example
  * ```typescript
@@ -251,9 +310,7 @@ export class SignalImpl<T> implements ReactiveNode {
  * const empty = signal(); // undefined
  * ```
  */
-export function signal<T>(value: Signal<T>): Signal<T>;
-export function signal<T>(value?: T): Signal<T>;
-export function signal<T>(value?: T) {
+export function signal<T>(value?: T): Signal<T> {
   // If the value is already a signal, return it directly to avoid duplicate creation
   if (isSignal(value)) {
     if (__DEV__) {
@@ -261,17 +318,18 @@ export function signal<T>(value?: T) {
         'Creating a signal with another signal is not recommended. The value will be unwrapped.',
       );
     }
-    return value as T;
+    return value as Signal<T>;
   }
   return new SignalImpl(value);
 }
+
 /**
  * Create a new shallow signal with the given initial value.
  * Only the top-level properties of object values are reactive.
  *
- * @template T - The type of value to store in the signal
- * @param value - Initial value (defaults to undefined)
- * @returns A new shallow signal instance
+ * @template T - The type of value to store in the signal.
+ * @param value - Initial value (defaults to undefined).
+ * @returns A new shallow signal instance.
  *
  * @example
  * ```typescript
@@ -290,9 +348,9 @@ export function shallowSignal<T>(value?: T): Signal<T> {
 /**
  * Type guard to check if a value is a Signal instance.
  *
- * @template T - The type of value held by the signal
- * @param value - The value to check
- * @returns true if the value is a Signal instance
+ * @template T - The type of value held by the signal.
+ * @param value - The value to check.
+ * @returns true if the value is a Signal instance.
  */
 export function isSignal<T>(value: unknown): value is Signal<T> {
   return !!value && !!value[SignalFlags.IS_SIGNAL];

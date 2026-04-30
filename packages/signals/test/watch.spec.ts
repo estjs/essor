@@ -39,7 +39,7 @@ describe('watch', () => {
     obj.count = 2;
 
     await nextTick();
-    expect(callback).toHaveBeenCalledWith({ count: 2 }, { count: 1 });
+    expect(callback).toHaveBeenCalledWith({ count: 2 }, { count: 2 });
 
     stop();
   });
@@ -105,7 +105,7 @@ describe('watch', () => {
 
     await nextTick();
     expect(callback).toHaveBeenCalledTimes(1);
-    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 1 } });
+    expect(callback).toHaveBeenCalledWith({ nested: { count: 2 } }, { nested: { count: 2 } });
 
     stop();
   });
@@ -177,7 +177,22 @@ describe('watch', () => {
     obj.count = 3;
 
     await nextTick();
-    expect(callback).toHaveBeenCalledWith([2, { count: 3 }], [2, { count: 1 }]);
+    expect(callback).toHaveBeenCalledWith([2, { count: 3 }], [2, { count: 3 }]);
+
+    stop();
+  });
+
+  it('should treat reactive objects with a value field as reactive sources, not ref-like sources', async () => {
+    const state = reactive({ value: 1, other: 1 });
+    const callback = vi.fn();
+
+    const stop = watch(state, callback);
+
+    state.other = 2;
+    await nextTick();
+
+    expect(callback).toHaveBeenCalledTimes(1);
+    expect(callback).toHaveBeenCalledWith({ value: 1, other: 2 }, { value: 1, other: 2 });
 
     stop();
   });
@@ -210,6 +225,36 @@ describe('watch', () => {
     expect(callback).toHaveBeenCalledTimes(1);
     expect(callback).toHaveBeenCalledWith([3, 4], [1, 2]);
 
+    stop();
+  });
+
+  it('should stop watcher and prevent further callbacks', async () => {
+    const signalValue = signal(1);
+    const callback = vi.fn();
+
+    const stop = watch(signalValue, callback);
+
+    signalValue.value = 2;
+    await nextTick();
+    expect(callback).toHaveBeenCalledTimes(1);
+
+    stop();
+    signalValue.value = 3;
+    await nextTick();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+
+  it('should handle deep watch on cyclic objects without infinite loops', async () => {
+    const obj = reactive({ name: 'A', nested: { count: 1 } });
+    (obj as any).self = obj;
+
+    const callback = vi.fn();
+    const stop = watch(obj, callback, { deep: true });
+
+    obj.nested.count = 2;
+    await nextTick();
+
+    expect(callback).toHaveBeenCalledTimes(1);
     stop();
   });
 });

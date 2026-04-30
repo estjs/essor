@@ -74,7 +74,7 @@ describe('hMR - Rspack Platform', () => {
 
             // Find the entry module output
             const entryModule = output.find(
-              m => m.name && (m.name.endsWith(path) || m.name.includes(path.replace('./', ''))),
+              (m) => m.name && (m.name.endsWith(path) || m.name.includes(path.replace('./', ''))),
             );
             const code = entryModule?.source || '';
 

@@ -14,29 +14,30 @@ const hasOwnProperty = Object.prototype.hasOwnProperty;
 export const extend = Object.assign;
 
 /**
- * Checks if an object has a specific property
- * @template T
- * @param {object} val - The target object to check
- * @param {string | symbol} key - The property name to check for
- * @returns {key is keyof T} - Returns true if the object has the property, false otherwise
+ * Checks if an object has a specific property.
+ *
+ * @param val - The target object to check.
+ * @param key - The property name to check for.
+ * @returns {boolean} True if the object has the property, false otherwise.
  */
 export const hasOwn = (val: object, key: string | symbol): key is keyof typeof val =>
   hasOwnProperty.call(val, key);
 /**
- * Forces a value to be an array
- * @template T - The type of array elements
- * @param {T | T[]} data - The data to convert, can be a single element or an array
- * @returns {T[]} - The resulting array
+ * Forces a value to be an array.
+ *
+ * @param data - The data to convert, can be a single element or an array.
+ * @returns The resulting array.
  */
 export function coerceArray<T>(data: T | T[]): T[] {
   return isArray(data) ? data : [data];
 }
 
 /**
- * Checks if a value has changed
- * @param {unknown } value - The new value
- * @param {unknown } oldValue - The old value
- * @returns {boolean} - Returns true if the value has changed, false otherwise
+ * Checks if a value has changed.
+ *
+ * @param value - The new value.
+ * @param oldValue - The old value.
+ * @returns {boolean} True if the value has changed, false otherwise.
  */
 export const hasChanged = (value: unknown, oldValue: unknown): boolean =>
   !Object.is(value, oldValue);
@@ -48,13 +49,11 @@ export const hasChanged = (value: unknown, oldValue: unknown): boolean =>
 export const noop = Function.prototype as () => void;
 
 /**
- * Checks if a string starts with a specified substring
+ * Checks if a string starts with a specified substring.
  *
- * Uses indexOf for better performance in most cases
- * @see https://www.measurethat.net/Benchmarks/Show/12350/0/startswith-vs-test-vs-match-vs-indexof#latest_results_block
- * @param {string} str - The string to check
- * @param {string} searchString - The substring to search for
- * @returns {boolean} - Returns true if the string starts with the substring, false otherwise
+ * @param str - The string to check.
+ * @param searchString - The substring to search for.
+ * @returns True if the string starts with the substring, false otherwise.
  */
 export function startsWith(str: string, searchString: string): boolean {
   if (!isString(str)) {
@@ -64,35 +63,28 @@ export function startsWith(str: string, searchString: string): boolean {
 }
 
 /**
- * Generates an 8-character random string as a unique identifier
+ * Generates an 8-character random string as a unique identifier.
  *
- * Note: Uses Math.random() which is not cryptographically secure.
- * For security-sensitive use cases, consider using crypto.getRandomValues()
- * @returns {string} - The generated unique identifier
+ * @returns The generated unique identifier.
  */
 export function generateUniqueId(): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  const charactersLength = characters.length;
-  for (let i = 0; i < 8; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
+  return Math.random().toString(36).slice(2, 10);
 }
 
 /**
- * Checks if the current environment is a browser
- * @returns {boolean} - Returns true if in a browser environment, false otherwise
+ * Checks if the current environment is a browser.
+ *
+ * @returns True if in a browser environment, false otherwise.
  */
 export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }
 
 /**
- * Creates a cached version of a string processing function
- * @template T - The function type
- * @param {T} fn - The string processing function to cache
- * @returns {T} - The cached function
+ * Creates a cached version of a string processing function.
+ *
+ * @param fn - The string processing function to cache.
+ * @returns The cached function.
  */
 export const cacheStringFunction = <T extends (str: string) => string>(fn: T): T => {
   const cache: Record<string, string> = Object.create(null);
@@ -115,11 +107,10 @@ export const EMPTY_OBJ: { readonly [key: string]: unknown } = Object.freeze({});
 export const EMPTY_ARR: readonly never[] = Object.freeze([]);
 
 /**
- * Checks if a property name is an event handler (starts with 'on' followed by uppercase letter)
+ * Checks if a property name is an event handler.
  *
- * Matches patterns like: onClick, onChange, onKeyDown (but not 'onclick' or 'on123')
- * @param {string} key - The property name to check
- * @returns {boolean} - Returns true if the property is an event handler, false otherwise
+ * @param key - The property name to check.
+ * @returns {boolean} True if the property is an event handler, false otherwise.
  */
 export const isOn = (key: string): boolean =>
   key.charCodeAt(0) === 111 /* o */ &&
@@ -132,7 +123,7 @@ declare let global: {};
 let _globalThis: unknown;
 /**
  * Gets the global object for the current environment
- * @returns {unknown } - The global object for the current environment
+ * @returns {unknown} - The global object for the current environment
  */
 export const getGlobalThis = (): unknown => {
   return (

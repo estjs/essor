@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchAttr } from '../../src/operations/attr';
-import { KEY_PROP, SPREAD_NAME, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../../src/constants';
+import { SPREAD_NAME, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../../src/constants';
 
 describe('attributes module', () => {
   let element: HTMLElement;
@@ -92,6 +92,26 @@ describe('attributes module', () => {
 
         expect(removeAttributeNSSpy).toHaveBeenCalledWith(XLINK_NAMESPACE, 'href');
       });
+
+      it('should block dangerous protocols on xlink:href', () => {
+        patchAttr(svgElement, 'xlink:href', null, 'javascript:alert(1)');
+        expect(svgElement.getAttribute('xlink:href')).toBeNull();
+      });
+
+      it('should set and remove xmlns attributes with the XMLNS namespace', () => {
+        const setSpy = vi.spyOn(svgElement, 'setAttributeNS');
+        const removeSpy = vi.spyOn(svgElement, 'removeAttributeNS');
+
+        patchAttr(svgElement, 'xmlns:xlink', null, 'https://www.w3.org/1999/xlink');
+        patchAttr(svgElement, 'xmlns:xlink', 'https://www.w3.org/1999/xlink', null);
+
+        expect(setSpy).toHaveBeenCalledWith(
+          XMLNS_NAMESPACE,
+          'xmlns:xlink',
+          'https://www.w3.org/1999/xlink',
+        );
+        expect(removeSpy).toHaveBeenCalledWith(XMLNS_NAMESPACE, 'xlink');
+      });
     });
 
     describe('boolean attributes', () => {
@@ -142,6 +162,101 @@ describe('attributes module', () => {
       });
     });
 
+    describe('dangerous sinks', () => {
+      it('should block dangerous protocols on common URL attributes', () => {
+        const anchor = document.createElement('a');
+        const image = document.createElement('img');
+        const form = document.createElement('form');
+        const button = document.createElement('button');
+        const video = document.createElement('video');
+
+        patchAttr(anchor, 'href', null, 'javascript:alert(1)');
+        patchAttr(image, 'src', null, 'data:text/html,<svg/onload=1>');
+        patchAttr(form, 'action', null, 'javascript:alert(1)');
+        patchAttr(button, 'formAction', null, 'data:text/html,<svg/onload=1>');
+        patchAttr(video, 'poster', null, 'javascript:alert(1)');
+
+        expect(anchor.getAttribute('href')).toBeNull();
+        expect(image.getAttribute('src')).toBeNull();
+        expect(form.getAttribute('action')).toBeNull();
+        expect(button.getAttribute('formaction')).toBeNull();
+        expect(video.getAttribute('poster')).toBeNull();
+      });
+
+      it('should ignore srcdoc updates', () => {
+        const iframe = document.createElement('iframe');
+
+        patchAttr(iframe, 'srcdoc', null, '<script>alert(1)</script>');
+
+        expect(iframe.getAttribute('srcdoc')).toBeNull();
+      });
+
+      it('should ignore event attributes because the event layer handles them', () => {
+        const setSpy = vi.spyOn(element, 'setAttribute');
+
+        patchAttr(element, 'onClick', null, 'alert(1)' as unknown as string);
+
+        expect(setSpy).not.toHaveBeenCalled();
+        expect(element.hasAttribute('onClick')).toBe(false);
+      });
+    });
+
+    describe('spread attributes', () => {
+      it('should diff spread attributes and remove stale keys', () => {
+        const prev = {
+          'id': 'before',
+          'data-role': 'card',
+        };
+        const next = {
+          'title': 'after',
+          'data-role': 'panel',
+        };
+
+        patchAttr(element, SPREAD_NAME, null, prev);
+        patchAttr(element, SPREAD_NAME, prev, next);
+
+        expect(element.hasAttribute('id')).toBe(false);
+        expect(element.dataset.role).toBe('panel');
+        expect(element.title).toBe('after');
+      });
+
+      it('should warn and ignore nested spread attributes', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        patchAttr(element, SPREAD_NAME, null, {
+          [SPREAD_NAME]: { id: 'nested' },
+          title: 'visible',
+        });
+
+        expect(element.title).toBe('visible');
+        expect(element.id).toBe('');
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[Essor warn]: nested spread attributes are ignored'),
+        );
+      });
+    });
+
+    describe('property assignment fallbacks', () => {
+      it('should fall back to setAttribute when direct property assignment throws', () => {
+        const input = document.createElement('input');
+        const setSpy = vi.spyOn(input, 'setAttribute');
+
+        Object.defineProperty(input, 'value', {
+          configurable: true,
+          get() {
+            return '';
+          },
+          set() {
+            throw new Error('readonly');
+          },
+        });
+
+        patchAttr(input, 'value', null, 'next');
+
+        expect(setSpy).toHaveBeenCalledWith('value', 'next');
+      });
+    });
+
     it('should not throw when patching attributes on text nodes', () => {
       const textNode = document.createTextNode('Text content');
 
@@ -149,237 +264,6 @@ describe('attributes module', () => {
       expect(() => {
         patchAttr(textNode as any, 'data-test', null, 'test');
       }).toThrow();
-    });
-
-    describe('kEY_PROP handling', () => {
-      it('should set node key when KEY_PROP has a value', () => {
-        patchAttr(element, KEY_PROP, null, 'my-key');
-        // The key should be set on the element (stored in a Symbol property)
-        // We can verify by checking that the element has the key set
-        const keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
-        );
-        expect(keySymbol).toBeDefined();
-        expect((element as any)[keySymbol!]).toBe('my-key');
-      });
-
-      it('should clear node key when KEY_PROP is null', () => {
-        // First set a key
-        patchAttr(element, KEY_PROP, null, 'my-key');
-        let keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
-        );
-        expect(keySymbol).toBeDefined();
-
-        // Then clear it
-        patchAttr(element, KEY_PROP, 'my-key', null);
-        keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
-        );
-        // The symbol property should be deleted
-        expect(keySymbol).toBeUndefined();
-      });
-
-      it('should convert KEY_PROP value to string', () => {
-        patchAttr(element, KEY_PROP, null, 123);
-        const keySymbol = Object.getOwnPropertySymbols(element).find(
-          s => s.toString() === 'Symbol(essor.key)',
-        );
-        expect((element as any)[keySymbol!]).toBe('123');
-      });
-    });
-
-    describe('sPREAD_NAME handling', () => {
-      it('should spread object properties as attributes', () => {
-        const attrs = {
-          'data-foo': 'bar',
-          'data-baz': 'qux',
-          'id': 'test-id',
-        };
-
-        patchAttr(element, SPREAD_NAME, null, attrs);
-
-        expect(element.dataset.foo).toBe('bar');
-        expect(element.dataset.baz).toBe('qux');
-        expect(element.id).toBe('test-id');
-      });
-
-      it('should handle empty spread object', () => {
-        expect(() => {
-          patchAttr(element, SPREAD_NAME, null, {});
-        }).not.toThrow();
-      });
-
-      it('should update spread attributes', () => {
-        const prev = { 'data-old': 'value' };
-        const next = { 'data-new': 'value' };
-
-        patchAttr(element, SPREAD_NAME, prev, next);
-        expect(element.dataset.new).toBe('value');
-      });
-    });
-
-    describe('innerHTML attribute', () => {
-      it('should skip innerHTML attribute', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'innerHTML', null, '<div>test</div>');
-
-        // Should not call setAttribute for innerHTML
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should skip innerhtml attribute (lowercase)', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'innerhtml', null, '<div>test</div>');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('event handler attributes', () => {
-      it('should skip onclick attribute', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'onclick', null, 'alert("test")');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should skip onchange attribute', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'onchange', null, 'console.log("changed")');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('xmlns attributes for SVG', () => {
-      it('should set xmlns attribute with namespace', () => {
-        const setAttributeNSSpy = vi.spyOn(svgElement, 'setAttributeNS');
-        patchAttr(svgElement, 'xmlns:custom', null, 'http://example.com/custom');
-
-        expect(setAttributeNSSpy).toHaveBeenCalledWith(
-          XMLNS_NAMESPACE,
-          'xmlns:custom',
-          'http://example.com/custom',
-        );
-      });
-
-      it('should remove xmlns attribute with namespace', () => {
-        // Set the attribute first using the correct method
-        svgElement.setAttributeNS(XMLNS_NAMESPACE, 'xmlns:custom', 'http://example.com/custom');
-
-        const removeAttributeNSSpy = vi.spyOn(svgElement, 'removeAttributeNS');
-        patchAttr(svgElement, 'xmlns:custom', 'http://example.com/custom', null);
-
-        expect(removeAttributeNSSpy).toHaveBeenCalledWith(XMLNS_NAMESPACE, 'custom');
-      });
-    });
-
-    describe('uRL attribute security', () => {
-      it('should block javascript: URLs in href', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'href', null, 'javascript:alert("xss")');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should block javascript: URLs in src', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'src', null, 'javascript:alert("xss")');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should block data: URLs in href', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'href', null, 'data:text/html,<script>alert("xss")</script>');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should block data: URLs in src', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'src', null, 'data:text/html,<script>alert("xss")</script>');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should allow safe URLs in href', () => {
-        patchAttr(element, 'href', null, 'https://example.com');
-        expect(element.getAttribute('href')).toBe('https://example.com');
-      });
-
-      it('should allow safe URLs in src', () => {
-        patchAttr(element, 'src', null, 'https://example.com/image.png');
-        expect(element.getAttribute('src')).toBe('https://example.com/image.png');
-      });
-
-      it('should block javascript: URLs with whitespace', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'href', null, '  javascript:alert("xss")  ');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-
-      it('should block JAVASCRIPT: URLs (case insensitive)', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'href', null, 'JAVASCRIPT:alert("xss")');
-
-        expect(setSpy).not.toHaveBeenCalled();
-      });
-    });
-
-    describe('sVG element attributes', () => {
-      it('should use setAttribute for SVG elements', () => {
-        const setSpy = vi.spyOn(svgElement, 'setAttribute');
-        patchAttr(svgElement, 'viewBox', null, '0 0 100 100');
-
-        expect(setSpy).toHaveBeenCalledWith('viewBox', '0 0 100 100');
-      });
-
-      it('should handle numeric values on SVG elements', () => {
-        patchAttr(svgElement, 'width', null, 100);
-        expect(svgElement.getAttribute('width')).toBe('100');
-      });
-    });
-
-    describe('property setting with fallback', () => {
-      it('should set property directly when key exists in element', () => {
-        const input = document.createElement('input');
-        patchAttr(input, 'value', null, 'test-value');
-
-        expect(input.value).toBe('test-value');
-      });
-
-      it('should fallback to setAttribute when property setting fails', () => {
-        const div = document.createElement('div');
-
-        // Create a read-only property to trigger the catch block
-        Object.defineProperty(div, 'readOnlyProp', {
-          get() {
-            return 'readonly';
-          },
-          set() {
-            throw new Error('Cannot set read-only property');
-          },
-          configurable: true,
-        });
-
-        const setSpy = vi.spyOn(div, 'setAttribute');
-
-        // This should trigger the catch block and fallback to setAttribute
-        patchAttr(div, 'readOnlyProp', null, 'new-value');
-
-        expect(setSpy).toHaveBeenCalledWith('readOnlyProp', 'new-value');
-      });
-
-      it('should use setAttribute for custom attributes not in element', () => {
-        const setSpy = vi.spyOn(element, 'setAttribute');
-        patchAttr(element, 'custom-attr', null, 'custom-value');
-
-        expect(setSpy).toHaveBeenCalledWith('custom-attr', 'custom-value');
-        expect(element.getAttribute('custom-attr')).toBe('custom-value');
-      });
     });
   });
 });

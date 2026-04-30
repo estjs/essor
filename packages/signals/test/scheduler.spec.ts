@@ -144,7 +144,7 @@ describe('scheduler', () => {
 });
 
 describe('scheduler Test Suite', () => {
-  let mockEffect;
+  let mockEffect: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     mockEffect = vi.fn();
@@ -160,13 +160,13 @@ describe('scheduler Test Suite', () => {
 
   describe('createScheduler', () => {
     it('sync mode should execute effect immediately', () => {
-      const scheduler = createScheduler(mockEffect, 'sync');
+      const scheduler = createScheduler(() => new mockEffect(), 'sync');
       scheduler();
       expect(mockEffect).toHaveBeenCalledTimes(1);
     });
 
     it('pre mode should execute effect in the next microtask', async () => {
-      const scheduler = createScheduler(mockEffect, 'pre');
+      const scheduler = createScheduler(() => new mockEffect(), 'pre');
       scheduler();
       expect(mockEffect).not.toHaveBeenCalled();
 
@@ -175,7 +175,7 @@ describe('scheduler Test Suite', () => {
     });
 
     it('post mode should execute effect in the next microtask', async () => {
-      const scheduler = createScheduler(mockEffect, 'post');
+      const scheduler = createScheduler(() => new mockEffect(), 'post');
       scheduler();
       expect(mockEffect).not.toHaveBeenCalled();
 
@@ -208,7 +208,7 @@ describe('scheduler Test Suite', () => {
       // @ts-expect-error setting __DEV__ for testing
       globalThis.__DEV__ = true;
 
-      const errorSpy = vi.spyOn(console, 'error');
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const faultyJob = () => {
         throw new Error('test');
       };
@@ -218,6 +218,41 @@ describe('scheduler Test Suite', () => {
 
       expect(errorSpy).toHaveBeenCalledWith(
         '[Essor error]: Error executing queued job:',
+        expect.any(Error),
+      );
+    });
+
+    it('error handling - should handle errors in pre-flush callbacks', async () => {
+      // @ts-expect-error setting __DEV__ for testing
+      globalThis.__DEV__ = true;
+
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const successfulCallbacks: number[] = [];
+
+      // Add successful callback
+      queuePreFlushCb(() => {
+        successfulCallbacks.push(1);
+      });
+
+      // Add faulty callback
+      queuePreFlushCb(() => {
+        successfulCallbacks.push(2);
+        throw new Error('Pre-flush callback error');
+      });
+
+      // Add another successful callback
+      queuePreFlushCb(() => {
+        successfulCallbacks.push(3);
+      });
+
+      await nextTick();
+
+      // Verify all callbacks were attempted
+      expect(successfulCallbacks).toEqual([1, 2, 3]);
+
+      // Verify error was logged
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[Essor error]: Error executing pre-flush callback:',
         expect.any(Error),
       );
     });

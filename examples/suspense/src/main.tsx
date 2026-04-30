@@ -1,33 +1,103 @@
 import { Suspense, createApp, createResource } from 'essor';
 
-function fetchUser(id: number) {
-  return new Promise<{ id: number; name: string }>(resolve => {
-    setTimeout(() => {
-      resolve({ id, name: `User ${id}` });
-    }, 2000);
+type Workspace = 'alpha' | 'beta' | 'gamma';
+
+const profiles: Record<Workspace, { title: string; owner: string }> = {
+  alpha: { title: 'Alpha workspace', owner: 'Platform team' },
+  beta: { title: 'Beta workspace', owner: 'Experience team' },
+  gamma: { title: 'Gamma workspace', owner: 'Delivery team' },
+};
+
+const timelines: Record<Workspace, string[]> = {
+  alpha: ['Alpha kickoff', 'Alpha rehearsal'],
+  beta: ['Beta review', 'Beta checklist'],
+  gamma: ['Gamma publish', 'Gamma handoff'],
+};
+
+function waitFor<T>(value: T, delay: number) {
+  return new Promise<T>((resolve) => {
+    setTimeout(() => resolve(value), delay);
   });
 }
 
-function UserProfile({ id }: { id: number }) {
-  const [user] = createResource(() => fetchUser(id));
+function ProfileCard({ view }: { view: Workspace }) {
+  const [profile] = createResource(() => waitFor(profiles[view], 120));
 
   return (
-    <div class="user-profile">
-      <h3>User Profile</h3>
-      <p>ID: {user()?.id}</p>
-      <p>Name: {user()?.name}</p>
+    <div class="box stack" data-test="profile-card">
+      <h2>{profile()?.title}</h2>
+      <p>Owner: {profile()?.owner}</p>
+    </div>
+  );
+}
+
+function TimelineCard({ view }: { view: Workspace }) {
+  const [items] = createResource(() => waitFor(timelines[view], 180));
+
+  return (
+    <div class="box stack">
+      <h2>Activity</h2>
+      <ul data-test="timeline-list">
+        {(items() ?? []).map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function WorkspacePanels({ view }: { view: Workspace }) {
+  return (
+    <div class="stack">
+      <Suspense
+        fallback={
+          (
+            <div class="box" data-test="loading-profile">
+              Loading profile…
+            </div>
+          ) as unknown as Node
+        }>
+        {(<ProfileCard view={view} />) as unknown as Node}
+      </Suspense>
+
+      <Suspense
+        fallback={
+          (
+            <div class="box" data-test="loading-timeline">
+              Loading timeline…
+            </div>
+          ) as unknown as Node
+        }>
+        {(<TimelineCard view={view} />) as unknown as Node}
+      </Suspense>
     </div>
   );
 }
 
 function App() {
+  let $workspace: Workspace = 'alpha';
+
   return (
-    <div class="app">
+    <main data-test="example-root" class="page">
       <h1>Suspense Example</h1>
-      <Suspense fallback={<div class="loading">Loading user data...</div>}>
-        <UserProfile id={1} />
-      </Suspense>
-    </div>
+      <p class="note">Each workspace waits for async profile and activity data.</p>
+
+      <section class="stack">
+        <div class="row">
+          <button onClick={() => ($workspace = 'alpha')}>Load Alpha</button>
+          <button onClick={() => ($workspace = 'beta')}>Load Beta</button>
+          <button onClick={() => ($workspace = 'gamma')}>Load Gamma</button>
+        </div>
+
+        {$workspace === 'alpha' ? (
+          <WorkspacePanels view="alpha" />
+        ) : $workspace === 'beta' ? (
+          <WorkspacePanels view="beta" />
+        ) : (
+          <WorkspacePanels view="gamma" />
+        )}
+      </section>
+    </main>
   );
 }
 

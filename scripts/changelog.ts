@@ -16,7 +16,7 @@ function getLastChangeLogCommit() {
     encoding: 'utf-8',
   }).split('\n');
 
-  return changeLogCommits.find(cmt => VERSION_REG.test(cmt))?.slice(0, 8) ?? '';
+  return changeLogCommits.find((cmt) => VERSION_REG.test(cmt))?.slice(0, 8) ?? '';
 }
 
 function getGitCommitMap(lastCommit: string) {
@@ -39,7 +39,7 @@ function updateChangeLog() {
   const data = initialChangelogStr.split(/---[\s\S]+---/);
   data.unshift(pageDataStr);
 
-  new Promise(resolve => {
+  new Promise((resolve) => {
     standardChangelog({}, null, { from: lastCommit, to: 'HEAD' })
       .on('data', (chunk: any) => {
         let changeLogStr = chunk.toString().trim();

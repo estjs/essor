@@ -7,10 +7,15 @@ import { cacheStringFunction } from './base';
 const hyphenateRE = /\B([A-Z])/g;
 
 /**
- * Converts a camelCase string to kebab-case
- * Example: myFunction -> my-function
- * @param {string} str - The camelCase string to convert
- * @returns {string} - The kebab-case string
+ * Converts a camelCase string to kebab-case.
+ *
+ * @param str - The camelCase string to convert.
+ * @returns {string} The kebab-case string.
+ *
+ * @example
+ * ```typescript
+ * kebabCase('myFunction') // 'my-function'
+ * ```
  */
 export const kebabCase: (str: string) => string = cacheStringFunction((str: string) =>
   str.replaceAll(hyphenateRE, '-$1').toLowerCase(),
@@ -23,10 +28,16 @@ export const kebabCase: (str: string) => string = cacheStringFunction((str: stri
 const camelizeRE = /[_-](\w)/g;
 
 /**
- * Converts a kebab-case or snake_case string to camelCase
- * Example: my-function or my_function -> myFunction
- * @param {string} str - The kebab-case or snake_case string to convert
- * @returns {string} - The camelCase string
+ * Converts a kebab-case or snake_case string to camelCase.
+ *
+ * @param str - The kebab-case or snake_case string to convert.
+ * @returns {string} The camelCase string.
+ *
+ * @example
+ * ```typescript
+ * camelCase('my-function') // 'myFunction'
+ * camelCase('my_function') // 'myFunction'
+ * ```
  */
 export const camelCase: (str: string) => string = cacheStringFunction((str: string): string => {
   // Remove leading and trailing hyphens or underscores
@@ -38,11 +49,16 @@ export const camelCase: (str: string) => string = cacheStringFunction((str: stri
 });
 
 /**
- * Capitalizes the first letter of a string
- * Example: hello -> Hello
- * @template T - The input string type
- * @param {T} str - The string to capitalize
- * @returns {Capitalize<T>} - The capitalized string
+ * Capitalizes the first letter of a string.
+ *
+ * @template T - The input string type.
+ * @param str - The string to capitalize.
+ * @returns {Capitalize<T>} The capitalized string.
+ *
+ * @example
+ * ```typescript
+ * capitalize('hello') // 'Hello'
+ * ```
  */
 export const capitalize: <T extends string>(str: T) => Capitalize<T> = cacheStringFunction(
   <T extends string>(str: T) => {

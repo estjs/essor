@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { batch, effect, isEffect, memoEffect, signal, stop } from '../src';
+import { batch, computed, effect, isEffect, memoEffect, reactive, signal, stop } from '../src';
+import { getTargetDepSize } from '../src/link';
 
 describe('effect', () => {
   describe('basic functionality', () => {
@@ -324,25 +325,175 @@ describe('effect', () => {
       expect(runner.effect.depLink).toBeUndefined();
       expect(runner.effect.depLinkTail).toBeUndefined();
     });
+
+    it('should eagerly remove reactive target subscriptions when effect is stopped', () => {
+      const state = reactive({ count: 0 });
+      const runner = effect(() => {
+        state.count;
+      });
+
+      expect(getTargetDepSize(state, 'count')).toBe(1);
+
+      runner.stop();
+
+      expect(getTargetDepSize(state, 'count')).toBe(0);
+    });
+
+    it('should clean computed reactive deps after the last watcher stops', () => {
+      const state = reactive({ count: 1 });
+      const doubled = computed(() => state.count * 2);
+      const runner = effect(() => {
+        doubled.value;
+      });
+
+      expect(getTargetDepSize(state, 'count')).toBe(1);
+
+      runner.stop();
+
+      expect(getTargetDepSize(state, 'count')).toBe(0);
+    });
+
+    it('should remove dep entry only after the last of multiple effects stops', () => {
+      const state = reactive({ x: 0 });
+      const r1 = effect(() => {
+        state.x;
+      });
+      const r2 = effect(() => {
+        state.x;
+      });
+      const r3 = effect(() => {
+        state.x;
+      });
+
+      expect(getTargetDepSize(state, 'x')).toBe(3);
+
+      r1.stop();
+      expect(getTargetDepSize(state, 'x')).toBe(2);
+
+      r2.stop();
+      expect(getTargetDepSize(state, 'x')).toBe(1);
+
+      r3.stop();
+      expect(getTargetDepSize(state, 'x')).toBe(0);
+    });
+
+    it('dep entry is re-created when property is accessed again after full cleanup', () => {
+      const state = reactive({ n: 1 });
+      const runner = effect(() => {
+        state.n;
+      });
+
+      expect(getTargetDepSize(state, 'n')).toBe(1);
+      runner.stop();
+      expect(getTargetDepSize(state, 'n')).toBe(0);
+
+      // Re-subscribe: a fresh Dep should be created
+      const runner2 = effect(() => {
+        state.n;
+      });
+      expect(getTargetDepSize(state, 'n')).toBe(1);
+      runner2.stop();
+      expect(getTargetDepSize(state, 'n')).toBe(0);
+    });
+
+    it('dep is cleaned up when effect re-runs and drops a reactive dependency', () => {
+      const flag = signal(true);
+      const state = reactive({ a: 1, b: 2 });
+
+      const runner = effect(() => {
+        if (flag.value) {
+          state.a;
+        } else {
+          state.b;
+        }
+      });
+
+      expect(getTargetDepSize(state, 'a')).toBe(1);
+      expect(getTargetDepSize(state, 'b')).toBe(0);
+
+      // Switch branch: effect should drop dep on 'a' and pick up 'b'
+      flag.value = false;
+
+      expect(getTargetDepSize(state, 'a')).toBe(0);
+      expect(getTargetDepSize(state, 'b')).toBe(1);
+
+      runner.stop();
+      expect(getTargetDepSize(state, 'b')).toBe(0);
+    });
+
+    it('multiple reactive properties are each cleaned up independently', () => {
+      const state = reactive({ p: 0, q: 0 });
+      const runner = effect(() => {
+        state.p;
+        state.q;
+      });
+
+      expect(getTargetDepSize(state, 'p')).toBe(1);
+      expect(getTargetDepSize(state, 'q')).toBe(1);
+
+      runner.stop();
+
+      expect(getTargetDepSize(state, 'p')).toBe(0);
+      expect(getTargetDepSize(state, 'q')).toBe(0);
+    });
+
+    it('stopped effect no longer receives reactive updates', () => {
+      const state = reactive({ val: 0 });
+      const fn = vi.fn();
+      const runner = effect(() => {
+        fn(state.val);
+      });
+
+      expect(fn).toHaveBeenCalledTimes(1);
+      runner.stop();
+
+      state.val = 99;
+      expect(fn).toHaveBeenCalledTimes(1);
+      expect(getTargetDepSize(state, 'val')).toBe(0);
+    });
+
+    it('watch on reactive object cleans up dep after stop', () => {
+      const state = reactive({ count: 0 });
+      const fn = vi.fn();
+      // watch internally creates an effect; stopping it should release the dep
+      const runner = effect(() => {
+        fn(state.count);
+      });
+
+      state.count = 1;
+      expect(fn).toHaveBeenCalledTimes(2);
+
+      runner.stop();
+      expect(getTargetDepSize(state, 'count')).toBe(0);
+
+      state.count = 2;
+      expect(fn).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('boundary cases - error handling', () => {
     it('should handle errors during effect execution', () => {
-      const count = signal(0);
-      const fn = vi.fn(() => {
-        if (count.value > 0) {
-          throw new Error('Effect error');
-        }
-      });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      effect(fn);
-      expect(fn).toHaveBeenCalledTimes(1);
+      try {
+        const count = signal(0);
+        const fn = vi.fn(() => {
+          if (count.value > 0) {
+            throw new Error('Effect error');
+          }
+        });
 
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Effect error');
+        effect(fn);
+        expect(fn).toHaveBeenCalledTimes(1);
 
-      expect(fn).toHaveBeenCalledTimes(2);
+        expect(() => {
+          count.value = 1;
+        }).toThrow('Effect error');
+
+        expect(fn).toHaveBeenCalledTimes(2);
+      } finally {
+        consoleSpy.mockRestore();
+      }
     });
 
     it('should stop effect if initial execution throws', () => {
@@ -416,7 +567,7 @@ describe('effect', () => {
 
     it('should handle errors with custom scheduler', () => {
       const count = signal(0);
-      const scheduler = vi.fn(eff => {
+      const scheduler = vi.fn((eff) => {
         eff.run();
       });
 
@@ -550,7 +701,7 @@ describe('effect', () => {
     it('should handle scheduler option as function', () => {
       const count = signal(0);
       const fn = vi.fn();
-      const schedulerFn = vi.fn(eff => {
+      const schedulerFn = vi.fn((eff) => {
         setTimeout(() => eff.run(), 0);
       });
 
@@ -595,7 +746,7 @@ describe('effect', () => {
       const count = signal(0);
       const syncFn = vi.fn();
       const customFn = vi.fn();
-      const customScheduler = vi.fn(eff => eff.run());
+      const customScheduler = vi.fn((eff) => eff.run());
 
       const syncRunner = effect(
         () => {
@@ -798,7 +949,7 @@ describe('effect', () => {
       runner.stop();
     });
   });
-  describe(' Effect delayed execution in batch', () => {
+  describe('effect delayed execution in batch', () => {
     it('should delay effect execution during batch and execute once after batch ends', () => {
       // Test with multiple different scenarios
       const testCases = [
@@ -1040,7 +1191,7 @@ describe('effect', () => {
     it('should handle effects with no dependency changes in batch', () => {
       const testValues = [0, 10, -5, 100, 42];
 
-      testValues.forEach(initialValue => {
+      testValues.forEach((initialValue) => {
         const testSignal = signal(initialValue);
         const effectFn = vi.fn();
         let executionCount = 0;
@@ -1152,6 +1303,10 @@ describe('memoEffect', () => {
       width.value = 150;
       height.value = 250;
       visible.value = false;
+
+      expect(width.value).toBe(150);
+      expect(height.value).toBe(250);
+      expect(visible.value).toBe(false);
     });
   });
 
@@ -1272,6 +1427,94 @@ describe('memoEffect', () => {
       expect(patchAttributeSpy).toHaveBeenCalledWith('data-width', '200');
       expect(patchAttributeSpy).toHaveBeenCalledWith('title', 'Width: 200');
       expect(patchStyleSpy).toHaveBeenCalledWith('width', '200px');
+    });
+  });
+
+  describe('array identity regressions', () => {
+    it.fails(
+      'should expose prev===nextItems guard pitfalls when memoEffect reuses the same array proxy',
+      () => {
+        const todos = signal<{ id: number; completed: boolean }[]>([]);
+        const allTodos = computed(() => todos.value);
+
+        let runs = 0;
+        let reconciled = 0;
+
+        memoEffect(
+          ({ prev }) => {
+            const nextItems = allTodos.value;
+            void nextItems.length;
+            runs++;
+            if (prev !== nextItems) {
+              reconciled++;
+            }
+            return { prev: nextItems };
+          },
+          { prev: null } as any,
+        );
+
+        expect(runs).toBe(1);
+        expect(reconciled).toBe(1);
+
+        todos.value.push({ id: 1, completed: false });
+
+        expect(runs).toBe(2);
+        expect(reconciled).toBe(2);
+        expect(allTodos.value).toHaveLength(1);
+      },
+    );
+
+    it('should keep reconciling when using a plain effect with the same array proxy', () => {
+      const todos = signal<{ id: number; completed: boolean }[]>([]);
+      const allTodos = computed(() => todos.value);
+
+      let runs = 0;
+      let reconciled = 0;
+
+      effect(() => {
+        const nextItems = allTodos.value;
+        void nextItems.length;
+        runs++;
+        reconciled++;
+      });
+
+      expect(runs).toBe(1);
+      expect(reconciled).toBe(1);
+
+      todos.value.push({ id: 1, completed: false });
+
+      expect(runs).toBe(2);
+      expect(reconciled).toBe(2);
+      expect(allTodos.value).toHaveLength(1);
+    });
+
+    it('should reconcile memoEffect when computed returns a fresh filtered array', () => {
+      const todos = signal<{ id: number; completed: boolean }[]>([]);
+      const activeTodos = computed(() => todos.value.filter((todo) => !todo.completed));
+
+      let runs = 0;
+      let reconciled = 0;
+
+      memoEffect(
+        ({ prev }) => {
+          const nextItems = activeTodos.value;
+          runs++;
+          if (prev !== nextItems) {
+            reconciled++;
+          }
+          return { prev: nextItems };
+        },
+        { prev: null } as any,
+      );
+
+      expect(runs).toBe(1);
+      expect(reconciled).toBe(1);
+
+      todos.value.push({ id: 1, completed: false });
+
+      expect(runs).toBe(2);
+      expect(reconciled).toBe(2);
+      expect(activeTodos.value).toHaveLength(1);
     });
   });
 

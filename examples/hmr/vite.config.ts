@@ -1,6 +1,3 @@
-import { defineConfig } from 'vite';
-import essor from 'unplugin-essor/vite';
-import Inspect from 'vite-plugin-inspect';
-export default defineConfig({
-  plugins: [Inspect(), essor({ hmr: true })],
-});
+import { createEssorExampleConfig } from '../vite.shared';
+
+export default createEssorExampleConfig({ hmr: true });

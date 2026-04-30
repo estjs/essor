@@ -50,7 +50,7 @@ describe('ref', () => {
       fn(r.value);
     });
 
-    r.update(val => val + 1);
+    r.update((val) => val + 1);
     expect(r.value).toBe(2);
     expect(fn).toHaveBeenCalledWith(2);
   });

@@ -12,8 +12,9 @@ export interface InjectionKey<T> extends Symbol {}
  * Provide a value in the current scope.
  * The value can be injected by this scope or any descendant scope.
  *
- * @param key - The injection key
- * @param value - The value to provide
+ * @param key - The injection key.
+ * @param value - The value to provide.
+ * @returns {void}
  */
 export function provide<T>(key: InjectionKey<T> | string | number, value: T): void {
   const scope = getActiveScope();
@@ -37,9 +38,9 @@ export function provide<T>(key: InjectionKey<T> | string | number, value: T): vo
  * Inject a value from the scope hierarchy.
  * Traverses up the parent chain until finding a matching key.
  *
- * @param key - The injection key
- * @param defaultValue - Default value if key is not found
- * @returns The injected value or default value
+ * @param key - The injection key.
+ * @param defaultValue - Default value if key is not found.
+ * @returns The injected value or default value.
  */
 export function inject<T>(key: InjectionKey<T> | string | number, defaultValue?: T): T {
   const scope = getActiveScope();
@@ -55,9 +56,8 @@ export function inject<T>(key: InjectionKey<T> | string | number, defaultValue?:
   let current: Scope | null = scope;
   while (current) {
     if (current.provides) {
-      const value = current.provides.get(key);
-      if (value) {
-        return value as T;
+      if (current.provides.has(key)) {
+        return current.provides.get(key) as T;
       }
     }
     current = current.parent;

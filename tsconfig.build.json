@@ -1,9 +1,36 @@
 {
-  "extends": "./tsconfig.json",
   "compilerOptions": {
+    "target": "es2016",
+    "jsx": "preserve",
+    "jsxImportSource": "essor",
+    "lib": ["ES2022", "DOM"],
+    "experimentalDecorators": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "strict": true,
+    "strictPropertyInitialization": false,
+    "noImplicitAny": false,
+    "noUnusedLocals": true,
     "declaration": true,
     "declarationMap": true,
-    "stripInternal": true
+    "newLine": "LF",
+    "sourceMap": false,
+    "stripInternal": true,
+    "esModuleInterop": true,
+    "skipDefaultLibCheck": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
-  "exclude": ["**/node_modules/**", "dist", "./dist/**/*", "docs", "examples"]
+  "include": ["src/**/*", "globals.d.ts"],
+  "exclude": [
+    "**/node_modules/**",
+    "dist",
+    "./dist/**/*",
+    "docs",
+    "examples",
+    "**/test/**",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ]
 }

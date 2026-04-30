@@ -1,5 +1,5 @@
 import { isFunction, warn } from '@estjs/shared';
-import { batch, computed, reactive } from './';
+import { batch, computed, reactive } from '.';
 
 /**
  * Represents a store's state object.
@@ -84,6 +84,13 @@ export interface StoreActions<S extends State> {
   onAction$: (callback: StoreCallback<S>) => void;
 
   /**
+   * Removes a previously registered action callback.
+   *
+   * @param callback - The callback to remove.
+   */
+  offAction$: (callback: StoreCallback<S>) => void;
+
+  /**
    * Resets the store state to its initial values.
    */
   reset$: () => void;
@@ -101,12 +108,11 @@ type GetterValues<G extends Getters<any>> = {
 /**
  * Creates a store from options (state, getters, and actions).
  *
- * @template S - The type of the store's state
- * @template G - The type of the store's getters
- * @template A - The type of the store's actions
- * @param options - Store configuration options
- * @returns The store instance
- * @internal
+ * @template S - The type of the store's state.
+ * @template G - The type of the store's getters.
+ * @template A - The type of the store's actions.
+ * @param options - Store configuration options.
+ * @returns The store instance.
  */
 function createOptionsStore<S extends State, G extends Getters<S>, A extends Actions>(
   options: StoreOptions<S, G, A>,
@@ -128,11 +134,14 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
    * This reduces code duplication in patch$ and reset$ methods.
    */
   const notifySubscribers = (state: S): void => {
-    subscriptions.forEach(callback => callback(state));
-    actionCallbacks.forEach(callback => callback(state));
+    subscriptions.forEach((callback) => callback(state));
+    actionCallbacks.forEach((callback) => callback(state));
   };
 
   const defaultActions: StoreActions<S> = {
+    /**
+     * Applies a partial patch to the reactive store state.
+     */
     patch$(payload: PatchPayload<S>) {
       if (__DEV__ && !payload) {
         warn('Patch payload is required');
@@ -148,6 +157,9 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
       notifySubscribers(reactiveState);
     },
 
+    /**
+     * Registers a store subscriber callback.
+     */
     subscribe$(callback: StoreCallback<S>) {
       if (__DEV__ && !callback) {
         warn('Subscribe callback is required');
@@ -156,10 +168,16 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
       subscriptions.add(callback);
     },
 
+    /**
+     * Removes a previously registered store subscriber.
+     */
     unsubscribe$(callback: StoreCallback<S>) {
       subscriptions.delete(callback);
     },
 
+    /**
+     * Registers a callback for store action notifications.
+     */
     onAction$(callback: StoreCallback<S>) {
       if (__DEV__ && !callback) {
         warn('Action callback is required');
@@ -168,6 +186,16 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
       actionCallbacks.add(callback);
     },
 
+    /**
+     * Removes a previously registered action callback.
+     */
+    offAction$(callback: StoreCallback<S>) {
+      actionCallbacks.delete(callback);
+    },
+
+    /**
+     * Resets the reactive state back to its initial snapshot.
+     */
     reset$() {
       // Use batch for better performance
       batch(() => {
@@ -179,20 +207,37 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     },
   };
 
-  const store = {
-    ...reactiveState,
-    state: reactiveState,
-    ...defaultActions,
-  } as S & GetterValues<G> & A & StoreActions<S> & { state: S };
+  const store = {} as S & GetterValues<G> & A & StoreActions<S> & { state: S };
+
+  for (const key of Object.keys(initState) as Array<keyof S & string>) {
+    Object.defineProperty(store, key, {
+      get: () => reactiveState[key],
+      set: (value) => {
+        reactiveState[key] = value;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+  }
+
+  Object.defineProperty(store, 'state', {
+    value: reactiveState,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+
+  Object.assign(store, defaultActions);
 
   // Add getters as computed properties
   if (getters) {
     for (const key in getters) {
       const getter = getters[key];
       if (!getter) continue;
+      const getterValue = computed(() => getter.call(store, reactiveState));
 
       Object.defineProperty(store, key, {
-        get: () => computed(() => getter.call(store, reactiveState)).value,
+        get: () => getterValue.value,
         enumerable: true,
         configurable: true,
       });
@@ -204,11 +249,11 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     for (const key in actions) {
       const action = actions[key];
       if (action) {
-        Reflect.set(store, key, (...args: unknown[]) => {
-          const result = action.apply(reactiveState, args);
-          actionCallbacks.forEach(callback => callback(reactiveState));
+        (store as Record<string, any>)[key] = (...args: any[]) => {
+          const result = action.apply(store, args);
+          actionCallbacks.forEach((callback) => callback(reactiveState));
           return result;
-        });
+        };
       }
     }
   }
@@ -218,10 +263,9 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
 /**
  * Creates store options from a class definition.
  *
- * @template S - The type of the store's state
- * @param StoreClass - The store class
- * @returns Store options derived from the class
- * @internal
+ * @template S - The type of the store's state.
+ * @param StoreClass - The store class to use.
+ * @returns Store options derived from the class.
  */
 function createClassStore<S extends State>(
   StoreClass: new () => S,
@@ -236,19 +280,19 @@ function createClassStore<S extends State>(
   const actions: Record<string, (...args: any[]) => any> = {};
 
   // Extract instance properties as state
-  Object.getOwnPropertyNames(instance).forEach(key => {
+  Object.getOwnPropertyNames(instance).forEach((key) => {
     state[key] = instance[key];
   });
 
   // Extract prototype methods and getters
-  Object.getOwnPropertyNames(StoreClass.prototype).forEach(key => {
+  Object.getOwnPropertyNames(StoreClass.prototype).forEach((key) => {
     const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
     if (descriptor) {
-      if (typeof descriptor.get === 'function') {
+      if (isFunction(descriptor.get)) {
         getters[key] = function (this: S) {
           return descriptor.get!.call(this);
         };
-      } else if (typeof descriptor.value === 'function' && key !== 'constructor') {
+      } else if (isFunction(descriptor.value) && key !== 'constructor') {
         actions[key] = function (this: S, ...args: any[]) {
           return descriptor.value.apply(this, args);
         };
@@ -278,11 +322,11 @@ type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
  * Creates a new store with the given definition.
  * The store can be defined either as a class or as an options object.
  *
- * @template S - The type of the store's state
- * @template G - The type of the store's getters
- * @template A - The type of the store's actions
- * @param storeDefinition - The store definition (class or options)
- * @returns A function that creates a new store instance
+ * @template S - The type of the store's state.
+ * @template G - The type of the store's getters.
+ * @template A - The type of the store's actions.
+ * @param storeDefinition - The store definition (class or options).
+ * @returns A function that creates a new store instance.
  *
  * @example
  * ```ts
@@ -332,18 +376,6 @@ export function createStore<S extends State, G extends Getters<S>, A extends Act
       options = storeDefinition;
     }
 
-    const store = createOptionsStore(options) as S &
-      GetterValues<G> &
-      A &
-      StoreActions<S> & { state: S };
-
-    // For class-based stores, bind methods to the store
-    if (isFunction(storeDefinition) && options.actions) {
-      Object.keys(options.actions).forEach(key => {
-        Reflect.set(store, key, options.actions![key].bind(store));
-      });
-    }
-
-    return store;
+    return createOptionsStore(options) as S & GetterValues<G> & A & StoreActions<S> & { state: S };
   };
 }

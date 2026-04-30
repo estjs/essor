@@ -20,7 +20,7 @@ export default function rawPlugin(): Plugin {
     name: 'raw',
     setup(build) {
       // Resolve paths ending with ?raw
-      build.onResolve({ filter: /\?raw$/ }, args => {
+      build.onResolve({ filter: /\?raw$/ }, (args) => {
         const resolvedPath = join(args.resolveDir, args.path);
         return {
           path: resolvedPath,
@@ -29,7 +29,7 @@ export default function rawPlugin(): Plugin {
       });
 
       // Load raw files as text
-      build.onLoad({ filter: /\?raw$/, namespace: 'raw-loader' }, async args => {
+      build.onLoad({ filter: /\?raw$/, namespace: 'raw-loader' }, async (args) => {
         const contents = await readFile(args.path.replace(/\?raw$/, ''));
         return {
           contents,

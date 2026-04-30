@@ -1,1330 +1,650 @@
-import {
-  coerceArray,
-  isArray,
-  isDelegatedEvent,
-  isNil,
-  isObject,
-  isString,
-  startsWith,
-  warn,
-} from '@estjs/shared';
 import { types as t } from '@babel/core';
-import { addImport, importMap } from '../import';
+import { escapeHTML } from '@estjs/shared';
+import { type CompileContext, genUid, registerTemplate, useImport } from '../context';
+import { serializeStaticAttrs } from './utils';
 import {
-  BUILT_IN_COMPONENTS,
-  CLASS_NAME,
-  CREATE_COMPONENT_NAME,
-  EVENT_ATTR_NAME,
-  NODE_TYPE,
-  REF_KEY,
-  SPREAD_NAME,
-  STYLE_NAME,
-  UPDATE_PREFIX,
-} from './constants';
+  type IRBind,
+  type IRComponent,
+  type IRDynamicAttr,
+  type IRElement,
+  type IREvent,
+  type IRExpression,
+  type IRFor,
+  type IRNode,
+  type IRSpread,
+  IRType,
+} from './ir';
 import {
-  type DynamicContent,
-  createPropsObjectExpression,
-  findBeforeIndex,
-  findIndexPosition,
-  getSetFunctionForAttribute,
-  isDynamicExpression,
-  serializeAttributes,
-} from './shared';
-import { getContext, setContext } from './context';
-import { type TreeNode, isTreeNode } from './tree';
-import type { NodePath } from '@babel/core';
-import type { JSXElement, PluginState } from '../types';
+  createBindingSetter,
+  createEffectKey,
+  createPatchCall,
+  createRefExpression,
+  createSpreadEffectKey,
+} from './emitters';
+import { buildComponentInvocation, buildForCall, renderChildExpressions } from './shared';
+import type { RenderMode } from '../options';
 
-interface ReactiveOperation {
-  nodeIndex: number;
-  attrName: string;
-  attrValue: t.Expression;
-  setFunction: {
-    name: string;
-    value: t.Identifier;
-  };
-  propKey: string;
-}
+// ─── Internal Constants ───────────────────
 
-export function transformJSXToClient(path: NodePath<JSXElement>, node: TreeNode) {
-  const state = path.state;
+const MEMO_STATE_ID = '_p$';
+const MEMO_NEXT_VALUE_ID = '_v$0';
 
-  // Handle component or fragment
-  if (node.type === NODE_TYPE.COMPONENT) {
-    const props = { ...node.props, children: node.children };
-    return createComponentExpression(node, props);
-  }
-  // Generate static template
-  const staticTemplate = generateStaticTemplate(node);
+// ─── Template Building + Flat Node Map ────
+// Walk the IR tree once, producing (a) the HTML template string and (b) the
+// flat per-DOM-node list used by the navigation planner. Dynamic children
+// become `<!>` comment anchors in the template.
 
-  // Collect dynamic props and children (static ones are already in template)
-  const dynamicCollection = generateDynamic(node);
-
-  // Generate index mapping for DOM node references
-  const indexMap = generateIndexMap(dynamicCollection);
-
-  // Create identifiers for root element and node mapping
-  const elementId = path.scope.generateUidIdentifier('_$el');
-  const nodesId = path.scope.generateUidIdentifier('_$nodes');
-
-  // Initialize statements array for function body
-  const statements: t.Statement[] = [];
-
-  if (staticTemplate) {
-    addImport(importMap.template);
-    const tmplId = path.scope.generateUidIdentifier('_$tmpl');
-
-    state.declarations.push(
-      t.variableDeclarator(
-        tmplId,
-        t.callExpression(state.imports.template, coerceArray(staticTemplate).map(t.stringLiteral)),
-      ),
-    );
-    statements.push(
-      t.variableDeclaration('const', [
-        t.variableDeclarator(elementId, t.callExpression(tmplId, [])),
-      ]),
-    );
-  }
-  if (
-    dynamicCollection.children.length ||
-    dynamicCollection.props.length ||
-    dynamicCollection.operations.length
-  ) {
-    // Import mapNodes
-    addImport(importMap.mapNodes);
-
-    statements.push(
-      t.variableDeclaration('const', [
-        t.variableDeclarator(
-          nodesId,
-          t.callExpression(state.imports.mapNodes, [
-            elementId,
-            t.arrayExpression(indexMap.map(idx => t.numericLiteral(idx))),
-          ]),
-        ),
-      ]),
-    );
-    // Process dynamic child nodes if they exist
-    if (dynamicCollection.children.length) {
-      generateDynamicChildrenCode(dynamicCollection.children, statements, state, nodesId, indexMap);
-    }
-
-    // Process dynamic properties if they exist
-    if (dynamicCollection.props.length) {
-      generateDynamicPropsCode(dynamicCollection.props, statements, state, nodesId, indexMap);
-    }
-
-    // Process reactive operations if they exist
-    if (dynamicCollection.operations.length) {
-      generateUnifiedMemoizedEffect(
-        dynamicCollection.operations,
-        statements,
-        state,
-        nodesId,
-        indexMap,
-      );
-    }
-  }
-
-  // Add return statement
-  statements.push(t.returnStatement(elementId));
-
-  // Create and return IIFE expression
-  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(statements)), []);
+interface FlatNode {
+  id: number;
+  kind: 'element' | 'text' | 'anchor';
+  irElement?: IRElement; // only for kind='element'
+  dynamicChild?: IRExpression | IRComponent | IRFor; // only for kind='anchor'
+  parentId: number; // -1 for root
+  childIndex: number; // position in parent's DOM children (0-based)
+  needsRef: boolean;
 }
 
 /**
- * Generate property key name (for state objects)
- *
- * Creates unique property keys for DOM attributes in the state object,
- * ensuring proper batching and tracking of dynamic attribute updates.
- *
- * @param attrName - The attribute name to generate a key for
- * @returns A unique property key string
+ * Single-pass walker that produces both the HTML template string and the
+ * flat node list. `mode` controls HTML escaping on text nodes (hydrate keeps
+ * raw text because the server already emitted it).
  */
-function generatePropKey(attrName: string = 'attr'): string {
-  const { operationIndex } = getContext();
-  const keyMap: Record<string, string> = {
-    [CLASS_NAME]: 'c',
-    [STYLE_NAME]: 's',
-    name: 'n',
-    attr: 'a',
-  };
+function buildTemplateAndFlatten(
+  root: IRElement,
+  mode: RenderMode,
+): { template: string; nodes: FlatNode[] } {
+  const nodes: FlatNode[] = [];
+  let template = '';
+  let nextId = 0;
 
-  const baseKey = keyMap[attrName] || attrName.charAt(0);
-  setContext({ ...getContext(), operationIndex: operationIndex + 1 });
-  setContext({ ...getContext(), operationIndex: operationIndex + 1 });
-  return `${baseKey}${operationIndex}`;
-}
+  function visit(element: IRElement, parentId: number, childIndex: number): void {
+    const myId = nextId++;
+    const attrs = serializeStaticAttrs(element.staticAttrs);
 
-/**
- * Transform JSX element to client rendering code
- * @param path - The path of the JSX element being transformed
- * @param treeNode - The tree node representation of the JSX element
- * @returns The transformed client rendering code
- */
-function transformJSXClientChildren(path: NodePath<JSXElement>, treeNode: TreeNode) {
-  return transformJSXToClient(path, treeNode);
-}
-
-/**
- * Creates a component expression for client rendering
- * @param node - The tree node representation of the component or fragment
- * @param componentProps - The props object for the component or fragment
- * @returns The transformed component expression
- */
-function createComponentExpression(node: TreeNode, componentProps: Record<string, unknown>) {
-  const { state } = getContext();
-
-  addImport(importMap.createComponent);
-
-  // Built-in components
-  const isBuiltIn = BUILT_IN_COMPONENTS.includes(node.tag!);
-  if (isBuiltIn) {
-    addImport(importMap[node.tag!]);
-  }
-
-  const argTag = isBuiltIn ? state.imports[node.tag!] : t.identifier(node.tag!);
-  // Create props object expression
-  const propsObj = createPropsObjectExpression(componentProps, transformJSXClientChildren);
-
-  const args: t.Expression[] = [argTag, propsObj];
-
-  return t.callExpression(state.imports[CREATE_COMPONENT_NAME], args);
-}
-/**
- * Generates an optimized index map for DOM node references.
- */
-function generateIndexMap({
-  props,
-  children,
-  operations = [],
-}: {
-  props: Array<{ props: Record<string, unknown>; parentIndex: number | null }>;
-  children: Array<{ parentIndex: number | null; before: number | null }>;
-  operations?: Array<{ nodeIndex: number }>;
-}) {
-  const indexSet = new Set<number>();
-
-  // Collect indices in a single pass per array
-  for (const item of children) {
-    if (!isNil(item.parentIndex)) indexSet.add(item.parentIndex);
-    if (!isNil(item.before)) indexSet.add(item.before);
-  }
-
-  for (const item of props) {
-    if (!isNil(item.parentIndex)) indexSet.add(item.parentIndex);
-  }
-
-  for (const item of operations) {
-    if (!isNil(item.nodeIndex)) indexSet.add(item.nodeIndex);
-  }
-
-  // Convert to sorted array for predictable ordering
-  return Array.from(indexSet).sort((a, b) => a - b);
-}
-
-// typeof value === "function" ? value(_el$) : value.value = _el$;
-export function createRefStatement(
-  nodesId: t.Identifier,
-  nodeIndex: number,
-  value: t.Expression,
-): t.ExpressionStatement {
-  // Get the target DOM element: nodes[nodeIndex]
-  const elementRef = t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true);
-
-  // Create: typeof value === "function"
-  const typeofCheck = t.binaryExpression(
-    '===',
-    t.unaryExpression('typeof', value),
-    t.stringLiteral('function'),
-  );
-
-  // Create: value(element) - function call
-  const functionCall = t.callExpression(value, [elementRef]);
-
-  // Create: value.value = element - assignment expression
-  const assignmentExpr = t.assignmentExpression(
-    '=',
-    t.memberExpression(value, t.identifier('value')),
-    elementRef,
-  );
-
-  // Create: typeof value === "function" ? value(element) : value.value = element
-  const conditionalExpr = t.conditionalExpression(typeofCheck, functionCall, assignmentExpr);
-
-  return t.expressionStatement(conditionalExpr);
-}
-
-/**
- * Create attribute setting statement
-
- */
-export function createAttributeStatement(
-  functionIdentifier: t.Identifier,
-  nodesId: t.Identifier,
-  nodeIndex: number,
-  value: t.Expression,
-  key?: t.Expression,
-): t.ExpressionStatement {
-  // Prepare parameter array, first parameter is always the target DOM element
-  const args: t.Expression[] = [t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true)];
-
-  // Add optional key parameter (such as attribute name, event name, etc.)
-  if (key) {
-    args.push(key);
-  }
-
-  // Add value parameter, supports array spreading
-  if (value) {
-    if (isArray(value)) {
-      // Array value: spread all elements as independent parameters
-      args.push(...value);
-    } else {
-      // Single value: add directly
-      args.push(value);
-    }
-  }
-
-  // Create function call expression statement
-  const functionCall = t.callExpression(functionIdentifier, args);
-  return t.expressionStatement(functionCall);
-}
-
-/**
- * Add event listener handling statement
-
- * @param {string} attrName - Event attribute name (e.g., 'onClick', 'onMouseOver')
- * @param {t.Expression} attrValue - Event handler function expression
- * @param {t.Identifier} nodesId - Node mapping array identifier
- * @param {number} nodeIndex - Target node index position in mapping array
- * @param {t.Statement[]} statements - Statement collection (for adding generated code)
- * @param {State} state - Plugin state (contains event registration info)
- */
-function addEventListenerStatement(
-  attrName: string,
-  attrValue: t.Expression,
-  nodesId: t.Identifier,
-  nodeIndex: number,
-  statements: t.Statement[],
-  state: PluginState,
-): void {
-  // Extract event name: remove 'on' prefix and convert to lowercase
-  const eventName = attrName.slice(2).toLowerCase();
-
-  if (isDelegatedEvent(eventName)) {
-    const activeContext = getContext();
-    if (!activeContext) {
-      warn('Missing active context, unable to handle delegated events');
+    if (element.selfClosing) {
+      template += `<${element.tag}${attrs}/>`;
+      nodes.push({
+        id: myId,
+        kind: 'element',
+        irElement: element,
+        parentId,
+        childIndex,
+        needsRef:
+          element.dynamicAttrs.length > 0 ||
+          element.events.length > 0 ||
+          element.spreads.length > 0 ||
+          element.ref != null ||
+          element.binds.length > 0,
+      });
       return;
     }
 
-    // Generate delegated event code: element.$eventName = handler
-    const elementRef = t.memberExpression(nodesId, t.numericLiteral(nodeIndex), true);
-    const eventProperty = t.memberExpression(elementRef, t.stringLiteral(`_$${eventName}`), true);
+    template += `<${element.tag}${attrs}>`;
 
-    // Create assignment statement: nodes[index].$eventName = handler
-    const assignmentStmt = t.expressionStatement(
-      t.assignmentExpression('=', eventProperty, attrValue),
+    const hasDynamicChild = element.children.some(
+      (c) => c.type === IRType.EXPRESSION || c.type === IRType.COMPONENT || c.type === IRType.FOR,
     );
-    statements.push(assignmentStmt);
+    const hasOwnEffects =
+      element.dynamicAttrs.length > 0 ||
+      element.events.length > 0 ||
+      element.spreads.length > 0 ||
+      element.ref != null ||
+      element.binds.length > 0;
 
-    // Register event to global event system
-    state.events?.add(eventName);
+    nodes.push({
+      id: myId,
+      kind: 'element',
+      irElement: element,
+      parentId,
+      childIndex,
+      needsRef: hasOwnEffects || hasDynamicChild,
+    });
+
+    let templateChildIndex = 0;
+    for (const child of element.children) {
+      switch (child.type) {
+        case IRType.TEXT:
+          template += mode === 'hydrate' ? child.value : escapeHTML(child.value);
+          nodes.push({
+            id: nextId++,
+            kind: 'text',
+            parentId: myId,
+            childIndex: templateChildIndex++,
+            needsRef: false,
+          });
+          break;
+        case IRType.ELEMENT:
+          visit(child, myId, templateChildIndex++);
+          break;
+        case IRType.EXPRESSION:
+        case IRType.COMPONENT:
+        case IRType.FOR:
+          template += '<!>';
+          nodes.push({
+            id: nextId++,
+            kind: 'anchor',
+            dynamicChild: child,
+            parentId: myId,
+            childIndex: templateChildIndex++,
+            needsRef: true,
+          });
+          break;
+      }
+    }
+
+    template += `</${element.tag}>`;
+  }
+
+  visit(root, -1, 0);
+  return { template, nodes };
+}
+
+/**
+ * Checks whether an IR subtree can be emitted as static HTML (no effects,
+ * no dynamic children). Static subtrees skip the flattening/planning paths.
+ */
+function isStaticSubtree(node: IRNode): boolean {
+  if (node.type !== IRType.ELEMENT) return node.type === IRType.TEXT;
+  return (
+    node.dynamicAttrs.length === 0 &&
+    node.events.length === 0 &&
+    node.spreads.length === 0 &&
+    !node.ref &&
+    node.binds.length === 0 &&
+    node.children.every(isStaticSubtree)
+  );
+}
+
+/**
+ * Builds a template string for a fully-static subtree (used only when
+ * `isStaticSubtree` is true, so no anchors are needed).
+ */
+function buildStaticTemplateString(node: IRNode, mode: RenderMode): string {
+  switch (node.type) {
+    case IRType.TEXT:
+      return mode === 'hydrate' ? node.value : escapeHTML(node.value);
+    case IRType.ELEMENT: {
+      const attrs = serializeStaticAttrs(node.staticAttrs);
+      if (node.selfClosing) return `<${node.tag}${attrs}/>`;
+      let html = `<${node.tag}${attrs}>`;
+      for (const child of node.children) html += buildStaticTemplateString(child, mode);
+      return `${html}</${node.tag}>`;
+    }
+    default:
+      return '';
+  }
+}
+
+// ─── Navigation Planning ───────────────────
+// For each node that needs a DOM reference, plan how to navigate
+// from the root using `child()` and `next()` calls.
+
+interface NavStep {
+  nodeId: number;
+  type: 'child' | 'next';
+  fromNodeId: number;
+  distance: number; // for 'next', number of nextSibling hops
+}
+
+/**
+ * Computes `child()` and `next()` steps for nodes that need DOM references.
+ */
+function planNavigation(nodes: FlatNode[]): NavStep[] {
+  const steps: NavStep[] = [];
+  const navigated = new Set<number>();
+
+  // Root (id=0) is always available via the template clone
+  navigated.add(0);
+
+  // Build lookups for O(1) access
+  const nodeMap = new Map<number, FlatNode>();
+  const siblingMap = new Map<number, Map<number, FlatNode>>(); // parentId -> childIndex -> node
+
+  for (const node of nodes) {
+    nodeMap.set(node.id, node);
+    if (node.parentId !== -1) {
+      if (!siblingMap.has(node.parentId)) {
+        siblingMap.set(node.parentId, new Map());
+      }
+      siblingMap.get(node.parentId)!.set(node.childIndex, node);
+    }
+  }
+
+  /**
+   * Ensures a node has a navigation path from an already-known ancestor.
+   */
+  function ensureNavigated(node: FlatNode): void {
+    if (navigated.has(node.id)) return;
+
+    // Ensure parent is navigated first
+    if (node.parentId >= 0 && !navigated.has(node.parentId)) {
+      const parent = nodeMap.get(node.parentId);
+      if (parent) ensureNavigated(parent);
+    }
+
+    if (node.childIndex === 0) {
+      // First child → child(parent)
+      steps.push({
+        nodeId: node.id,
+        type: 'child',
+        fromNodeId: node.parentId,
+        distance: 0,
+      });
+      navigated.add(node.id);
+      return;
+    }
+
+    // Not first child → find closest previous navigated sibling
+    const parentSiblings = siblingMap.get(node.parentId);
+    let prevNav: FlatNode | null = null;
+
+    if (parentSiblings) {
+      for (let i = node.childIndex - 1; i >= 0; i--) {
+        const sib = parentSiblings.get(i);
+        if (sib && navigated.has(sib.id)) {
+          prevNav = sib;
+          break;
+        }
+      }
+    }
+
+    if (prevNav) {
+      steps.push({
+        nodeId: node.id,
+        type: 'next',
+        fromNodeId: prevNav.id,
+        distance: node.childIndex - prevNav.childIndex,
+      });
+      navigated.add(node.id);
+      return;
+    }
+
+    // No previous sibling navigated — navigate to first child, then next() to target
+    const firstChild = parentSiblings?.get(0);
+    if (firstChild && !navigated.has(firstChild.id)) {
+      steps.push({
+        nodeId: firstChild.id,
+        type: 'child',
+        fromNodeId: node.parentId,
+        distance: 0,
+      });
+      navigated.add(firstChild.id);
+    }
+
+    steps.push({
+      nodeId: node.id,
+      type: 'next',
+      fromNodeId: firstChild?.id ?? node.parentId,
+      distance: node.childIndex,
+    });
+    navigated.add(node.id);
+  }
+
+  // Process nodes in DFS order
+  for (const node of nodes) {
+    if (node.id === 0) continue;
+    if (!node.needsRef) continue;
+    ensureNavigated(node);
+  }
+
+  return steps;
+}
+
+// ─── Code Generation State ─────────────────
+
+interface GenState {
+  ctx: CompileContext;
+  mode: RenderMode;
+  effectIndex: number;
+}
+
+// ─── Element Code Generation ────────────────
+
+/**
+ * Generates element.
+ */
+function generateElement(node: IRElement, state: GenState): t.Expression {
+  const { mode } = state;
+
+  // Fully static subtree → return template call directly.
+  if (isStaticSubtree(node)) {
+    const tmplId = registerTemplate(buildStaticTemplateString(node, mode));
+    return t.callExpression(tmplId, []);
+  }
+
+  // Single walk: build template string + flatten, then plan navigation.
+  const { template, nodes: flatNodes } = buildTemplateAndFlatten(node, mode);
+  const navSteps = planNavigation(flatNodes);
+
+  const body: t.Statement[] = [];
+  const tmplId = registerTemplate(template);
+  const rootId = genUid('root$');
+  body.push(
+    t.variableDeclaration('const', [t.variableDeclarator(rootId, t.callExpression(tmplId, []))]),
+  );
+
+  // Build var map: nodeId → t.Identifier
+  const varMap = new Map<number, t.Identifier>();
+  varMap.set(0, rootId); // root element
+
+  // Phase 1: Emit navigation declarations (flat, sequential)
+  for (const step of navSteps) {
+    const varName = genUid('n$');
+    const fromExpr = varMap.get(step.fromNodeId) ?? rootId;
+
+    let navExpr: t.Expression;
+    if (step.type === 'child') {
+      navExpr = t.callExpression(useImport('child'), [fromExpr]);
+    } else {
+      navExpr = t.callExpression(useImport('next'), [fromExpr, t.numericLiteral(step.distance)]);
+    }
+
+    body.push(t.variableDeclaration('const', [t.variableDeclarator(varName, navExpr)]));
+    varMap.set(step.nodeId, varName);
+  }
+
+  // Phase 2: Emit effects (events, refs, binds, dynamic attrs, spreads)
+  for (const flatNode of flatNodes) {
+    if (flatNode.kind !== 'element' || !flatNode.irElement) continue;
+
+    const el = flatNode.irElement;
+    const elExpr = varMap.get(flatNode.id);
+    if (!elExpr) continue;
+
+    // Events
+    for (const event of el.events) {
+      emitEvent(event, elExpr, body);
+    }
+
+    // Ref
+    if (el.ref) {
+      body.push(t.expressionStatement(createRefExpression(elExpr, el.ref.value)));
+    }
+
+    // Binds
+    for (const bind of el.binds) {
+      emitBind(bind, elExpr, body);
+    }
+
+    // Dynamic attributes
+    for (const attr of el.dynamicAttrs) {
+      emitDynamicAttr(attr, elExpr, body, state);
+    }
+
+    // Spreads
+    for (const spread of el.spreads) {
+      emitSpread(spread, elExpr, body, state);
+    }
+  }
+
+  // Phase 3: Emit insert operations (dynamic children)
+  for (const flatNode of flatNodes) {
+    if (flatNode.kind !== 'anchor' || !flatNode.dynamicChild) continue;
+
+    const parentExpr = varMap.get(flatNode.parentId);
+    const anchorExpr = varMap.get(flatNode.id);
+    if (!parentExpr || !anchorExpr) continue;
+
+    const child = flatNode.dynamicChild;
+    if (child.type === IRType.EXPRESSION) {
+      body.push(
+        t.expressionStatement(
+          t.callExpression(useImport('insert'), [
+            parentExpr,
+            t.arrowFunctionExpression([], t.cloneNode(child.value, true)),
+            anchorExpr,
+          ]),
+        ),
+      );
+    } else if (child.type === IRType.COMPONENT) {
+      const componentExpr = generateComponent(child, state);
+      body.push(
+        t.expressionStatement(
+          t.callExpression(useImport('insert'), [parentExpr, componentExpr, anchorExpr]),
+        ),
+      );
+    } else if (child.type === IRType.FOR) {
+      body.push(
+        t.expressionStatement(
+          t.callExpression(useImport('insert'), [
+            parentExpr,
+            generateFor(child, state),
+            anchorExpr,
+          ]),
+        ),
+      );
+    }
+  }
+
+  body.push(t.returnStatement(rootId));
+  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(body)), []);
+}
+
+// ─── Effect Emitters ───────────────────────
+
+/**
+ * Emits event.
+ */
+function emitEvent(event: IREvent, target: t.Expression, body: t.Statement[]): void {
+  if (event.delegated) {
+    body.push(
+      t.expressionStatement(
+        t.assignmentExpression(
+          '=',
+          t.memberExpression(target, t.stringLiteral(`_$${event.name}`), true),
+          event.handler,
+        ),
+      ),
+    );
+  } else {
+    body.push(
+      t.expressionStatement(
+        t.callExpression(useImport('addEventListener'), [
+          target,
+          t.stringLiteral(event.name),
+          event.handler,
+        ]),
+      ),
+    );
+  }
+}
+
+/**
+ * Emits bind.
+ */
+function emitBind(bind: IRBind, target: t.Expression, body: t.Statement[]): void {
+  // Tuple syntax: bind:value={[signal, { trim: true }]}
+  let valueExpr = bind.value;
+  let modifiersArg: t.Expression | null = null;
+  if (
+    t.isArrayExpression(bind.value) &&
+    bind.value.elements.length === 2 &&
+    bind.value.elements[0] != null &&
+    !t.isSpreadElement(bind.value.elements[0])
+  ) {
+    valueExpr = bind.value.elements[0] as t.Expression;
+    modifiersArg = bind.value.elements[1] as t.Expression;
+  }
+
+  const args: t.Expression[] = [
+    target,
+    t.stringLiteral(bind.name),
+    t.arrowFunctionExpression([], t.cloneNode(valueExpr)),
+    createBindingSetter(valueExpr, '_v$'),
+  ];
+  if (modifiersArg) args.push(t.cloneNode(modifiersArg));
+
+  body.push(t.expressionStatement(t.callExpression(useImport('bindElement'), args)));
+}
+
+/**
+ * Emits dynamic attr.
+ */
+function emitDynamicAttr(
+  attr: IRDynamicAttr,
+  target: t.Expression,
+  body: t.Statement[],
+  state: GenState,
+): void {
+  emitPatchOrEffect(target, attr.name, attr.value, attr.kind, body, state, () =>
+    createEffectKey(attr.name, state.effectIndex++),
+  );
+}
+
+/**
+ * Emits spread.
+ */
+function emitSpread(
+  spread: IRSpread,
+  target: t.Expression,
+  body: t.Statement[],
+  state: GenState,
+): void {
+  emitPatchOrEffect(target, '_$spread$', spread.value, spread.kind, body, state, () =>
+    createSpreadEffectKey(state.effectIndex++),
+  );
+}
+
+/**
+ * Emits patch or effect.
+ */
+function emitPatchOrEffect(
+  target: t.Expression,
+  attrName: string,
+  value: t.Expression,
+  kind: 'static' | 'dynamic',
+  body: t.Statement[],
+  state: GenState,
+  getEffectKey: () => string,
+): void {
+  if (kind === 'static') {
+    body.push(t.expressionStatement(createPatchCall(useImport, target, attrName, value)));
     return;
   }
 
-  // Direct event handling (compatibility path)
-  addImport(importMap.addEventListener);
-
-  // Generate direct event listener code: addEventListener(element, 'eventName', handler)
-  const eventListenerStmt = createAttributeStatement(
-    state.imports.addEventListener,
-    nodesId,
-    nodeIndex,
-    attrValue,
-    t.stringLiteral(eventName),
-  );
-  statements.push(eventListenerStmt);
+  const effectKey = getEffectKey();
+  emitMemoEffect(effectKey, target, attrName, value, body);
 }
+
 /**
- * Generate specific attribute setting code based on attribute name
- * @param attributeName - Attribute name
- * @param attributeValue - Attribute value
- * @param nodesId - Node mapping identifier
- * @param nodeIndex - Node index position
- * @param statements - Statement collection
- * @param state - Plugin state
+ * Emits memo effect.
  */
-function generateSpecificAttributeCode(
-  attributeName: string,
-  attributeValue: t.Expression,
-  nodesId: t.Identifier,
-  nodeIndex: number,
-  statements: t.Statement[],
-  state: PluginState,
+function emitMemoEffect(
+  effectKey: string,
+  target: t.Expression,
+  attrName: string,
+  value: t.Expression,
+  body: t.Statement[],
 ): void {
-  // Note: Reactive attributes are already handled uniformly in generateDynamicPropsCode
-  // This only handles non-reactive static attributes
-
-  switch (attributeName) {
-    case CLASS_NAME:
-      addImport(importMap.patchClass);
-      statements.push(
-        createAttributeStatement(state.imports.patchClass, nodesId, nodeIndex, attributeValue),
-      );
-      break;
-
-    case SPREAD_NAME:
-      addImport(importMap.setSpread);
-      statements.push(
-        createAttributeStatement(state.imports.setSpread, nodesId, nodeIndex, attributeValue),
-      );
-      break;
-
-    case REF_KEY:
-      statements.push(createRefStatement(nodesId, nodeIndex, attributeValue));
-      break;
-
-    case STYLE_NAME:
-      addImport(importMap.patchStyle);
-      statements.push(
-        createAttributeStatement(state.imports.patchStyle, nodesId, nodeIndex, attributeValue),
-      );
-      break;
-
-    default:
-      if (startsWith(attributeName, `${UPDATE_PREFIX}:`)) {
-        addImport(importMap.bindElement);
-        const attrName = attributeName.split(':')[1];
-        statements.push(
-          createAttributeStatement(
-            state.imports.bindElement,
-            nodesId,
-            nodeIndex,
-            attributeValue,
-            t.stringLiteral(attrName),
-          ),
-        );
-        return;
-      }
-      // Process normal attributes
-      addImport(importMap.patchAttr);
-      statements.push(
-        createAttributeStatement(
-          state.imports.patchAttr,
-          nodesId,
-          nodeIndex,
-          attributeValue,
-          t.stringLiteral(attributeName),
-        ),
-      );
-      break;
-  }
-}
-
-/**
- * Process Immediately Invoked Function Expression (IIFE) optimization
- *
- * @param {t.Expression} node - Expression node to be processed
- * @returns {t.Expression} Optimized expression
- */
-export function processIIFEExpression(node: t.Expression): t.Expression {
-  // Check if it's an IIFE (Immediately Invoked Function Expression)
-  if (
-    t.isCallExpression(node) &&
-    (t.isArrowFunctionExpression(node.callee) || t.isFunctionExpression(node.callee)) &&
-    node.arguments.length === 0
-  ) {
-    const callee = node.callee;
-    const body = callee.body;
-
-    // Handle block-level function body { return value; }
-    if (t.isBlockStatement(body)) {
-      // Only handle simple cases with single return statement
-      if (body.body.length === 1) {
-        const statement = body.body[0];
-        if (t.isReturnStatement(statement) && statement.argument) {
-          // Directly return the return value, remove IIFE wrapper
-          return statement.argument;
-        }
-      }
-    }
-    // Handle arrow function shorthand form (() => expression)
-    else if (t.isExpression(body)) {
-      // Directly return expression body, remove function wrapper
-      return body;
-    }
-  }
-
-  // Not IIFE or cannot be safely optimized, keep original expression
-  return node;
-}
-
-/**
- * Create parameter array for DOM insertion operations
- *
- * @param {DynamicContent} dynamicContent - Dynamic content object (contains node and position info)
- * @param {t.Identifier} nodesIdentifier - Node mapping array identifier
- * @param {number[]} indexMap - Pre-calculated index mapping array
- * @returns {t.Expression[]} Parameter array for insert function call
- */
-export function createInsertArguments(
-  dynamicContent: DynamicContent,
-  nodesIdentifier: t.Identifier,
-  indexMap: number[] | Map<number, number>,
-): t.Expression[] {
-  // Validate required parent node index
-  if (isNil(dynamicContent.parentIndex)) {
-    throw new Error('Dynamic content missing valid parent node index');
-  }
-
-  // Get parent node position in mapping array
-  const parentPosition = findIndexPosition(dynamicContent.parentIndex, indexMap);
-  if (parentPosition === -1) {
-    throw new Error(
-      `Cannot find parent node index in index mapping: ${dynamicContent.parentIndex}`,
-    );
-  }
-
-  // Build basic parameter list
-  const argExpressions: t.Expression[] = [
-    // Target parent node reference: nodes[parentPosition]
-    t.memberExpression(nodesIdentifier, t.numericLiteral(parentPosition), true),
-
-    // CallExpression not be use call function
-    // Content lazy function: () => dynamicContent (implements on-demand calculation)
-    t.isCallExpression(dynamicContent.node) ||
-    t.isArrowFunctionExpression(dynamicContent.node) ||
-    t.isFunctionExpression(dynamicContent.node)
-      ? dynamicContent.node
-      : t.arrowFunctionExpression([], dynamicContent.node),
-  ];
-
-  // Handle insert position node (for insertBefore operation)
-  if (dynamicContent.before !== null) {
-    const beforePosition = findIndexPosition(dynamicContent.before, indexMap);
-    if (beforePosition === -1) {
-      throw new Error(`Cannot find before node index in index mapping: ${dynamicContent.before}`);
-    }
-
-    // Add before node reference: nodes[beforePosition]
-    argExpressions.push(
-      t.memberExpression(nodesIdentifier, t.numericLiteral(beforePosition), true),
-    );
-  }
-
-  return argExpressions;
-}
-
-/**
- * Generate dynamic child node insertion code
- *
- * @param {DynamicContent[]} dynamicChildren - Dynamic child node collection
- * @param {t.Statement[]} statements - Statement collection (for adding generated code)
- * @param {State} state - Plugin state (contains import mapping)
- * @param {t.Identifier} nodesId - Node mapping array identifier
- * @param {number[]} indexMap - Index mapping array
- */
-function generateDynamicChildrenCode(
-  dynamicChildren: DynamicContent[],
-  statements: t.Statement[],
-  state: PluginState,
-  nodesId: t.Identifier,
-  indexMap: number[],
-): void {
-  // Ensure insert function is imported
-  addImport(importMap.insert);
-
-  // Create insertion statement for each dynamic content
-  for (const dynamicContent of dynamicChildren) {
-    let node = dynamicContent.node;
-
-    // Optimization for list.map() calls
-    let mapCall: t.CallExpression | null = null;
-
-    if (
-      t.isCallExpression(node) &&
-      t.isMemberExpression(node.callee) &&
-      t.isIdentifier(node.callee.property) &&
-      node.callee.property.name === 'map' &&
-      node.arguments.length > 0
-    ) {
-      mapCall = node;
-    } else if (
-      t.isArrowFunctionExpression(node) &&
-      t.isCallExpression(node.body) &&
-      t.isMemberExpression(node.body.callee) &&
-      t.isIdentifier(node.body.callee.property) &&
-      node.body.callee.property.name === 'map' &&
-      node.body.arguments.length > 0
-    ) {
-      mapCall = node.body;
-    }
-
-    if (mapCall && state.opts.enableFor !== false) {
-      // list.map(item => ...) -> For({ each: () => list, children: mapFn, keyFn: ... })
-      const listExpr = (mapCall.callee as t.MemberExpression).object;
-      const mapFn = mapCall.arguments[0];
-
-      if (
-        t.isExpression(listExpr) &&
-        (t.isArrowFunctionExpression(mapFn) || t.isFunctionExpression(mapFn))
-      ) {
-        addImport(importMap.createComponent);
-        addImport(importMap.For);
-
-        // Extract key prop and transform the map function body
-        let keyFnExpr: t.Expression | null = null;
-        let transformedMapFn: t.ArrowFunctionExpression | t.FunctionExpression = mapFn;
-        const mapFnBody = t.isArrowFunctionExpression(mapFn) ? mapFn.body : null;
-        const mapFnParams = mapFn.params;
-
-        // Get the item parameter name
-        let itemParamName: string | null = null;
-        if (mapFnParams.length > 0 && t.isIdentifier(mapFnParams[0])) {
-          itemParamName = mapFnParams[0].name;
-        }
-
-        if (itemParamName && mapFnBody) {
-          // Check if body is createComponent(Component, { key: ..., ...props })
-          if (t.isCallExpression(mapFnBody)) {
-            const callee = mapFnBody.callee;
-            const args = mapFnBody.arguments;
-
-            // Check if it's a createComponent call (identifier or member expression)
-            const isCreateComponentCall =
-              (t.isIdentifier(callee) && callee.name.includes('createComponent')) ||
-              (t.isMemberExpression(callee) &&
-                t.isIdentifier(callee.property) &&
-                callee.property.name === 'createComponent');
-
-            if (isCreateComponentCall && args.length >= 2) {
-              const componentRef = args[0]; // The component function (e.g., Row)
-              const propsArg = args[1];
-
-              if (t.isExpression(componentRef) && t.isObjectExpression(propsArg)) {
-                // Extract key from props and create keyFn
-                const newProps: t.ObjectProperty[] = [];
-
-                for (const prop of propsArg.properties) {
-                  if (
-                    t.isObjectProperty(prop) &&
-                    t.isIdentifier(prop.key) &&
-                    prop.key.name === 'key' &&
-                    t.isExpression(prop.value)
-                  ) {
-                    // Found key prop - create keyFn
-                    keyFnExpr = t.arrowFunctionExpression(
-                      [t.identifier(itemParamName)],
-                      prop.value,
-                    );
-                    // Don't include key in props passed to component
-                  } else if (t.isObjectProperty(prop) || t.isSpreadElement(prop)) {
-                    newProps.push(prop as t.ObjectProperty);
-                  }
-                }
-
-                // Transform: createComponent(Row, props) -> Row(props)
-                // Create new props object without key
-                const newPropsObj = t.objectExpression(newProps);
-                const directCall = t.callExpression(componentRef as t.Expression, [newPropsObj]);
-
-                // Create new mapFn with transformed body
-                transformedMapFn = t.arrowFunctionExpression(mapFnParams, directCall);
-              }
-            }
-          }
-          // Case 2: Still a JSX Element (e.g. <Row ... />)
-          else if (t.isJSXElement(mapFnBody)) {
-            const opening = mapFnBody.openingElement;
-            const tagName = opening.name;
-
-            // Determine if it is a component
-            let componentRef: t.Expression | null = null;
-            if (t.isJSXIdentifier(tagName) && /^[A-Z]/.test(tagName.name)) {
-              componentRef = t.identifier(tagName.name);
-            } else if (t.isJSXMemberExpression(tagName)) {
-              // Convert JSXMemberExpression to MemberExpression
-              const convertJSXName = (
-                name: t.JSXMemberExpression['object'] | t.JSXMemberExpression['property'],
-              ): t.Expression => {
-                if (t.isJSXIdentifier(name)) return t.identifier(name.name);
-                if (t.isJSXMemberExpression(name))
-                  return t.memberExpression(
-                    convertJSXName(name.object),
-                    convertJSXName(name.property),
-                  );
-                throw new Error('Unsupported JSX Member Expression');
-              };
-              componentRef = t.memberExpression(
-                convertJSXName(tagName.object),
-                convertJSXName(tagName.property),
-              );
-            }
-
-            if (componentRef) {
-              // Extract props and key
-              const newProps: (t.ObjectProperty | t.SpreadElement)[] = [];
-
-              for (const attr of opening.attributes) {
-                if (t.isJSXAttribute(attr)) {
-                  const nameNode = attr.name;
-                  const name = t.isJSXIdentifier(nameNode) ? nameNode.name : nameNode.name.name;
-                  let valueExpr: t.Expression = t.booleanLiteral(true);
-
-                  if (attr.value) {
-                    if (t.isJSXExpressionContainer(attr.value)) {
-                      if (t.isExpression(attr.value.expression)) {
-                        valueExpr = attr.value.expression;
-                      } else {
-                        continue; // skip empty expression
-                      }
-                    } else if (t.isStringLiteral(attr.value)) {
-                      valueExpr = attr.value;
-                    }
-                  }
-
-                  if (name === 'key') {
-                    // Found key
-                    keyFnExpr = t.arrowFunctionExpression([t.identifier(itemParamName)], valueExpr);
-                  } else {
-                    newProps.push(t.objectProperty(t.identifier(name), valueExpr));
-                  }
-                } else if (t.isJSXSpreadAttribute(attr)) {
-                  newProps.push(t.spreadElement(attr.argument));
-                }
-              }
-
-              // Transform <Row ... /> -> Row({...})
-              const newPropsObj = t.objectExpression(newProps);
-              const directCall = t.callExpression(componentRef, [newPropsObj]);
-              transformedMapFn = t.arrowFunctionExpression(mapFnParams, directCall);
-            }
-          }
-        }
-
-        /**
-         * For({
-         *   each: () => list,
-         *   children: item => Row({ item }),  // Direct call, no createComponent
-         *   keyFn: item => item.id
-         * })
-         */
-        const propsProperties: t.ObjectProperty[] = [
-          t.objectProperty(t.identifier('each'), t.arrowFunctionExpression([], listExpr)),
-          t.objectProperty(t.identifier('children'), transformedMapFn as t.Expression),
-        ];
-
-        // Add keyFn if we extracted it
-        if (keyFnExpr) {
-          propsProperties.push(t.objectProperty(t.identifier('keyFn'), keyFnExpr));
-        }
-
-        const propsObject = t.objectExpression(propsProperties);
-
-        // Call through createComponent
-        const newExpr = t.callExpression(state.imports.createComponent, [
-          state.imports.For,
-          propsObject,
-        ]);
-
-        dynamicContent.node = newExpr;
-        node = newExpr;
-      }
-    }
-
-    // Special handling for IIFE expressions, optimize performance
-    const processedNode = processIIFEExpression(node);
-
-    // Create insertion parameters
-    const insertArgs = createInsertArguments(
-      { ...dynamicContent, node: processedNode },
-      nodesId,
-      indexMap,
-    );
-
-    // Add insertion statement to code
-    const insertCall = t.callExpression(state.imports.insert, insertArgs);
-    statements.push(t.expressionStatement(insertCall));
-  }
-}
-
-/**
- * Generate dynamic attribute setting code
- *
- * Redesigned as unified memoizedEffect architecture:
- * 1. Collect all reactive attributes
- * 2. Generate a unified memoizedEffect to handle all updates
- * 3. Set non-reactive attributes directly
- *
- * @param {Array<{ props: Record<string, unknown>; parentIndex: number | null }>} dynamicProps - Dynamic attribute collection
- * @param {t.Statement[]} statements - Statement collection (for adding generated code)
- * @param {State} state - Plugin state (contains import mapping and configuration)
- * @param {t.Identifier} nodesId - Node mapping array identifier
- * @param {number[]} indexMap - Index mapping array
- */
-function generateDynamicPropsCode(
-  dynamicProps: Array<{
-    props: Record<string, unknown>;
-    parentIndex: number | null;
-  }>,
-  statements: t.Statement[],
-  state: PluginState,
-  nodesId: t.Identifier,
-  indexMap: number[],
-): void {
-  // Process each dynamic attribute item
-  for (const propItem of dynamicProps) {
-    const { parentIndex, props } = propItem;
-
-    // Skip invalid parent node indices
-    if (parentIndex === null) {
-      continue;
-    }
-
-    // Find parent node position in index mapping
-    const parentIndexPosition = indexMap.indexOf(parentIndex);
-    if (parentIndexPosition === -1) {
-      warn(`Cannot find parent node index: ${parentIndex}`);
-      continue;
-    }
-
-    // Process each dynamic attribute of the node
-    for (const [attrName, attrValue] of Object.entries(props)) {
-      try {
-        // Handle bind attributes (update:xxx) which are arrays [getter, setter]
-        if (attrName.startsWith(`${UPDATE_PREFIX}:`) && Array.isArray(attrValue)) {
-          // Type guard: ensure array elements are expressions
-          if (
-            attrValue.length === 2 &&
-            t.isExpression(attrValue[0]) &&
-            t.isExpression(attrValue[1])
-          ) {
-            generateSpecificAttributeCode(
-              attrName,
-              attrValue as unknown as t.Expression, // Pass array as-is, createAttributeStatement will spread it
-              nodesId,
-              parentIndexPosition,
-              statements,
-              state,
-            );
-          }
-          continue;
-        }
-
-        // Process by attribute name classification
-        // Type guard: attrValue must be Expression for dynamic props
-        if (!t.isExpression(attrValue as t.Node)) {
-          continue;
-        }
-
-        if (attrName.startsWith('on')) {
-          // Handle event attributes (onClick, onMouseOver, etc.)
-          addEventListenerStatement(
-            attrName,
-            attrValue as t.Expression,
-            nodesId,
-            parentIndexPosition,
-            statements,
-            state,
-          );
-        } else {
-          // Non-reactive attributes, set directly
-          generateSpecificAttributeCode(
-            attrName,
-            attrValue as t.Expression,
-            nodesId,
-            parentIndexPosition,
-            statements,
-            state,
-          );
-        }
-      } catch (error) {
-        // When single attribute processing fails, log error but continue processing other attributes
-        warn(`Attribute processing failed (${attrName}): ${error}`);
-      }
-    }
-  }
-
-  // Reactive operations have been added to global collector, not processed here
-}
-
-/**
- * Generates a unified memoized effect to handle all reactive operations.
- * This function takes in an array of reactive operations, and a statement array
- * to which the generated code will be appended.
- * The generated code will create a memoized effect that will be called with the initial state
- * object, and will return the final state object.
- *
- * @param reactiveOperations An array of reactive operations to be processed.
- * @param statements The statement array to which the generated code will be appended.
- * @param state The plugin state.
- * @param nodesId The identifier of the nodes mapping.
- */
-function generateUnifiedMemoizedEffect(
-  reactiveOperations: ReactiveOperation[],
-  statements: t.Statement[],
-  state: PluginState,
-  nodesId: t.Identifier,
-  indexMap: number[],
-): void {
-  addImport(importMap.memoEffect);
-
-  // Create variable declarations
-  const variableDeclarations = reactiveOperations.map((op, index) => {
-    const attrValue = op.attrValue;
-    return t.variableDeclarator(t.identifier(`_v$${index}`), attrValue);
+  const effectState = t.memberExpression(t.identifier(MEMO_STATE_ID), t.identifier(effectKey));
+  const valueId = t.identifier(MEMO_NEXT_VALUE_ID);
+  const updateCall = createPatchCall(useImport, target, attrName, value, {
+    previousValue: effectState,
+    nextValue: t.assignmentExpression('=', effectState, valueId),
   });
 
-  // Create update statements
-  const updateStatements = reactiveOperations.map((op, index) => {
-    // Get parent node position in mapping array
-    const parentPosition = findIndexPosition(op.nodeIndex, indexMap);
-    if (parentPosition === -1) {
-      throw new Error(`Cannot find parent node index in index mapping: ${op.nodeIndex}`);
-    }
-
-    const varName = t.identifier(`_v$${index}`);
-    const elementRef = t.memberExpression(nodesId, t.numericLiteral(parentPosition), true);
-
-    let domOperationCall: t.CallExpression;
-
-    // Handle attribute operations
-    if (op.setFunction.name === 'patchAttr') {
-      domOperationCall = t.callExpression(op.setFunction.value, [
-        elementRef,
-        t.stringLiteral(op.attrName),
-        t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
-        t.assignmentExpression(
-          '=',
-          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
-          varName,
+  body.push(
+    t.expressionStatement(
+      t.callExpression(useImport('memoEffect'), [
+        t.arrowFunctionExpression(
+          [t.identifier(MEMO_STATE_ID)],
+          t.blockStatement([
+            t.variableDeclaration('var', [t.variableDeclarator(valueId, value)]),
+            t.expressionStatement(
+              t.logicalExpression(
+                '&&',
+                t.binaryExpression('!==', valueId, effectState),
+                updateCall,
+              ),
+            ),
+            t.returnStatement(t.identifier(MEMO_STATE_ID)),
+          ]),
         ),
-      ]);
-    } else {
-      domOperationCall = t.callExpression(op.setFunction.value, [
-        elementRef,
-        t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
-        t.assignmentExpression(
-          '=',
-          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
-          varName,
-        ),
-      ]);
-    }
-
-    // _v$0 !== _p$.c0 && (_p$.c0 = _v$0, _$patchClass(_el$, _v$0));
-    return t.expressionStatement(
-      t.logicalExpression(
-        '&&',
-        t.binaryExpression(
-          '!==',
-          varName,
-          t.memberExpression(t.identifier('_p$'), t.identifier(op.propKey)),
-        ),
-        domOperationCall,
-      ),
-    );
-  });
-
-  // Create effect function body
-  const effectBody = t.blockStatement([
-    // var _v$0 = expr1, _v$1 = expr2, ...;
-    t.variableDeclaration('var', variableDeclarations),
-    // All update statements
-    ...updateStatements,
-    // return _p$;
-    t.returnStatement(t.identifier('_p$')),
-  ]);
-
-  // Create effect function
-  const effectFunction = t.arrowFunctionExpression([t.identifier('_p$')], effectBody);
-
-  // Create initial state object
-  const initialStateProperties = reactiveOperations.map(op =>
-    t.objectProperty(t.identifier(op.propKey), t.identifier('undefined')),
+        t.objectExpression([t.objectProperty(t.identifier(effectKey), t.objectExpression([]))]),
+      ]),
+    ),
   );
-  const initialState = t.objectExpression(initialStateProperties);
+}
 
-  // Create memoizedEffect call
-  const memoizedEffectCall = t.callExpression(state.imports.memoEffect, [
-    effectFunction,
-    initialState,
-  ]);
+// ─── Component Generation ──────────────────
 
-  statements.push(t.expressionStatement(memoizedEffectCall));
+/**
+ * Generates component.
+ */
+function generateComponent(node: IRComponent, state: GenState): t.Expression {
+  const renderedChildren = renderChildExpressions(node.children, (child) =>
+    generateNode(child, state),
+  );
+  return buildComponentInvocation(node.tag, node, {
+    wrap: true,
+    dynamicPropsAsGetters: true,
+    lazyChildren: true,
+    renderedChildren,
+  });
 }
 
 /**
- * Recursively generates a static HTML template from a given TreeNode.
- *
- * This function is the main entry point for static template generation.
- * It handles all node types and delegates to specialized functions for
- * complex cases like normal elements and children processing.
- *
- * **Processing Rules:**
- * - Component/Fragment nodes: Return empty string (handled dynamically)
- * - Text nodes: Concatenate all text content
- * - Comment nodes: Generate HTML comment placeholder `<!>`
- * - Normal/SVG nodes: Delegate to gstForNormal for full element generation
- * - Other nodes: Delegate to gstForChildren for children-only generation
- *
- * @param {TreeNode} node - The TreeNode to generate the template from
- * @returns {string} The generated static HTML template string
- *
- * @example
- * ```typescript
- * // <div class="container">Hello</div>
- * generateStaticTemplate(node)
- * // Returns: '<div class="container">Hello</div>'
- * ```
+ * Generates for.
  */
-function generateStaticTemplate(node: TreeNode): string {
-  if (!node || node.type === NODE_TYPE.COMPONENT) {
-    return '';
-  }
+function generateFor(node: IRFor, state: GenState): t.Expression {
+  const bodyExpr = generateForBody(node.body, state);
+  return buildForCall(node, bodyExpr);
+}
 
+/**
+ * Generates for body.
+ */
+function generateForBody(node: IRNode, state: GenState): t.Expression {
+  if (node.type === IRType.COMPONENT) {
+    return generateInlineComponent(node, state);
+  }
+  return generateNode(node, state);
+}
+
+/**
+ * Generates inline component (used inside For callback bodies).
+ */
+function generateInlineComponent(node: IRComponent, state: GenState): t.Expression {
+  const renderedChildren = renderChildExpressions(node.children, (child) =>
+    generateNode(child, state),
+  );
+  return buildComponentInvocation(node.tag, node, {
+    wrap: false,
+    dynamicPropsAsGetters: false,
+    forceStringLiteralKeys: true,
+    renderedChildren,
+  });
+}
+
+// ─── Generic Node Generation ───────────────
+
+/**
+ * Generates node.
+ */
+function generateNode(node: IRNode, state: GenState): t.Expression {
   switch (node.type) {
-    case NODE_TYPE.TEXT:
-      // Text node: directly concatenate all child content
-      return Array.isArray(node.children) ? node.children.join('') : '';
-
-    case NODE_TYPE.COMMENT:
-      // Comment node: generate HTML comment placeholder
-      return '<!>';
-
-    case NODE_TYPE.NORMAL:
-    case NODE_TYPE.SVG:
-      return gstForNormal(node);
-
-    default:
-      return gstForChildren(node);
+    case IRType.ELEMENT:
+      return generateElement(node, state);
+    case IRType.COMPONENT:
+      return generateComponent(node, state);
+    case IRType.TEXT:
+      return t.stringLiteral(node.value);
+    case IRType.EXPRESSION:
+      return t.cloneNode(node.value, true);
+    case IRType.FOR:
+      return generateFor(node, state);
   }
 }
 
 /**
- * Generates a static HTML template for a normal HTML element.
- *
- * This function handles the complete generation of HTML elements including:
- * - Opening tag with attributes
- * - Children content (recursively generated)
- * - Closing tag (or self-closing syntax)
- *
- * **Processing Steps:**
- * 1. Validate node has a tag name
- * 2. Serialize static attributes to HTML string
- * 3. Generate opening tag with attributes
- * 4. Handle self-closing tags (e.g., `<img />`, `<br />`)
- * 5. Recursively generate children content
- * 6. Generate closing tag
- *
- * @param {TreeNode} node - The TreeNode representing a normal HTML element
- * @returns {string} The generated static HTML template string
- *
- * @example
- * ```typescript
- * // <div class="container"><span>Hello</span></div>
- * gstForNormal(node)
- * // Returns: '<div class="container"><span>Hello</span></div>'
- * ```
- *
- * @example
- * ```typescript
- * // <img src="logo.png" />
- * gstForNormal(node)
- * // Returns: '<img src="logo.png"/>'
- * ```
+ * Generates client.
  */
-function gstForNormal(node: TreeNode): string {
-  if (!node.tag) {
-    return gstForChildren(node);
-  }
-
-  const attributes = serializeAttributes(node.props);
-  const startTag = `<${node.tag}${attributes ? ` ${attributes}` : ''}`;
-
-  if (node.selfClosing) {
-    return `${startTag}/>`;
-  }
-
-  return `${startTag}>${gstForChildren(node)}</${node.tag}>`;
-}
-/**
- * Recursively generates static HTML template for children nodes.
- *
- * This function processes all children of a TreeNode and concatenates their
- * static HTML representations. It handles both TreeNode children and string
- * literals, skipping dynamic content (which is handled separately).
- *
- * **Processing Rules:**
- * - TreeNode children: Recursively call generateStaticTemplate
- * - String children: Include directly in output
- * - Other types: Skip (dynamic content handled elsewhere)
- *
- * @param {TreeNode} node - The TreeNode whose children to process
- * @returns {string} The concatenated static HTML template of all children
- *
- * @example
- * ```typescript
- * // <div>Hello <span>World</span></div>
- * gstForChildren(divNode)
- * // Returns: 'Hello <span>World</span>'
- * ```
- */
-function gstForChildren(node: TreeNode): string {
-  if (!node.children || !node.children.length) {
-    return '';
-  }
-
-  const childTemplates: string[] = [];
-
-  for (const child of node.children) {
-    if (isObject(child)) {
-      const childTemplate = generateStaticTemplate(child as TreeNode);
-      childTemplates.push(childTemplate);
-    } else if (isString(child)) {
-      childTemplates.push(child);
-    }
-  }
-
-  return childTemplates.join('');
-}
-
-/**
- * Collects all dynamic content from a TreeNode for client-side rendering.
- *
- * This function performs a depth-first traversal of the tree to identify and
- * collect all dynamic content that needs runtime processing. It separates
- * dynamic content into three categories:
- *
- * **Collection Categories:**
- * 1. **props**: Dynamic attributes that need one-time setting
- * 2. **children**: Dynamic child nodes (expressions, components, fragments)
- * 3. **operations**: Reactive attributes that need memoized updates
- *
- * **Processing Strategy:**
- * - Static content is already in the template (handled by generateStaticTemplate)
- * - Dynamic content is collected here for runtime code generation
- * - Reactive attributes are identified and added to operations for memoEffect
- *
- * @param {TreeNode} node - The root TreeNode to start collection from
- * @returns {DynamicCollection} Object containing all collected dynamic content
- *
- * @example
- * ```typescript
- * // <div class={cls}>{message}<button onClick={handler}>Click</button></div>
- * const dynamic = generateDynamic(node);
- * // dynamic.operations: [{ nodeIndex: 1, attrName: 'class', ... }]
- * // dynamic.children: [{ node: message, parentIndex: 1, ... }]
- * // dynamic.props: [{ props: { onClick: handler }, parentIndex: 2 }]
- * ```
- */
-function generateDynamic(node: TreeNode) {
-  const dynamicCollection = {
-    props: [],
-    children: [],
-    operations: [],
+export function generateClient(ir: IRNode, ctx: CompileContext): t.Expression {
+  const state: GenState = {
+    ctx,
+    mode: ctx.options.mode! as RenderMode,
+    effectIndex: 0,
   };
 
-  function walk(node: TreeNode, parentNode?: TreeNode) {
-    processNodeDynamic(dynamicCollection, node, parentNode);
-
-    // Skip recursive child processing for Fragment nodes
-    // Fragment children are already included in the component expression
-    // created by processNodeDynamic, so walking them again would cause duplicates
-    if (node.type === NODE_TYPE.COMPONENT || node.type === NODE_TYPE.FRAGMENT) {
-      return; // Skip processing component children in parent context
-    }
-
-    if (node.children && node.children.length) {
-      node.children.forEach(child => {
-        if (isTreeNode(child)) {
-          walk(child as TreeNode, node);
-        }
-      });
-    }
-  }
-
-  walk(node);
-
-  return dynamicCollection;
-}
-
-/**
- * Processes a single TreeNode to extract dynamic content.
- *
- * This function is the core of dynamic content collection. It examines each node
- * and categorizes its dynamic aspects into the appropriate collection:
- *
- * **Node Type Processing:**
- * - **COMPONENT/FRAGMENT**: Create component expression and add to children
- * - **EXPRESSION**: Extract expression and add to children
- * - **TEXT**: Skip (already in static template)
- * - **NORMAL/SVG**: Process dynamic attributes
- *
- * **Attribute Classification:**
- * - **Reactive attributes**: Dynamic values that need memoized updates (class, style, etc.)
- * - **Event handlers**: onClick, onInput, etc. (added to props)
- * - **Bind directives**: update:xxx (added to props)
- * - **Static attributes**: Already in template (skipped)
- *
- * @param {DynamicCollection} dynamicCollection - The collection to populate
- * @param {TreeNode} node - The current node to process
- * @param {TreeNode} [parentNode] - The parent node (for context)
- *
- * @example
- * ```typescript
- * // <div class={cls}>{message}</div>
- * processNodeDynamic(collection, divNode, null);
- * // collection.operations: [{ attrName: 'class', attrValue: cls, ... }]
- * // collection.children: [{ node: message, ... }]
- * ```
- */
-function processNodeDynamic(dynamicCollection, node: TreeNode, parentNode?: TreeNode): void {
-  const { children, props, operations } = dynamicCollection;
-
-  switch (node.type) {
-    case NODE_TYPE.COMPONENT: {
-      // Prepare component attributes
-      const componentProps = { ...node.props, children: node.children };
-
-      // Create component call expression
-      const componentExpr = createComponentExpression(node, componentProps);
-
-      // Add to dynamic content list
-      children.push({
-        index: node.index,
-        node: componentExpr,
-        before: findBeforeIndex(node, parentNode as TreeNode),
-        parentIndex: parentNode?.index ?? null,
-      });
-      break;
-    }
-
-    case NODE_TYPE.EXPRESSION:
-      // Ensure child node array is not empty and first element is an expression
-      if (node.children && node.children.length > 0) {
-        const firstChild = node.children[0];
-        // Handle JavaScript expression nodes
-        if (isObject(firstChild) && t.isNode(firstChild) && t.isExpression(firstChild)) {
-          // TODO: maybe support map
-          // if (isMapCall(firstChild)) {
-          //   const mapCall = firstChild as t.CallExpression;
-          //   const list = (mapCall.callee as t.MemberExpression).object;
-          //   const callback = mapCall.arguments[0];
-
-          //   addImport(importMap.For);
-
-          //   let childrenProp = callback;
-          //   // Wrap callback if it uses index to unwrap the getter
-          //   if (
-          //     (t.isArrowFunctionExpression(callback) || t.isFunctionExpression(callback)) &&
-          //     callback.params.length > 1 &&
-          //     checkHasJSXReturn(callback)
-          //   ) {
-          //     const itemParam = path.scope.generateUidIdentifier('item');
-          //     const indexParam = path.scope.generateUidIdentifier('index');
-          //     childrenProp = t.arrowFunctionExpression(
-          //       [itemParam, indexParam],
-          //       t.callExpression(callback as t.Expression, [
-          //         itemParam,
-          //         t.callExpression(indexParam, []),
-          //       ]),
-          //     );
-          //   }
-          //   // 特殊处理，默认tree不处理map，所有这里要添加一个tag
-          //   node.tag = 'For';
-          //   children.push({
-          //     index: node.index,
-          //     node: createComponentExpression(node, {
-          //       each: list,
-          //       children: childrenProp,
-          //     }),
-          //     before: findBeforeIndex(node, parentNode as TreeNode),
-          //     parentIndex: parentNode?.index ?? null,
-          //   });
-          // } else {
-          children.push({
-            index: node.index,
-            node: t.arrowFunctionExpression([], firstChild),
-            before: findBeforeIndex(node, parentNode as TreeNode),
-            parentIndex: parentNode?.index ?? null,
-          });
-          // }
-        }
-        // Handle JSX elements/fragments in expression containers
-        else if (isObject(firstChild) && t.isNode(firstChild) && t.isJSXElement(firstChild)) {
-          // Treat JSX elements in expression containers as components
-          // This usually occurs in: {<SomeComponent />} or {<></>}
-          children.push({
-            index: node.index,
-            node: createComponentExpression(node, { children: [firstChild] }),
-            before: findBeforeIndex(node, parentNode as TreeNode),
-            parentIndex: parentNode?.index ?? null,
-          });
-        }
-      }
-      break;
-
-    // Text nodes don't need dynamic processing (already handled in template stage)
-    case NODE_TYPE.TEXT:
-      break;
-
-    default:
-      // Handle regular HTML nodes with dynamic attributes
-      // Dynamic attributes include: event handlers, conditional rendering attributes, dynamic styles, etc.
-      if (node.props && Object.keys(node.props).length > 0) {
-        const currentProps = {};
-
-        for (const [attrName, attrValue] of Object.entries(node.props)) {
-          // Type guard: check if attrValue is a Node before checking if it's dynamic
-          const isReactive =
-            t.isNode(attrValue) &&
-            isDynamicExpression(attrValue) &&
-            !startsWith(attrName, `${UPDATE_PREFIX}:`) &&
-            !startsWith(attrName, EVENT_ATTR_NAME) &&
-            attrName !== REF_KEY;
-
-          // support bind:value
-          if (startsWith(attrName, `${UPDATE_PREFIX}:`)) {
-            const name = attrName.split(':')[1];
-            const setFunction = getSetFunctionForAttribute();
-            addImport(importMap[setFunction.name as keyof typeof importMap]);
-
-            operations.push({
-              nodeIndex: node?.index,
-              attrName: name,
-              attrValue: (attrValue as t.Expression[])[0],
-              setFunction,
-              propKey: generatePropKey(),
-            });
-          }
-          if (isReactive && t.isExpression(attrValue)) {
-            // Collect reactive attributes for unified processing later
-            const setFunction = getSetFunctionForAttribute(attrName);
-            addImport(importMap[setFunction.name as keyof typeof importMap]);
-
-            operations.push({
-              nodeIndex: node?.index,
-              attrName,
-              attrValue,
-              setFunction,
-              propKey: generatePropKey(attrName),
-            });
-          } else {
-            currentProps[attrName] = attrValue;
-          }
-        }
-
-        if (Object.keys(currentProps).length > 0) {
-          props.push({
-            props: currentProps,
-            parentIndex: node?.index ?? null,
-          });
-        }
-      }
-      break;
-  }
+  return generateNode(ir, state);
 }

@@ -1,14 +1,3 @@
-import path from 'node:path';
-import { defineConfig } from 'vite';
-import Inspect from 'vite-plugin-inspect';
-import Essor from 'unplugin-essor/vite';
+import { createEssorExampleConfig } from '../vite.shared';
 
-export default defineConfig({
-  base: './',
-  resolve: {
-    alias: {
-      '@/': `${path.resolve(__dirname, '/src')}/`,
-    },
-  },
-  plugins: [Inspect(), Essor()],
-});
+export default createEssorExampleConfig();

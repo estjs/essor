@@ -11,6 +11,7 @@
  */
 import { createComponent, effect, signal } from 'essor';
 
+const isFunction = (value) => typeof value === 'function';
 /**
  * Global component registry for HMR tracking
  *
@@ -28,7 +29,7 @@ const componentRegistry = new Map();
  * @param hot - Hot module API object
  */
 function invalidateOrReload(hot) {
-  if (typeof hot?.invalidate === 'function') {
+  if (isFunction(hot?.invalidate)) {
     hot.invalidate();
   } else if (typeof location !== 'undefined') {
     location.reload();
@@ -153,7 +154,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
  * @returns true if value is a function with __hmrId property
  */
 function isHMRComponent(value) {
-  return value && typeof value === 'function' && value.__hmrId;
+  return value && isFunction(value) && value.__hmrId;
 }
 
 /**
@@ -232,7 +233,7 @@ function handleHMRUpdate(hot, newModule) {
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
 function setupViteHMR(hot) {
-  hot.accept(newModule => handleHMRUpdate(hot, newModule));
+  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
 }
 
 /**
@@ -241,7 +242,7 @@ function setupViteHMR(hot) {
  * Webpack-style HMR uses module.hot.accept() and hot.data for state persistence
  */
 function setupWebpackHMR(hot, registry) {
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     hot.accept();
   }
 
@@ -254,8 +255,8 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Save current registry for next update
-  if (typeof hot.dispose === 'function') {
-    hot.dispose(data => {
+  if (isFunction(hot.dispose)) {
+    hot.dispose((data) => {
       data.__$registry$__ = registry;
     });
   }
@@ -268,9 +269,9 @@ function setupWebpackHMR(hot, registry) {
  */
 function setupStandardHMR(hot, registry) {
   // Try accept callback mode first (more efficient)
-  if (typeof hot.accept === 'function') {
+  if (isFunction(hot.accept)) {
     try {
-      hot.accept(newModule => handleHMRUpdate(hot, newModule));
+      hot.accept((newModule) => handleHMRUpdate(hot, newModule));
     } catch {
       // Some bundlers don't support accept with callback
       // Fall back to simple accept (for Webpack-style pattern)
@@ -283,8 +284,8 @@ function setupStandardHMR(hot, registry) {
   }
 
   // Setup dispose handler for state persistence
-  if (typeof hot.dispose === 'function') {
-    hot.dispose(data => {
+  if (isFunction(hot.dispose)) {
+    hot.dispose((data) => {
       data.__$registry$__ = registry;
       data.__essor_timestamp__ = Date.now();
     });

@@ -1,206 +1,240 @@
-import {
-  coerceArray,
-  isFunction,
-  isHtmlInputElement,
-  isHtmlSelectElement,
-  isHtmlTextAreaElement,
-} from '@estjs/shared';
+import { isFunction, isString } from '@estjs/shared';
 import { effect } from '@estjs/signals';
-import { normalizeNode } from './utils/node';
-import { removeNode } from './utils/dom';
-import { patchChildren } from './patch';
-import { getActiveScope, onCleanup, runWithScope } from './scope';
-import type { AnyNode } from './types';
+import { addEventListener } from './events';
+import { getActiveScope, onCleanup } from './scope';
 
 /**
- * Add event listener with automatic cleanup on scope destruction
+ * Modifiers supported by `bind:*` two-way bindings.
  *
- * @param element - Element to attach listener to
- * @param event - Event name
- * @param handler - Event handler function
- * @param options - Event listener options
+ * - `trim`   strip surrounding whitespace from string values
+ * - `number` coerce numeric strings to numbers (no-op on `NaN`)
+ * - `lazy`   commit on `change` instead of `input`
  */
-export function addEventListener(
-  element: Element,
-  event: string,
-  handler: EventListener,
-  options?: AddEventListenerOptions,
-): void {
-  element.addEventListener(event, handler, options);
+export interface BindModifiers {
+  trim?: boolean;
+  number?: boolean;
+  lazy?: boolean;
+  [key: string]: boolean | undefined;
+}
 
-  onCleanup(() => {
-    element.removeEventListener(event, handler, options);
-  });
+// ─── Bind Strategy Table ───
+
+interface BindStrategy {
+  /** Default DOM event used to sync DOM → model. */
+  event: string;
+  read: (node: Element) => unknown;
+  write: (node: Element, value: unknown) => void;
+  /** Force using `change` even when not lazy (e.g. checkbox / select / file). */
+  forceChangeEvent?: boolean;
+  /** Element accepts free-form text and may emit composition events (IME). */
+  needsComposition?: boolean;
+}
+
+const INPUT_CHECKBOX_CHECKED: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => (n as HTMLInputElement).checked,
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = Boolean(v);
+    if (el.checked !== next) el.checked = next;
+  },
+};
+
+const INPUT_RADIO_CHECKED: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => {
+    const el = n as HTMLInputElement;
+    return el.checked ? el.value : '';
+  },
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = String(v) === el.value;
+    if (el.checked !== next) el.checked = next;
+  },
+};
+
+const INPUT_FILE_FILES: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => (n as HTMLInputElement).files,
+  // Browsers do not allow programmatic writes to <input type="file">.
+  write: () => {},
+};
+
+const INPUT_VALUE: BindStrategy = {
+  event: 'input',
+  needsComposition: true,
+  read: (n) => (n as HTMLInputElement).value,
+  write: (n, v) => {
+    const el = n as HTMLInputElement;
+    const next = v == null ? '' : String(v);
+    if (el.value !== next) el.value = next;
+  },
+};
+
+const SELECT_VALUE: BindStrategy = {
+  event: 'change',
+  forceChangeEvent: true,
+  read: (n) => {
+    const s = n as HTMLSelectElement;
+    return s.multiple ? Array.from(s.selectedOptions, (o) => o.value) : s.value;
+  },
+  write: (n, v) => {
+    const s = n as HTMLSelectElement;
+    if (s.multiple) {
+      const set = new Set((Array.isArray(v) ? v : []).map(String));
+      for (const opt of Array.from(s.options)) opt.selected = set.has(opt.value);
+    } else {
+      const next = v == null ? '' : String(v);
+      if (s.value !== next) s.value = next;
+    }
+  },
+};
+
+const TEXTAREA_VALUE: BindStrategy = {
+  event: 'input',
+  needsComposition: true,
+  read: (n) => (n as HTMLTextAreaElement).value,
+  write: (n, v) => {
+    const el = n as HTMLTextAreaElement;
+    const next = v == null ? '' : String(v);
+    if (el.value !== next) el.value = next;
+  },
+};
+
+/**
+ * Resolves the read/write/event strategy for a DOM element + prop combination.
+ */
+function resolveStrategy(node: Element, prop: string): BindStrategy {
+  const tag = node.nodeName;
+  if (tag === 'INPUT') {
+    const type = (node as HTMLInputElement).type;
+    if (prop === 'checked') {
+      return type === 'radio' ? INPUT_RADIO_CHECKED : INPUT_CHECKBOX_CHECKED;
+    }
+    if (prop === 'files') return INPUT_FILE_FILES;
+    return INPUT_VALUE;
+  }
+  if (tag === 'SELECT') return SELECT_VALUE;
+  if (tag === 'TEXTAREA') return TEXTAREA_VALUE;
+  // Fallback for custom elements or contenteditable hosts.
+  return {
+    event: 'input',
+    read: (n) => (n as any)[prop],
+    write: (n, v) => {
+      (n as any)[prop] = v;
+    },
+  };
 }
 
 /**
- * Bind an element to a setter function for two-way data binding
+ * Applies built-in modifiers (trim, number) to a raw value.
+ */
+function castValue(val: unknown, trim?: boolean, number?: boolean): unknown {
+  if (!isString(val)) return val;
+  if (trim) val = (val as string).trim();
+  if (number && val !== '') {
+    const parsed = Number(val);
+    if (!Number.isNaN(parsed)) return parsed;
+  }
+  return val;
+}
+
+/** Whether `node` is the currently focused element (Document / ShadowRoot aware). */
+function isFocused(node: Element): boolean {
+  const root = node.getRootNode();
+  return (root instanceof Document || root instanceof ShadowRoot) && root.activeElement === node;
+}
+
+/**
+ * Synchronizes a DOM element property with a model getter and setter.
  *
- * @param node - The element to bind
- * @param key - The property key (unused, kept for API compatibility)
- * @param defaultValue - Default value (unused, kept for API compatibility)
- * @param setter - The setter function to call when the element's value changes
+ * @param node      The element to bind. `null` is tolerated (no-op).
+ * @param prop      Bound property: `value` / `checked` / `files` / arbitrary.
+ * @param getter    Reactive getter or static initial value.
+ * @param setter    Receives the new value when the user edits the DOM.
+ * @param modifiers Optional `BindModifiers`.
  */
 export function bindElement(
-  node: Element,
-  key: string,
-  defaultValue: unknown,
+  node: Element | null,
+  prop: 'value' | 'checked' | 'files' | string,
+  getter: (() => unknown) | unknown,
   setter: (value: unknown) => void,
+  modifiers: BindModifiers = {},
 ): void {
-  if (isHtmlInputElement(node)) {
-    bindInputElement(node, setter);
-  } else if (isHtmlSelectElement(node)) {
-    bindSelectElement(node, setter);
-  } else if (isHtmlTextAreaElement(node)) {
-    addEventListener(node, 'input', () => {
-      setter((node as HTMLTextAreaElement).value);
-    });
-  }
-}
+  if (!node) return;
 
-/**
- * Bind input element based on its type
- */
-function bindInputElement(node: HTMLInputElement, setter: (value: unknown) => void): void {
-  switch (node.type) {
-    case 'checkbox':
-      addEventListener(node, 'change', () => {
-        setter(Boolean(node.checked));
-      });
-      break;
+  const strategy = resolveStrategy(node, prop);
+  const { trim, number, lazy } = modifiers;
+  const isFiles = prop === 'files';
 
-    case 'radio':
-      addEventListener(node, 'change', () => {
-        setter(node.checked ? node.value : '');
-      });
-      break;
+  const readModel = (): unknown => (isFunction(getter) ? (getter as () => unknown)() : getter);
 
-    case 'file':
-      addEventListener(node, 'change', () => {
-        setter(node.files);
-      });
-      break;
+  // File inputs hold a `FileList` and never benefit from string casting.
+  const transform = (v: unknown): unknown => (isFiles ? v : castValue(v, trim, number));
 
-    case 'number':
-    case 'range':
-      addEventListener(node, 'input', () => {
-        setter(node.value || '');
-      });
-      break;
+  // ── DOM → Model ──
+  const eventName = lazy || strategy.forceChangeEvent ? 'change' : strategy.event;
 
-    case 'date':
-    case 'datetime-local':
-    case 'month':
-    case 'time':
-    case 'week':
-      addEventListener(node, 'change', () => {
-        setter(node.value || '');
-      });
-      break;
+  // Closure flag (avoids polluting the DOM node with a `_composing` property).
+  let composing = false;
 
-    default:
-      // text, email, password, search, tel, url, etc.
-      addEventListener(node, 'input', () => {
-        setter(node.value);
-      });
-      break;
-  }
-}
+  const syncFromDom = (): void => {
+    if (composing) return;
+    const raw = strategy.read(node);
+    if (raw === undefined) return;
 
-/**
- * Bind select element
- */
-function bindSelectElement(node: HTMLSelectElement, setter: (value: unknown) => void): void {
-  addEventListener(node, 'change', () => {
-    if (node.multiple) {
-      const values = Array.from(node.options)
-        .filter(option => option.selected)
-        .map(option => option.value);
-      setter(values);
-    } else {
-      setter(node.value);
-    }
-  });
-}
-
-/**
- * Reactive node insertion with binding support
- *
- * @param parent Parent node
- * @param nodeFactory Node factory function or static node
- * @param before Reference node for insertion position
- *
- * @example
- * ```typescript
- * insert(container, () => message.value, null);
- * insert(container, staticElement, referenceNode);
- * insert(container, "Hello World", null); // Direct string support
- * ```
- */
-export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
-  if (!parent) return;
-
-  let renderedNodes: AnyNode[] = [];
-  const currentScope = getActiveScope();
-  // Create effect for reactive updates
-  const cleanup = effect(() => {
-    const run = () => {
-      const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
-      const nodes = coerceArray(rawNodes as unknown)
-        .map(item => (isFunction(item) ? item() : item))
-        .flatMap(normalizeNode) as AnyNode[];
-
-      renderedNodes = patchChildren(parent, renderedNodes, nodes, before) as AnyNode[];
-    };
-    if (currentScope) {
-      runWithScope(currentScope, run);
-    } else {
-      run();
-    }
-  });
-
-  onCleanup(() => {
-    cleanup();
-    renderedNodes.forEach(node => removeNode(node));
-    renderedNodes.length = 0;
-  });
-
-  return renderedNodes;
-}
-
-/**
- * Map nodes from template by indexes
- *
- * @param template - Template node to traverse
- * @param indexes - Array of indexes to map
- * @returns Array of mapped nodes
- */
-export function mapNodes(template: Node, indexes: number[]): Node[] {
-  const len = indexes.length;
-  const tree = new Array<Node>(len);
-  const indexSet = new Set(indexes);
-
-  let index = 1;
-  let found = 0;
-
-  const walk = (node: Node): boolean => {
-    if (node.nodeType !== Node.DOCUMENT_FRAGMENT_NODE) {
-      if (indexSet.has(index)) {
-        tree[found++] = node;
-        if (found === len) return true;
-      }
-      index++;
+    if (isFiles) {
+      setter(raw);
+      return;
     }
 
-    let child = node.firstChild;
-    while (child) {
-      if (walk(child)) return true;
-      child = child.nextSibling;
+    const next = transform(raw);
+    if (!Object.is(readModel(), next)) {
+      setter(next);
     }
-
-    return false;
   };
 
-  walk(template);
-  return tree;
+  addEventListener(node, eventName, syncFromDom);
+
+  // For trim/number, also normalize the displayed value on `change` (blur), so the
+  // input shows the canonical form (e.g. trimmed whitespace) even when bound lazily.
+  if (!lazy && !isFiles && (trim || number) && eventName !== 'change') {
+    addEventListener(node, 'change', () => {
+      strategy.write(node, transform(strategy.read(node)));
+    });
+  }
+
+  // IME composition: pause sync during composition; resume on end.
+  if (strategy.needsComposition && !lazy) {
+    addEventListener(node, 'compositionstart', () => {
+      composing = true;
+    });
+    addEventListener(node, 'compositionend', () => {
+      if (!composing) return;
+      composing = false;
+      // Run the same sync path now that composition has finished.
+      syncFromDom();
+    });
+  }
+
+  // ── Model → DOM ──
+  const runner = effect(() => {
+    const value = readModel();
+
+    // Avoid disturbing the user while they are typing in a focused text input.
+    if (strategy.needsComposition && !lazy && isFocused(node)) {
+      if (composing) return;
+      const current = transform(strategy.read(node));
+      if (Object.is(current, value)) return;
+    }
+
+    strategy.write(node, value);
+  });
+
+  if (getActiveScope()) {
+    onCleanup(() => runner.stop());
+  }
 }

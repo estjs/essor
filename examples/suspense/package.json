@@ -4,23 +4,17 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "dev": "vite --open --port 3103",
-    "typecheck": "tsc  --noEmit",
-    "preview": "vite preview",
-    "test": "vitest -r test"
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
   },
   "dependencies": {
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@estjs/eslint-config": "^2.2.1",
-    "@types/node": "^25.3.5",
-    "eslint": "^10.0.2",
-    "jsdom": "^28.1.0",
-    "typescript": "^5.9.3",
+    "@types/node": "^25.6.0",
+    "typescript": "^6.0.3",
     "unplugin-essor": "workspace:*",
-    "vite": "^7.3.1",
-    "vite-plugin-inspect": "^11.3.3",
-    "vitest": "^4.0.18"
+    "vite": "^8.0.10"
   }
 }

@@ -37,6 +37,7 @@ export {
   isUndefined,
   isBoolean,
   isNaN,
+  isBigint,
   type StringNumber,
 } from './is';
 
@@ -45,9 +46,8 @@ export { camelCase, kebabCase, capitalize } from './string';
 export { warn, info, error } from './logger';
 
 export { escapeHTML, escapeHTMLComment, getEscapedCssVarName } from './escape';
-export { isHTMLTag, isSVGTag, isMathMLTag, isVoidTag, isSelfClosingTag } from './dom';
+export { isHTMLTag, isSVGTag, isMathMLTag, isSelfClosingTag } from './dom';
 export {
-  isRenderAbleAttrValue,
   isKnownSvgAttr,
   isKnownHtmlAttr,
   isSSRSafeAttrName,
@@ -74,7 +74,6 @@ export {
   normalizeClassName,
   styleToString,
   parseStyleString,
-  styleObjectToString,
   type NormalizedStyle,
   type StyleValue,
   type ClassValue,

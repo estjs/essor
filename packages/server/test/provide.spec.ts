@@ -411,10 +411,10 @@ describe('server/provide-inject', () => {
         return Child();
       };
 
-      // Note: inject returns default when value is falsy (including undefined)
-      // This is current behavior - may want to change to explicit undefined check
+      // Default values are only used when the key is missing.
+      // An explicit undefined provided value is returned as-is.
       const result = renderToString(Parent);
-      expect(result).toBe('<div>default</div>');
+      expect(result).toBe('<div>was-undefined</div>');
     });
 
     it('should handle null provided value', () => {
@@ -430,8 +430,9 @@ describe('server/provide-inject', () => {
         return Child();
       };
 
+      // Null is also treated as an explicitly provided value.
       const result = renderToString(Parent);
-      expect(result).toBe('<div>default</div>');
+      expect(result).toBe('<div>was-null</div>');
     });
 
     it('should handle number keys', () => {

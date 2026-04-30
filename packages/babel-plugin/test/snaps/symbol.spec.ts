@@ -69,7 +69,7 @@ describe('transform symbol', () => {
     expect(transformCode(input)).toMatchSnapshot();
   });
 
-  it('should work with array index ', () => {
+  it('should work with array index', () => {
     const input = `
       const $a = [1];
       console.log($a[0]);
@@ -84,14 +84,49 @@ describe('transform symbol', () => {
   `;
     expect(transformCode(input)).toMatchSnapshot();
   });
+
+  it('should transform signal in arrow function expression body', () => {
+    const input = `
+      let $todos = [];
+      watch(() => $todos, val => { console.log(val); });
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should transform signal in arrow function expression body with deep option', () => {
+    const input = `
+      let $todos = [];
+      let $filter = 'all';
+      watch(() => $todos, val => {
+        localStorage.setItem('key', JSON.stringify(val));
+      }, { deep: true });
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should not transform signal used as arrow function parameter', () => {
+    const input = `
+      let $a = 1;
+      const fn = ($a) => $a + 1;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should transform signal in nested arrow expression body', () => {
+    const input = `
+      let $count = 0;
+      const getter = () => $count;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
 });
 
-const transformCustomSymbol = getTransform('symbol', { symbol: '__' });
-describe('transform custom symbol', () => {
+const transformCustomSignalPrefix = getTransform('symbol', { signalPrefix: '__' });
+describe('transform custom signalPrefix', () => {
   it('should work with basic types', () => {
     const list = [false, true, 0, 1, '1', `${1}23`, null, undefined, Number.NaN];
     for (const item of list) {
-      expect(transformCustomSymbol(`const __a = ${item}; __a = 1`)).toMatchSnapshot();
+      expect(transformCustomSignalPrefix(`const __a = ${item}; __a = 1`)).toMatchSnapshot();
     }
   });
 });

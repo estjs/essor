@@ -15,6 +15,9 @@ describe('string utils', () => {
       { input: 'BGColor', expected: 'b-g-color' },
       { input: 'FOOBar', expected: 'f-o-o-bar' },
       { input: 'fooBAR', expected: 'foo-b-a-r' },
+      { input: 'éFoo', expected: 'éfoo' },
+      { input: 'foo-Bar', expected: 'foo-bar' },
+      { input: '--Foo', expected: '--foo' },
       { input: 'foo', expected: 'foo' },
     ];
 
@@ -43,6 +46,11 @@ describe('string utils', () => {
       { input: 'foo-', expected: 'foo' },
       { input: 'foo--bar', expected: 'fooBar' },
       { input: 'foo---bar', expected: 'fooBar' },
+      { input: 'foo_bar-baz', expected: 'fooBarBaz' },
+      { input: '__foo__bar__', expected: 'fooBar' },
+      { input: 'foo_-_bar', expected: 'fooBar' },
+      { input: 'foo-ä', expected: 'foo-ä' },
+      { input: 'foo-ß', expected: 'foo-ß' },
       { input: '-', expected: '' },
       { input: 'foo', expected: 'foo' },
     ];

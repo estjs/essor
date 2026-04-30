@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { patchStyle, setStyle } from '../../src/operations/styles';
+import { patchStyle, setStyle } from '../../src/operations/style';
 
 describe('styles module', () => {
   let element: HTMLElement;

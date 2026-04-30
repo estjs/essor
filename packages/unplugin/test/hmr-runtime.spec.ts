@@ -27,7 +27,7 @@ vi.mock('essor', () => {
       },
       set value(newValue: any) {
         value = newValue;
-        subs.forEach(fn => fn());
+        subs.forEach((fn) => fn());
       },
     };
   };

@@ -2,6 +2,7 @@ import { createUnplugin } from 'unplugin';
 import * as babel from '@babel/core';
 import essorBabelPlugin from 'babel-plugin-essor';
 import { createFilter } from 'vite';
+// @ts-ignore - resolved by esbuild raw plugin at build time
 import hmrRuntimeCode from './hmr-runtime.js?raw';
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin';
 import type { Options } from './types';
@@ -116,14 +117,20 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
     name: 'unplugin-essor',
 
     /**
-     * Vite-specific config to preserve JSX
+     * Vite-specific config to preserve JSX so the babel plugin can handle it.
+     
      */
-    config() {
-      return {
-        esbuild: {
-          jsx: 'preserve',
-        },
-      };
+    vite: {
+      config(this: unknown) {
+        // Inside a vite hook, `this` is the rollup plugin context. On Vite 8 /
+        // rolldown-vite it exposes `meta.rolldownVersion`.
+        const ctx = this as { meta?: Record<string, unknown> } | undefined;
+        const isRolldownVite = !!ctx?.meta && 'rolldownVersion' in ctx.meta;
+        const key = (isRolldownVite ? 'oxc' : 'esbuild') as 'esbuild';
+        return {
+          [key]: { jsx: 'preserve' },
+        };
+      },
     },
 
     /**
@@ -148,13 +155,19 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
       }
       return null;
     },
-
+    rolldown: {
+      options(opts) {
+        opts.transform ??= {
+          jsx: 'preserve',
+        };
+      },
+    },
     /**
      * Transform code with Babel plugin
      */
     transform(code, id) {
       // Skip node_modules, dist, and public directories
-      if (SKIP_DIRECTORIES.some(p => id.includes(p))) {
+      if (SKIP_DIRECTORIES.some((p) => id.includes(p))) {
         return;
       }
 

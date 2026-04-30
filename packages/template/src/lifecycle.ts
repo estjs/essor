@@ -1,40 +1,14 @@
 import { error, isPromise } from '@estjs/shared';
 import { type Scope, getActiveScope, runWithScope } from './scope';
 
-/**
- * Lifecycle hook type: returns void or a Promise that resolves when complete.
- * Hooks can perform cleanup by returning a cleanup function.
- */
 export type LifecycleHook = () => void | Promise<void>;
 
 /**
- * Lifecycle phases enumeration.
- * - mount: Initial render and component setup
- * - update: Re-render after props or state changes
- * - destroy: Cleanup before scope disposal
- */
-export const LIFECYCLE = {
-  mount: 'mount',
-  destroy: 'destroy',
-  update: 'update',
-} as const;
-
-export type LifecycleType = (typeof LIFECYCLE)[keyof typeof LIFECYCLE];
-
-/**
- * Lifecycle hooks registry type.
- * Maps lifecycle phases to arrays of registered hooks.
- */
-export type LifecycleHooks = {
-  [key in LifecycleType]: LifecycleHook[];
-};
-
-/**
- * Register a hook into a scope's lifecycle list.
- * Lazily initializes the hook list if not already present.
- * Prevents duplicate registration of the same hook function.
+ * Registers scoped hook.
  *
- * @internal
+ * @param scope - The scope to register the hook for.
+ * @param listKey - The key of the hook list.
+ * @param hook - The hook function to register.
  */
 function registerScopedHook(
   scope: Scope,
@@ -43,20 +17,19 @@ function registerScopedHook(
 ): void {
   let hookList = scope[listKey];
   if (!hookList) {
-    hookList = scope[listKey] = [];
+    hookList = [];
+    scope[listKey] = hookList;
   }
-  // Prevent duplicate registration of the same hook function
-  // This is important when component function is re-executed in forceUpdate
-  if (!hookList.includes(hook)) {
-    hookList.push(hook);
-  }
+  hookList.push(hook);
 }
 
 /**
- * Execute an array of lifecycle hooks, collecting async results.
- * Errors in individual hooks don't prevent others from executing.
+ * Executes lifecycle hooks and captures async rejections in dev mode.
  *
- * @internal
+ * @param hooks - The array of hooks to execute.
+ * @param scopeId - The ID of the scope.
+ * @param phase - The lifecycle phase.
+ * @returns A promise if any hooks are asynchronous, or undefined.
  */
 function executeHooks(
   hooks: LifecycleHook[],
@@ -72,12 +45,12 @@ function executeHooks(
     try {
       const result = hooks[i]();
       if (isPromise(result)) {
-        const safePromise = result.catch(error_ => {
+        const safePromise = result.catch((error_) => {
           if (__DEV__) {
             error(`Scope(${scopeId}): Async ${phase} hook rejected:`, error_);
           }
         });
-        (pending ?? (pending = [])).push(safePromise);
+        (pending || (pending = [])).push(safePromise);
       }
     } catch (error_) {
       if (__DEV__) {
@@ -87,22 +60,15 @@ function executeHooks(
   }
 
   if (!pending) return;
-  return Promise.all(pending).then(() => undefined);
+  return Promise.all(pending).then(() => {});
 }
 
 /**
  * Register a mount lifecycle hook.
- * Runs after component is mounted and virtual tree is committed.
- * If the scope is already mounted, the hook executes immediately.
+ * If the scope is already mounted, the hook is executed immediately.
  *
- * @throws Error in dev mode if called outside a scope
- * @example
- * ```tsx
- * onMount(() => {
- *   console.log('Component mounted');
- *   return () => console.log('Cleanup');
- * });
- * ```
+ * @param hook - The hook function to register.
+ * @returns {void}
  */
 export function onMount(hook: LifecycleHook): void {
   const scope = getActiveScope();
@@ -113,16 +79,15 @@ export function onMount(hook: LifecycleHook): void {
   }
 
   if (scope.isMounted) {
-    // Scope already mounted, execute immediately
     try {
       const result = hook();
       if (isPromise(result)) {
-        result.catch(error_ => {
-          if (__DEV__) error(`Scope(${scope.id}): Async ${LIFECYCLE.mount} hook rejected:`, error_);
+        result.catch((error_) => {
+          if (__DEV__) error(`Scope(${scope.id}): Async mount hook rejected:`, error_);
         });
       }
     } catch (error_) {
-      if (__DEV__) error(`Scope(${scope.id}): Error in ${LIFECYCLE.mount} hook:`, error_);
+      if (__DEV__) error(`Scope(${scope.id}): Error in mount hook:`, error_);
     }
     return;
   }
@@ -132,15 +97,9 @@ export function onMount(hook: LifecycleHook): void {
 
 /**
  * Register an update lifecycle hook.
- * Runs whenever the component re-renders due to prop or state changes.
  *
- * @throws Error in dev mode if called outside a scope
- * @example
- * ```tsx
- * onUpdate(() => {
- *   console.log('Component updated');
- * });
- * ```
+ * @param hook - The hook function to register.
+ * @returns {void}
  */
 export function onUpdate(hook: LifecycleHook): void {
   const scope = getActiveScope();
@@ -155,17 +114,9 @@ export function onUpdate(hook: LifecycleHook): void {
 
 /**
  * Register a destroy lifecycle hook.
- * Runs before scope is disposed and resources are cleaned up.
- * Perfect for resetting external state, unsubscribing from events, etc.
  *
- * @throws Error in dev mode if called outside a scope
- * @example
- * ```tsx
- * onDestroy(() => {
- *   unsubscribe();
- *   clearTimeout(timerId);
- * });
- * ```
+ * @param hook - The hook function to register.
+ * @returns {void}
  */
 export function onDestroy(hook: LifecycleHook): void {
   const scope = getActiveScope();
@@ -179,45 +130,38 @@ export function onDestroy(hook: LifecycleHook): void {
 }
 
 /**
- * Trigger all mount hooks registered in a scope.
- * Clears the hook list after execution and marks scope as mounted.
+ * Trigger mount lifecycle hooks for a scope.
  *
- * @internal
+ * @param scope - The scope to trigger hooks for.
+ * @returns A promise if any hooks are asynchronous, or undefined.
  */
 export function triggerMountHooks(scope: Scope): void | Promise<void> {
-  if (scope.isDestroyed || !scope.onMount?.length) {
+  if (scope.isDestroyed) {
+    return;
+  }
+  if (!scope.onMount || scope.onMount.length === 0) {
     scope.isMounted = true;
     return;
   }
 
   const mountHooks = scope.onMount;
-  const result = runWithScope(scope, () => executeHooks(mountHooks, scope.id, LIFECYCLE.mount));
-  mountHooks.length = 0; // Clear for garbage collection
+  const result = runWithScope(scope, () => executeHooks(mountHooks, scope.id, 'mount'));
+  mountHooks.length = 0;
   scope.isMounted = true;
   return result;
 }
 
 /**
- * Trigger all update hooks registered in a scope.
- * Clears the hook list after execution to prevent re-execution on next update.
+ * Trigger update lifecycle hooks for a scope.
  *
- * @internal
+ * @param scope - The scope to trigger hooks for.
+ * @returns A promise if any hooks are asynchronous, or undefined.
  */
 export function triggerUpdateHooks(scope: Scope): void | Promise<void> {
-  if (scope.isDestroyed || !scope.onUpdate?.length) return;
-  const updateHooks = scope.onUpdate;
-  const result = runWithScope(scope, () => executeHooks(updateHooks, scope.id, 'update'));
-  updateHooks.length = 0; // Clear for next update cycle
-  return result;
+  if (scope.isDestroyed || !scope.onUpdate || scope.onUpdate.length === 0) return;
+  return runWithScope(scope, () => executeHooks(scope.onUpdate!, scope.id, 'update'));
 }
 
-/**
- * Trigger all destroy hooks registered in a scope.
- * Hooks are executed in the scope context before resources are freed.
- *
- * @internal
- */
-export function triggerDestroyHooks(scope: Scope): void | Promise<void> {
-  if (scope.isDestroyed || !scope.onDestroy?.length) return;
-  return runWithScope(scope, () => executeHooks(scope.onDestroy!, scope.id, 'destroy'));
-}
+// NOTE: destroy hooks are executed directly inside `disposeScope` to keep
+// the teardown path synchronous and free of extra `runWithScope` frames.
+// See `./scope.ts`.

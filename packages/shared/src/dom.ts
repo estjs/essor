@@ -8,15 +8,21 @@
 
 /*! #__NO_SIDE_EFFECTS__ */
 
-import { hasOwn } from './base';
 import { error } from './logger';
+import { hasOwn } from './base';
 
+/**
+ * Creates a lookup map function from a comma-separated string.
+ *
+ * @param str - Comma-separated string of keys.
+ * @returns {(key: string) => boolean} A function that checks if a key exists in the map.
+ */
 export function makeMap(str: string): (key: string) => boolean {
   const map = Object.create(null);
   for (const key of str.split(',')) {
     map[key] = 1;
   }
-  return val => val in map;
+  return (val) => val in map;
 }
 
 /**
@@ -45,6 +51,9 @@ export const isBooleanAttr: (key: string) => boolean = /*@__PURE__*/ makeMap(
 /**
  * Boolean attributes should be included if the value is truthy or ''.
  * e.g. `<select multiple>` compiles to `{ multiple: '' }`
+ *
+ * @param value - The value to check.
+ * @returns True if the attribute should be included.
  */
 export function includeBooleanAttr(value: unknown): boolean {
   return !!value || value === '';
@@ -53,6 +62,12 @@ export function includeBooleanAttr(value: unknown): boolean {
 const unsafeAttrCharRE = /[\t\n\f "'/=>]/;
 const attrValidationCache: Record<string, boolean> = {};
 
+/**
+ * Checks whether an attribute name is safe to render during SSR.
+ *
+ * @param name - The attribute name to check.
+ * @returns True if the attribute name is safe.
+ */
 export function isSSRSafeAttrName(name: string): boolean {
   if (hasOwn(attrValidationCache, name)) {
     return attrValidationCache[name];
@@ -142,17 +157,6 @@ export const isKnownSvgAttr: (key: string) => boolean = /*@__PURE__*/ makeMap(
     'xml:space,y,y1,y2,yChannelSelector,z,zoomAndPan',
 );
 
-/**
- * Shared between server-renderer and runtime-core hydration logic
- */
-export function isRenderAbleAttrValue(value: unknown): boolean {
-  if (value == null) {
-    return false;
-  }
-  const type = typeof value;
-  return type === 'string' || type === 'number' || type === 'boolean';
-}
-
 // https://developer.mozilla.org/en-US/docs/Web/HTML/Element
 const HTML_TAGS =
   'html,body,base,head,link,meta,style,title,address,article,aside,footer,' +
@@ -193,16 +197,12 @@ const DELEGATED_EVENTS =
 
 const VOID_TAGS = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
 
-const SELFCLOSING_TAGS = 'area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr';
-
 export const isHTMLTag: (key: string) => boolean = /*@__PURE__*/ makeMap(HTML_TAGS);
 
 export const isSVGTag: (key: string) => boolean = /*@__PURE__*/ makeMap(SVG_TAGS);
 
 export const isMathMLTag: (key: string) => boolean = /*@__PURE__*/ makeMap(MATH_TAGS);
 
-export const isVoidTag: (key: string) => boolean = /*@__PURE__*/ makeMap(VOID_TAGS);
-
-export const isSelfClosingTag: (key: string) => boolean = /*@__PURE__*/ makeMap(SELFCLOSING_TAGS);
+export const isSelfClosingTag: (key: string) => boolean = /*@__PURE__*/ makeMap(VOID_TAGS);
 
 export const isDelegatedEvent: (key: string) => boolean = /*@__PURE__*/ makeMap(DELEGATED_EVENTS);

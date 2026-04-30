@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createResource } from '../../src/components/createResource';
+import { SuspenseContext } from '../../src/components/Suspense';
+import { provide } from '../../src/provide';
 import { createScope, runWithScope } from '../../src/scope';
 
 // Feature: code-quality-improvement, Property 13: Template createResource.ts 覆蓋率目標
@@ -37,7 +39,7 @@ describe('createResource', () => {
         expect(resource.state.value).toBe('pending');
 
         // Wait for promise to resolve
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('test data');
         expect(resource.loading.value).toBe(false);
@@ -64,7 +66,7 @@ describe('createResource', () => {
 
         expect(resource()).toBe('initial');
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('fetched data');
         expect(resource.loading.value).toBe(false);
@@ -157,7 +159,7 @@ describe('createResource', () => {
 
         expect(resource.loading.value).toBe(true);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource.loading.value).toBe(false);
       });
@@ -185,7 +187,7 @@ describe('createResource', () => {
 
         states.push(resource.state.value);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         states.push(resource.state.value);
 
@@ -200,7 +202,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve('original');
         const [resource, { mutate }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource()).toBe('original');
 
         mutate('mutated');
@@ -218,7 +220,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve(`data-${++counter}`);
         const [resource, { refetch }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource()).toBe('data-1');
 
         await refetch();
@@ -234,7 +236,7 @@ describe('createResource', () => {
         const fetcher = () => Promise.resolve('data');
         const [resource, { refetch }] = createResource(fetcher);
 
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         expect(resource.loading.value).toBe(false);
 
         const refetchPromise = refetch();
@@ -246,6 +248,120 @@ describe('createResource', () => {
     });
   });
 
+  describe('suspense integration', () => {
+    it('tracks each fetch cycle for Suspense before the resource accessor is read', async () => {
+      await runWithScope(scope, async () => {
+        let resolveInitial!: (value: string) => void;
+        let resolveRefetch!: (value: string) => void;
+        let fetchCount = 0;
+        const register = vi.fn();
+        const increment = vi.fn();
+        const decrement = vi.fn();
+
+        provide(SuspenseContext as any, {
+          register,
+          increment,
+          decrement,
+        });
+
+        const fetcher = () =>
+          new Promise<string>((resolve) => {
+            fetchCount++;
+            if (fetchCount === 1) {
+              resolveInitial = resolve;
+            } else {
+              resolveRefetch = resolve;
+            }
+          });
+
+        const [resource, { refetch }] = createResource(fetcher);
+
+        expect(increment).toHaveBeenCalledTimes(1);
+        expect(register).toHaveBeenCalledTimes(0);
+        expect(resource.loading.value).toBe(true);
+        expect(resource.state.value).toBe('pending');
+
+        resolveInitial('first');
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
+        expect(decrement).toHaveBeenCalledTimes(1);
+
+        const refetchPromise = refetch();
+
+        expect(increment).toHaveBeenCalledTimes(2);
+        expect(register).toHaveBeenCalledTimes(0);
+        expect(resource.loading.value).toBe(true);
+        expect(resource.state.value).toBe('pending');
+
+        resolveRefetch('second');
+        await refetchPromise;
+
+        expect(decrement).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('tracks fetch cycles and registers the accessor once per cycle', async () => {
+      await runWithScope(scope, async () => {
+        let resolveInitial!: (value: string) => void;
+        let resolveRefetch!: (value: string) => void;
+        let fetchCount = 0;
+        const register = vi.fn();
+        const increment = vi.fn();
+        const decrement = vi.fn();
+
+        provide(SuspenseContext as any, {
+          register,
+          increment,
+          decrement,
+        });
+
+        const fetcher = () =>
+          new Promise<string>((resolve) => {
+            fetchCount++;
+            if (fetchCount === 1) {
+              resolveInitial = resolve;
+            } else {
+              resolveRefetch = resolve;
+            }
+          });
+
+        const [resource, { refetch }] = createResource(fetcher);
+
+        expect(increment).toHaveBeenCalledTimes(1);
+        expect(decrement).toHaveBeenCalledTimes(0);
+        expect(register).toHaveBeenCalledTimes(0);
+        expect(resource()).toBeUndefined();
+        expect(resource()).toBeUndefined();
+        expect(register).toHaveBeenCalledTimes(1);
+        expect(register.mock.calls[0]?.[0]).toBeInstanceOf(Promise);
+
+        resolveInitial('first');
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
+
+        expect(resource()).toBe('first');
+        expect(decrement).toHaveBeenCalledTimes(1);
+
+        const refetchPromise = refetch();
+        expect(increment).toHaveBeenCalledTimes(2);
+        expect(register).toHaveBeenCalledTimes(1);
+
+        resource();
+        resource();
+        expect(register).toHaveBeenCalledTimes(2);
+        expect(register.mock.calls[1]?.[0]).toBeInstanceOf(Promise);
+
+        resolveRefetch('second');
+        await refetchPromise;
+
+        expect(resource()).toBe('second');
+        expect(decrement).toHaveBeenCalledTimes(2);
+      });
+    });
+  });
+
   describe('concurrent fetch handling', () => {
     it('should only use result from latest fetch', async () => {
       await runWithScope(scope, async () => {
@@ -253,7 +369,7 @@ describe('createResource', () => {
         const resolvers: Array<(value: string) => void> = [];
         const fetcher = () => {
           fetchCount++;
-          return new Promise<string>(resolve => {
+          return new Promise<string>((resolve) => {
             resolvers.push(resolve);
           });
         };
@@ -261,13 +377,13 @@ describe('createResource', () => {
         const [resource, { refetch }] = createResource(fetcher);
 
         // Wait a bit for initial fetch to start
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
 
         // Start second fetch before first completes
         const refetchPromise = refetch();
 
         // Wait a bit for refetch to start
-        await new Promise(resolve => setTimeout(resolve, 5));
+        await new Promise((resolve) => setTimeout(resolve, 5));
 
         expect(resolvers.length).toBe(2);
 
@@ -279,7 +395,7 @@ describe('createResource', () => {
 
         // Resolve first fetch - should be ignored
         resolvers[0]('first');
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
 
         expect(resource()).toBe('second'); // Should still be 'second'
 
@@ -310,7 +426,7 @@ describe('createResource', () => {
         expect(resource.error.value).toBe(null);
 
         // Wait for first fetch to reject (it will be caught internally)
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise((resolve) => setTimeout(resolve, 60));
 
         // Error should still be null
         expect(resource()).toBe('success');

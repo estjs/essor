@@ -5,9 +5,10 @@
 const escapeRE = /["&'<>]/;
 
 /**
- * Escapes HTML special characters in a string to their corresponding entity references
- * @param {unknown} string - The string to escapeHTML
- * @returns {string} - The escaped string
+ * Escapes HTML special characters in a string to their corresponding entity references.
+ *
+ * @param string - The string to escape.
+ * @returns {string} The escaped string.
  */
 export function escapeHTML(string: unknown): string {
   const str = `${string}`;
@@ -61,9 +62,10 @@ export function escapeHTML(string: unknown): string {
 const commentStripRE = /^-?>|<!--|-->|--!>|<!-$/g;
 
 /**
- * Strips special characters from HTML comments
- * @param {string} src - The source string
- * @returns {string} - The cleaned string
+ * Strips special characters from HTML comments.
+ *
+ * @param src - The source string.
+ * @returns {string} The cleaned string.
  */
 export function escapeHTMLComment(src: string): string {
   return src.replaceAll(commentStripRE, '');
@@ -76,13 +78,14 @@ export function escapeHTMLComment(src: string): string {
 export const cssVarNameEscapeSymbolsRE = /[ !"#$%&'()*+,./:;<=>?@[\\\]^`{|}~]/g;
 
 /**
- * Escapes special characters in CSS variable names
- * @param {string} key - The CSS variable name
- * @param {boolean} doubleEscape - Whether to apply double escaping
- * @returns {string} - The escaped CSS variable name
+ * Escapes special characters in CSS variable names.
+ *
+ * @param key - The CSS variable name.
+ * @param doubleEscape - Whether to apply double escaping.
+ * @returns The escaped CSS variable name.
  */
 export function getEscapedCssVarName(key: string, doubleEscape: boolean): string {
-  return key.replaceAll(cssVarNameEscapeSymbolsRE, s =>
+  return key.replaceAll(cssVarNameEscapeSymbolsRE, (s) =>
     doubleEscape ? (s === '"' ? '\\\\\\"' : `\\\\${s}`) : `\\${s}`,
   );
 }

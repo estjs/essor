@@ -3,38 +3,33 @@
 exports[`hMR - Rspack Platform > should work with rspack 1`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+var _t$3 = _template$("<div><!><!></div>");
+var _t$2 = _template$("<div>Bar</div>");
+var _t$ = _template$("<div>Foo</div>");
 import { createApp } from "essor";
-var _$tmpl = _template$("<div>Foo</div>"), _$tmpl2 = _template$("<div>Bar</div>"), _$tmpl3 = _template$("<div></div>");
 function Foo() {
-    return function() {
-        var _$el = _$tmpl();
-        return _$el;
-    }();
+    return _t$();
 }
-Foo.__signature = "174rcvv";
-Foo.__hmrId = "35tyqe:Foo";
+Foo.__signature = "1lygndc";
+Foo.__hmrId = "me1pwu:Foo";
 function Bar() {
-    return function() {
-        var _$el2 = _$tmpl2();
-        return _$el2;
-    }();
+    return _t$2();
 }
-Bar.__signature = "k90znw";
-Bar.__hmrId = "35tyqe:Bar";
+Bar.__signature = "u5b22v";
+Bar.__hmrId = "me1pwu:Bar";
 function App() {
     return function() {
-        var _$el3 = _$tmpl3();
-        var _$nodes3 = _mapNodes$(_$el3, [
-            1
-        ]);
-        _insert$(_$nodes3[0], __$createHMRComponent$__(Foo, {}));
-        _insert$(_$nodes3[0], __$createHMRComponent$__(Bar, {}));
-        return _$el3;
+        var _root$ = _t$3();
+        var _n$ = _child$(_root$);
+        var _n$2 = _next$(_n$, 1);
+        _insert$(_root$, __$createHMRComponent$__(Foo, {}), _n$);
+        _insert$(_root$, __$createHMRComponent$__(Bar, {}), _n$2);
+        return _root$;
     }();
 }
-App.__signature = "1i25p8q";
-App.__hmrId = "35tyqe:App";
+App.__signature = "uvdrlt";
+App.__hmrId = "me1pwu:App";
 createApp(__$createHMRComponent$__(App), "#root");
 var __$registry$__ = [
     Foo,
@@ -52,38 +47,33 @@ if (import.meta.hot) {
 exports[`hMR - Rspack Platform > should work with rspack 2`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+var _t$3 = _template$("<div><!><!></div>");
+var _t$2 = _template$("<div>B</div>");
+var _t$ = _template$("<div>A</div>");
 import { createApp } from 'essor';
-var _$tmpl = _template$("<div>A</div>"), _$tmpl2 = _template$("<div>B</div>"), _$tmpl3 = _template$("<div></div>");
 export function ComponentA() {
-    return function() {
-        var _$el = _$tmpl();
-        return _$el;
-    }();
+    return _t$();
 }
-ComponentA.__signature = "szj98";
-ComponentA.__hmrId = "35tyqe:ComponentA";
+ComponentA.__signature = "yeg9zu";
+ComponentA.__hmrId = "ydmpkz:ComponentA";
 export var ComponentB = function() {
-    return function() {
-        var _$el2 = _$tmpl2();
-        return _$el2;
-    }();
+    return _t$2();
 };
-ComponentB.__signature = "1xhowjs";
-ComponentB.__hmrId = "35tyqe:ComponentB";
+ComponentB.__signature = "1vo7hf2";
+ComponentB.__hmrId = "ydmpkz:ComponentB";
 export default function App() {
     return function() {
-        var _$el3 = _$tmpl3();
-        var _$nodes3 = _mapNodes$(_$el3, [
-            1
-        ]);
-        _insert$(_$nodes3[0], __$createHMRComponent$__(ComponentA, {}));
-        _insert$(_$nodes3[0], __$createHMRComponent$__(ComponentB, {}));
-        return _$el3;
+        var _root$ = _t$3();
+        var _n$ = _child$(_root$);
+        var _n$2 = _next$(_n$, 1);
+        _insert$(_root$, __$createHMRComponent$__(ComponentA, {}), _n$);
+        _insert$(_root$, __$createHMRComponent$__(ComponentB, {}), _n$2);
+        return _root$;
     }();
 }
-App.__signature = "1gy08hq";
-App.__hmrId = "35tyqe:App";
+App.__signature = "1q4priw";
+App.__hmrId = "ydmpkz:App";
 createApp(__$createHMRComponent$__(App), '#root');
 var __$registry$__ = [
     ComponentA,
@@ -101,26 +91,25 @@ if (import.meta.hot) {
 exports[`hMR - Rspack Platform > should work with rspack 3`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
+import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+var _t$ = _template$("<div>Hello <!></div>");
 import { createApp } from 'essor';
-var _$tmpl = _template$("<div>Hello</div>");
 function PropsComponent(props) {
     return function() {
-        var _$el = _$tmpl();
-        var _$nodes = _mapNodes$(_$el, [
-            1
-        ]);
-        _insert$(_$nodes[0], function() {
+        var _root$ = _t$();
+        var _n$ = _child$(_root$);
+        var _n$2 = _next$(_n$, 1);
+        _insert$(_root$, function() {
             return props.name;
-        });
-        return _$el;
+        }, _n$2);
+        return _root$;
     }();
 }
-PropsComponent.__signature = "eh956m";
-PropsComponent.__hmrId = "35tyqe:PropsComponent";
+PropsComponent.__signature = "kth069";
+PropsComponent.__hmrId = "1dblsze:PropsComponent";
 createApp(__$createHMRComponent$__(function() {
     return __$createHMRComponent$__(PropsComponent, {
-        "name": "World"
+        name: "World"
     });
 }), '#root');
 var __$registry$__ = [
@@ -137,34 +126,33 @@ if (import.meta.hot) {
 exports[`hMR - Rspack Platform > should work with rspack 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
+import { template as _template$, child as _child$, next as _next$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
+var _t$ = _template$("<div>Count: <!></div>");
 import { createApp, signal } from 'essor';
-var _$tmpl = _template$("<div>Count:</div>");
 function SignalComponent() {
     var count = signal(0);
     return function() {
-        var _$el = _$tmpl();
-        var _$nodes = _mapNodes$(_$el, [
-            1
-        ]);
-        _insert$(_$nodes[0], function() {
-            return count.value;
-        });
-        _$nodes[0]["_$click"] = function() {
+        var _root$ = _t$();
+        var _n$ = _child$(_root$);
+        var _n$2 = _next$(_n$, 1);
+        _root$["_$click"] = function() {
             return count.value++;
         };
-        return _$el;
+        _insert$(_root$, function() {
+            return count.value;
+        }, _n$2);
+        return _root$;
     }();
 }
-SignalComponent.__signature = "dtx8aj";
-SignalComponent.__hmrId = "35tyqe:SignalComponent";
+SignalComponent.__signature = "182rwo7";
+SignalComponent.__hmrId = "1xegm1l:SignalComponent";
 createApp(__$createHMRComponent$__(SignalComponent), '#root');
-_delegateEvents$([
-    "click"
-]);
 var __$registry$__ = [
     SignalComponent
 ];
+_delegateEvents$([
+    "click"
+]);
 if (import.meta.hot) {
     var _hot;
     __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);

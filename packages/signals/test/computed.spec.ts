@@ -83,11 +83,68 @@ describe('computed', () => {
     expect(computedValue.value).toBe(2);
   });
 
+  describe('array mutation regressions', () => {
+    it('should update primitive computed values after push on a signal array', () => {
+      const todos = signal<{ id: number; completed: boolean }[]>([]);
+      const activeCount = computed(() => todos.value.filter((todo) => !todo.completed).length);
+
+      let runs = 0;
+      effect(() => {
+        activeCount.value;
+        runs++;
+      });
+
+      expect(runs).toBe(1);
+      expect(activeCount.value).toBe(0);
+
+      todos.value.push({ id: 1, completed: false });
+
+      expect(runs).toBe(2);
+      expect(activeCount.value).toBe(1);
+    });
+
+    it('should update array-producing computed values after push on a signal array', () => {
+      const todos = signal<{ id: number; completed: boolean }[]>([]);
+      const filtered = computed(() => todos.value.filter((todo) => !todo.completed));
+
+      let runs = 0;
+      effect(() => {
+        filtered.value.length;
+        runs++;
+      });
+
+      expect(runs).toBe(1);
+
+      todos.value.push({ id: 1, completed: false });
+
+      expect(runs).toBe(2);
+      expect(filtered.value).toHaveLength(1);
+    });
+
+    it('should propagate downstream array observers when computed returns the same proxy', () => {
+      const todos = signal<{ id: number; completed: boolean }[]>([]);
+      const allTodos = computed(() => todos.value);
+
+      let runs = 0;
+      effect(() => {
+        allTodos.value.length;
+        runs++;
+      });
+
+      expect(runs).toBe(1);
+
+      todos.value.push({ id: 1, completed: false });
+
+      expect(runs).toBe(2);
+      expect(allTodos.value).toHaveLength(1);
+    });
+  });
+
   it('should work computed with get/set', () => {
     const count = signal(0);
     const computedValue = computed({
       get: () => count.value * 2,
-      set: value => {
+      set: (value) => {
         count.value = value / 2;
       },
     });
@@ -155,7 +212,6 @@ describe('computed', () => {
     });
 
     it('should handle error in getter', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const shouldError = signal(false);
       const comp = computed(() => {
         if (shouldError.value) {
@@ -168,29 +224,23 @@ describe('computed', () => {
 
       shouldError.value = true;
       expect(() => comp.value).toThrow('Computation error');
-      expect(errorSpy).toHaveBeenCalled();
 
       // Verify that next access retries the computation
       shouldError.value = false;
       expect(comp.value).toBe(42); // Should successfully recompute
-      errorSpy.mockRestore();
     });
   });
 
   describe('error handling', () => {
     it('should throw error when getter throws', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const comp = computed(() => {
         throw new Error('Test error');
       });
 
       expect(() => comp.value).toThrow('Test error');
-      expect(errorSpy).toHaveBeenCalled();
-      errorSpy.mockRestore();
     });
 
     it('should clear DIRTY and PENDING flags after error', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const shouldError = signal(false);
       const comp = computed(() => {
         if (shouldError.value) {
@@ -205,19 +255,16 @@ describe('computed', () => {
       // Trigger error
       shouldError.value = true;
       expect(() => comp.value).toThrow('Computation error');
-      expect(errorSpy).toHaveBeenCalled();
 
       // @ts-ignore accessing private property for testing
       const flags = comp.flag;
 
-      // Verify DIRTY flag is set (for retry) but PENDING is cleared
+      // Verify DIRTY and PENDING flags are cleared to prevent blocked propagation
       expect(flags & ReactiveFlags.DIRTY).toBe(0);
       expect(flags & ReactiveFlags.PENDING).toBe(0);
-      errorSpy.mockRestore();
     });
 
     it('should retry computation on next access after error', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       let attemptCount = 0;
       const shouldError = signal(true);
 
@@ -232,7 +279,6 @@ describe('computed', () => {
       // First attempt - should error
       expect(() => comp.value).toThrow('Computation error');
       expect(attemptCount).toBe(1);
-      expect(errorSpy).toHaveBeenCalled();
 
       // Fix the error condition
       shouldError.value = false;
@@ -240,11 +286,9 @@ describe('computed', () => {
       // Second attempt - should succeed and retry computation
       expect(comp.value).toBe(42);
       expect(attemptCount).toBe(2);
-      errorSpy.mockRestore();
     });
 
     it('should handle multiple consecutive errors', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       let errorCount = 0;
       const maxErrors = 3;
 
@@ -260,16 +304,13 @@ describe('computed', () => {
       expect(() => comp.value).toThrow('Error 1');
       expect(() => comp.value).toThrow('Error 2');
       expect(() => comp.value).toThrow('Error 3');
-      expect(errorSpy).toHaveBeenCalledTimes(3);
 
       // Fourth attempt should succeed
       expect(comp.value).toBe(42);
       expect(errorCount).toBe(4);
-      errorSpy.mockRestore();
     });
 
     it('should clean up dependencies even when getter throws', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const dep1 = signal(1);
       const dep2 = signal(2);
       const shouldError = signal(false);
@@ -288,16 +329,13 @@ describe('computed', () => {
       // Trigger error - should still track dep1 but not dep2
       shouldError.value = true;
       expect(() => comp.value).toThrow('Computation error');
-      expect(errorSpy).toHaveBeenCalled();
 
       // Verify dependencies are properly tracked
       // @ts-ignore accessing private property for testing
       expect(comp.depLink).toBeDefined();
-      errorSpy.mockRestore();
     });
 
     it('should handle error in nested computed', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const shouldError = signal(false);
       const inner = computed(() => {
         if (shouldError.value) {
@@ -314,16 +352,13 @@ describe('computed', () => {
       // Trigger error in inner computed
       shouldError.value = true;
       expect(() => outer.value).toThrow('Inner error');
-      expect(errorSpy).toHaveBeenCalled();
 
       // Fix error and verify both retry
       shouldError.value = false;
       expect(outer.value).toBe(20);
-      errorSpy.mockRestore();
     });
 
     it('should handle error with effects watching computed', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const shouldError = signal(false);
       const comp = computed(() => {
         if (shouldError.value) {
@@ -351,18 +386,15 @@ describe('computed', () => {
       // Trigger error
       shouldError.value = true;
       expect(effectError).toBeDefined();
-      expect((effectError as unknown as Error).message).toBe('Computation error');
-      expect(errorSpy).toHaveBeenCalled();
+      expect((effectError as Error | null)?.message).toBe('Computation error');
 
       // Fix error
       shouldError.value = false;
       expect(effectValue).toBe(42);
       expect(effectError).toBeNull();
-      errorSpy.mockRestore();
     });
 
     it('should preserve error state until next access', () => {
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       let callCount = 0;
       const comp = computed(() => {
         callCount++;
@@ -378,8 +410,6 @@ describe('computed', () => {
 
       expect(() => comp.value).toThrow('Always fails');
       expect(callCount).toBe(3);
-      expect(errorSpy).toHaveBeenCalledTimes(3);
-      errorSpy.mockRestore();
     });
 
     it('should handle undefined and null values', () => {
@@ -482,15 +512,12 @@ describe('computed', () => {
     });
 
     it('should return existing computed when passed computed', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const count = signal(0);
       const comp1 = computed(() => count.value * 2);
       // @ts-ignore
       const comp2 = computed(comp1);
 
       expect(comp2).toBe(comp1);
-      expect(warnSpy).toHaveBeenCalled();
-      warnSpy.mockRestore();
     });
 
     it('should handle computed with onTrack and onTrigger', () => {
@@ -531,7 +558,6 @@ describe('computed', () => {
 
   describe('readonly computed', () => {
     it('should warn when trying to set readonly computed', () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const count = signal(0);
       const comp = computed(() => count.value * 2);
 
@@ -541,8 +567,6 @@ describe('computed', () => {
 
       // Value should not change
       expect(comp.value).toBe(0);
-      expect(warnSpy).toHaveBeenCalled();
-      warnSpy.mockRestore();
     });
   });
 

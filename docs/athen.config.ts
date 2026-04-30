@@ -23,11 +23,21 @@ export default defineConfig({
             activeMatch: '/api/',
           },
           {
-            text: 'v0.0.0',
+            text: '组件',
+            link: '/zh/components/Fragment',
+            activeMatch: '/components/',
+          },
+          {
+            text: '服务端',
+            link: '/zh/server/ssr',
+            activeMatch: '/server/',
+          },
+          {
+            text: 'v0.0.15',
             items: [
               {
                 text: '更新日志',
-                link: 'https://github.com/estjs/essor/blob/master/CHANGELOG.md',
+                link: 'https://github.com/estjs/essor/blob/main/CHANGELOG.md',
               },
             ],
           },
@@ -44,32 +54,90 @@ export default defineConfig({
               ],
             },
             {
-              text: '基础',
+              text: '进阶',
               items: [
                 {
-                  text: 'signal',
-                  link: '/zh/basic/signal',
+                  text: 'bind 双向绑定',
+                  link: '/zh/guide/bind',
                 },
                 {
-                  text: 'watch',
-                  link: '/zh/basic/watch',
-                },
-
-                {
-                  text: 'store',
-                  link: '/zh/basic/store',
+                  text: '迁移到同构 API',
+                  link: '/zh/guide/migration-to-isomorphic',
                 },
               ],
             },
           ],
-          '/zh/api/': [
+          '/zh/server/': [
             {
-              text: 'API',
+              text: '服务端渲染',
               items: [
                 {
-                  text: 'api',
+                  text: 'SSR',
+                  link: '/zh/server/ssr',
+                },
+                {
+                  text: 'SSG',
+                  link: '/zh/server/ssg',
+                },
+                {
+                  text: '流式渲染 (Streaming)',
+                  link: '/zh/server/streaming',
+                },
+                {
+                  text: '异步资源 (Resources)',
+                  link: '/zh/server/resources',
+                },
+              ],
+            },
+          ],
+          '/zh/components/': [
+            {
+              text: '内置组件',
+              items: [
+                {
+                  text: 'Fragment',
+                  link: '/zh/components/Fragment',
+                },
+                {
+                  text: 'Portal',
+                  link: '/zh/components/Portal',
+                },
+                {
+                  text: 'Suspense',
+                  link: '/zh/components/Suspense',
+                },
+              ],
+            },
+          ],
+
+          '/zh/api/': [
+            {
+              text: 'API 总览',
+              items: [
+                {
+                  text: 'API 总览',
                   link: '/zh/api/api',
                 },
+              ],
+            },
+            {
+              text: '响应式核心',
+              items: [
+                { text: 'signal', link: '/zh/api/signal' },
+                { text: 'computed', link: '/zh/api/computed' },
+                { text: 'effect', link: '/zh/api/effect' },
+                { text: 'watch', link: '/zh/api/watch' },
+                { text: 'reactive', link: '/zh/api/reactive' },
+                { text: 'store', link: '/zh/api/store' },
+              ],
+            },
+            {
+              text: '运行时组件',
+              items: [
+                { text: '运行时 API', link: '/zh/api/runtime-api' },
+                { text: '生命周期', link: '/zh/api/lifecycle' },
+                { text: '依赖注入', link: '/zh/api/provide-inject' },
+                { text: '批量更新', link: '/zh/api/batch-updates' },
               ],
             },
           ],
@@ -80,7 +148,7 @@ export default defineConfig({
         nextPageText: '下一页',
         description: '',
         editLink: {
-          pattern: 'https://github.com/estjs/essor/tree/master/docs/:path',
+          pattern: 'https://github.com/estjs/essor/tree/main/docs/:path',
           text: '📝 在 GitHub 上编辑此页',
         },
       },
@@ -100,11 +168,21 @@ export default defineConfig({
             activeMatch: '/api/',
           },
           {
-            text: 'v0.0.0',
+            text: 'Components',
+            link: '/en/components/Fragment',
+            activeMatch: '/components/',
+          },
+          {
+            text: 'Server',
+            link: '/en/server/ssr',
+            activeMatch: '/server/',
+          },
+          {
+            text: 'v0.0.15',
             items: [
               {
                 text: 'Changelog',
-                link: 'https://github.com/estjs/essor/blob/master/CHANGELOG.md',
+                link: 'https://github.com/estjs/essor/blob/main/CHANGELOG.md',
               },
             ],
           },
@@ -118,44 +196,113 @@ export default defineConfig({
                   text: 'Getting Started',
                   link: '/en/guide/getting-started',
                 },
+                {
+                  text: 'bind two-way binding',
+                  link: '/en/guide/bind',
+                },
               ],
             },
             {
-              text: 'basic',
+              text: 'Basics',
               items: [
                 {
                   text: 'signal',
-                  link: '/zh/basic/signal',
+                  link: '/en/api/signal',
+                },
+                {
+                  text: 'computed',
+                  link: '/en/api/computed',
+                },
+                {
+                  text: 'effect',
+                  link: '/en/api/effect',
                 },
                 {
                   text: 'watch',
-                  link: '/zh/basic/watch',
+                  link: '/en/api/watch',
                 },
-
+                {
+                  text: 'reactive',
+                  link: '/en/api/reactive',
+                },
                 {
                   text: 'store',
-                  link: '/zh/basic/store',
+                  link: '/en/api/store',
                 },
               ],
             },
           ],
-          '/en/api/': [
+          '/en/server/': [
             {
-              text: 'Config',
+              text: 'Server-Side Rendering',
               items: [
                 {
-                  text: 'Basic Config',
+                  text: 'SSR',
+                  link: '/en/server/ssr',
+                },
+                {
+                  text: 'SSG',
+                  link: '/en/server/ssg',
+                },
+                {
+                  text: 'Streaming',
+                  link: '/en/server/streaming',
+                },
+                {
+                  text: 'Async Resources',
+                  link: '/en/server/resources',
+                },
+              ],
+            },
+          ],
+          '/en/components/': [
+            {
+              text: 'Built-in Components',
+              items: [
+                {
+                  text: 'Fragment',
+                  link: '/en/components/Fragment',
+                },
+                {
+                  text: 'Portal',
+                  link: '/en/components/Portal',
+                },
+                {
+                  text: 'Suspense',
+                  link: '/en/components/Suspense',
+                },
+              ],
+            },
+          ],
+
+          '/en/api/': [
+            {
+              text: 'Overview',
+              items: [
+                {
+                  text: 'API Overview',
                   link: '/en/api/api',
                 },
               ],
             },
             {
-              text: 'Client API',
+              text: 'Reactive Core',
               items: [
-                {
-                  text: 'Runtime API',
-                  link: '/en/api/api-runtime',
-                },
+                { text: 'signal', link: '/en/api/signal' },
+                { text: 'computed', link: '/en/api/computed' },
+                { text: 'effect', link: '/en/api/effect' },
+                { text: 'watch', link: '/en/api/watch' },
+                { text: 'reactive', link: '/en/api/reactive' },
+                { text: 'store', link: '/en/api/store' },
+              ],
+            },
+            {
+              text: 'Runtime',
+              items: [
+                { text: 'Runtime API', link: '/en/api/runtime-api' },
+                { text: 'Lifecycle', link: '/en/api/lifecycle' },
+                { text: 'Dependency Injection', link: '/en/api/provide-inject' },
+                { text: 'Batch Updates', link: '/en/api/batch-updates' },
               ],
             },
           ],
@@ -163,13 +310,13 @@ export default defineConfig({
         title: 'Essor',
         description: '',
         lastUpdatedText: 'Last Updated',
+        outlineTitle: 'ON THIS PAGE',
         editLink: {
-          pattern: 'https://github.com/estjs/essor/tree/master/docs/:path',
+          pattern: 'https://github.com/estjs/essor/tree/main/docs/:path',
           text: '📝 Edit this page on GitHub',
         },
       },
     },
-    outlineTitle: 'ON THIS PAGE',
     socialLinks: [
       {
         icon: 'github',
@@ -179,7 +326,7 @@ export default defineConfig({
       {
         icon: 'discord',
         mode: 'link',
-        content: 'https://discord.gg',
+        content: 'https://discord.gg/estjs',
       },
     ],
     footer: {

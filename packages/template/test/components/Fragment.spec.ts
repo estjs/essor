@@ -1,3 +1,4 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Fragment, isFragment } from '../../src/components/Fragment';
 import { mount } from '../test-utils';
 import { createComponent } from '../../src';

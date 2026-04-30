@@ -1,40 +1,58 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`should work with jsx client transform > handles signal variables in JSX expressions 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div></div>");
+"import { template as _template$, child as _child$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div><!></div>");
 const $count = signal(0);
 (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => $count.value);
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => $count.value, _n$);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > handles signal variables in JSX props 1`] = `
-"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div></div>");
+"import { template as _template$, patchClass as _patchClass$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div></div>");
 const $value = signal('test');
 const fn = () => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
+  const _root$ = _t$();
   _memoEffect$(_p$ => {
     var _v$0 = $value.value;
-    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
+    _v$0 !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$0);
     return _p$;
   }, {
-    c0: undefined
+    c0: {}
   });
-  return _$el;
+  return _root$;
+})();"
+`;
+
+exports[`should work with jsx client transform > keeps map expressions as plain inserts when enableFor is disabled 1`] = `
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
+const _t$ = _template$("<tbody><!></tbody>");
+(() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_For$, {
+    get each() {
+      return data.value;
+    },
+    children: item => Row({
+      "item": item
+    }),
+    key: item => item.id
+  }), _n$);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > should correctly compile Fragment with element children 1`] = `
-"import { createComponent as _createComponent$, Fragment as _Fragment$, template as _template$, mapNodes as _mapNodes$, delegateEvents as _delegateEvents$ } from "essor";
+"import { Fragment as _Fragment$, template as _template$, createComponent as _createComponent$, delegateEvents as _delegateEvents$ } from "essor";
+const _t$2 = _template$("<div class=\\"random\\">random router</div>");
+const _t$ = _template$("<div class=\\"home\\">to about</div>");
 import { useRouter } from 'essor-router';
-const _$tmpl = _template$("<div  class=\\"home\\">to about</div>"),
-  _$tmpl2 = _template$("<div  class=\\"random\\">random router</div>");
 const value = "string value";
 export default function Home() {
   const router = useRouter();
@@ -45,17 +63,17 @@ export default function Home() {
     router.push('/random');
   };
   return _createComponent$(_Fragment$, {
-    "children": ["pure string\\n          string value", value, "1", undefined, null, false, true, Symbol(), (() => {
-      const _$el = _$tmpl();
-      const _$nodes = _mapNodes$(_$el, [1]);
-      _$nodes[0]["_$click"] = onClick;
-      return _$el;
-    })(), (() => {
-      const _$el2 = _$tmpl2();
-      const _$nodes2 = _mapNodes$(_$el2, [1]);
-      _$nodes2[0]["_$click"] = onRandomClick;
-      return _$el2;
-    })()]
+    get children() {
+      return ["pure string string value", value, "1", undefined, false, true, Symbol(), (() => {
+        const _root$ = _t$();
+        _root$["_$click"] = onClick;
+        return _root$;
+      })(), (() => {
+        const _root$2 = _t$2();
+        _root$2["_$click"] = onRandomClick;
+        return _root$2;
+      })()];
+    }
   });
 }
 _delegateEvents$(["click"]);"
@@ -63,126 +81,93 @@ _delegateEvents$(["click"]);"
 
 exports[`should work with jsx client transform > should work with CSS Variables transform to inline style 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div  style=\\"--color: red;\\">Hello, World!</div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div style=\\"--color: red\\">Hello, World!</div>");
+const element = _t$();"
 `;
 
-exports[`should work with jsx client transform > should work with bind api 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, bindElement as _bindElement$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-const value = 1;
+exports[`should work with jsx client transform > should work with For 1`] = `
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
+const _t$ = _template$("<tbody><!></tbody>");
 (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [2]);
-  _bindElement$(_$nodes[0], "value", value, _value => value = _value);
-  _memoEffect$(_p$ => {
-    var _v$0 = value;
-    _v$0 !== _p$.a0 && _patchAttr$(_$nodes[0], "value", _p$.a0, _p$.a0 = _v$0);
-    return _p$;
-  }, {
-    a0: undefined
-  });
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_For$, {
+    get each() {
+      return data.value;
+    },
+    children: item => Row(Object.assign({}, {
+      "other": "1",
+      "item": item
+    }, {
+      other: 2
+    })),
+    key: item => item.id
+  }), _n$);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with className and className merge 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div  class=\\"base extra\\">Content</div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
-`;
-
-exports[`should work with jsx client transform > should work with comment in JSX 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, bindElement as _bindElement$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-const value = 1;
-(() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [2]);
-  _bindElement$(_$nodes[0], "value", value, _value => value = _value);
-  _memoEffect$(_p$ => {
-    var _v$0 = value;
-    _v$0 !== _p$.a0 && _patchAttr$(_$nodes[0], "value", _p$.a0, _p$.a0 = _v$0);
-    return _p$;
-  }, {
-    a0: undefined
-  });
-  return _$el;
-})();"
+const _t$ = _template$("<div class=\\"base extra\\">Content</div>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > should work with concurrent mode 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-concurrent></div>"),
-  _$tmpl2 = _template$("<div>Concurrent Mode Content</div>");
-const ConcurrentMode = ({
-  children
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$2 = _template$("<div>Concurrent Mode Content</div>");
+const _t$ = _template$("<div data-concurrent><!></div>");
+const ConcurrentMode = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 const element = _createComponent$(ConcurrentMode, {
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with concurrent mode and suspense 1`] = `
-"import { createComponent as _createComponent$, Suspense as _Suspense$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div>Concurrent Mode Suspended Content</div>"),
-  _$tmpl2 = _template$("<div>Loading...</div>");
+"import { template as _template$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _t$2 = _template$("<div>Loading...</div>");
+const _t$ = _template$("<div>Concurrent Mode Suspended Content</div>");
 const element = _createComponent$(ConcurrentMode, {
-  "children": [_createComponent$(_Suspense$, {
-    "fallback": (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })(),
-    "children": [(() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })()]
-  })]
+  get children() {
+    return [_createComponent$(_Suspense$, {
+      get fallback() {
+        return _t$2();
+      },
+      get children() {
+        return [_t$()];
+      }
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with conditional rendering 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div></div>"),
-  _$tmpl2 = _template$("<p>Visible Content</p>"),
-  _$tmpl3 = _template$("<span>True</span>"),
-  _$tmpl4 = _template$("<span>False</span>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+const _t$4 = _template$("<span>False</span>");
+const _t$3 = _template$("<span>True</span>");
+const _t$2 = _template$("<p>Visible Content</p>");
+const _t$ = _template$("<div><!><!></div>");
 const isVisible = true;
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => isVisible && (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })());
-  _insert$(_$nodes[0], () => isVisible ? (() => {
-    const _$el3 = _$tmpl3();
-    return _$el3;
-  })() : (() => {
-    const _$el4 = _$tmpl4();
-    return _$el4;
-  })());
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  _insert$(_root$, () => isVisible && _t$2(), _n$);
+  _insert$(_root$, () => isVisible ? _t$3() : _t$4(), _n$2);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with context 1`] = `
-"import { createComponent as _createComponent$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div>Themed Content</div>");
+"import { template as _template$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div>Themed Content</div>");
 const ThemeContext = {
   Provider: ({
     value,
@@ -190,49 +175,47 @@ const ThemeContext = {
   }) => children
 };
 const element = _createComponent$(ThemeContext.Provider, {
-  "value": "dark",
-  "children": [(() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })()]
+  value: "dark",
+  get children() {
+    return [_t$()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with context and memo combination 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Memo Content</div>");
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div>Memo Content</div>");
 const ThemeContext = {
   Provider: ({
     value,
     children
   }) => children
 };
-const MemoComponent = ({
-  theme
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
+const MemoComponent = __props => (() => {
+  const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$0 = theme;
-    _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-theme", _p$.d0, _p$.d0 = _v$0);
+    var _v$0 = __props.theme;
+    _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-theme", _p$.a0, _p$.a0 = _v$0);
     return _p$;
   }, {
-    d0: undefined
+    a0: {}
   });
-  return _$el;
+  return _root$;
 })();
 MemoComponent._memo = true;
 const element = _createComponent$(ThemeContext.Provider, {
-  "value": "dark",
-  "children": [_createComponent$(MemoComponent, {
-    "theme": "dark"
-  })]
+  value: "dark",
+  get children() {
+    return [_createComponent$(MemoComponent, {
+      theme: "dark"
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with context providers 1`] = `
-"import { createComponent as _createComponent$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div  data-theme=\\"dark\\">Themed Content</div>");
+"import { template as _template$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div data-theme=\\"dark\\">Themed Content</div>");
 const ThemeContext = {
   Provider: ({
     value,
@@ -240,17 +223,16 @@ const ThemeContext = {
   }) => children
 };
 const element = _createComponent$(ThemeContext.Provider, {
-  "value": "dark",
-  "children": [(() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })()]
+  value: "dark",
+  get children() {
+    return [_t$()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with custom hooks in components 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Hook Content</div>");
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div>Hook Content</div>");
 const useCustomHook = () => ({
   value: 'custom'
 });
@@ -259,293 +241,226 @@ const Component = () => {
     value
   } = useCustomHook();
   return (() => {
-    const _$el = _$tmpl();
-    const _$nodes = _mapNodes$(_$el, [1]);
+    const _root$ = _t$();
     _memoEffect$(_p$ => {
       var _v$0 = value;
-      _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-hook", _p$.d0, _p$.d0 = _v$0);
+      _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-hook", _p$.a0, _p$.a0 = _v$0);
       return _p$;
     }, {
-      d0: undefined
+      a0: {}
     });
-    return _$el;
+    return _root$;
   })();
 };
 const element = _createComponent$(Component, {});"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic class names 1`] = `
-"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Dynamic Class</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div class=\\"active\\">Dynamic Class</div>");
 const isActive = true;
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = isActive ? 'active' : '';
-    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
-    return _p$;
-  }, {
-    c0: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic style transform to inline style 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div style=\\"color:red;font-size:16px\\">Hello, World!</div>");
 const color = "red";
 const style = {
   color,
   fontSize: '16px'
 };
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = style;
-    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
-    return _p$;
-  }, {
-    s0: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > should work with dynamic styles 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Dynamic Style</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div style=\\"color:red;font-size:16px\\">Dynamic Style</div>");
 const color = 'red';
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = {
-      color,
-      fontSize: '16px'
-    };
-    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
-    return _p$;
-  }, {
-    s0: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > should work with error boundaries 1`] = `
 "import { template as _template$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Error occurred!</div>"),
-  _$tmpl2 = _template$("<div>Protected Content</div>");
-const ErrorBoundary = ({
-  children
-}) => {
+const _t$2 = _template$("<div>Protected Content</div>");
+const _t$ = _template$("<div>Error occurred!</div>");
+const ErrorBoundary = __props => {
   try {
-    return children;
+    return __props.children;
   } catch (error) {
-    return (() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })();
+    return _t$();
   }
 };
 const element = _createComponent$(ErrorBoundary, {
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with error boundaries2 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-error-boundary></div>"),
-  _$tmpl2 = _template$("<div>Protected Content</div>"),
-  _$tmpl3 = _template$("<div>Error occurred!</div>");
-const ErrorBoundary = ({
-  children,
-  fallback
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  _insert$(_$nodes[0], () => fallback);
-  return _$el;
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$3 = _template$("<div>Error occurred!</div>");
+const _t$2 = _template$("<div>Protected Content</div>");
+const _t$ = _template$("<div data-error-boundary><!><!></div>");
+const ErrorBoundary = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  _insert$(_root$, () => __props.children, _n$);
+  _insert$(_root$, () => __props.fallback, _n$2);
+  return _root$;
 })();
 const element = _createComponent$(ErrorBoundary, {
-  "fallback": (() => {
-    const _$el3 = _$tmpl3();
-    return _$el3;
-  })(),
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get fallback() {
+    return _t$3();
+  },
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with event handlers 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, delegateEvents as _delegateEvents$ } from "essor";
-const _$tmpl = _template$("<button>Click me</button>");
+"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
+const _t$ = _template$("<button>Click me</button>");
 const handleClick = () => console.log('clicked');
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _$nodes[0]["_$click"] = handleClick;
-  return _$el;
+  const _root$ = _t$();
+  _root$["_$click"] = handleClick;
+  return _root$;
 })();
 _delegateEvents$(["click"]);"
 `;
 
 exports[`should work with jsx client transform > should work with forwardRef and memo 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Forward Ref Memo:</div>");
-const ForwardRefMemoComponent = React.memo(React.forwardRef((props, ref) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => props.value);
-  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
-  return _$el;
-})()));
-const element = _createComponent$(ForwardRefMemoComponent, {
-  "value": 42,
-  "ref": React.createRef()
+"import { createComponent as _createComponent$ } from "essor";
+const ref = useRef();
+const element = _createComponent$(ForwardRefComponent, {
+  value: "42",
+  get ref() {
+    return ref;
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with forwardRef components 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div></div>");
-const ForwardRefComponent = ({
-  children
-}, ref) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div><!></div>");
+const ForwardRefComponent = (__props, ref) => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 const element = _createComponent$(ForwardRefComponent, {
-  "children": ["Forward Ref Content"]
+  get children() {
+    return ["Forward Ref Content"];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with fragments and keys and values 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$, Fragment as _Fragment$ } from "essor";
-const _$tmpl = _template$("<div></div>"),
-  _$tmpl2 = _template$("<div  key=\\"1\\">First</div>"),
-  _$tmpl3 = _template$("<div  key=\\"2\\">Second</div>");
+"import { template as _template$, child as _child$, insert as _insert$, Fragment as _Fragment$, createComponent as _createComponent$ } from "essor";
+const _t$3 = _template$("<div key=\\"2\\">Second</div>");
+const _t$2 = _template$("<div key=\\"1\\">First</div>");
+const _t$ = _template$("<div><!></div>");
 const val = 'test';
-const Children = ({
-  children
-}) => {
+const Children = __props => {
   return (() => {
-    const _$el = _$tmpl();
-    const _$nodes = _mapNodes$(_$el, [1]);
-    _insert$(_$nodes[0], () => children);
-    return _$el;
+    const _root$ = _t$();
+    const _n$ = _child$(_root$);
+    _insert$(_root$, () => __props.children, _n$);
+    return _root$;
   })();
 };
 const element = _createComponent$(_Fragment$, {
-  "children": [val, _createComponent$(Children, {}), (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })(), (() => {
-    const _$el3 = _$tmpl3();
-    return _$el3;
-  })()]
+  get children() {
+    return [val, _createComponent$(Children, {}), _t$2(), _t$3()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with head management 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<head></head>"),
-  _$tmpl2 = _template$("<title>Page Title</title>"),
-  _$tmpl3 = _template$("<meta  name=\\"description\\" content=\\"Page description\\"/>");
-const Head = ({
-  children
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$3 = _template$("<meta name=\\"description\\" content=\\"Page description\\"/>");
+const _t$2 = _template$("<title>Page Title</title>");
+const _t$ = _template$("<head><!></head>");
+const Head = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 const element = _createComponent$(Head, {
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })(), (() => {
-    const _$el3 = _$tmpl3();
-    return _$el3;
-  })()]
+  get children() {
+    return [_t$2(), _t$3()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with lazy components 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-lazy></div>");
-const LazyComponent = ({
-  children
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div data-lazy><!></div>");
+const LazyComponent = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 LazyComponent._lazy = true;
 const element = _createComponent$(LazyComponent, {
-  "children": ["Lazy Content"]
+  get children() {
+    return ["Lazy Content"];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with list rendering 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<ul></ul>"),
-  _$tmpl2 = _template$("<li></li>");
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
+const _t$2 = _template$("<li><!></li>");
+const _t$ = _template$("<ul><!></ul>");
 const items = ['Item 1', 'Item 2', 'Item 3'];
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => items.map((item, index) => (() => {
-    const _$el2 = _$tmpl2();
-    const _$nodes2 = _mapNodes$(_$el2, [1]);
-    _insert$(_$nodes2[0], () => item);
-    _memoEffect$(_p$ => {
-      var _v$0 = index;
-      _v$0 !== _p$.k0 && _patchAttr$(_$nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
-      return _p$;
-    }, {
-      k0: undefined
-    });
-    return _$el2;
-  })()));
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_For$, {
+    get each() {
+      return items;
+    },
+    children: (item, index) => (() => {
+      const _root$2 = _t$2();
+      const _n$2 = _child$(_root$2);
+      _insert$(_root$2, () => item, _n$2);
+      return _root$2;
+    })(),
+    key: (item, index) => index
+  }), _n$);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with memo and custom comparison 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Memo:</div>");
-const MemoComponent = ({
-  value
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => value);
-  return _$el;
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div>Memo: <!></div>");
+const MemoComponent = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  _insert$(_root$, () => __props.value, _n$2);
+  return _root$;
 })();
 MemoComponent._memo = true;
 MemoComponent._compare = (prev, next) => prev.value === next.value;
 const element = _createComponent$(MemoComponent, {
-  "value": 42
+  value: "42"
 });"
 `;
 
 exports[`should work with jsx client transform > should work with multiple contexts 1`] = `
-"import { createComponent as _createComponent$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div  data-theme=\\"dark\\" data-user=\\"John\\">Nested Context Content</div>");
+"import { template as _template$, createComponent as _createComponent$ } from "essor";
+const _t$ = _template$("<div data-theme=\\"dark\\" data-user=\\"John\\">Nested Context Content</div>");
 const ThemeContext = {
   Provider: ({
     value,
@@ -566,266 +481,258 @@ const cla = class {
   static e = 5;
 };
 const element = _createComponent$(ThemeContext.Provider, {
-  "value": "dark",
-  "children": [_createComponent$(UserContext.Provider, {
-    "value": {
-      name: 'John'
-    },
-    "v1": undefined,
-    "v2": null,
-    "v3": true,
-    "v4": false,
-    "v5": 1,
-    "v6": 1.1,
-    "v7": "1",
-    "v8": Symbol('1'),
-    "v9": cla,
-    "v10": new Date(),
-    "children": [(() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })()]
-  })]
+  value: "dark",
+  get children() {
+    return [_createComponent$(UserContext.Provider, {
+      v3: true,
+      v4: false,
+      v5: "1",
+      v6: "1.1",
+      v7: "1",
+      get value() {
+        return {
+          name: 'John'
+        };
+      },
+      v1: undefined,
+      v2: null,
+      get v8() {
+        return Symbol('1');
+      },
+      get v9() {
+        return cla;
+      },
+      get v10() {
+        return new Date();
+      },
+      get children() {
+        return [_t$()];
+      }
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with multiple event handlers 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, addEventListener as _addEventListener$, delegateEvents as _delegateEvents$ } from "essor";
-const _$tmpl = _template$("<div>Multiple Events</div>");
+"import { template as _template$, addEventListener as _addEventListener$, delegateEvents as _delegateEvents$ } from "essor";
+const _t$ = _template$("<div>Multiple Events</div>");
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _$nodes[0]["_$click"] = () => console.log('clicked');
-  _addEventListener$(_$nodes[0], "mouseenter", () => console.log('mouse enter'));
-  _addEventListener$(_$nodes[0], "mouseleave", () => console.log('mouse leave'));
-  return _$el;
+  const _root$ = _t$();
+  _root$["_$click"] = () => console.log('clicked');
+  _addEventListener$(_root$, "mouseenter", () => console.log('mouse enter'));
+  _addEventListener$(_root$, "mouseleave", () => console.log('mouse leave'));
+  return _root$;
 })();
 _delegateEvents$(["click"]);"
 `;
 
 exports[`should work with jsx client transform > should work with nested components and props 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div>Name:<!>, Age:</div>"),
-  _$tmpl2 = _template$("<div></div>");
-const Child = ({
-  name,
-  age
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 3]);
-  _insert$(_$nodes[0], () => name, _$nodes[1]);
-  _insert$(_$nodes[0], () => age);
-  return _$el;
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$2 = _template$("<div><!><!></div>");
+const _t$ = _template$("<div>Name: <!>, Age: <!></div>");
+const Child = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  const _n$3 = _next$(_n$2, 2);
+  _insert$(_root$, () => __props.name, _n$2);
+  _insert$(_root$, () => __props.age, _n$3);
+  return _root$;
 })();
 const Parent = () => (() => {
-  const _$el2 = _$tmpl2();
-  const _$nodes2 = _mapNodes$(_$el2, [1]);
-  _insert$(_$nodes2[0], _createComponent$(Child, {
-    "name": "John",
-    "age": 25
-  }));
-  _insert$(_$nodes2[0], _createComponent$(Child, {
-    "name": "Jane",
-    "age": 23
-  }));
-  return _$el2;
+  const _root$2 = _t$2();
+  const _n$4 = _child$(_root$2);
+  const _n$5 = _next$(_n$4, 1);
+  _insert$(_root$2, _createComponent$(Child, {
+    name: "John",
+    age: "25"
+  }), _n$4);
+  _insert$(_root$2, _createComponent$(Child, {
+    name: "Jane",
+    age: "23"
+  }), _n$5);
+  return _root$2;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with portal components 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$, Portal as _Portal$ } from "essor";
-const _$tmpl = _template$("<div></div>"),
-  _$tmpl2 = _template$("<div>Modal Content</div>");
-const Portal = ({
-  children,
-  target
-}) => {
+"import { template as _template$, child as _child$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, insert as _insert$, createComponent as _createComponent$, Portal as _Portal$ } from "essor";
+const _t$2 = _template$("<div>Modal Content</div>");
+const _t$ = _template$("<div><!></div>");
+const Portal = __props => {
   return (() => {
-    const _$el = _$tmpl();
-    const _$nodes = _mapNodes$(_$el, [1]);
-    _insert$(_$nodes[0], () => children);
+    const _root$ = _t$();
+    const _n$ = _child$(_root$);
     _memoEffect$(_p$ => {
-      var _v$0 = target;
-      _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-portal-target", _p$.d0, _p$.d0 = _v$0);
+      var _v$0 = __props.target;
+      _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$0);
       return _p$;
     }, {
-      d0: undefined
+      a0: {}
     });
-    return _$el;
+    _insert$(_root$, () => __props.children, _n$);
+    return _root$;
   })();
 };
 const element = _createComponent$(_Portal$, {
-  "target": "modal",
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  target: "modal",
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with portals and ref forwarding 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, insert as _insert$, memoEffect as _memoEffect$, createComponent as _createComponent$, Portal as _Portal$ } from "essor";
-const _$tmpl = _template$("<div></div>"),
-  _$tmpl2 = _template$("<div>Modal Content with Ref</div>");
-const Portal = ({
-  children,
-  target
-}, ref) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  typeof ref === "function" ? ref(_$nodes[0]) : ref.value = _$nodes[0];
+"import { template as _template$, child as _child$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, insert as _insert$, createComponent as _createComponent$, Portal as _Portal$ } from "essor";
+const _t$2 = _template$("<div>Modal Content with Ref</div>");
+const _t$ = _template$("<div><!></div>");
+const Portal = (__props, ref) => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
   _memoEffect$(_p$ => {
-    var _v$0 = target;
-    _v$0 !== _p$.d0 && _patchAttr$(_$nodes[0], "data-portal-target", _p$.d0, _p$.d0 = _v$0);
+    var _v$0 = __props.target;
+    _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$0);
     return _p$;
   }, {
-    d0: undefined
+    a0: {}
   });
-  return _$el;
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
+const ref = useRef();
 const element = _createComponent$(_Portal$, {
-  "target": "modal",
-  "ref": React.createRef(),
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  target: "modal",
+  get ref() {
+    return ref;
+  },
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with refs 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$ } from "essor";
-const _$tmpl = _template$("<div>Reference Element</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div>Reference Element</div>");
 const myRef = {
   current: null
 };
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  typeof myRef === "function" ? myRef(_$nodes[0]) : myRef.value = _$nodes[0];
-  return _$el;
+  const _root$ = _t$();
+  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(myRef);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > should work with static style transform to inline style 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div  style=\\"color:red;fontSize:16px;\\">Hello, World!</div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div style=\\"color:red;font-size:16px\\">Hello, World!</div>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > should work with strict mode 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _$tmpl = _template$("<div  data-strict></div>"),
-  _$tmpl2 = _template$("<div>Strict Mode Content</div>");
-const StrictMode = ({
-  children
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$2 = _template$("<div>Strict Mode Content</div>");
+const _t$ = _template$("<div data-strict><!></div>");
+const StrictMode = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 const element = _createComponent$(StrictMode, {
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with strict mode and error boundary 1`] = `
-"import { createComponent as _createComponent$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div>Strict Mode Protected Content</div>"),
-  _$tmpl2 = _template$("<div>Error occurred!</div>");
+"import { template as _template$, createComponent as _createComponent$ } from "essor";
+const _t$2 = _template$("<div>Error occurred!</div>");
+const _t$ = _template$("<div>Strict Mode Protected Content</div>");
 const element = _createComponent$(StrictMode, {
-  "children": [_createComponent$(ErrorBoundary, {
-    "fallback": (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })(),
-    "children": [(() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })()]
-  })]
+  get children() {
+    return [_createComponent$(ErrorBoundary, {
+      get fallback() {
+        return _t$2();
+      },
+      get children() {
+        return [_t$()];
+      }
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with suspense and error boundary combination 1`] = `
-"import { createComponent as _createComponent$, Suspense as _Suspense$, template as _template$ } from "essor";
-const _$tmpl = _template$("<div>Protected and Suspended Content</div>"),
-  _$tmpl2 = _template$("<div>Error occurred!</div>"),
-  _$tmpl3 = _template$("<div>Loading...</div>");
+"import { template as _template$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _t$3 = _template$("<div>Loading...</div>");
+const _t$2 = _template$("<div>Error occurred!</div>");
+const _t$ = _template$("<div>Protected and Suspended Content</div>");
 const element = _createComponent$(ErrorBoundary, {
-  "fallback": (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })(),
-  "children": [_createComponent$(_Suspense$, {
-    "fallback": (() => {
-      const _$el3 = _$tmpl3();
-      return _$el3;
-    })(),
-    "children": [(() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })()]
-  })]
+  get fallback() {
+    return _t$2();
+  },
+  get children() {
+    return [_createComponent$(_Suspense$, {
+      get fallback() {
+        return _t$3();
+      },
+      get children() {
+        return [_t$()];
+      }
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with suspense and lazy loading 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
-const _$tmpl = _template$("<div  data-lazy></div>"),
-  _$tmpl2 = _template$("<div>Loading...</div>");
-const LazyComponent = ({
-  children
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  return _$el;
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _t$2 = _template$("<div>Loading...</div>");
+const _t$ = _template$("<div data-lazy><!></div>");
+const LazyComponent = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, () => __props.children, _n$);
+  return _root$;
 })();
 LazyComponent._lazy = true;
 const element = _createComponent$(_Suspense$, {
-  "fallback": (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })(),
-  "children": [_createComponent$(LazyComponent, {
-    "children": ["Lazy Content"]
-  })]
+  get fallback() {
+    return _t$2();
+  },
+  get children() {
+    return [_createComponent$(LazyComponent, {
+      get children() {
+        return ["Lazy Content"];
+      }
+    })];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > should work with suspense boundaries 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
-const _$tmpl = _template$("<div  data-suspense></div>"),
-  _$tmpl2 = _template$("<div>Content</div>"),
-  _$tmpl3 = _template$("<div>Loading...</div>");
-const Suspense = ({
-  children,
-  fallback
-}) => (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _insert$(_$nodes[0], () => children);
-  _insert$(_$nodes[0], () => fallback);
-  return _$el;
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+const _t$3 = _template$("<div>Loading...</div>");
+const _t$2 = _template$("<div>Content</div>");
+const _t$ = _template$("<div data-suspense><!><!></div>");
+const Suspense = __props => (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  _insert$(_root$, () => __props.children, _n$);
+  _insert$(_root$, () => __props.fallback, _n$2);
+  return _root$;
 })();
 const element = _createComponent$(_Suspense$, {
-  "fallback": (() => {
-    const _$el3 = _$tmpl3();
-    return _$el3;
-  })(),
-  "children": [(() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get fallback() {
+    return _t$3();
+  },
+  get children() {
+    return [_t$2()];
+  }
 });"
 `;
 
@@ -838,299 +745,244 @@ const props = {
 const otherProps = {
   props: "other"
 };
-const element = _createComponent$(Component, {
-  ...props,
-  ...otherProps,
-  "other": "other"
-});"
+const element = _createComponent$(Component, Object.assign({}, {
+  other: "other"
+}, props, otherProps));"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with JSX fragment 1`] = `
-"import { createComponent as _createComponent$, Fragment as _Fragment$, template as _template$ } from "essor";
-const _$tmpl = _template$("<p>Paragraph 1</p>"),
-  _$tmpl2 = _template$("<p>Paragraph 2</p>");
+"import { Fragment as _Fragment$, template as _template$, createComponent as _createComponent$ } from "essor";
+const _t$2 = _template$("<p>Paragraph 2</p>");
+const _t$ = _template$("<p>Paragraph 1</p>");
 const element = _createComponent$(_Fragment$, {
-  "children": [(() => {
-    const _$el = _$tmpl();
-    return _$el;
-  })(), (() => {
-    const _$el2 = _$tmpl2();
-    return _$el2;
-  })()]
+  get children() {
+    return [_t$(), _t$2()];
+  }
 });"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with JSX fragment as children 1`] = `
-"import { createComponent as _createComponent$, Fragment as _Fragment$, template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<p>Paragraph 1</p>"),
-  _$tmpl2 = _template$("<p>Paragraph 2</p>"),
-  _$tmpl3 = _template$("<div></div>");
+"import { Fragment as _Fragment$, template as _template$, child as _child$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+const _t$3 = _template$("<p>Paragraph 2</p>");
+const _t$2 = _template$("<p>Paragraph 1</p>");
+const _t$ = _template$("<div><!></div>");
 const element = (() => {
-  const _$el3 = _$tmpl3();
-  const _$nodes3 = _mapNodes$(_$el3, [1]);
-  _insert$(_$nodes3[0], _createComponent$(_Fragment$, {
-    "children": [(() => {
-      const _$el = _$tmpl();
-      return _$el;
-    })(), (() => {
-      const _$el2 = _$tmpl2();
-      return _$el2;
-    })()]
-  }));
-  return _$el3;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_Fragment$, {
+    get children() {
+      return [_t$2(), _t$3()];
+    }
+  }), _n$);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with SVG tags 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<svg><circle  cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\"></circle></svg>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<svg><circle cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\"></circle></svg>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with attributes 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div  id=\\"myId\\" class=\\"myClass\\">Hello, World!</div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div class=\\"myClass\\" id=\\"myId\\">Hello, World!</div>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with boolean attribute 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<input  disabled/>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<input disabled/>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with children 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with class and style attributes 1`] = `
-"import { patchClass as _patchClass$, patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div class=\\"myClass\\" style=\\"color:red;font-size:16px\\">Hello, World!</div>");
 const hasClass = true;
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = hasClass ? 'myClass' : '',
-      _v$1 = style;
-    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
-    _v$1 !== _p$.s1 && _patchStyle$(_$nodes[0], _p$.s1, _p$.s1 = _v$1);
-    return _p$;
-  }, {
-    c0: undefined,
-    s1: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with conditional attributes 1`] = `
-"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div class=\\"myClass\\">Hello, World!</div>");
 const hasClass = true;
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = hasClass ? 'myClass' : 'otherClass';
-    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
-    return _p$;
-  }, {
-    c0: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with function components 1`] = `
-"import { createComponent as _createComponent$, template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div><div></div></div>");
+"import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div><!><div><!></div></div>");
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 2]);
-  _insert$(_$nodes[0], _createComponent$(MyComponent, {
-    "text": "Component 1"
-  }), _$nodes[1]);
-  _insert$(_$nodes[1], _createComponent$(MyComponent, {
-    "text": "Component 2"
-  }));
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  const _n$3 = _child$(_n$2);
+  _insert$(_root$, _createComponent$(MyComponent, {
+    text: "Component 1"
+  }), _n$);
+  _insert$(_n$2, _createComponent$(MyComponent, {
+    text: "Component 2"
+  }), _n$3);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { patchClass as _patchClass$, template as _template$, mapNodes as _mapNodes$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$, patchAttr as _patchAttr$, patchClass as _patchClass$ } from "essor";
+const _t$ = _template$("<div>Hello, World!</div>");
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _patchAttr$(_$nodes[0], "id", null);
-  _memoEffect$(_p$ => {
-    var _v$0 = undefined;
-    _v$0 !== _p$.c0 && _patchClass$(_$nodes[0], _p$.c0, _p$.c0 = _v$0);
-    return _p$;
-  }, {
-    c0: undefined
-  });
-  return _$el;
+  const _root$ = _t$();
+  _patchAttr$(_root$, "id", null);
+  _patchClass$(_root$, undefined);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with null and undefined children 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div><p>Paragraph 1</p><p>Paragraph 2</p></div>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div><!><p>Paragraph 1</p><!><!><p>Paragraph 2</p></div>");
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 2, 4]);
-  _insert$(_$nodes[0], () => null, _$nodes[1]);
-  _insert$(_$nodes[0], () => undefined, _$nodes[2]);
-  _insert$(_$nodes[0], () => false, _$nodes[2]);
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 2);
+  const _n$3 = _next$(_n$2, 1);
+  _insert$(_root$, () => null, _n$);
+  _insert$(_root$, () => undefined, _n$2);
+  _insert$(_root$, () => false, _n$3);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with null and undefined in expressions 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div><p>'s Profile</p><p>Paragraph 2</p></div>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div><p><!>&#39;s Profile</p><!><p>Paragraph 2</p></div>");
 const name = null;
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 2, 3, 4]);
-  _insert$(_$nodes[1], () => name, _$nodes[2]);
-  _insert$(_$nodes[0], () => undefined, _$nodes[3]);
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _child$(_n$);
+  const _n$3 = _next$(_n$, 1);
+  _insert$(_n$, () => name, _n$2);
+  _insert$(_root$, () => undefined, _n$3);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with self-closing tags 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div><img  src=\\"image.jpg\\" alt=\\"Image 1\\"/><img  src=\\"image.jpg\\" alt=\\"Image 2\\"/></div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div><img src=\\"image.jpg\\" alt=\\"Image 1\\"/><img src=\\"image.jpg\\" alt=\\"Image 2\\"/></div>");
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with spread attributes 1`] = `
-"import { patchAttr as _patchAttr$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>Hello, World!</div>");
 const props = {
   id: 'myId',
   class: 'myClass'
 };
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
+  const _root$ = _t$();
   _memoEffect$(_p$ => {
     var _v$0 = props;
-    _v$0 !== _p$._0 && _patchAttr$(_$nodes[0], "_$spread$", _p$._0, _p$._0 = _v$0);
+    _v$0 !== _p$.sp0 && _patchAttr$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$0);
     return _p$;
   }, {
-    _0: undefined
+    sp0: {}
   });
-  return _$el;
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with style attribute 1`] = `
-"import { patchStyle as _patchStyle$, template as _template$, mapNodes as _mapNodes$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
+"import { template as _template$ } from "essor";
+const _t$ = _template$("<div style=\\"color:red;font-size:16px\\">Hello, World!</div>");
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1]);
-  _memoEffect$(_p$ => {
-    var _v$0 = style;
-    _v$0 !== _p$.s0 && _patchStyle$(_$nodes[0], _p$.s0, _p$.s0 = _v$0);
-    return _p$;
-  }, {
-    s0: undefined
-  });
-  return _$el;
-})();"
+const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with dynamic expressions 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div>Hello,<!>!</div>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div>Hello, <!>!</div>");
 const name = 'John';
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 3]);
-  _insert$(_$nodes[0], () => name, _$nodes[1]);
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  _insert$(_root$, () => name, _n$2);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with multiple dynamic expressions 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$ } from "essor";
-const _$tmpl = _template$("<div>Hello,<!>!<p>'s Profile<span>is a developer.<!>is a designer.</span></p></div>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+const _t$ = _template$("<div>Hello, <!>!<p><!>&#39;s Profile<span><!> is a developer.<!> is a designer.</span></p></div>");
 const name = 'John';
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [1, 3, 5, 6, 7, 8, 9]);
-  _insert$(_$nodes[0], () => name, _$nodes[1]);
-  _insert$(_$nodes[2], () => name, _$nodes[3]);
-  _insert$(_$nodes[4], () => name, _$nodes[5]);
-  _insert$(_$nodes[4], () => name, _$nodes[6]);
-  return _$el;
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _next$(_n$, 1);
+  const _n$3 = _next$(_n$2, 2);
+  const _n$4 = _child$(_n$3);
+  const _n$5 = _next$(_n$4, 2);
+  const _n$6 = _child$(_n$5);
+  const _n$7 = _next$(_n$6, 2);
+  _insert$(_root$, () => name, _n$2);
+  _insert$(_n$3, () => name, _n$4);
+  _insert$(_n$5, () => name, _n$6);
+  _insert$(_n$5, () => name, _n$7);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with nested expressions and children 1`] = `
-"import { template as _template$, mapNodes as _mapNodes$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _$tmpl = _template$("<div><p>'s Profile</p><ul></ul></div>"),
-  _$tmpl2 = _template$("<li>Item</li>");
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$2 = _template$("<li>Item <!></li>");
+const _t$ = _template$("<div><p><!>&#39;s Profile</p><ul><!></ul></div>");
 const name = 'John';
 const element = (() => {
-  const _$el = _$tmpl();
-  const _$nodes = _mapNodes$(_$el, [2, 3, 4]);
-  _insert$(_$nodes[0], () => name, _$nodes[1]);
-  _insert$(_$nodes[2], () => Array.from({
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  const _n$2 = _child$(_n$);
+  const _n$3 = _next$(_n$, 1);
+  const _n$4 = _child$(_n$3);
+  _insert$(_n$, () => name, _n$2);
+  _insert$(_n$3, () => Array.from({
     length: 3
   }, (_, i) => (() => {
-    const _$el2 = _$tmpl2();
-    const _$nodes2 = _mapNodes$(_$el2, [1]);
-    _insert$(_$nodes2[0], () => i + 1);
+    const _root$2 = _t$2();
+    const _n$5 = _child$(_root$2);
+    const _n$6 = _next$(_n$5, 1);
     _memoEffect$(_p$ => {
       var _v$0 = i;
-      _v$0 !== _p$.k0 && _patchAttr$(_$nodes2[0], "key", _p$.k0, _p$.k0 = _v$0);
+      _v$0 !== _p$.a0 && _patchAttr$(_root$2, "key", _p$.a0, _p$.a0 = _v$0);
       return _p$;
     }, {
-      k0: undefined
+      a0: {}
     });
-    return _$el2;
-  })()));
-  return _$el;
+    _insert$(_root$2, () => i + 1, _n$6);
+    return _root$2;
+  })()), _n$4);
+  return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms simple JSX element 1`] = `
 "import { template as _template$ } from "essor";
-const _$tmpl = _template$("<div>Hello, World!</div>");
-const element = (() => {
-  const _$el = _$tmpl();
-  return _$el;
-})();"
+const _t$ = _template$("<div>Hello, World!</div>");
+const element = _t$();"
 `;

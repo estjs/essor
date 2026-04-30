@@ -7,6 +7,7 @@ const isDev = env !== 'production';
 export default defineConfig({
   entryPoints: {
     template: './src/index.ts',
+    internal: './src/internal.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
