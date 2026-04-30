@@ -5,6 +5,49 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.15-beta.15](https://github.com/estjs/essor/compare/v0.0.15-beta.14...v0.0.15-beta.15) `2026-04-30`
+
+
+### Bug Fixes
+
+* fix ([0550564](https://github.com/estjs/essor/commit/055056491e7a649c9f815a5a136cae537413130f))
+* fix type error ([e072a06](https://github.com/estjs/essor/commit/e072a06cd67df1d14e98aeb56d98b9310749d51e))
+* fix word ([88eefa7](https://github.com/estjs/essor/commit/88eefa77338002c7914d8edc5c9583dc1476dede))
+* **server:** fix XSS vulnerability, async context loss, and optimize SSR pipeline ([fd5f042](https://github.com/estjs/essor/commit/fd5f04260b57d221dfa8fb38d309c55c235376a6))
+* **suspense:** fix suspense type error ([0490a08](https://github.com/estjs/essor/commit/0490a08162b5fa33f69c8b4e78498339622eef80))
+* **template:** fix effect leaks, memory leaks, and optimize performance ([17ca6d3](https://github.com/estjs/essor/commit/17ca6d3f26435fe0c3738f417ce2527607846fb8))
+* **unplugin:** fix vite warn ([aa1bd66](https://github.com/estjs/essor/commit/aa1bd66bbce8e1ca89b4aadcf14a96c3c99f41b1))
+
+
+### Features
+
+* update e2e test & examples ([c2c53f1](https://github.com/estjs/essor/commit/c2c53f11bd3931a3846fdce1843168195fabf943))
+* update e2e test & examples ([5f20ead](https://github.com/estjs/essor/commit/5f20ead555bf22e59233dd966a0afd1717779ad8))
+
+## [0.0.15-beta.16](https://github.com/estjs/essor/compare/v0.0.15-beta.15...v0.0.15-beta.16) `2026-04-30`
+
+
+### Bug Fixes
+
+* **server:** fix server types ([7c158ae](https://github.com/estjs/essor/commit/7c158ae4f62e9fd73c876234c6565afb280cd9a3))
+* **server:** fix server types ([dabe25e](https://github.com/estjs/essor/commit/dabe25e9ae38e1936d5c4c24ae48841ed513c1bd))
+* **server:** fix server types ([e4fc9a7](https://github.com/estjs/essor/commit/e4fc9a7588e587b051d2027f8d8b753bfdf91712))
+* **server:** fix server types ([6b7e700](https://github.com/estjs/essor/commit/6b7e700fef4725508d95ab9d1f1b083cac672dd9))
+* **server:** fix server types ([e419879](https://github.com/estjs/essor/commit/e41987966ff9672bd9ffdc1aa950191239f5fd90))
+* **server:** fix server types ([8982226](https://github.com/estjs/essor/commit/89822266eb5425a4683f3b49910a6ef38ad99199))
+
+## [0.0.15-beta.17](https://github.com/estjs/essor/compare/v0.0.15-beta.16...v0.0.15-beta.17) `2026-04-30`
+
+
+### Bug Fixes
+
+* **server:** fix server types ([581c6a5](https://github.com/estjs/essor/commit/581c6a5b7d162812759168e669e49312b1e3bf59))
+
+## [0.0.15](https://github.com/estjs/essor/compare/v0.0.15-beta.17...v0.0.15) `2026-04-30`
+
+
+
+
 ## [0.0.15-beta.14](https://github.com/estjs/essor/compare/v0.0.15-beta.13...v0.0.15-beta.14) `2026-03-06`
 
 
