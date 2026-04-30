@@ -1,55 +1,52 @@
-import { Portal, createApp, signal } from 'essor';
+import { Portal, createApp } from 'essor';
 
-/**
- * Portal CSR demo. Exercises every public branch of the client `Portal`
- * component so the e2e suite at `e2e/portal.spec.ts` can drive it:
- *
- *   - default target (`#portal-target`)
- *   - `disabled` toggle re-mounts inline next to `#origin`
- *   - reactive `target` switch moves children to `#alt-target`
- *   - reactive children stay live across all of the above transitions
- */
 function App() {
-  const value = signal('Hello, World!');
-  const disabled = signal(false);
-  const useAlt = signal(false);
+  const $note = 'Launch checklist';
+  let $inline = false;
+  let $secondary = false;
 
   return (
-    <div id="app-root">
-      <h1>Essor Portal example</h1>
+    <main data-test="example-root" class="page">
+      <h1>Portal Example</h1>
+      <p class="note">Move one reactive block between two targets or back inline.</p>
 
-      <section id="controls">
-        <input
-          data-test="value-input"
-          type="text"
-          value={value.value}
-          onInput={(e) => (value.value = (e.target as HTMLInputElement).value)}
-        />
-        <button data-test="toggle-disabled" onClick={() => (disabled.value = !disabled.value)}>
-          disabled: {disabled.value ? 'true' : 'false'}
-        </button>
-        <button data-test="toggle-target" onClick={() => (useAlt.value = !useAlt.value)}>
-          target: {useAlt.value ? '#alt-target' : '#portal-target'}
-        </button>
+      <section class="stack">
+        <label>
+          <span>Note</span>
+          <input aria-label="Note" bind:value={$note} />
+        </label>
+
+        <div class="row">
+          <button onClick={() => ($inline = !$inline)}>
+            {$inline ? 'Render off-site' : 'Render inline'}
+          </button>
+          <button onClick={() => ($secondary = !$secondary)}>
+            {$secondary ? 'Move to primary target' : 'Move to secondary target'}
+          </button>
+        </div>
       </section>
 
-      <section id="origin">
-        <span data-test="origin-marker">origin</span>
-        <Portal
-          target={() => (useAlt.value ? '#alt-target' : '#portal-target')}
-          disabled={() => disabled.value}>
-          <p data-test="portal-content">{value.value}</p>
-        </Portal>
-      </section>
+      <section class="stack">
+        <div id="origin-panel" class="stack">
+          <h2>Origin panel</h2>
+          <Portal
+            target={() => ($secondary ? '#secondary-target' : '#primary-target')}
+            disabled={() => $inline}>
+            <div class="box" data-test="portal-card">
+              <p data-test="portal-text">{$note}</p>
+            </div>
+          </Portal>
+        </div>
 
-      <section id="portal-target">
-        <span>primary target</span>
-      </section>
+        <div id="primary-target" class="portal-target">
+          <h2>Primary target</h2>
+        </div>
 
-      <section id="alt-target">
-        <span>alt target</span>
+        <div id="secondary-target" class="portal-target">
+          <h2>Secondary target</h2>
+        </div>
       </section>
-    </div>
+    </main>
   );
 }
 

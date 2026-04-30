@@ -1,94 +1,103 @@
-import { For, Suspense, createApp, createResource } from 'essor';
-import { signal } from '@estjs/signals';
+import { Suspense, createApp, createResource } from 'essor';
 
-function fetchUser(id: number) {
-  return new Promise<{ id: number; name: string; email: string }>((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id,
-        name: `User ${id}`,
-        email: `user${id}@example.com`,
-      });
-    }, 2000);
+type Workspace = 'alpha' | 'beta' | 'gamma';
+
+const profiles: Record<Workspace, { title: string; owner: string }> = {
+  alpha: { title: 'Alpha workspace', owner: 'Platform team' },
+  beta: { title: 'Beta workspace', owner: 'Experience team' },
+  gamma: { title: 'Gamma workspace', owner: 'Delivery team' },
+};
+
+const timelines: Record<Workspace, string[]> = {
+  alpha: ['Alpha kickoff', 'Alpha rehearsal'],
+  beta: ['Beta review', 'Beta checklist'],
+  gamma: ['Gamma publish', 'Gamma handoff'],
+};
+
+function waitFor<T>(value: T, delay: number) {
+  return new Promise<T>((resolve) => {
+    setTimeout(() => resolve(value), delay);
   });
 }
 
-function fetchPosts(userId: number) {
-  return new Promise<{ id: number; title: string; content: string }[]>((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, title: `Post 1 by User ${userId}`, content: 'This is the first post content.' },
-        { id: 2, title: `Post 2 by User ${userId}`, content: 'This is the second post content.' },
-      ]);
-    }, 1500);
-  });
-}
-
-function UserProfile({ id }: { id: number }) {
-  const [user] = createResource(() => fetchUser(id));
+function ProfileCard({ view }: { view: Workspace }) {
+  const [profile] = createResource(() => waitFor(profiles[view], 120));
 
   return (
-    <div class="user-profile">
-      <h3>User Profile</h3>
-      <p>
-        <strong>ID:</strong> {user()?.id}
-      </p>
-      <p>
-        <strong>Name:</strong> {user()?.name}
-      </p>
-      <p>
-        <strong>Email:</strong> {user()?.email}
-      </p>
+    <div class="box stack" data-test="profile-card">
+      <h2>{profile()?.title}</h2>
+      <p>Owner: {profile()?.owner}</p>
     </div>
   );
 }
 
-function UserPosts({ userId }: { userId: number }) {
-  const [posts] = createResource(() => fetchPosts(userId));
+function TimelineCard({ view }: { view: Workspace }) {
+  const [items] = createResource(() => waitFor(timelines[view], 180));
 
   return (
-    <div class="user-posts">
-      <h3>User Posts</h3>
-      <For each={posts() ?? []} fallback={<p>No posts yet.</p>}>
-        {(post) => (
-          <div class="post-item">
-            <h4>{post.title}</h4>
-            <p>{post.content}</p>
-          </div>
-        )}
-      </For>
+    <div class="box stack">
+      <h2>Activity</h2>
+      <ul data-test="timeline-list">
+        {(items() ?? []).map((item) => (
+          <li>{item}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function WorkspacePanels({ view }: { view: Workspace }) {
+  return (
+    <div class="stack">
+      <Suspense
+        fallback={
+          (
+            <div class="box" data-test="loading-profile">
+              Loading profile…
+            </div>
+          ) as unknown as Node
+        }>
+        {(<ProfileCard view={view} />) as unknown as Node}
+      </Suspense>
+
+      <Suspense
+        fallback={
+          (
+            <div class="box" data-test="loading-timeline">
+              Loading timeline…
+            </div>
+          ) as unknown as Node
+        }>
+        {(<TimelineCard view={view} />) as unknown as Node}
+      </Suspense>
     </div>
   );
 }
 
 function App() {
-  const selectedUserId = signal(1);
-
-  const loadUser = (id: number) => {
-    selectedUserId.value = id;
-  };
+  let $workspace: Workspace = 'alpha';
 
   return (
-    <div class="suspense-demo">
+    <main data-test="example-root" class="page">
       <h1>Suspense Example</h1>
-      <p>This example demonstrates async data loading with Suspense boundaries.</p>
+      <p class="note">Each workspace waits for async profile and activity data.</p>
 
-      <div class="controls">
-        <button onClick={() => loadUser(1)}>Load User 1</button>
-        <button onClick={() => loadUser(2)}>Load User 2</button>
-        <button onClick={() => loadUser(3)}>Load User 3</button>
-      </div>
+      <section class="stack">
+        <div class="row">
+          <button onClick={() => ($workspace = 'alpha')}>Load Alpha</button>
+          <button onClick={() => ($workspace = 'beta')}>Load Beta</button>
+          <button onClick={() => ($workspace = 'gamma')}>Load Gamma</button>
+        </div>
 
-      <div class="async-content">
-        <Suspense fallback={<div class="loading-fallback">Loading user data...</div>}>
-          <UserProfile id={selectedUserId.value} />
-        </Suspense>
-
-        <Suspense fallback={<div class="loading-fallback">Loading posts...</div>}>
-          <UserPosts userId={selectedUserId.value} />
-        </Suspense>
-      </div>
-    </div>
+        {$workspace === 'alpha' ? (
+          <WorkspacePanels view="alpha" />
+        ) : $workspace === 'beta' ? (
+          <WorkspacePanels view="beta" />
+        ) : (
+          <WorkspacePanels view="gamma" />
+        )}
+      </section>
+    </main>
   );
 }
 
