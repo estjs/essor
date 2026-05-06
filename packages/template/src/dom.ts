@@ -1,18 +1,4 @@
-import {
-  coerceArray,
-  error,
-  hasOwn,
-  isBoolean,
-  isFalsy,
-  isFunction,
-  isHTMLElement,
-  isNull,
-  isNumber,
-  isObject,
-  isPrimitive,
-  isString,
-  isUndefined,
-} from '@estjs/shared';
+import { coerceArray, error, hasOwn, isFunction, isObject, isPrimitive, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { KEY_PROP } from './constants';
@@ -159,19 +145,34 @@ function getNodeKey(node: AnyNode): unknown {
 }
 
 /**
- * Normalize node for reconciliation
+ * Normalize node for reconciliation.
+ *
+ * Performance-critical: uses inlined typeof / instanceof checks
+ * instead of utility function calls in the hot path.
  */
 export function normalizeNode(node: unknown): Node {
-  // already a Node
-  if (isHTMLElement(node)) {
-    return node;
+  // Fast path: already a DOM Node (covers Element, Text, Comment, etc.)
+  if (node instanceof Node) return node;
+
+  // Component instances must pass through as-is — the reconciler and
+  // insertNode/removeNode handle them via isComponent() checks.
+  if (isComponent(node)) return node as unknown as Node;
+
+  // Primitives → text node (inlined for speed)
+  const t = typeof node;
+  if (node == null || t === 'string' || t === 'number' || t === 'boolean' || t === 'symbol') {
+    return document.createTextNode(node === false || node == null ? '' : String(node));
   }
 
-  if (isPrimitive(node)) {
-    return document.createTextNode(isFalsy(node) ? '' : String(node));
+  // Plain objects should not be rendered directly — convert to text and warn
+  if (__DEV__ && isObject(node)) {
+    warn(
+      'Rendering a plain object as a node is not recommended. ' +
+      'The object will be converted to its string representation.',
+      node,
+    );
   }
-
-  return node as Node;
+  return document.createTextNode(String(node));
 }
 /**
  * Reactive node insertion with binding support
@@ -205,8 +206,12 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
     // Fast path: already a DOM Node
     if (raw instanceof Node) return [raw];
 
-    // Fast path: single primitive → text node
-    if (isNull(raw) || isUndefined(raw) || isString(raw) || isNumber(raw) || isBoolean(raw)) {
+    // Fast path: Component instance (skip normalizeNode entirely)
+    if (isComponent(raw)) return [raw as unknown as Node];
+
+    // Fast path: single primitive → text node (inlined typeof for speed)
+    const t = typeof raw;
+    if (raw == null || t === 'string' || t === 'number' || t === 'boolean') {
       return [normalizeNode(raw)];
     }
 
