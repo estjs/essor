@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createComponent } from '../src/component';
 import {
   child,
@@ -98,14 +98,64 @@ describe('dom helpers', () => {
 
   it('normalizes primitives into text nodes and preserves existing nodes', () => {
     const existing = document.createElement('button');
+    const textNode = document.createTextNode('raw-text');
     const fromString = normalizeNode('hello');
     const fromFalsy = normalizeNode(false);
 
     expect(normalizeNode(existing)).toBe(existing);
+    expect(normalizeNode(textNode)).toBe(textNode);
     expect(fromString.nodeType).toBe(Node.TEXT_NODE);
     expect(fromString.textContent).toBe('hello');
     expect(fromFalsy.nodeType).toBe(Node.TEXT_NODE);
     expect(fromFalsy.textContent).toBe('');
+  });
+
+  it('passes Component instances through normalizeNode unchanged', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const comp = createComponent(() => document.createElement('div'));
+    const result = normalizeNode(comp);
+
+    // Component instances must NOT be converted to text
+    expect(result).toBe(comp);
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('normalizes plain objects into text nodes and emits a warning', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const obj = { foo: 'bar' };
+    const node = normalizeNode(obj);
+
+    expect(node.nodeType).toBe(Node.TEXT_NODE);
+    expect(node.textContent).toBe(String(obj));
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy.mock.calls[0][0]).toContain('plain object');
+
+    warnSpy.mockRestore();
+  });
+
+  it('normalizes nested objects and arrays as text nodes', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const nested = { a: { b: 1 } };
+    const node = normalizeNode(nested);
+    expect(node.nodeType).toBe(Node.TEXT_NODE);
+    expect(node.textContent).toBe(String(nested));
+
+    warnSpy.mockRestore();
+  });
+
+  it('normalizes objects with custom toString', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const custom = { toString: () => 'custom-value' };
+    const node = normalizeNode(custom);
+    expect(node.nodeType).toBe(Node.TEXT_NODE);
+    expect(node.textContent).toBe('custom-value');
+
+    warnSpy.mockRestore();
   });
 
   describe('tree traversal', () => {
@@ -215,6 +265,55 @@ describe('dom helpers', () => {
       popContextStack();
 
       expect(root.textContent).toBe('firstsecond');
+    });
+
+    it('renders a plain object as text content without throwing', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const obj = { message: 'hello' };
+      expect(() => insert(root, obj as any)).not.toThrow();
+      popContextStack();
+
+      expect(root.textContent).toBe(String(obj));
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+      cleanupContext(context);
+    });
+
+    it('renders a reactive object factory as text content', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      insert(root, () => ({ key: 'value' }));
+      popContextStack();
+
+      expect(root.textContent).toBe(String({ key: 'value' }));
+      expect(warnSpy).toHaveBeenCalled();
+
+      warnSpy.mockRestore();
+      cleanupContext(context);
+    });
+
+    it('renders an object with custom toString via insert', () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const context = createContext(null);
+      const root = createTestRoot();
+      pushContextStack(context);
+
+      const obj = { toString: () => 'custom-render' };
+      insert(root, obj as any);
+      popContextStack();
+
+      expect(root.textContent).toBe('custom-render');
+
+      warnSpy.mockRestore();
+      cleanupContext(context);
     });
   });
 });
