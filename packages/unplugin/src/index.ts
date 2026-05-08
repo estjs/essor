@@ -106,16 +106,18 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
   // Detect bundler type for HMR
   const bundlerType = detectBundler(meta);
 
-  // Merge user options with defaults
+  // NODE_ENV is set by most bundlers; fallback treats unknown env as dev (HMR on)
+  let isProd = process.env.NODE_ENV === 'production';
+
+  // Merge user options with defaults (hmr excluded — computed dynamically in transform)
   const finalOptions = {
     ...DEFAULT_OPTIONS,
     ...options,
-    bundler: bundlerType, // Pass bundler type to babel plugin
+    bundler: bundlerType,
   };
 
   return {
     name: 'unplugin-essor',
-
     /**
      * Vite-specific config to preserve JSX so the babel plugin can handle it.
      
@@ -130,6 +132,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
         return {
           [key]: { jsx: 'preserve' },
         };
+      },
+      configResolved(config: { command: string }) {
+        // Vite's command is more reliable than NODE_ENV for detecting dev vs build
+        isProd = config.command === 'build';
       },
     },
 
@@ -176,7 +182,8 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
         return null;
       }
 
-      const babelOptions = { ...finalOptions };
+      // options.hmr explicit value wins; otherwise enable only in dev
+      const babelOptions = { ...finalOptions, hmr: !isProd && finalOptions.hmr };
 
       // Transform with Babel (with error handling)
       let result;
@@ -196,15 +203,10 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
         return code;
       }
 
-      // Determine if HMR should be enabled
-      // HMR is only for client-side code with components
-      const hmrEnabled =
-        babelOptions.hmr && (babelOptions.mode === 'client' || babelOptions.mode === 'ssr');
-
       let finalCode = '';
 
       // Inject HMR code if enabled and components are present
-      if (hmrEnabled) {
+      if (babelOptions.hmr) {
         const hmrCode = generateHMRCode(bundlerType);
 
         if (result.code.includes('__$createHMRComponent$__')) {
