@@ -75,7 +75,7 @@ const FILE: Strategy = {
   event: 'change',
   forceChange: true,
   read: (el) => (el as HTMLInputElement).files,
-  write() { }, // browsers forbid programmatic writes to file inputs
+  write() {}, // browsers forbid programmatic writes to file inputs
 };
 
 const TEXT: Strategy = {
