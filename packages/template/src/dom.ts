@@ -168,7 +168,7 @@ export function normalizeNode(node: unknown): Node {
   if (__DEV__ && isObject(node)) {
     warn(
       'Rendering a plain object as a node is not recommended. ' +
-      'The object will be converted to its string representation.',
+        'The object will be converted to its string representation.',
       node,
     );
   }
