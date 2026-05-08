@@ -145,10 +145,14 @@ function getNodeKey(node: AnyNode): unknown {
 }
 
 /**
- * Normalize node for reconciliation.
+ * Normalize a value into a DOM Node for reconciliation.
  *
- * Performance-critical: uses inlined typeof / instanceof checks
- * instead of utility function calls in the hot path.
+ * If `node` is already a DOM Node or a component instance, it is returned unchanged.
+ * If `node` is `null`, `undefined`, or `false`, an empty `Text` node is returned.
+ * Strings, numbers, booleans, and symbols are converted to a `Text` node containing their string representation.
+ * For other values a `Text` node of `String(node)` is returned; in development, rendering a plain object emits a warning.
+ *
+ * @returns A DOM `Node` representing the provided value (the original node for DOM Nodes/components, or a `Text` node otherwise).
  */
 export function normalizeNode(node: unknown): Node {
   // Fast path: already a DOM Node (covers Element, Text, Comment, etc.)
