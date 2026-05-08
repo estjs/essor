@@ -1,9 +1,10 @@
+/* eslint-disable vitest/expect-expect */
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
-import { unpluginFactory } from '../src/index'
-import type { Options } from '../src/types'
+import { describe, expect, it } from 'vitest';
+import { unpluginFactory } from '../src/index';
+import type { Options } from '../src/types';
 
-const entryId = '/virtual/fixtures/basic.tsx'
+const entryId = '/virtual/fixtures/basic.tsx';
 const fixtureCode = `
   import { createApp } from 'essor'
 
@@ -16,7 +17,7 @@ const fixtureCode = `
   }
 
   createApp(App, '#root')
-`
+`;
 
 function transformFixture({
   nodeEnv,
@@ -24,69 +25,69 @@ function transformFixture({
   framework = 'rollup',
   command,
 }: {
-  nodeEnv?: string
-  options?: Options
-  framework?: 'rollup' | 'vite'
-  command?: 'build' | 'serve'
+  nodeEnv?: string;
+  options?: Options;
+  framework?: 'rollup' | 'vite';
+  command?: 'build' | 'serve';
 }) {
-  const previousNodeEnv = process.env.NODE_ENV
+  const previousNodeEnv = process.env.NODE_ENV;
 
   if (nodeEnv === undefined) {
-    delete process.env.NODE_ENV
+    delete process.env.NODE_ENV;
   } else {
-    process.env.NODE_ENV = nodeEnv
+    process.env.NODE_ENV = nodeEnv;
   }
 
   try {
-    const plugin = unpluginFactory(options, { framework } as never)
+    const plugin = unpluginFactory(options, { framework } as never) as any;
 
     if (framework === 'vite' && command) {
-      plugin.vite?.configResolved?.({ command })
+      plugin.vite?.configResolved?.({ command });
     }
 
-    const result = plugin.transform?.call({}, fixtureCode, entryId)
+    const result = plugin.transform?.call({}, fixtureCode, entryId);
     if (!result) {
-      return ''
+      return '';
     }
 
-    return typeof result === 'string' ? result : result.code
+    return typeof result === 'string' ? result : result.code;
   } finally {
     if (previousNodeEnv === undefined) {
-      delete process.env.NODE_ENV
+      delete process.env.NODE_ENV;
     } else {
-      process.env.NODE_ENV = previousNodeEnv
+      process.env.NODE_ENV = previousNodeEnv;
     }
   }
 }
 
 function expectHmrEnabled(code: string) {
-  expect(code).toContain('virtual:essor-hmr')
-  expect(code).toContain('createHMRComponent')
-  expect(code).toContain('__hmrId')
+  expect(code).toContain('virtual:essor-hmr');
+  expect(code).toContain('createHMRComponent');
+  expect(code).toContain('__hmrId');
 }
 
 function expectHmrDisabled(code: string) {
-  expect(code).not.toContain('virtual:essor-hmr')
-  expect(code).not.toContain('createHMRComponent')
-  expect(code).not.toContain('__hmrId')
+  expect(code).not.toContain('virtual:essor-hmr');
+  expect(code).not.toContain('createHMRComponent');
+  expect(code).not.toContain('__hmrId');
 }
 
 describe('unplugin hmr mode', () => {
   it('enables hmr by default in development', () => {
     const code = transformFixture({
       nodeEnv: 'development',
-    })
+    });
 
-    expectHmrEnabled(code)
-  })
+    expectHmrEnabled(code);
+  });
 
   it('disables hmr by default in production', () => {
     const code = transformFixture({
       nodeEnv: 'production',
-    })
+    });
 
-    expectHmrDisabled(code)
-  })
+    expectHmrDisabled(code);
+  });
 
   it('disables hmr when the option is explicitly false', () => {
     const code = transformFixture({
@@ -94,17 +95,17 @@ describe('unplugin hmr mode', () => {
       options: {
         hmr: false,
       },
-    })
+    });
 
-    expectHmrDisabled(code)
-  })
+    expectHmrDisabled(code);
+  });
 
   it('uses vite command to override NODE_ENV for serve and build', () => {
     const serveCode = transformFixture({
       nodeEnv: 'production',
       framework: 'vite',
       command: 'serve',
-    })
+    });
     const buildCode = transformFixture({
       nodeEnv: 'development',
       framework: 'vite',
@@ -112,9 +113,9 @@ describe('unplugin hmr mode', () => {
       options: {
         hmr: true,
       },
-    })
+    });
 
-    expectHmrEnabled(serveCode)
-    expectHmrDisabled(buildCode)
-  })
-})
+    expectHmrEnabled(serveCode);
+    expectHmrDisabled(buildCode);
+  });
+});
