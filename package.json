@@ -56,6 +56,10 @@
     "typescript": "^6.0.3",
     "vitest": "^4.1.5"
   },
+  "resolutions": {
+    "fast-uri": ">=3.1.2",
+    "simple-git": ">3.36.0"
+  },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged --concurrent false",
     "commit-msg": "pnpm exec tsx ./scripts/verify-commit.ts $1"
