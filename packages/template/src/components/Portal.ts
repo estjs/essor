@@ -71,16 +71,16 @@ export function Portal(props: PortalProps): Comment {
   const { children } = props;
   if (children == null) return placeholder;
 
-  const ownerScope = getActiveScope();
+  const parentScope = getActiveScope();
   let innerScope: Scope | null = null;
 
   /**
    * Mount children into the given parent, inside a fresh inner scope
-   * that inherits from the owning scope. This allows `insert()` effects
+   * that inherits from the parent scope. This allows `insert()` effects
    * to be properly disposed on teardown.
    */
   const mountAt = (parent: Node, before?: Node): void => {
-    innerScope = createScope(ownerScope);
+    innerScope = createScope(parentScope);
     runWithScope(innerScope, () => {
       insert(parent, () => children, before);
     });

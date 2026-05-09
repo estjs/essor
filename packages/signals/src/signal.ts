@@ -9,11 +9,10 @@ import {
   isWeakSet,
   warn,
 } from '@estjs/shared';
-import { activeSub, linkReactiveNode, shallowPropagate } from './link';
+import { activeSub, linkReactiveNode, propagate, shallowPropagate } from './system';
 import { ReactiveFlags, SignalFlags } from './constants';
 import { isReactive, reactive, shallowReactive, toRaw } from './reactive';
-import { propagate } from './propagation';
-import type { Link, ReactiveNode } from './link';
+import type { Link, ReactiveNode } from './system';
 
 /**
  * Signal is a reactive primitive that holds a value and notifies subscribers when the value changes.

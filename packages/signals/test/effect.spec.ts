@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { batch, computed, effect, isEffect, memoEffect, reactive, signal, stop } from '../src';
-import { getTargetDepSize } from '../src/link';
+import { getTargetDepSize } from '../src/system';
 
 describe('effect', () => {
   describe('basic functionality', () => {

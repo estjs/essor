@@ -51,7 +51,7 @@ export {
   type FlushTiming,
 } from './scheduler';
 
-export { untrack, trigger, type DebuggerEvent, type DebuggerEventType } from './link';
+export { untrack, trigger, type DebuggerEvent, type DebuggerEventType } from './system';
 export { TriggerOpTypes } from './constants';
 
 export { createStore, type StoreOptions, type StoreActions } from './store';
@@ -59,3 +59,11 @@ export { createStore, type StoreOptions, type StoreActions } from './store';
 export { type Ref, isRef, ref } from './ref';
 
 export { watch } from './watch';
+
+export {
+  EffectScope,
+  effectScope,
+  getCurrentScope,
+  onScopeDispose,
+  setCurrentScope,
+} from './effectScope';

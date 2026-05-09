@@ -57,7 +57,7 @@ export function ComponentA() {
 }
 ComponentA.__signature = "yeg9zu";
 ComponentA.__hmrId = "ydmpkz:ComponentA";
-export var ComponentB = function() {
+export var ComponentB = function ComponentB() {
     return _t$2();
 };
 ComponentB.__signature = "1vo7hf2";

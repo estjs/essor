@@ -17,8 +17,8 @@ import {
   TriggerOpTypes,
   WEAK_COLLECTION_KEY,
 } from './constants';
+import { track, trigger } from './system';
 import { isSignal } from './signal';
-import { track, trigger } from './link';
 
 // Use WeakMap to cache created reactive proxies to avoid duplicate creation.
 const reactiveCaches = new WeakMap<object, object>();

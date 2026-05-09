@@ -1,8 +1,21 @@
 import { error, hasChanged, isFunction, isPlainObject, warn } from '@estjs/shared';
 import { ReactiveFlags, SignalFlags } from './constants';
-import { activeSub, checkDirty, endTracking, linkReactiveNode, startTracking } from './link';
-import { shallowPropagate } from './propagation';
-import type { DebuggerEvent, Link, ReactiveNode } from './link';
+import {
+  type EffectScope,
+  type ScopedReactiveEffect,
+  recordDisposable,
+  releaseDisposable,
+} from './effectScope';
+import {
+  activeSub,
+  checkDirty,
+  endTracking,
+  linkReactiveNode,
+  shallowPropagate,
+  startTracking,
+  unlinkReactiveNode,
+} from './system';
+import type { DebuggerEvent, Link, ReactiveNode } from './system';
 
 /**
  * Computed getter function type
@@ -80,7 +93,7 @@ const NO_VALUE = Symbol('computed-no-value');
  *
  * @template T - The type of the computed value
  */
-export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
+export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedReactiveEffect {
   //  ReactiveNode interface implementation
   depLink?: Link;
   subLink?: Link;
@@ -98,10 +111,12 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
   //  Debug hooks
   readonly onTrack?: (event: DebuggerEvent) => void;
   readonly onTrigger?: (event: DebuggerEvent) => void;
+  scope?: EffectScope;
 
   //  Cache
   // Use symbol sentinel to distinguish "no value" from undefined/null values
   private _value: T | typeof NO_VALUE = NO_VALUE;
+  private _active = true;
 
   /**
    * Create a Computed instance.
@@ -122,6 +137,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
     this.onTrack = onTrack;
     this.onTrigger = onTrigger;
     this.flag |= ReactiveFlags.DIRTY;
+    recordDisposable(this);
   }
 
   /**
@@ -130,6 +146,10 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
    * @returns {T} The current value.
    */
   get value(): T {
+    if (!this.active) {
+      return this._value === NO_VALUE ? this.getter() : (this._value as T);
+    }
+
     // Track dependencies if accessed within an effect or computed
     if (activeSub) {
       linkReactiveNode(this, activeSub);
@@ -186,10 +206,18 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
    * @returns {T} The current value.
    */
   peek(): T {
+    if (!this.active) {
+      return this._value === NO_VALUE ? this.getter() : (this._value as T);
+    }
+
     if (this._value === NO_VALUE) {
       this.recompute();
     }
     return this._value as T;
+  }
+
+  get active(): boolean {
+    return this._active;
   }
 
   /**
@@ -204,6 +232,13 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
    * @private
    */
   private recompute(): void {
+    if (!this._active) {
+      if (this._value === NO_VALUE) {
+        this._value = this.getter();
+      }
+      return;
+    }
+
     // Store old value for change detection
     // Use NO_VALUE sentinel to distinguish initial state from undefined/null values
     const oldValue = this._value;
@@ -304,6 +339,29 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode {
     }
 
     return hasChanged(this._value, oldValue);
+  }
+
+  stop(): void {
+    if (!this._active) {
+      return;
+    }
+
+    this._active = false;
+    releaseDisposable(this);
+
+    let dep = this.depLink;
+    while (dep) {
+      dep = unlinkReactiveNode(dep, this);
+    }
+
+    let sub = this.subLink;
+    while (sub) {
+      sub = unlinkReactiveNode(sub);
+    }
+
+    this.depLinkTail = undefined;
+    this.subLinkTail = undefined;
+    this.flag &= ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
   }
 }
 

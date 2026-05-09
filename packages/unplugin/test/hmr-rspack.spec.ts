@@ -69,8 +69,9 @@ describe('hMR - Rspack Platform', () => {
             if (err) return reject(err);
             if (stats?.hasErrors()) return reject(new Error(stats.toString()));
 
-            const output = stats?.toJson({ source: true }).modules;
-            if (!output) return reject(new Error('No output'));
+            // Rspack 2 no longer includes modules unless requested explicitly.
+            const output = stats?.toJson({ source: true, modules: true }).modules;
+            if (!output?.length) return reject(new Error('No output'));
 
             // Find the entry module output
             const entryModule = output.find(

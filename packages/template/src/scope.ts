@@ -1,4 +1,5 @@
 import { error } from '@estjs/shared';
+import { type EffectScope, effectScope, setCurrentScope } from '@estjs/signals';
 import type { InjectionKey } from './provide';
 
 /**
@@ -8,6 +9,9 @@ import type { InjectionKey } from './provide';
 export interface Scope {
   /** Unique identifier for debugging */
   readonly id: number;
+
+  /** Reactive effect scope tied to this template scope */
+  readonly effectScope: EffectScope;
 
   /** Parent scope in the hierarchy */
   parent: Scope | null;
@@ -60,6 +64,7 @@ export function getActiveScope(): Scope | null {
  */
 export function setActiveScope(scope: Scope | null): void {
   activeScope = scope;
+  setCurrentScope(scope?.effectScope);
 }
 
 /**
@@ -70,8 +75,10 @@ export function setActiveScope(scope: Scope | null): void {
  * @returns A new scope instance.
  */
 export function createScope(parent: Scope | null = activeScope): Scope {
+  const reactiveScope = parent ? parent.effectScope.run(() => effectScope())! : effectScope(true);
   const scope: Scope = {
     id: ++scopeId,
+    effectScope: reactiveScope,
     parent,
     children: null, // Lazy initialized
     provides: null, // Lazy initialized
@@ -107,7 +114,7 @@ export function runWithScope<T>(scope: Scope, fn: () => T): T {
   activeScope = scope;
 
   try {
-    return fn();
+    return scope.effectScope.run(fn) as T;
   } finally {
     // Restore previous scope directly
     activeScope = prevScope;
@@ -146,17 +153,11 @@ export function disposeScope(scope: Scope): void {
   // Execute destroy lifecycle hooks and cleanup functions within the scope's
   // context so that inject/provide/getActiveScope work correctly in callbacks.
   //
-  // We inline the scope-switching instead of calling `runWithScope()` to avoid
-  // an extra function frame on the teardown hot path (disposeScope is called
-  // recursively for every child scope in the tree).
-  //
   // NOTE: `scope.isDestroyed` is already `true` at this point — this is
   // intentional to prevent re-entrant `disposeScope()` calls from within
   // hooks. Callbacks that inspect `getActiveScope()?.isDestroyed` should
   // be aware of this.
-  const prevScope = activeScope;
-  activeScope = scope;
-  try {
+  runWithScope(scope, () => {
     // Execute destroy lifecycle hooks
     if (scope.onDestroy) {
       for (let i = 0; i < scope.onDestroy.length; i++) {
@@ -184,9 +185,9 @@ export function disposeScope(scope: Scope): void {
       }
       scope.cleanup = null;
     }
-  } finally {
-    activeScope = prevScope;
-  }
+  });
+
+  scope.effectScope.stop();
 
   // Remove from parent's children
   if (scope.parent?.children) {

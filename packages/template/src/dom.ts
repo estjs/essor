@@ -189,10 +189,10 @@ export function normalizeNode(node: unknown): Node {
  */
 export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
-  // Capture owner scope at call time - this is critical for correct context inheritance
+  // Capture the active scope at call time - this is critical for correct context inheritance
   // When dynamic components are created inside effects, they need to inherit from
   // the scope that was active when insert() was called, not when the effect runs
-  const ownerScope: Scope | null = getActiveScope();
+  const parentScope: Scope | null = getActiveScope();
 
   let renderedNodes: Node[] = [];
   let isFirstRun = true;
@@ -243,9 +243,9 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
       isFirstRun = false;
     };
 
-    // If we have an owner scope, run within it to maintain context hierarchy
-    if (ownerScope && !ownerScope.isDestroyed) {
-      runWithScope(ownerScope, executeUpdate);
+    // If we have a parent scope, run within it to maintain context hierarchy
+    if (parentScope && !parentScope.isDestroyed) {
+      runWithScope(parentScope, executeUpdate);
     } else {
       executeUpdate();
     }

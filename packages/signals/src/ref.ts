@@ -1,7 +1,6 @@
 import { hasChanged } from '@estjs/shared';
 import { ReactiveFlags, SignalFlags } from './constants';
-import { activeSub, linkReactiveNode } from './link';
-import { propagate } from './propagation';
+import { activeSub, linkReactiveNode, propagate } from './system';
 import { type Signal, SignalImpl, isSignal } from './signal';
 
 /**

@@ -70,5 +70,9 @@
     "@estjs/shared": "workspace:*",
     "@estjs/signals": "workspace:*",
     "csstype": "^3.2.3"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "babel-plugin-essor": "workspace:*"
   }
 }

@@ -1,12 +1,18 @@
-import { error, isFunction, warn } from '@estjs/shared';
+import { error, isFunction } from '@estjs/shared';
 import { EffectFlags, ReactiveFlags, SignalFlags } from './constants';
-import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './link';
+import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './system';
 import { isBatching } from './batch';
+import {
+  type EffectScope,
+  type ScopedReactiveEffect,
+  recordDisposable,
+  releaseDisposable,
+} from './effectScope';
 import { createScheduler, queueJob } from './scheduler';
 import type { Computed } from './computed';
 import type { Signal } from './signal';
 import type { Reactive } from './reactive';
-import type { DebuggerEvent, Link, ReactiveNode } from './link';
+import type { DebuggerEvent, Link, ReactiveNode } from './system';
 import type { FlushTiming } from './scheduler';
 
 /**
@@ -125,7 +131,7 @@ export interface EffectRunner<T = any> {
  *
  * @template T - The return type of the effect function
  */
-export class EffectImpl<T = any> implements ReactiveNode {
+export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
   //  ReactiveNode interface implementation
   depLink?: Link;
   subLink?: Link;
@@ -147,6 +153,7 @@ export class EffectImpl<T = any> implements ReactiveNode {
 
   //  State management
   private _active = true;
+  scope?: EffectScope;
 
   /**
    * Create an Effect instance.
@@ -167,12 +174,14 @@ export class EffectImpl<T = any> implements ReactiveNode {
       }
 
       // For development debugging hooks, we assign them directly to the instance
-      // if provided, so the link.ts checking logic can find them without an extra optional chain.
+      // so dependency tracking can read them without an extra optional chain.
       if (__DEV__) {
         if (options.onTrack) this.onTrack = options.onTrack;
         if (options.onTrigger) this.onTrigger = options.onTrigger;
       }
     }
+
+    recordDisposable(this);
   }
 
   /**
@@ -378,13 +387,11 @@ export class EffectImpl<T = any> implements ReactiveNode {
    */
   stop(): void {
     if (!this._active) {
-      if (__DEV__) {
-        warn('[Effect] Attempting to stop an already stopped effect.');
-      }
       return;
     }
 
     this._active = false;
+    releaseDisposable(this);
 
     // Disconnect all dependency links
     // This removes this effect from all signals/computed it depends on

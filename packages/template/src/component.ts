@@ -1,4 +1,4 @@
-import { isComputed, isSignal, shallowReactive } from '@estjs/signals';
+import { type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
 import { isFunction, isOn } from '@estjs/shared';
 
 import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
@@ -103,7 +103,9 @@ export class Component<P extends ComponentProps = {}> {
       }
 
       // Unwrap signal / computed — only their current value reaches the DOM.
-      if (isSignal<Element>(result) || isComputed<Element>(result)) {
+      if (isSignal<Element>(result)) {
+        result = result.value;
+      } else if (isComputed<Element>(result)) {
         result = result.value;
       }
 
@@ -218,12 +220,13 @@ export class Component<P extends ComponentProps = {}> {
       return () => value(null);
     }
 
-    if (isSignal(value)) {
-      const previousValue = value.value;
-      value.value = root;
+    if (isSignal<Element | null>(value)) {
+      const ref = value as Signal<Element | null>;
+      const previousValue = ref.value;
+      ref.value = root;
       return () => {
-        if (value.value === root) {
-          value.value = previousValue;
+        if (ref.value === root) {
+          ref.value = previousValue;
         }
       };
     }
