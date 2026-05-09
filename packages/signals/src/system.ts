@@ -1,3 +1,4 @@
+// forked from https://github.com/stackblitz/alien-signals/blob/v3.0.0/src/system.ts
 import { error, isFunction } from '@estjs/shared';
 import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags, SignalFlags } from './constants';
 
