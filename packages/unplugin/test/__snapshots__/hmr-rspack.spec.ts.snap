@@ -91,17 +91,16 @@ if (import.meta.hot) {
 exports[`hMR - Rspack Platform > should work with rspack 3`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
 var _t$ = _template$("<div>Hello <!></div>");
 import { createApp } from 'essor';
 function PropsComponent(props) {
     return function() {
         var _root$ = _t$();
-        var _n$ = _child$(_root$);
-        var _n$2 = _next$(_n$, 1);
+        var _n$ = _nthChild$(_root$, 1);
         _insert$(_root$, function() {
             return props.name;
-        }, _n$2);
+        }, _n$);
         return _root$;
     }();
 }
@@ -126,21 +125,20 @@ if (import.meta.hot) {
 exports[`hMR - Rspack Platform > should work with rspack 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, child as _child$, next as _next$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
+import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
 var _t$ = _template$("<div>Count: <!></div>");
 import { createApp, signal } from 'essor';
 function SignalComponent() {
     var count = signal(0);
     return function() {
         var _root$ = _t$();
-        var _n$ = _child$(_root$);
-        var _n$2 = _next$(_n$, 1);
+        var _n$ = _nthChild$(_root$, 1);
         _root$["_$click"] = function() {
             return count.value++;
         };
         _insert$(_root$, function() {
             return count.value;
-        }, _n$2);
+        }, _n$);
         return _root$;
     }();
 }

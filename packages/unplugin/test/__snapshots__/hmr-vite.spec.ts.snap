@@ -83,7 +83,7 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 3`] =
 
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
-import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div>Hello <!></div>");
 import { createApp } from 'essor';
 function PropsComponent(props: {
@@ -91,9 +91,8 @@ function PropsComponent(props: {
 }) {
   return (() => {
     const _root$ = _t$();
-    const _n$ = _child$(_root$);
-    const _n$2 = _next$(_n$, 1);
-    _insert$(_root$, () => props.name, _n$2);
+    const _n$ = _nthChild$(_root$, 1);
+    _insert$(_root$, () => props.name, _n$);
     return _root$;
   })();
 }
@@ -114,17 +113,16 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 4`] =
 
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
-import { template as _template$, child as _child$, next as _next$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
+import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = _template$("<div>Count: <!></div>");
 import { createApp, signal } from 'essor';
 function SignalComponent() {
   const count = signal(0);
   return (() => {
     const _root$ = _t$();
-    const _n$ = _child$(_root$);
-    const _n$2 = _next$(_n$, 1);
+    const _n$ = _nthChild$(_root$, 1);
     _root$["_$click"] = () => count.value++;
-    _insert$(_root$, () => count.value, _n$2);
+    _insert$(_root$, () => count.value, _n$);
     return _root$;
   })();
 }
