@@ -58,7 +58,7 @@
   },
   "resolutions": {
     "fast-uri": ">=3.1.2",
-    "simple-git": ">3.36.0"
+    "simple-git": ">=3.36.0"
   },
   "simple-git-hooks": {
     "pre-commit": "pnpm exec lint-staged --concurrent false",
