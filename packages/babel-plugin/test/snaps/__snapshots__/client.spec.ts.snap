@@ -19,11 +19,11 @@ const $value = signal('test');
 const fn = () => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$0 = $value.value;
-    _v$0 !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$0);
+    var _v$ = $value.value;
+    _v$ !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$);
     return _p$;
   }, {
-    c0: {}
+    c0: undefined
   });
   return _root$;
 })();"
@@ -194,11 +194,11 @@ const ThemeContext = {
 const MemoComponent = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$0 = __props.theme;
-    _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-theme", _p$.a0, _p$.a0 = _v$0);
+    var _v$ = __props.theme;
+    _v$ !== _p$.a0 && _patchAttr$(_root$, "data-theme", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
-    a0: {}
+    a0: undefined
   });
   return _root$;
 })();
@@ -243,11 +243,11 @@ const Component = () => {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = value;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-hook", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = value;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "data-hook", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     return _root$;
   })();
@@ -442,13 +442,12 @@ const element = (() => {
 `;
 
 exports[`should work with jsx client transform > should work with memo and custom comparison 1`] = `
-"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div>Memo: <!></div>");
 const MemoComponent = __props => (() => {
   const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  const _n$2 = _next$(_n$, 1);
-  _insert$(_root$, () => __props.value, _n$2);
+  const _n$ = _nthChild$(_root$, 1);
+  _insert$(_root$, () => __props.value, _n$);
   return _root$;
 })();
 MemoComponent._memo = true;
@@ -527,30 +526,29 @@ _delegateEvents$(["click"]);"
 `;
 
 exports[`should work with jsx client transform > should work with nested components and props 1`] = `
-"import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { template as _template$, nthChild as _nthChild$, next as _next$, insert as _insert$, child as _child$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _template$("<div><!><!></div>");
 const _t$ = _template$("<div>Name: <!>, Age: <!></div>");
 const Child = __props => (() => {
   const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  const _n$2 = _next$(_n$, 1);
-  const _n$3 = _next$(_n$2, 2);
-  _insert$(_root$, () => __props.name, _n$2);
-  _insert$(_root$, () => __props.age, _n$3);
+  const _n$ = _nthChild$(_root$, 1);
+  const _n$2 = _next$(_n$, 2);
+  _insert$(_root$, () => __props.name, _n$);
+  _insert$(_root$, () => __props.age, _n$2);
   return _root$;
 })();
 const Parent = () => (() => {
   const _root$2 = _t$2();
-  const _n$4 = _child$(_root$2);
-  const _n$5 = _next$(_n$4, 1);
+  const _n$3 = _child$(_root$2);
+  const _n$4 = _next$(_n$3, 1);
   _insert$(_root$2, _createComponent$(Child, {
     name: "John",
     age: "25"
-  }), _n$4);
+  }), _n$3);
   _insert$(_root$2, _createComponent$(Child, {
     name: "Jane",
     age: "23"
-  }), _n$5);
+  }), _n$4);
   return _root$2;
 })();"
 `;
@@ -564,11 +562,11 @@ const Portal = __props => {
     const _root$ = _t$();
     const _n$ = _child$(_root$);
     _memoEffect$(_p$ => {
-      var _v$0 = __props.target;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.target;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     _insert$(_root$, () => __props.children, _n$);
     return _root$;
@@ -591,11 +589,11 @@ const Portal = (__props, ref) => (() => {
   const _n$ = _child$(_root$);
   (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
   _memoEffect$(_p$ => {
-    var _v$0 = __props.target;
-    _v$0 !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$0);
+    var _v$ = __props.target;
+    _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
-    a0: {}
+    a0: undefined
   });
   _insert$(_root$, () => __props.children, _n$);
   return _root$;
@@ -895,11 +893,11 @@ const props = {
 const element = (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$0 = props;
-    _v$0 !== _p$.sp0 && _patchAttr$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$0);
+    var _v$ = props;
+    _v$ !== _p$.sp0 && _patchAttr$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$);
     return _p$;
   }, {
-    sp0: {}
+    sp0: undefined
   });
   return _root$;
 })();"
@@ -916,41 +914,39 @@ const element = _t$();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with dynamic expressions 1`] = `
-"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+"import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div>Hello, <!>!</div>");
 const name = 'John';
 const element = (() => {
   const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  const _n$2 = _next$(_n$, 1);
-  _insert$(_root$, () => name, _n$2);
+  const _n$ = _nthChild$(_root$, 1);
+  _insert$(_root$, () => name, _n$);
   return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with multiple dynamic expressions 1`] = `
-"import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
+"import { template as _template$, nthChild as _nthChild$, next as _next$, child as _child$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div>Hello, <!>!<p><!>&#39;s Profile<span><!> is a developer.<!> is a designer.</span></p></div>");
 const name = 'John';
 const element = (() => {
   const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  const _n$2 = _next$(_n$, 1);
-  const _n$3 = _next$(_n$2, 2);
-  const _n$4 = _child$(_n$3);
-  const _n$5 = _next$(_n$4, 2);
-  const _n$6 = _child$(_n$5);
-  const _n$7 = _next$(_n$6, 2);
-  _insert$(_root$, () => name, _n$2);
-  _insert$(_n$3, () => name, _n$4);
-  _insert$(_n$5, () => name, _n$6);
-  _insert$(_n$5, () => name, _n$7);
+  const _n$ = _nthChild$(_root$, 1);
+  const _n$2 = _next$(_n$, 2);
+  const _n$3 = _child$(_n$2);
+  const _n$4 = _next$(_n$3, 2);
+  const _n$5 = _child$(_n$4);
+  const _n$6 = _next$(_n$5, 2);
+  _insert$(_root$, () => name, _n$);
+  _insert$(_n$2, () => name, _n$3);
+  _insert$(_n$4, () => name, _n$5);
+  _insert$(_n$4, () => name, _n$6);
   return _root$;
 })();"
 `;
 
 exports[`should work with jsx client transform > transforms client JSX element with nested expressions and children 1`] = `
-"import { template as _template$, child as _child$, next as _next$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { template as _template$, child as _child$, next as _next$, insert as _insert$, nthChild as _nthChild$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _t$2 = _template$("<li>Item <!></li>");
 const _t$ = _template$("<div><p><!>&#39;s Profile</p><ul><!></ul></div>");
 const name = 'John';
@@ -965,16 +961,15 @@ const element = (() => {
     length: 3
   }, (_, i) => (() => {
     const _root$2 = _t$2();
-    const _n$5 = _child$(_root$2);
-    const _n$6 = _next$(_n$5, 1);
+    const _n$5 = _nthChild$(_root$2, 1);
     _memoEffect$(_p$ => {
-      var _v$0 = i;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$2, "key", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = i;
+      _v$ !== _p$.a0 && _patchAttr$(_root$2, "key", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
-    _insert$(_root$2, () => i + 1, _n$6);
+    _insert$(_root$2, () => i + 1, _n$5);
     return _root$2;
   })()), _n$4);
   return _root$;

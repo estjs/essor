@@ -124,6 +124,97 @@ describe('should work with jsx client transform', () => {
     expect(output).toContain('_memoEffect$(_p$ => {');
   });
 
+  it('coalesces dynamic native attrs into one memoEffect per JSX factory', () => {
+    const inputCode = `
+      let count = 1;
+      count = 2;
+      let label = 'one';
+      label = 'two';
+      const props = { title: 'x' };
+      const element = (
+        <section>
+          <p data-count={count}>{count}</p>
+          <p aria-label={label} />
+          <button {...props} data-next={count + 1}>Next</button>
+        </section>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output.match(/_memoEffect\$\(/g)).toHaveLength(1);
+    expect(output.match(/_patchAttr\$\(/g)).toHaveLength(4);
+  });
+
+  it('lets dynamic attrs override same-name static attrs on native elements', () => {
+    const inputCode = `
+      let maybe = 'ready';
+      maybe = undefined;
+      const element = <div id="fallback" id={maybe}>Hello</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_template$("<div>Hello</div>")');
+    expect(output).not.toContain('id=\\"fallback\\"');
+  });
+
+  it('lets later static attrs replace earlier same-name dynamic attrs', () => {
+    const inputCode = `
+      let maybe = 'ready';
+      maybe = 'next';
+      const element = <div id={maybe} id="fallback">Hello</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_template$("<div id=\\"fallback\\">Hello</div>")');
+    expect(output).not.toContain('_memoEffect$');
+  });
+
+  it('generates hygienic merged memo temp identifiers', () => {
+    const inputCode = `
+      let first = 'a';
+      first = 'b';
+      let _v$1 = 'user';
+      _v$1 = 'next';
+      const element = <div data-first={first} data-second={_v$1}>Hello</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).not.toContain('var _v$1 = _v$1;');
+    expect(output).toContain('data-second');
+  });
+
+  it('keeps merged memo temps hygienic against local expression bindings', () => {
+    const inputCode = `
+      function render() {
+        let _v$ = 'user';
+        _v$ = 'next';
+        const element = <div data-value={_v$}>Hello</div>;
+        return element;
+      }
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).not.toContain('var _v$ = _v$;');
+    expect(output).toContain('data-value');
+  });
+
+  it('uses nthChild when a needed child follows only static siblings', () => {
+    const inputCode = `
+      const label = 'Go';
+      const element = (
+        <div>
+          <span>Icon</span>
+          {label}
+        </div>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('nthChild as _nthChild$');
+    expect(output).toContain('const _n$ = _nthChild$(_root$, 1);');
+    expect(output).not.toContain('_next$(_');
+  });
+
   it('transforms JSX element with style attribute', () => {
     const inputCode = `
       const style = { color: 'red', fontSize: '16px' };

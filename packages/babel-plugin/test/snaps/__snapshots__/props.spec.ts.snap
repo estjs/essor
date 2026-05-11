@@ -8,18 +8,14 @@ function testFunction([prop1, prop2], otherProps) {
     const _root$ = _t$();
     const _n$ = _child$(_root$);
     _memoEffect$(_p$ => {
-      var _v$0 = prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     _insert$(_root$, () => otherProps, _n$);
     return _root$;
@@ -34,18 +30,14 @@ function testFunction(prop1, prop2) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -59,18 +51,14 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -85,18 +73,14 @@ function testFunction(__props, otherProps) {
     const _root$ = _t$();
     const _n$ = _child$(_root$);
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     _insert$(_root$, () => otherProps, _n$);
     return _root$;
@@ -111,27 +95,19 @@ function testFunction(restProps) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = restProps.$prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
-      return _p$;
-    }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = restProps.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = {
+      var _v$ = restProps.$prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = restProps.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = {
         ...restProps
       };
-      _v$0 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$0);
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
-      a2: {}
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
     });
     return _root$;
   })();
@@ -145,18 +121,14 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = first;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = first;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = second;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = second;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -171,18 +143,14 @@ class TestClass {
     return (() => {
       const _root$ = _t$();
       _memoEffect$(_p$ => {
-        var _v$0 = __props.prop1;
-        _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+        var _v$ = __props.prop1;
+        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        var _v$2 = __props.prop2;
+        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
-        a0: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = __props.prop2;
-        _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-        return _p$;
-      }, {
-        a1: {}
+        a0: undefined,
+        a1: undefined
       });
       return _root$;
     })();
@@ -198,25 +166,17 @@ async function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = result;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "result", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = result;
-      _v$0 !== _p$.a2 && _patchAttr$(_root$, "result", _p$.a2, _p$.a2 = _v$0);
-      return _p$;
-    }, {
-      a2: {}
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
     });
     return _root$;
   })();
@@ -230,11 +190,11 @@ async function* testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop2", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop2;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop2", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     return _root$;
   })();
@@ -252,18 +212,14 @@ class TestClass {
     return (() => {
       const _root$ = _t$();
       _memoEffect$(_p$ => {
-        var _v$0 = prop1;
-        _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+        var _v$ = prop1;
+        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        var _v$2 = prop2;
+        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
-        a0: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = prop2;
-        _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-        return _p$;
-      }, {
-        a1: {}
+        a0: undefined,
+        a1: undefined
       });
       return _root$;
     })();
@@ -284,39 +240,23 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.user.name;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.user.name;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = primary;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "primary", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = others;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "others", _p$.a2, _p$.a2 = _v$3);
+      var _v$4 = __props.user.settings.theme;
+      _v$4 !== _p$.a3 && _patchAttr$(_root$, "theme", _p$.a3, _p$.a3 = _v$4);
+      var _v$5 = otherSettings;
+      _v$5 !== _p$.a4 && _patchAttr$(_root$, "settings", _p$.a4, _p$.a4 = _v$5);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = primary;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "primary", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = others;
-      _v$0 !== _p$.a2 && _patchAttr$(_root$, "others", _p$.a2, _p$.a2 = _v$0);
-      return _p$;
-    }, {
-      a2: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.user.settings.theme;
-      _v$0 !== _p$.a3 && _patchAttr$(_root$, "theme", _p$.a3, _p$.a3 = _v$0);
-      return _p$;
-    }, {
-      a3: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = otherSettings;
-      _v$0 !== _p$.a4 && _patchAttr$(_root$, "settings", _p$.a4, _p$.a4 = _v$0);
-      return _p$;
-    }, {
-      a4: {}
+      a0: undefined,
+      a1: undefined,
+      a2: undefined,
+      a3: undefined,
+      a4: undefined
     });
     return _root$;
   })();
@@ -330,11 +270,11 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.computedProp;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.computedProp;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     return _root$;
   })();
@@ -348,18 +288,14 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1.prop2.prop3.prop4;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop4", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1.prop2.prop3.prop4;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop4", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop1.prop2.prop3.prop5;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop5", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1.prop2.prop3.prop5;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop5", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -377,18 +313,14 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -421,22 +353,22 @@ function* testFunction({
   yield (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     return _root$;
   })();
   yield (() => {
     const _root$2 = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = prop2;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$2, "prop2", _p$.a0, _p$.a0 = _v$0);
+      var _v$2 = prop2;
+      _v$2 !== _p$.a0 && _patchAttr$(_root$2, "prop2", _p$.a0, _p$.a0 = _v$2);
       return _p$;
     }, {
-      a0: {}
+      a0: undefined
     });
     return _root$2;
   })();
@@ -453,32 +385,20 @@ function testFunction(first, {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = first;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = first;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = prop1;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop1", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = prop2;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "prop2", _p$.a2, _p$.a2 = _v$3);
+      var _v$4 = last;
+      _v$4 !== _p$.a3 && _patchAttr$(_root$, "last", _p$.a3, _p$.a3 = _v$4);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = prop1;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop1", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = prop2;
-      _v$0 !== _p$.a2 && _patchAttr$(_root$, "prop2", _p$.a2, _p$.a2 = _v$0);
-      return _p$;
-    }, {
-      a2: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = last;
-      _v$0 !== _p$.a3 && _patchAttr$(_root$, "last", _p$.a3, _p$.a3 = _v$0);
-      return _p$;
-    }, {
-      a3: {}
+      a0: undefined,
+      a1: undefined,
+      a2: undefined,
+      a3: undefined
     });
     return _root$;
   })();
@@ -497,18 +417,14 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.user.name;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.user.name;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.user.age;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "age", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.user.age;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "age", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
+      a0: undefined,
+      a1: undefined
     });
     return _root$;
   })();
@@ -523,18 +439,14 @@ function outer() {
     return (() => {
       const _root$ = _t$();
       _memoEffect$(_p$ => {
-        var _v$0 = __props.prop1;
-        _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+        var _v$ = __props.prop1;
+        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        var _v$2 = __props.prop2;
+        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
-        a0: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = __props.prop2;
-        _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-        return _p$;
-      }, {
-        a1: {}
+        a0: undefined,
+        a1: undefined
       });
       return _root$;
     })();
@@ -552,27 +464,19 @@ function outer() {
     return (() => {
       const _root$ = _t$();
       _memoEffect$(_p$ => {
-        var _v$0 = __props.prop1;
-        _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
-        return _p$;
-      }, {
-        a0: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = __props.prop2;
-        _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-        return _p$;
-      }, {
-        a1: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = {
+        var _v$ = __props.prop1;
+        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        var _v$2 = __props.prop2;
+        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        var _v$3 = {
           ...restProps
         };
-        _v$0 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$0);
+        _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
         return _p$;
       }, {
-        a2: {}
+        a0: undefined,
+        a1: undefined,
+        a2: undefined
       });
       return _root$;
     })();
@@ -592,18 +496,14 @@ const obj = {
     return (() => {
       const _root$ = _t$();
       _memoEffect$(_p$ => {
-        var _v$0 = prop1;
-        _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+        var _v$ = prop1;
+        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        var _v$2 = prop2;
+        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
-        a0: {}
-      });
-      _memoEffect$(_p$ => {
-        var _v$0 = prop2;
-        _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-        return _p$;
-      }, {
-        a1: {}
+        a0: undefined,
+        a1: undefined
       });
       return _root$;
     })();
@@ -619,25 +519,17 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = restProps;
+      _v$3 !== _p$.sp2 && _patchAttr$(_root$, "_$spread$", _p$.sp2, _p$.sp2 = _v$3);
       return _p$;
     }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = restProps;
-      _v$0 !== _p$.sp2 && _patchAttr$(_root$, "_$spread$", _p$.sp2, _p$.sp2 = _v$0);
-      return _p$;
-    }, {
-      sp2: {}
+      a0: undefined,
+      a1: undefined,
+      sp2: undefined
     });
     return _root$;
   })();
@@ -652,27 +544,19 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$0 = __props.prop1;
-      _v$0 !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$0);
-      return _p$;
-    }, {
-      a0: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = __props.prop2;
-      _v$0 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$0);
-      return _p$;
-    }, {
-      a1: {}
-    });
-    _memoEffect$(_p$ => {
-      var _v$0 = {
+      var _v$ = __props.prop1;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      var _v$2 = __props.prop2;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      var _v$3 = {
         ...restProps
       };
-      _v$0 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$0);
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
-      a2: {}
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
     });
     return _root$;
   })();

@@ -27,7 +27,7 @@ import type { RenderMode } from '../options';
 // ─── Internal Constants ───────────────────
 
 const MEMO_STATE_ID = '_p$';
-const MEMO_NEXT_VALUE_ID = '_v$0';
+const MEMO_NEXT_VALUE_ID = '_v$';
 
 // ─── Template Building + Flat Node Map ────
 // Walk the IR tree once, producing (a) the HTML template string and (b) the
@@ -42,6 +42,22 @@ interface FlatNode {
   parentId: number; // -1 for root
   childIndex: number; // position in parent's DOM children (0-based)
   needsRef: boolean;
+}
+
+function isDynamicChild(node: IRNode): node is IRExpression | IRComponent | IRFor {
+  return (
+    node.type === IRType.EXPRESSION || node.type === IRType.COMPONENT || node.type === IRType.FOR
+  );
+}
+
+function hasOwnEffects(element: IRElement): boolean {
+  return (
+    element.dynamicAttrs.length > 0 ||
+    element.events.length > 0 ||
+    element.spreads.length > 0 ||
+    element.ref != null ||
+    element.binds.length > 0
+  );
 }
 
 /**
@@ -69,27 +85,14 @@ function buildTemplateAndFlatten(
         irElement: element,
         parentId,
         childIndex,
-        needsRef:
-          element.dynamicAttrs.length > 0 ||
-          element.events.length > 0 ||
-          element.spreads.length > 0 ||
-          element.ref != null ||
-          element.binds.length > 0,
+        needsRef: hasOwnEffects(element),
       });
       return;
     }
 
     template += `<${element.tag}${attrs}>`;
 
-    const hasDynamicChild = element.children.some(
-      (c) => c.type === IRType.EXPRESSION || c.type === IRType.COMPONENT || c.type === IRType.FOR,
-    );
-    const hasOwnEffects =
-      element.dynamicAttrs.length > 0 ||
-      element.events.length > 0 ||
-      element.spreads.length > 0 ||
-      element.ref != null ||
-      element.binds.length > 0;
+    const hasDynamicChildren = element.children.some(isDynamicChild);
 
     nodes.push({
       id: myId,
@@ -97,7 +100,7 @@ function buildTemplateAndFlatten(
       irElement: element,
       parentId,
       childIndex,
-      needsRef: hasOwnEffects || hasDynamicChild,
+      needsRef: hasOwnEffects(element) || hasDynamicChildren,
     });
 
     let templateChildIndex = 0;
@@ -181,16 +184,25 @@ function buildStaticTemplateString(node: IRNode, mode: RenderMode): string {
 
 interface NavStep {
   nodeId: number;
-  type: 'child' | 'next';
   fromNodeId: number;
-  distance: number; // for 'next', number of nextSibling hops
 }
+
+interface ChildNavStep extends NavStep {
+  type: 'child';
+}
+
+interface IndexedNavStep extends NavStep {
+  type: 'next' | 'nthChild';
+  index: number;
+}
+
+type NavigationStep = ChildNavStep | IndexedNavStep;
 
 /**
  * Computes `child()` and `next()` steps for nodes that need DOM references.
  */
-function planNavigation(nodes: FlatNode[]): NavStep[] {
-  const steps: NavStep[] = [];
+function planNavigation(nodes: FlatNode[]): NavigationStep[] {
+  const steps: NavigationStep[] = [];
   const navigated = new Set<number>();
 
   // Root (id=0) is always available via the template clone
@@ -228,7 +240,6 @@ function planNavigation(nodes: FlatNode[]): NavStep[] {
         nodeId: node.id,
         type: 'child',
         fromNodeId: node.parentId,
-        distance: 0,
       });
       navigated.add(node.id);
       return;
@@ -253,29 +264,18 @@ function planNavigation(nodes: FlatNode[]): NavStep[] {
         nodeId: node.id,
         type: 'next',
         fromNodeId: prevNav.id,
-        distance: node.childIndex - prevNav.childIndex,
+        index: node.childIndex - prevNav.childIndex,
       });
       navigated.add(node.id);
       return;
     }
 
-    // No previous sibling navigated — navigate to first child, then next() to target
-    const firstChild = parentSiblings?.get(0);
-    if (firstChild && !navigated.has(firstChild.id)) {
-      steps.push({
-        nodeId: firstChild.id,
-        type: 'child',
-        fromNodeId: node.parentId,
-        distance: 0,
-      });
-      navigated.add(firstChild.id);
-    }
-
+    // Previous siblings do not need refs; jump directly from parent to this child.
     steps.push({
       nodeId: node.id,
-      type: 'next',
-      fromNodeId: firstChild?.id ?? node.parentId,
-      distance: node.childIndex,
+      type: 'nthChild',
+      fromNodeId: node.parentId,
+      index: node.childIndex,
     });
     navigated.add(node.id);
   }
@@ -290,13 +290,33 @@ function planNavigation(nodes: FlatNode[]): NavStep[] {
   return steps;
 }
 
+function createNavigationExpression(step: NavigationStep, fromExpr: t.Expression): t.Expression {
+  if (step.type === 'child') {
+    return t.callExpression(useImport('child'), [fromExpr]);
+  }
+
+  if (step.type === 'nthChild') {
+    return t.callExpression(useImport('nthChild'), [fromExpr, t.numericLiteral(step.index)]);
+  }
+
+  return t.callExpression(useImport('next'), [fromExpr, t.numericLiteral(step.index)]);
+}
+
 // ─── Code Generation State ─────────────────
 
 interface GenState {
-  ctx: CompileContext;
   mode: RenderMode;
   effectIndex: number;
 }
+
+interface PendingMemoPatch {
+  effectKey: string;
+  target: t.Expression;
+  attrName: string;
+  value: t.Expression;
+}
+
+type NodeVarMap = Map<number, t.Identifier>;
 
 // ─── Element Code Generation ────────────────
 
@@ -324,100 +344,131 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
   );
 
   // Build var map: nodeId → t.Identifier
-  const varMap = new Map<number, t.Identifier>();
+  const varMap: NodeVarMap = new Map();
   varMap.set(0, rootId); // root element
 
   // Phase 1: Emit navigation declarations (flat, sequential)
-  for (const step of navSteps) {
+  emitNavigationDeclarations(navSteps, varMap, rootId, body);
+
+  // Phase 2: Emit effects (events, refs, binds, dynamic attrs, spreads)
+  const pendingMemoPatches: PendingMemoPatch[] = [];
+  emitElementEffects(flatNodes, varMap, state, body, pendingMemoPatches);
+  emitMergedMemoEffect(pendingMemoPatches, body);
+
+  // Phase 3: Emit insert operations (dynamic children)
+  emitDynamicChildInserts(flatNodes, varMap, state, body);
+
+  body.push(t.returnStatement(rootId));
+  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(body)), []);
+}
+
+function emitNavigationDeclarations(
+  steps: NavigationStep[],
+  varMap: NodeVarMap,
+  rootId: t.Identifier,
+  body: t.Statement[],
+): void {
+  for (const step of steps) {
     const varName = genUid('n$');
     const fromExpr = varMap.get(step.fromNodeId) ?? rootId;
-
-    let navExpr: t.Expression;
-    if (step.type === 'child') {
-      navExpr = t.callExpression(useImport('child'), [fromExpr]);
-    } else {
-      navExpr = t.callExpression(useImport('next'), [fromExpr, t.numericLiteral(step.distance)]);
-    }
+    const navExpr = createNavigationExpression(step, fromExpr);
 
     body.push(t.variableDeclaration('const', [t.variableDeclarator(varName, navExpr)]));
     varMap.set(step.nodeId, varName);
   }
+}
 
-  // Phase 2: Emit effects (events, refs, binds, dynamic attrs, spreads)
+function emitElementEffects(
+  flatNodes: FlatNode[],
+  varMap: NodeVarMap,
+  state: GenState,
+  body: t.Statement[],
+  pendingMemoPatches: PendingMemoPatch[],
+): void {
   for (const flatNode of flatNodes) {
     if (flatNode.kind !== 'element' || !flatNode.irElement) continue;
 
-    const el = flatNode.irElement;
-    const elExpr = varMap.get(flatNode.id);
-    if (!elExpr) continue;
+    const target = varMap.get(flatNode.id);
+    if (!target) continue;
 
-    // Events
-    for (const event of el.events) {
-      emitEvent(event, elExpr, body);
-    }
+    emitElementEffect(flatNode.irElement, target, state, body, pendingMemoPatches);
+  }
+}
 
-    // Ref
-    if (el.ref) {
-      body.push(t.expressionStatement(createRefExpression(elExpr, el.ref.value)));
-    }
-
-    // Binds
-    for (const bind of el.binds) {
-      emitBind(bind, elExpr, body);
-    }
-
-    // Dynamic attributes
-    for (const attr of el.dynamicAttrs) {
-      emitDynamicAttr(attr, elExpr, body, state);
-    }
-
-    // Spreads
-    for (const spread of el.spreads) {
-      emitSpread(spread, elExpr, body, state);
-    }
+function emitElementEffect(
+  element: IRElement,
+  target: t.Expression,
+  state: GenState,
+  body: t.Statement[],
+  pendingMemoPatches: PendingMemoPatch[],
+): void {
+  for (const event of element.events) {
+    emitEvent(event, target, body);
   }
 
-  // Phase 3: Emit insert operations (dynamic children)
+  if (element.ref) {
+    body.push(t.expressionStatement(createRefExpression(target, element.ref.value)));
+  }
+
+  for (const bind of element.binds) {
+    emitBind(bind, target, body);
+  }
+
+  for (const attr of element.dynamicAttrs) {
+    emitDynamicAttr(attr, target, body, state, pendingMemoPatches);
+  }
+
+  for (const spread of element.spreads) {
+    emitSpread(spread, target, body, state, pendingMemoPatches);
+  }
+}
+
+function emitDynamicChildInserts(
+  flatNodes: FlatNode[],
+  varMap: NodeVarMap,
+  state: GenState,
+  body: t.Statement[],
+): void {
   for (const flatNode of flatNodes) {
     if (flatNode.kind !== 'anchor' || !flatNode.dynamicChild) continue;
 
-    const parentExpr = varMap.get(flatNode.parentId);
-    const anchorExpr = varMap.get(flatNode.id);
-    if (!parentExpr || !anchorExpr) continue;
+    const parent = varMap.get(flatNode.parentId);
+    const anchor = varMap.get(flatNode.id);
+    if (!parent || !anchor) continue;
 
-    const child = flatNode.dynamicChild;
-    if (child.type === IRType.EXPRESSION) {
-      body.push(
-        t.expressionStatement(
-          t.callExpression(useImport('insert'), [
-            parentExpr,
-            t.arrowFunctionExpression([], t.cloneNode(child.value, true)),
-            anchorExpr,
-          ]),
-        ),
-      );
-    } else if (child.type === IRType.COMPONENT) {
-      const componentExpr = generateComponent(child, state);
-      body.push(
-        t.expressionStatement(
-          t.callExpression(useImport('insert'), [parentExpr, componentExpr, anchorExpr]),
-        ),
-      );
-    } else if (child.type === IRType.FOR) {
-      body.push(
-        t.expressionStatement(
-          t.callExpression(useImport('insert'), [
-            parentExpr,
-            generateFor(child, state),
-            anchorExpr,
-          ]),
-        ),
-      );
-    }
+    body.push(
+      t.expressionStatement(createInsertCall(parent, flatNode.dynamicChild, anchor, state)),
+    );
+  }
+}
+
+function createInsertCall(
+  parent: t.Expression,
+  child: IRExpression | IRComponent | IRFor,
+  anchor: t.Expression,
+  state: GenState,
+): t.CallExpression {
+  if (child.type === IRType.FOR) {
+    const insert = useImport('insert');
+    return t.callExpression(insert, [parent, generateFor(child, state), anchor]);
   }
 
-  body.push(t.returnStatement(rootId));
-  return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(body)), []);
+  const childExpression = createDynamicChildExpression(child, state);
+  return t.callExpression(useImport('insert'), [parent, childExpression, anchor]);
+}
+
+function createDynamicChildExpression(
+  child: IRExpression | IRComponent | IRFor,
+  state: GenState,
+): t.Expression {
+  switch (child.type) {
+    case IRType.EXPRESSION:
+      return t.arrowFunctionExpression([], t.cloneNode(child.value, true));
+    case IRType.COMPONENT:
+      return generateComponent(child, state);
+    case IRType.FOR:
+      return generateFor(child, state);
+  }
 }
 
 // ─── Effect Emitters ───────────────────────
@@ -485,9 +536,16 @@ function emitDynamicAttr(
   target: t.Expression,
   body: t.Statement[],
   state: GenState,
+  pendingMemoPatches: PendingMemoPatch[],
 ): void {
-  emitPatchOrEffect(target, attr.name, attr.value, attr.kind, body, state, () =>
-    createEffectKey(attr.name, state.effectIndex++),
+  emitPatchOrEffect(
+    target,
+    attr.name,
+    attr.value,
+    attr.kind,
+    body,
+    () => createEffectKey(attr.name, state.effectIndex++),
+    pendingMemoPatches,
   );
 }
 
@@ -499,9 +557,16 @@ function emitSpread(
   target: t.Expression,
   body: t.Statement[],
   state: GenState,
+  pendingMemoPatches: PendingMemoPatch[],
 ): void {
-  emitPatchOrEffect(target, '_$spread$', spread.value, spread.kind, body, state, () =>
-    createSpreadEffectKey(state.effectIndex++),
+  emitPatchOrEffect(
+    target,
+    '_$spread$',
+    spread.value,
+    spread.kind,
+    body,
+    () => createSpreadEffectKey(state.effectIndex++),
+    pendingMemoPatches,
   );
 }
 
@@ -514,54 +579,65 @@ function emitPatchOrEffect(
   value: t.Expression,
   kind: 'static' | 'dynamic',
   body: t.Statement[],
-  state: GenState,
   getEffectKey: () => string,
+  pendingMemoPatches: PendingMemoPatch[],
 ): void {
   if (kind === 'static') {
     body.push(t.expressionStatement(createPatchCall(useImport, target, attrName, value)));
     return;
   }
 
-  const effectKey = getEffectKey();
-  emitMemoEffect(effectKey, target, attrName, value, body);
+  pendingMemoPatches.push({
+    effectKey: getEffectKey(),
+    target,
+    attrName,
+    value,
+  });
 }
 
 /**
  * Emits memo effect.
  */
-function emitMemoEffect(
-  effectKey: string,
-  target: t.Expression,
-  attrName: string,
-  value: t.Expression,
-  body: t.Statement[],
-): void {
-  const effectState = t.memberExpression(t.identifier(MEMO_STATE_ID), t.identifier(effectKey));
-  const valueId = t.identifier(MEMO_NEXT_VALUE_ID);
-  const updateCall = createPatchCall(useImport, target, attrName, value, {
-    previousValue: effectState,
-    nextValue: t.assignmentExpression('=', effectState, valueId),
-  });
+function emitMergedMemoEffect(patches: PendingMemoPatch[], body: t.Statement[]): void {
+  if (patches.length === 0) return;
+
+  const memoStateId = t.identifier(MEMO_STATE_ID);
+  const effectBody = patches.flatMap((patch) => createMemoPatchStatements(patch, memoStateId));
+  effectBody.push(t.returnStatement(memoStateId));
 
   body.push(
     t.expressionStatement(
       t.callExpression(useImport('memoEffect'), [
-        t.arrowFunctionExpression(
-          [t.identifier(MEMO_STATE_ID)],
-          t.blockStatement([
-            t.variableDeclaration('var', [t.variableDeclarator(valueId, value)]),
-            t.expressionStatement(
-              t.logicalExpression(
-                '&&',
-                t.binaryExpression('!==', valueId, effectState),
-                updateCall,
-              ),
-            ),
-            t.returnStatement(t.identifier(MEMO_STATE_ID)),
-          ]),
-        ),
-        t.objectExpression([t.objectProperty(t.identifier(effectKey), t.objectExpression([]))]),
+        t.arrowFunctionExpression([memoStateId], t.blockStatement(effectBody)),
+        createMemoInitialState(patches),
       ]),
+    ),
+  );
+}
+
+function createMemoPatchStatements(
+  patch: PendingMemoPatch,
+  memoStateId: t.Identifier,
+): t.Statement[] {
+  const effectState = t.memberExpression(memoStateId, t.identifier(patch.effectKey));
+  const valueId = genUid(MEMO_NEXT_VALUE_ID);
+  const updateCall = createPatchCall(useImport, patch.target, patch.attrName, valueId, {
+    previousValue: effectState,
+    nextValue: t.assignmentExpression('=', effectState, valueId),
+  });
+
+  return [
+    t.variableDeclaration('var', [t.variableDeclarator(valueId, t.cloneNode(patch.value, true))]),
+    t.expressionStatement(
+      t.logicalExpression('&&', t.binaryExpression('!==', valueId, effectState), updateCall),
+    ),
+  ];
+}
+
+function createMemoInitialState(patches: PendingMemoPatch[]): t.ObjectExpression {
+  return t.objectExpression(
+    patches.map((patch) =>
+      t.objectProperty(t.identifier(patch.effectKey), t.identifier('undefined')),
     ),
   );
 }

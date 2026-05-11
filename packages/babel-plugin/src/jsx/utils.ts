@@ -168,20 +168,21 @@ export interface ParsedAttributes {
   spreadAttrs: Array<{ value: t.Expression; effectKind: 'static' | 'dynamic' }>;
 }
 
+type StaticAttr = ParsedAttributes['staticAttrs'][number];
+type SpreadAttr = ParsedAttributes['spreadAttrs'][number];
+
+interface OrderedAttribute<T> {
+  attr: T;
+  order: number;
+  templateName: string;
+}
+
 /**
  * Checks whether a value can be safely inlined as a static attribute.
  */
 function isSerializableStaticValue(
   value: unknown,
-): value is
-  | null
-  | undefined
-  | boolean
-  | number
-  | string
-  | bigint
-  | unknown[]
-  | Record<string, unknown> {
+): value is null | boolean | number | string | bigint | unknown[] | Record<string, unknown> {
   const stack: unknown[] = [value];
 
   while (stack.length > 0) {
@@ -236,21 +237,143 @@ function shouldResolveStaticCollection(attrName: string): boolean {
   return attrName !== 'ref' && !attrName.startsWith('bind:') && !normalizeEventName(attrName);
 }
 
+function normalizeTemplateAttrName(attrName: string): string {
+  return propsToAttrMap[attrName] ?? attrName;
+}
+
+function createStaticAttr(
+  attrName: string,
+  value: string | boolean,
+  order: number,
+): OrderedAttribute<StaticAttr> {
+  return {
+    attr: { name: attrName, value },
+    order,
+    templateName: normalizeTemplateAttrName(attrName),
+  };
+}
+
+function createDynamicAttr(
+  attrPath: NodePath<t.JSXAttribute>,
+  attrName: string,
+  value: t.Expression,
+  effectKind: AttrValueKind,
+  order: number,
+): OrderedAttribute<DynamicAttr> {
+  return {
+    attr: {
+      path: attrPath,
+      name: attrName,
+      value,
+      effectKind,
+    },
+    order,
+    templateName: normalizeTemplateAttrName(attrName),
+  };
+}
+
+function resolveStaticExpressionValue(
+  attrName: string,
+  expressionPath: NodePath<t.Expression>,
+): string | boolean | undefined {
+  if (!shouldResolveStaticCollection(attrName)) {
+    return undefined;
+  }
+
+  const evaluated = expressionPath.evaluate();
+  if (!evaluated.confident || !isSerializableStaticValue(evaluated.value)) {
+    return undefined;
+  }
+
+  let value = evaluated.value;
+  if (attrName === 'style' && isPlainObject(value)) {
+    value = styleToString(value as Record<string, string | number>);
+  }
+
+  if (isString(value) || isBoolean(value)) {
+    return value;
+  }
+
+  if (isNumber(value)) {
+    return String(value);
+  }
+
+  return undefined;
+}
+
+function parseExpressionAttribute(
+  attrPath: NodePath<t.JSXAttribute>,
+  attrName: string,
+  expression: t.Expression,
+  order: number,
+  staticAttrs: Array<OrderedAttribute<StaticAttr>>,
+  dynamicAttrs: Array<OrderedAttribute<DynamicAttr>>,
+): void {
+  const expressionPath = attrPath.get('value.expression') as NodePath<t.Expression>;
+  const staticValue = resolveStaticExpressionValue(attrName, expressionPath);
+
+  if (staticValue !== undefined) {
+    staticAttrs.push(createStaticAttr(attrName, staticValue, order));
+    return;
+  }
+
+  const classified = classifyAttrValue(expression);
+  dynamicAttrs.push(
+    createDynamicAttr(attrPath, attrName, classified.expression, classified.kind, order),
+  );
+}
+
+function finalizeParsedAttributes(
+  staticAttrs: Array<OrderedAttribute<StaticAttr>>,
+  dynamicAttrs: Array<OrderedAttribute<DynamicAttr>>,
+  spreadAttrs: SpreadAttr[],
+): ParsedAttributes {
+  if (dynamicAttrs.length === 0) {
+    return {
+      staticAttrs: staticAttrs.map((entry) => entry.attr),
+      dynamicAttrs: [],
+      spreadAttrs,
+    };
+  }
+
+  const dynamicNames = new Set(dynamicAttrs.map((entry) => entry.templateName));
+  const lastExplicitOrder = new Map<string, number>();
+
+  for (const entry of [...staticAttrs, ...dynamicAttrs]) {
+    if (!dynamicNames.has(entry.templateName)) continue;
+
+    const current = lastExplicitOrder.get(entry.templateName);
+    if (current == null || entry.order > current) {
+      lastExplicitOrder.set(entry.templateName, entry.order);
+    }
+  }
+
+  const keepsWinningExplicitAttr = <T>(entry: OrderedAttribute<T>): boolean =>
+    !dynamicNames.has(entry.templateName) ||
+    entry.order === lastExplicitOrder.get(entry.templateName);
+
+  return {
+    staticAttrs: staticAttrs.filter(keepsWinningExplicitAttr).map((entry) => entry.attr),
+    dynamicAttrs: dynamicAttrs.filter(keepsWinningExplicitAttr).map((entry) => entry.attr),
+    spreadAttrs,
+  };
+}
+
 /**
  * Splits JSX attributes into static, dynamic, and spread buckets.
  */
 export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes {
-  const staticAttrs: ParsedAttributes['staticAttrs'] = [];
-  const dynamicAttrs: DynamicAttr[] = [];
-  const spreadAttrs: ParsedAttributes['spreadAttrs'] = [];
+  const staticAttrs: Array<OrderedAttribute<StaticAttr>> = [];
+  const dynamicAttrs: Array<OrderedAttribute<DynamicAttr>> = [];
+  const spreadAttrs: SpreadAttr[] = [];
 
   if (!path.isJSXElement()) {
-    return { staticAttrs, dynamicAttrs, spreadAttrs };
+    return { staticAttrs: [], dynamicAttrs: [], spreadAttrs };
   }
 
   const attributes = path.get('openingElement.attributes');
 
-  for (const attrPath of attributes) {
+  for (const [order, attrPath] of attributes.entries()) {
     if (attrPath.isJSXSpreadAttribute()) {
       spreadAttrs.push({
         value: attrPath.node.argument,
@@ -259,16 +382,20 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
       continue;
     }
 
+    if (!attrPath.isJSXAttribute()) {
+      continue;
+    }
+
     const attr = attrPath.node as t.JSXAttribute;
     const attrName = getJSXName(attr.name);
 
     if (!attr.value) {
-      staticAttrs.push({ name: attrName, value: true });
+      staticAttrs.push(createStaticAttr(attrName, true, order));
       continue;
     }
 
     if (t.isStringLiteral(attr.value)) {
-      staticAttrs.push({ name: attrName, value: attr.value.value });
+      staticAttrs.push(createStaticAttr(attrName, attr.value.value, order));
       continue;
     }
 
@@ -278,40 +405,9 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
         continue;
       }
 
-      const expressionPath = (attrPath as NodePath<t.JSXAttribute>).get(
-        'value.expression',
-      ) as NodePath<t.Expression>;
-
-      // Try to evaluate the expression
-      const evaluated = expressionPath.evaluate();
-
-      if (evaluated.confident && isSerializableStaticValue(evaluated.value)) {
-        if (shouldResolveStaticCollection(attrName)) {
-          let value = evaluated.value;
-          if (attrName === 'style' && isPlainObject(value)) {
-            value = styleToString(value as Record<string, string | number>);
-          }
-          if (isString(value) || isBoolean(value) || isNumber(value)) {
-            staticAttrs.push({
-              name: attrName,
-              value: isBoolean(value) ? value : String(value),
-            });
-            continue;
-          }
-        }
-      }
-
-      const value = expression;
-      const classified = classifyAttrValue(value);
-
-      dynamicAttrs.push({
-        path: attrPath as NodePath<t.JSXAttribute>,
-        name: attrName,
-        value: classified.expression,
-        effectKind: classified.kind,
-      });
+      parseExpressionAttribute(attrPath, attrName, expression, order, staticAttrs, dynamicAttrs);
     }
   }
 
-  return { staticAttrs, dynamicAttrs, spreadAttrs };
+  return finalizeParsedAttributes(staticAttrs, dynamicAttrs, spreadAttrs);
 }
