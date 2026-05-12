@@ -33,7 +33,7 @@
         "require": "./dist/server.cjs.js",
         "import": "./dist/server.esm.js"
       },
-      "server": {
+      "/server": {
         "types": "./dist/server.d.ts",
         "require": "./dist/server.cjs.js",
         "import": "./dist/server.esm.js"
@@ -43,6 +43,11 @@
         "require": "./dist/essor.cjs.js",
         "import": "./dist/essor.esm.js"
       }
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "require": "./dist/server.cjs.js",
+      "import": "./dist/server.esm.js"
     },
     "./jsx-runtime": {
       "types": "./jsx-runtime.d.ts",
