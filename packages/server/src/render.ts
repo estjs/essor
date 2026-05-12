@@ -6,6 +6,7 @@ import {
   disposeScope,
   getActiveScope,
   runWithScope,
+  setActiveScope,
 } from '@estjs/template/internal';
 import { type SSRContext, runWithSSRContext } from './context';
 import { addAttributes, convertToString } from './utils';
@@ -138,18 +139,21 @@ export async function renderToStringAsync<P extends ComponentProps = ComponentPr
   resetHydrationKey();
 
   const scope = createScope(null);
+  const prevScope = getActiveScope();
+  setActiveScope(scope);
   try {
     // Keep both the SSR context and the reactive scope active for the entire
     // async render lifetime. This ensures that Portal() calls after an `await`
     // inside async components can still access `getSSRContext()`.
     return await runWithSSRContext(context, async () => {
-      let result: unknown = runWithScope(scope, () => component(props as P));
+      let result: unknown = component(props as P);
       if (isPromise(result)) {
         result = await result;
       }
       return convertToStringAsync(result);
     });
   } finally {
+    setActiveScope(prevScope);
     disposeScope(scope);
   }
 }

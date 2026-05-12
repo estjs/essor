@@ -8,4 +8,4 @@
  */
 
 export type { Scope } from './scope';
-export { createScope, disposeScope, getActiveScope, runWithScope } from './scope';
+export { createScope, disposeScope, getActiveScope, runWithScope, setActiveScope } from './scope';

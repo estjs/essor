@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type InjectionKey, inject, provide } from '@estjs/template';
+import { getActiveScope } from '@estjs/template/internal';
 import { renderToStringAsync } from '../src/render';
 
 describe('server/renderToStringAsync', () => {
@@ -34,6 +35,32 @@ describe('server/renderToStringAsync', () => {
       return Child();
     };
     await expect(renderToStringAsync(Parent)).resolves.toBe('<x>provided</x>');
+  });
+
+  it('keeps provide/inject available after an awaited parent render', async () => {
+    const key: InjectionKey<string> = Symbol('awaited-ctx');
+    const Child = () => {
+      const value = inject(key, 'default');
+      return `<x>${value}</x>`;
+    };
+    const Parent = async () => {
+      provide(key, 'provided-after-await');
+      await Promise.resolve();
+      return Child();
+    };
+
+    await expect(renderToStringAsync(Parent)).resolves.toBe('<x>provided-after-await</x>');
+  });
+
+  it('disposes the async render scope after rejected components', async () => {
+    const Component = async () => {
+      expect(getActiveScope()).not.toBeNull();
+      await Promise.resolve();
+      throw new Error('boom');
+    };
+
+    await expect(renderToStringAsync(Component)).rejects.toThrow('boom');
+    expect(getActiveScope()).toBeNull();
   });
 
   it('returns empty string and logs error if component is not a function', async () => {
