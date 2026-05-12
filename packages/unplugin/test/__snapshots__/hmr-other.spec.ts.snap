@@ -221,6 +221,10 @@ function applyUpdate(registry) {
   let needsReload = false;
 
   for (const entry of registry) {
+    if (!isHMRComponent(entry)) {
+      continue;
+    }
+
     const { __hmrId: hmrId, __signature: signature } = entry;
     const id = hmrId;
     const info = componentRegistry.get(hmrId);
@@ -661,6 +665,10 @@ function applyUpdate(registry) {
   let needsReload = false;
 
   for (const entry of registry) {
+    if (!isHMRComponent(entry)) {
+      continue;
+    }
+
     const { __hmrId: hmrId, __signature: signature } = entry;
     const id = hmrId;
     const info = componentRegistry.get(hmrId);
@@ -1101,6 +1109,10 @@ function applyUpdate(registry) {
   let needsReload = false;
 
   for (const entry of registry) {
+    if (!isHMRComponent(entry)) {
+      continue;
+    }
+
     const { __hmrId: hmrId, __signature: signature } = entry;
     const id = hmrId;
     const info = componentRegistry.get(hmrId);
@@ -1529,6 +1541,10 @@ function applyUpdate(registry) {
   let needsReload = false;
 
   for (const entry of registry) {
+    if (!isHMRComponent(entry)) {
+      continue;
+    }
+
     const { __hmrId: hmrId, __signature: signature } = entry;
     const id = hmrId;
     const info = componentRegistry.get(hmrId);
