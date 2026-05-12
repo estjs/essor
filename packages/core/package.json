@@ -64,7 +64,7 @@
   "unpkg": "dist/essor.esm.js",
   "jsdelivr": "dist/essor.esm.js",
   "scripts": {
-    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch"
   },
   "dependencies": {

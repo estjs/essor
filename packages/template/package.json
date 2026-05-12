@@ -49,7 +49,7 @@
       },
       "types": "./dist/template.d.ts",
       "require": "./dist/template.cjs.js",
-      "import": "./dist/template.dev.esm.js"
+      "import": "./dist/template.esm.js"
     }
   },
   "typesVersions": {
@@ -63,7 +63,7 @@
   "unpkg": "dist/template.esm.js",
   "jsdelivr": "dist/template.esm.js",
   "scripts": {
-    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch"
   },
   "dependencies": {

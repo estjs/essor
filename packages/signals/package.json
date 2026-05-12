@@ -52,7 +52,7 @@
   "unpkg": "dist/signals.esm.js",
   "jsdelivr": "dist/signals.esm.js",
   "scripts": {
-    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false --treeshake --sourcemap=false",
+    "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch",
     "bench": "node --expose-gc benchmark/benchmark.js && node benchmark/score.js"
   },
