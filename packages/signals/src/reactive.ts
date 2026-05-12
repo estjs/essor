@@ -228,6 +228,13 @@ function createArrayInstrumentations() {
   return instrumentations;
 }
 
+function hasStoredValueChanged(rawValue: unknown, oldValue: unknown): boolean {
+  // Signal-backed properties are auto-unwrapped on read; replacing the stored
+  // signal with its current value must still notify effects to refresh deps.
+  const comparableOldValue = isSignal(oldValue) ? oldValue : toRaw(oldValue);
+  return hasChanged(rawValue, comparableOldValue);
+}
+
 /**
  * Proxy handler for reactive arrays.
  * Intercepts get and set operations to perform dependency tracking and trigger changes.
@@ -271,8 +278,9 @@ const arrayHandlers = (shallow: boolean) => ({
   },
   set: (target: any, key: string | symbol, value: unknown, receiver: any) => {
     const oldValue = Reflect.get(target, key, receiver);
-    const result = Reflect.set(target, key, value, receiver);
-    if (hasChanged(value, oldValue)) {
+    const rawValue = toRaw(value);
+    const result = Reflect.set(target, key, rawValue, receiver);
+    if (hasStoredValueChanged(rawValue, oldValue)) {
       // For numeric indices, we need to trigger multiple dependencies
       if (isStringNumber(key)) {
         trigger(target, TriggerOpTypes.SET, [key, ARRAY_ITERATE_KEY, ARRAY_KEY]);
@@ -796,9 +804,10 @@ const objectHandlers = (shallow: boolean) => ({
   set: (target: object, key: string | symbol, value: unknown, receiver: object) => {
     const oldValue = Reflect.get(target, key, receiver);
     // When setting value, ensure the raw value is set.
-    const result = Reflect.set(target, key, toRaw(value), receiver);
-    if (hasChanged(value, oldValue)) {
-      trigger(target, TriggerOpTypes.SET, key, value);
+    const rawValue = toRaw(value);
+    const result = Reflect.set(target, key, rawValue, receiver);
+    if (hasStoredValueChanged(rawValue, oldValue)) {
+      trigger(target, TriggerOpTypes.SET, key, rawValue);
     }
     return result;
   },

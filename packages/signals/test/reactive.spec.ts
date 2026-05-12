@@ -1,4 +1,13 @@
-import { computed, effect, isReactive, isShallow, reactive, shallowReactive, toRaw } from '../src';
+import {
+  computed,
+  effect,
+  isReactive,
+  isShallow,
+  reactive,
+  shallowReactive,
+  signal,
+  toRaw,
+} from '../src';
 
 describe('reactive - basic reactivity tests', () => {
   it('should initialize with provided properties', () => {
@@ -96,6 +105,36 @@ describe('reactive - basic reactivity tests', () => {
 
     reactiveObj.name = 'Doe';
     expect(rawObj.name).toBe('Doe'); // change proxy object to synchronize to original object
+  });
+
+  it('should not trigger when assigning the same nested object through its proxy', () => {
+    const rawChild = { name: 'Alice' };
+    const state = reactive({ child: rawChild });
+    const mockFn = vi.fn(() => state.child);
+    effect(mockFn);
+
+    const child = state.child;
+    state.child = child;
+
+    expect(toRaw(state.child)).toBe(rawChild);
+    expect(mockFn).toHaveBeenCalledTimes(1);
+  });
+
+  it('should trigger when replacing an auto-unwrapped signal with its current value', () => {
+    const count = signal(1);
+    const state = reactive<any>({ count });
+    const mockFn = vi.fn(() => state.count);
+    effect(mockFn);
+
+    const currentCount = state.count;
+    state.count = currentCount;
+
+    expect(mockFn).toHaveBeenCalledTimes(2);
+
+    count.value = 2;
+
+    expect(state.count).toBe(1);
+    expect(mockFn).toHaveBeenCalledTimes(2);
   });
 });
 describe('reactive - nested objects and arrays', () => {
@@ -239,6 +278,19 @@ describe('reactive - nested objects and arrays', () => {
     expect(state.lastIndexOf(proxy)).toBe(0);
 
     expect(state.includes(raw)).toBe(true);
+  });
+
+  it('should not trigger when assigning the same array element through its proxy', () => {
+    const raw = { id: 1 };
+    const state = reactive([raw]);
+    const mockFn = vi.fn(() => state[0]);
+    effect(mockFn);
+
+    const first = state[0];
+    state[0] = first;
+
+    expect(toRaw(state[0])).toBe(raw);
+    expect(mockFn).toHaveBeenCalledTimes(1);
   });
 
   it('should return reactive elements from find in deep reactive arrays', () => {
