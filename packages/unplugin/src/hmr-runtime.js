@@ -24,6 +24,29 @@ const isFunction = (value) => typeof value === 'function';
  */
 const componentRegistry = new Map();
 
+function stopRunner(runner) {
+  if (!runner) return;
+  if (isFunction(runner.stop)) {
+    runner.stop();
+    return;
+  }
+  if (isFunction(runner)) {
+    runner();
+  }
+}
+
+function cleanupInstance(info, component) {
+  const runner = info.cleanups.get(component);
+  try {
+    if (runner) {
+      stopRunner(runner);
+    }
+  } finally {
+    info.cleanups.delete(component);
+    info.instances.delete(component);
+  }
+}
+
 /**
  * Utility function to handle invalidate or reload
  * @param hot - Hot module API object
@@ -70,8 +93,10 @@ export function createHMRComponent(componentFn, props) {
     componentRegistry.set(hmrId, info);
   }
 
-  // Create Component instance
-  const component = createComponent(componentFn, props);
+  // Create Component instance from the current registry entry. This matters
+  // when an old closure creates a new instance after the module was updated.
+  const currentComponentFn = info.componentSignal.value;
+  const component = createComponent(currentComponentFn, props);
   // Track this instance
   info.instances.add(component);
 
@@ -80,7 +105,7 @@ export function createHMRComponent(componentFn, props) {
   // We read the signal value immediately to establish the dependency,
   // but only trigger updates on subsequent changes
   let initialized = false;
-  const cleanup = effect(() => {
+  const runner = effect(() => {
     // Read signal value to establish dependency
     const currentComponentFn = info.componentSignal.value;
     // Skip the initialization run - only update on actual changes
@@ -99,24 +124,41 @@ export function createHMRComponent(componentFn, props) {
   });
 
   // Store cleanup function for this instance
-  info.cleanups.set(component, cleanup);
+  info.cleanups.set(component, runner);
 
-  // Integrate with component lifecycle - cleanup when component is destroyed
-  // Store the original onBeforeUnmount handler if it exists
-  const originalOnBeforeUnmount = component.onBeforeUnmount;
-  component.onBeforeUnmount = function () {
-    // Call original handler first
-    if (originalOnBeforeUnmount) {
-      originalOnBeforeUnmount.call(this);
+  let disposed = false;
+  const cleanupHMR = () => {
+    if (disposed) return;
+    disposed = true;
+    cleanupInstance(info, component);
+  };
+
+  const originalForceUpdate = component.forceUpdate;
+  let isForceUpdating = false;
+  if (isFunction(originalForceUpdate)) {
+    component.forceUpdate = function (...args) {
+      isForceUpdating = true;
+      try {
+        return originalForceUpdate.apply(this, args);
+      } finally {
+        isForceUpdating = false;
+      }
+    };
+  }
+
+  // Integrate with component lifecycle - cleanup only when the component is
+  // actually unmounted, not during forceUpdate's destroy/remount cycle.
+  const originalDestroy = component.destroy;
+  component.destroy = function (...args) {
+    try {
+      if (isFunction(originalDestroy)) {
+        return originalDestroy.apply(this, args);
+      }
+    } finally {
+      if (!isForceUpdating) {
+        cleanupHMR();
+      }
     }
-    // Cleanup HMR effect
-    const cleanupFn = info.cleanups.get(component);
-    if (cleanupFn) {
-      cleanupFn();
-      info.cleanups.delete(component);
-    }
-    // Remove from instances tracking
-    info.instances.delete(component);
   };
 
   return component;
@@ -175,6 +217,10 @@ export function applyUpdate(registry) {
   let needsReload = false;
 
   for (const entry of registry) {
+    if (!isHMRComponent(entry)) {
+      continue;
+    }
+
     const { __hmrId: hmrId, __signature: signature } = entry;
     const id = hmrId;
     const info = componentRegistry.get(hmrId);
@@ -371,19 +417,14 @@ export function unregisterAllInstances(hmrId) {
   if (!info) return 0;
 
   let count = 0;
-  for (const item of info.instances) {
-    const cleanup = info.cleanups.get(item);
-    if (cleanup) {
-      try {
-        cleanup();
-      } catch (error) {
-        console.error(`[Essor HMR] Failed to cleanup effect:`, error);
-      }
+  for (const item of [...info.instances]) {
+    try {
+      cleanupInstance(info, item);
+    } catch (error) {
+      console.error(`[Essor HMR] Failed to cleanup effect:`, error);
     }
     count++;
   }
-
-  info.instances.clear();
 
   return count;
 }

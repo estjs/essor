@@ -15,25 +15,30 @@ interface HMRComponent {
 
 type Mock = any;
 
+const forceUpdateMock = (instance: any) => instance.__forceUpdateMock ?? instance.forceUpdate;
+
 vi.mock('essor', () => {
-  let activeEffect: (() => void) | null = null;
+  let activeEffect: any = null;
   const signal = (initial: any) => {
     let value = initial;
-    const subs = new Set<() => void>();
+    const subs = new Set<any>();
     return {
       get value() {
-        if (activeEffect) subs.add(activeEffect);
+        if (activeEffect) {
+          subs.add(activeEffect);
+          activeEffect.deps.add(subs);
+        }
         return value;
       },
       set value(newValue: any) {
         value = newValue;
-        subs.forEach((fn) => fn());
+        [...subs].forEach((fn) => fn());
       },
     };
   };
 
   const effect = (fn: () => void) => {
-    const run = () => {
+    const run: any = () => {
       const prev = activeEffect;
       activeEffect = run;
       try {
@@ -42,12 +47,29 @@ vi.mock('essor', () => {
         activeEffect = prev;
       }
     };
+    run.deps = new Set<Set<any>>();
+    run.stop = vi.fn(() => {
+      for (const dep of run.deps) {
+        dep.delete(run);
+      }
+      run.deps.clear();
+    });
     run();
-    return () => {};
+    return run;
   };
 
   const createComponent = (fn: any) => {
-    const instance = { forceUpdate: vi.fn() };
+    const instance: any = {
+      component: fn,
+      destroy: vi.fn(),
+      mount: vi.fn(),
+    };
+    const forceUpdate = vi.fn(() => {
+      instance.destroy();
+      instance.mount();
+    });
+    instance.forceUpdate = forceUpdate;
+    instance.__forceUpdateMock = forceUpdate;
     if (fn._hmrInstances) {
       fn._hmrInstances.add(instance);
     }
@@ -92,7 +114,7 @@ describe('hMR Runtime', () => {
       const instance = createHMRComponent(Comp1, {});
 
       // Clear initial call from creation
-      (instance.forceUpdate as Mock).mockClear();
+      (forceUpdateMock(instance) as Mock).mockClear();
 
       // 2. Create new component version
       const Comp2 = () => 'v2';
@@ -106,7 +128,51 @@ describe('hMR Runtime', () => {
       expect(needsReload).toBe(false);
 
       // Verify forceUpdate was called because signal changed
-      expect(instance.forceUpdate).toHaveBeenCalledTimes(1);
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
+    });
+
+    it('should keep updating after forceUpdate remounts the component', () => {
+      const hmrId = 'remount-update-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      (forceUpdateMock(instance) as Mock).mockClear();
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      applyUpdate([Comp2]);
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
+
+      (forceUpdateMock(instance) as Mock).mockClear();
+
+      const Comp3 = () => 'v3';
+      (Comp3 as HMRComponent).__hmrId = hmrId;
+      (Comp3 as HMRComponent).__signature = 'sig-3';
+
+      applyUpdate([Comp3]);
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
+    });
+
+    it('should create new instances with the latest registered component after an update', () => {
+      const hmrId = 'latest-instance-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      createHMRComponent(Comp1, {});
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+      applyUpdate([Comp2]);
+
+      const instance = createHMRComponent(Comp1, {});
+
+      expect(instance.component).toBe(Comp2);
     });
 
     it('should not trigger update if signature matches', () => {
@@ -116,13 +182,13 @@ describe('hMR Runtime', () => {
       (Comp1 as HMRComponent).__signature = 'sig-1';
 
       const instance = createHMRComponent(Comp1, {});
-      (instance.forceUpdate as Mock).mockClear();
+      (forceUpdateMock(instance) as Mock).mockClear();
 
       const registry = [Comp1];
       const needsReload = applyUpdate(registry);
 
       expect(needsReload).toBe(false);
-      expect(instance.forceUpdate).not.toHaveBeenCalled();
+      expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
     });
 
     it('should update if function instance changed (constant update)', () => {
@@ -132,7 +198,7 @@ describe('hMR Runtime', () => {
       (Comp1 as HMRComponent).__signature = 'sig-1';
 
       const instance = createHMRComponent(Comp1, {});
-      (instance.forceUpdate as Mock).mockClear();
+      (forceUpdateMock(instance) as Mock).mockClear();
 
       const Comp2 = () => 'v1'; // Different function, same code/signature
       (Comp2 as HMRComponent).__hmrId = hmrId;
@@ -144,7 +210,7 @@ describe('hMR Runtime', () => {
       expect(needsReload).toBe(false);
       // Even if signature is same, different function reference triggers update
       // This is because we check `oldFn !== newComponentFn` in shouldUpdate
-      expect(instance.forceUpdate).toHaveBeenCalledTimes(1);
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
 
     it('should ignore updates for unknown components (not rendered yet)', () => {
@@ -154,6 +220,25 @@ describe('hMR Runtime', () => {
 
       const needsReload = applyUpdate([Comp]);
       expect(needsReload).toBe(false);
+    });
+
+    it('should ignore invalid registry entries and keep applying valid updates', () => {
+      const hmrId = 'invalid-entry-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      (forceUpdateMock(instance) as Mock).mockClear();
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      const needsReload = applyUpdate([undefined, null, {}, Comp2]);
+
+      expect(needsReload).toBe(false);
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -211,17 +296,41 @@ describe('hMR Runtime', () => {
       (Comp as HMRComponent).__hmrId = hmrId;
       (Comp as HMRComponent).__signature = 'sig-1';
 
-      createHMRComponent(Comp, {});
-      // createHMRComponent in our mock calls effect()
-      // We can't easily capture the cleanup function returned by effect in this mock structure
-      // BUT, `unregisterAllInstances` calls `item.cleanup()` on instances.
-      // Wait, `createHMRComponent` attaches cleanup to `info.cleanups`.
-      // `unregisterAllInstances` iterates `info.instances` -> checks `item.cleanup`?
-
-      createHMRComponent(Comp, {});
+      const first = createHMRComponent(Comp, {});
+      const second = createHMRComponent(Comp, {});
+      (forceUpdateMock(first) as Mock).mockClear();
+      (forceUpdateMock(second) as Mock).mockClear();
 
       const count = unregisterAllInstances(hmrId);
-      expect(count).toBeGreaterThan(0);
+      expect(count).toBe(2);
+
+      const NextComp = () => 'v2';
+      (NextComp as HMRComponent).__hmrId = hmrId;
+      (NextComp as HMRComponent).__signature = 'sig-2';
+      applyUpdate([NextComp]);
+
+      expect(forceUpdateMock(first)).not.toHaveBeenCalled();
+      expect(forceUpdateMock(second)).not.toHaveBeenCalled();
+    });
+
+    it('stops the HMR effect when a component instance is unmounted', () => {
+      const hmrId = 'unmounted-cleanup-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      (forceUpdateMock(instance) as Mock).mockClear();
+
+      instance.destroy();
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      applyUpdate([Comp2]);
+
+      expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
     });
   });
 });

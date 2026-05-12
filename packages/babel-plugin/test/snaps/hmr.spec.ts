@@ -108,6 +108,27 @@ describe('hMR transformation', () => {
     expect(output).toMatchSnapshot();
   });
 
+  it('wraps imported root and child components for split-file HMR', async () => {
+    const input = `
+          import { createApp } from 'essor';
+          import { App } from './App';
+          import { CounterPanel } from './CounterPanel';
+
+          function Shell() {
+            return <main>
+              <CounterPanel />
+            </main>;
+          }
+
+          createApp(App, 'root');
+    `;
+
+    const output = await transform(input);
+
+    expect(output).toContain("createApp(__$createHMRComponent$__(App), 'root');");
+    expect(output).toContain('_insert$(_root$, __$createHMRComponent$__(CounterPanel, {})');
+  });
+
   it('should not transform when HMR is disabled', async () => {
     const input = `
           import { createComponent as cc } from 'essor';

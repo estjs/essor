@@ -222,14 +222,26 @@ function injectComponentMetadata(programPath: NodePath<t.Program>, ctx: CompileC
   programPath.node.body = nextBody;
 }
 
+function isCreateHMRComponentCall(value: t.Node | null | undefined): value is t.CallExpression {
+  return (
+    t.isCallExpression(value) &&
+    t.isIdentifier(value.callee) &&
+    value.callee.name === HMR_COMPONENT_NAME
+  );
+}
+
+function canWrapArgument(value: t.CallExpression['arguments'][number] | undefined): boolean {
+  return !!value && !t.isSpreadElement(value) && !t.isArgumentPlaceholder(value);
+}
+
 /**
  * Rewrites component creation calls to their HMR-aware variants.
+ *
+ * This intentionally wraps imported components too. Metadata is still only
+ * emitted for top-level components in the current file, but imported component
+ * functions already carry their own metadata after their module is transformed.
  */
-function wrapCreateAppCalls(programPath: NodePath<t.Program>, ctx: CompileContext): void {
-  if (ctx.hmrComponents.size === 0) {
-    return;
-  }
-
+function wrapComponentCreationCalls(programPath: NodePath<t.Program>, ctx: CompileContext): void {
   programPath.traverse({
     /**
      * Rewrites `createComponent` and `createApp` calls for HMR tracking.
@@ -241,7 +253,7 @@ function wrapCreateAppCalls(programPath: NodePath<t.Program>, ctx: CompileContex
 
       if (callee.name === ctx.importIdentifiers.createComponent.name) {
         const firstArg = callPath.node.arguments[0];
-        if (t.isIdentifier(firstArg) && ctx.hmrComponents.has(firstArg.name)) {
+        if (canWrapArgument(firstArg)) {
           callPath.node.callee = t.identifier(HMR_COMPONENT_NAME);
         }
         return;
@@ -253,13 +265,11 @@ function wrapCreateAppCalls(programPath: NodePath<t.Program>, ctx: CompileContex
         if (args.length === 0) return;
 
         // Skip if already transformed
-        if (
-          t.isCallExpression(args[0]) &&
-          t.isIdentifier(args[0].callee) &&
-          args[0].callee.name === HMR_COMPONENT_NAME
-        ) {
+        if (isCreateHMRComponentCall(args[0])) {
           return;
         }
+
+        if (!canWrapArgument(args[0])) return;
 
         args[0] = t.callExpression(t.identifier(HMR_COMPONENT_NAME), [args[0]]);
         callPath.node.arguments = args;
@@ -288,12 +298,19 @@ export function collectTopLevelHmrComponents(
  * Applies HMR metadata injection and runtime wrapping to the program.
  */
 export function applyHmr(programPath: NodePath<t.Program>, ctx: CompileContext): void {
-  if (!ctx.options.hmr || !ctx.options.bundler || ctx.hmrComponents.size === 0) {
+  if (!ctx.options.hmr || !ctx.options.bundler) {
     return;
   }
 
-  injectComponentMetadata(programPath, ctx);
-  wrapCreateAppCalls(programPath, ctx);
+  if (ctx.hmrComponents.size > 0) {
+    injectComponentMetadata(programPath, ctx);
+  }
+
+  wrapComponentCreationCalls(programPath, ctx);
+
+  if (ctx.hmrComponents.size === 0) {
+    return;
+  }
 
   programPath.node.body.push(
     t.variableDeclaration('const', [
