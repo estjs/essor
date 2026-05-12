@@ -1,4 +1,4 @@
-import { computed, effect, isReactive, reactive, shallowReactive, toRaw } from '../src';
+import { computed, effect, isReactive, isShallow, reactive, shallowReactive, toRaw } from '../src';
 
 describe('reactive - basic reactivity tests', () => {
   it('should initialize with provided properties', () => {
@@ -372,6 +372,35 @@ describe('reactive - nested objects and arrays', () => {
   });
 });
 describe('shallowReactive - shallow reactivity behavior', () => {
+  it('should keep separate proxy caches for deep and shallow modes', () => {
+    const shallowFirstRaw = { nested: { count: 1 } };
+    const shallowFirst = shallowReactive(shallowFirstRaw);
+    const deepSecond = reactive(shallowFirstRaw);
+
+    expect(shallowFirst).not.toBe(deepSecond);
+    expect(isReactive(shallowFirst.nested)).toBe(false);
+    expect(isReactive(deepSecond.nested)).toBe(true);
+
+    const deepFirstRaw = { nested: { count: 1 } };
+    const deepFirst = reactive(deepFirstRaw);
+    const shallowSecond = shallowReactive(deepFirstRaw);
+
+    expect(deepFirst).not.toBe(shallowSecond);
+    expect(isReactive(deepFirst.nested)).toBe(true);
+    expect(isReactive(shallowSecond.nested)).toBe(false);
+  });
+
+  it('should preserve shallow collection semantics', () => {
+    const rawValue = { count: 1 };
+    const rawMap = new Map<string, { count: number }>([['value', rawValue]]);
+    const shallowMap = shallowReactive(rawMap);
+    const deepMap = reactive(rawMap);
+
+    expect(isShallow(shallowMap)).toBe(true);
+    expect(isReactive(shallowMap.get('value'))).toBe(false);
+    expect(isReactive(deepMap.get('value'))).toBe(true);
+  });
+
   // Shallow object reactivity
   it('should work with shallow reactivity in objects', () => {
     const state = shallowReactive<any>({ a: { b: { c: { d: 1 } } } });

@@ -21,8 +21,10 @@ import {
 import { track, trigger } from './system';
 import { isSignal } from './signal';
 
-// Use WeakMap to cache created reactive proxies to avoid duplicate creation.
+// Use separate WeakMaps so deep and shallow wrappers for the same raw object
+// cannot accidentally reuse each other.
 const reactiveCaches = new WeakMap<object, object>();
+const shallowReactiveCaches = new WeakMap<object, object>();
 
 /**
  * Return the raw underlying value of a reactive proxy or signal.
@@ -287,7 +289,9 @@ const shallowArrayHandlers = arrayHandlers(true);
 const deepArrayHandlers = arrayHandlers(false);
 
 // Proxy handler for Map and Set collections.
-const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
+const collectionHandlers = (
+  shallow: boolean,
+): ProxyHandler<Map<unknown, unknown> | Set<unknown>> => ({
   /**
    * Exposes collection proxy flags and instrumented methods.
    */
@@ -298,6 +302,9 @@ const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
     if (key === SignalFlags.RAW) {
       return target;
     }
+    if (key === SignalFlags.IS_SHALLOW) {
+      return shallow;
+    }
     // Return enhanced method or original method.
     return Reflect.get(
       hasOwn(collectionInstrumentations, key) ? collectionInstrumentations : target,
@@ -305,10 +312,12 @@ const collectionHandlers: ProxyHandler<Map<unknown, unknown> | Set<unknown>> = {
       target,
     );
   },
-};
+});
 
 // Proxy handler for WeakMap and WeakSet collections.
-const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<object>> = {
+const weakCollectionHandlers = (
+  shallow: boolean,
+): ProxyHandler<WeakMap<object, unknown> | WeakSet<object>> => ({
   /**
    * Exposes weak-collection proxy flags and instrumented methods.
    */
@@ -319,6 +328,9 @@ const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<ob
     if (key === SignalFlags.RAW) {
       return target;
     }
+    if (key === SignalFlags.IS_SHALLOW) {
+      return shallow;
+    }
     // Return enhanced method or original method.
     return Reflect.get(
       hasOwn(weakInstrumentations, key) && key in target ? weakInstrumentations : target,
@@ -326,7 +338,12 @@ const weakCollectionHandlers: ProxyHandler<WeakMap<object, unknown> | WeakSet<ob
       target,
     );
   },
-};
+});
+
+const shallowCollectionHandlers = collectionHandlers(true);
+const deepCollectionHandlers = collectionHandlers(false);
+const shallowWeakCollectionHandlers = weakCollectionHandlers(true);
+const deepWeakCollectionHandlers = weakCollectionHandlers(false);
 
 // Enhanced versions of Map and Set collection methods.
 const collectionInstrumentations = {
@@ -817,8 +834,9 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
     return target;
   }
 
-  // Check if proxy already exists in cache.
-  const existingProxy = reactiveCaches.get(target);
+  // Check if proxy already exists in the cache for this reactivity depth.
+  const cache = shallow ? shallowReactiveCaches : reactiveCaches;
+  const existingProxy = cache.get(target);
   if (existingProxy) {
     return existingProxy as T;
   }
@@ -828,16 +846,16 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   if (isArray(target)) {
     handler = shallow ? shallowArrayHandlers : deepArrayHandlers;
   } else if (isSet(target) || isMap(target)) {
-    handler = collectionHandlers;
+    handler = shallow ? shallowCollectionHandlers : deepCollectionHandlers;
   } else if (isWeakMap(target) || isWeakSet(target)) {
-    handler = weakCollectionHandlers;
+    handler = shallow ? shallowWeakCollectionHandlers : deepWeakCollectionHandlers;
   } else {
     handler = shallow ? shallowObjectHandlers : deepObjectHandlers;
   }
 
   // Create and cache proxy.
   const proxy = new Proxy(target, handler);
-  reactiveCaches.set(target, proxy);
+  cache.set(target, proxy);
   return proxy;
 }
 
