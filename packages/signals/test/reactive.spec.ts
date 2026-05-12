@@ -955,6 +955,41 @@ describe('reactive Map with Effects', () => {
     entryValue.label = 'updated';
     expect(rawValue.label).toBe('updated');
   });
+
+  it('should normalize reactive object keys for Map lookups', () => {
+    const rawKey = { id: 1 };
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new Map<object, { count: number }>([[rawKey, { count: 1 }]]));
+
+    const value = map.get(proxyKey);
+
+    expect(value).toBeDefined();
+    expect(isReactive(value)).toBe(true);
+    expect(value?.count).toBe(1);
+  });
+
+  it('should preserve a proxy-key entry that stores undefined', () => {
+    const rawKey = { id: 1 };
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new Map<object, string | undefined>([[rawKey, 'raw']]));
+
+    toRaw(map).set(proxyKey, undefined);
+
+    expect(map.get(proxyKey)).toBeUndefined();
+    expect(map.get(rawKey)).toBe('raw');
+  });
+
+  it('should normalize reactive object keys when setting Map entries', () => {
+    const rawKey = { id: 1 };
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new Map<object, string>([[rawKey, 'old']]));
+
+    map.set(proxyKey, 'new');
+
+    expect(map.size).toBe(1);
+    expect(map.get(rawKey)).toBe('new');
+    expect(map.get(proxyKey)).toBe('new');
+  });
 });
 describe('reactive WeakSet with Effects', () => {
   let state: WeakSet<object>;
@@ -993,21 +1028,6 @@ describe('reactive WeakSet with Effects', () => {
     const hasValue = state.has(obj2);
     expect(hasValue).toBe(true);
     expect(effectFn).toHaveBeenCalledTimes(1); // has shouldn't trigger effect
-  });
-
-  it('should normalize reactive keys for WeakMap lookups and deletes', () => {
-    const rawKey = {};
-    const proxyKey = reactive(rawKey);
-    const map = reactive(new WeakMap<object, { count: number }>([[rawKey, { count: 1 }]]));
-
-    const value = map.get(proxyKey);
-
-    expect(value).toBeDefined();
-    expect(isReactive(value)).toBe(true);
-    expect(value?.count).toBe(1);
-    expect(map.has(proxyKey)).toBe(true);
-    expect(map.delete(proxyKey)).toBe(true);
-    expect(map.has(rawKey)).toBe(false);
   });
 });
 describe('reactive WeakMap with Effects', () => {
@@ -1060,6 +1080,32 @@ describe('reactive WeakMap with Effects', () => {
     const hasValue = state.has(obj2);
     expect(hasValue).toBe(true);
     expect(effectFn).toHaveBeenCalledTimes(1); // has shouldn't trigger effect
+  });
+
+  it('should normalize reactive keys for WeakMap lookups and deletes', () => {
+    const rawKey = {};
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new WeakMap<object, { count: number }>([[rawKey, { count: 1 }]]));
+
+    const value = map.get(proxyKey);
+
+    expect(value).toBeDefined();
+    expect(isReactive(value)).toBe(true);
+    expect(value?.count).toBe(1);
+    expect(map.has(proxyKey)).toBe(true);
+    expect(map.delete(proxyKey)).toBe(true);
+    expect(map.has(rawKey)).toBe(false);
+  });
+
+  it('should preserve a proxy-key entry that stores undefined', () => {
+    const rawKey = {};
+    const proxyKey = reactive(rawKey);
+    const map = reactive(new WeakMap<object, string | undefined>([[rawKey, 'raw']]));
+
+    toRaw(map).set(proxyKey, undefined);
+
+    expect(map.get(proxyKey)).toBeUndefined();
+    expect(map.get(rawKey)).toBe('raw');
   });
 });
 

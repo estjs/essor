@@ -6,6 +6,7 @@ import {
   isObject,
   isSet,
   isStringNumber,
+  isUndefined,
   isWeakMap,
   isWeakSet,
 } from '@estjs/shared';
@@ -337,7 +338,10 @@ const collectionInstrumentations = {
     // Track access to the collection
     track(target, COLLECTION_KEY);
 
-    const value = target.get(key);
+    let value = target.get(key);
+    if (isUndefined(value) && !target.has(key) && isReactive(key)) {
+      value = target.get(toRaw(key));
+    }
 
     // For deep reactive mode, wrap object values in reactive proxy
     if (isObject(value) && !isShallow(this)) {
@@ -351,12 +355,13 @@ const collectionInstrumentations = {
    */
   set(this: Map<unknown, unknown>, key: unknown, value: unknown) {
     const target = toRaw(this);
-    const hadKey = target.has(key);
-    const oldValue = target.get(key);
+    const rawKey = toRaw(key);
+    const hadKey = target.has(rawKey);
+    const oldValue = target.get(rawKey);
 
     // Store raw value to avoid nested reactive wrapping
     const rawValue = toRaw(value);
-    target.set(key, rawValue);
+    target.set(rawKey, rawValue);
 
     // Only trigger if value actually changed or key is new
     if (!hadKey || hasChanged(oldValue, rawValue)) {
@@ -650,7 +655,7 @@ const weakInstrumentations = {
     let value = target.get(key);
 
     // If not found and key is reactive, try with raw key
-    if (value === undefined && isReactive(key)) {
+    if (isUndefined(value) && !target.has(key) && isReactive(key)) {
       value = target.get(toRaw(key));
     }
 
