@@ -209,6 +209,7 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
   let checkDepth = 0;
   let dirty = false;
 
+  /* eslint-disable no-constant-condition */
   // eslint-disable-next-line no-restricted-syntax
   top: do {
     let currentDirty = false;
@@ -283,6 +284,7 @@ export function checkDirty(link: Link, sub: ReactiveNode): boolean {
 
     return dirty;
   } while (true);
+  /* eslint-enable no-constant-condition */
 }
 
 export function shallowPropagate(link: Link | undefined): void {
@@ -309,6 +311,7 @@ export function propagate(link: Link): void {
   let next: Link | undefined = link.nextSubLink;
   let stack: { value: Link | undefined; prev: typeof stack } | undefined;
 
+  /* eslint-disable no-constant-condition */
   // eslint-disable-next-line no-restricted-syntax
   top: do {
     const sub = link.subNode;
@@ -371,6 +374,7 @@ export function propagate(link: Link): void {
 
     break;
   } while (true);
+  /* eslint-enable no-constant-condition */
 }
 
 export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {

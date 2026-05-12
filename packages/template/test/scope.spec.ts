@@ -127,7 +127,6 @@ describe('scope effectScope bridge', () => {
       effect(() => {
         effectRuns++;
         props.hero.image;
-        debugger;
       });
 
       const root = heroTemplate() as HTMLDivElement;

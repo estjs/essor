@@ -717,7 +717,6 @@ function generateNode(node: IRNode, state: GenState): t.Expression {
  */
 export function generateClient(ir: IRNode, ctx: CompileContext): t.Expression {
   const state: GenState = {
-    ctx,
     mode: ctx.options.mode! as RenderMode,
     effectIndex: 0,
   };
