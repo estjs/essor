@@ -26,7 +26,7 @@ export default defineConfig({
   },
   outExtension({ format }) {
     return {
-      js: `${env !== 'production' ? '.dev' : ''}.${format}.js`,
+      js: `${isDev ? '.dev' : ''}.${format}.js`,
     };
   },
 });

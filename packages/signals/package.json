@@ -38,7 +38,7 @@
       },
       "types": "./dist/signals.d.ts",
       "require": "./dist/signals.cjs.js",
-      "import": "./dist/signals.dev.esm.js"
+      "import": "./dist/signals.esm.js"
     }
   },
   "typesVersions": {

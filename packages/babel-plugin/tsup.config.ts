@@ -7,7 +7,7 @@ const isDev = env !== 'production';
 export default defineConfig({
   entry: ['./src/index.ts'],
   outDir: 'dist',
-  sourcemap: isDev,
+  sourcemap: false,
   clean: true,
   format: ['cjs', 'esm'],
   target: 'es2016',

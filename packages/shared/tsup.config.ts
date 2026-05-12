@@ -13,11 +13,15 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
-  sourcemap: true,
-  cjsInterop: true,
-  minify: isDev,
   tsconfig: '../../tsconfig.build.json',
   splitting: false,
+  sourcemap: isDev,
+  cjsInterop: true,
+  minify: !isDev,
+  treeshake: true,
+  define: {
+    __DEV__: isDev ? 'true' : 'false',
+  },
   outExtension({ format }) {
     return {
       js: `${isDev ? '.dev' : ''}.${format}.js`,

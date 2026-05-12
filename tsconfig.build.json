@@ -22,7 +22,7 @@
     "skipLibCheck": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src/**/*", "globals.d.ts"],
+  "include": ["packages/*/src/**/*", "globals.d.ts"],
   "exclude": [
     "**/node_modules/**",
     "dist",

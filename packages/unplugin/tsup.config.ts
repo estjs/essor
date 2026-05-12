@@ -12,7 +12,7 @@ export default defineConfig({
   dts: true,
   splitting: true,
   shims: true,
-  cjsInterop: true,
+  cjsInterop: false,
   minify: env === 'production',
   treeshake: true,
   esbuildPlugins: [RawPlugin()],
