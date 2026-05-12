@@ -79,6 +79,36 @@ describe('reconcile arrays', () => {
     expect(textContent(parent)).toEqual(['existing', 'x', 'y']);
   });
 
+  it('keeps order when the anchor is removed before a reorder', () => {
+    const parent = document.createElement('div');
+    const anchor = createNode('anchor');
+    const a = createNode('a');
+    const b = createNode('b');
+    const c = createNode('c');
+    parent.append(a, b, c, anchor);
+
+    anchor.remove();
+
+    const result = reconcileArrays(parent, [a, b, c], [c, a, b], anchor);
+
+    expect(result).toEqual([c, a, b]);
+    expect(textContent(parent)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('moves reused multi-node groups before the next stable node', () => {
+    const parent = document.createElement('div');
+    const ah = createNode('ah');
+    const at = createNode('at');
+    const b = createNode('b');
+    const ch = createNode('ch');
+    const ct = createNode('ct');
+    parent.append(ah, at, b, ch, ct);
+
+    reconcileArrays(parent, [ah, at, b, ch, ct], [ch, ct, ah, at, b]);
+
+    expect(textContent(parent)).toEqual(['ch', 'ct', 'ah', 'at', 'b']);
+  });
+
   it('computes stable LIS indices for sparse arrays with zero placeholders', () => {
     expect(getSequence(Int32Array.from([0, 2, 0, 3]))).toEqual([0, 1, 3]);
   });
