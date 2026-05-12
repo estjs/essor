@@ -25,12 +25,10 @@ describe('styles module', () => {
     });
 
     it('should convert null/undefined to empty string', () => {
-      // @ts-ignore - testing edge cases
       setStyle(element.style, 'color', null);
       expect(element.style.color).toBe('');
 
-      // @ts-ignore - testing edge cases
-      setStyle(element, 'margin', undefined);
+      setStyle(element.style, 'margin', undefined);
       expect(element.style.margin).toBe('');
     });
 
@@ -48,6 +46,20 @@ describe('styles module', () => {
       setStyle(element.style, 'color', 'red !important');
 
       expect(setPropertySpy).toHaveBeenCalledWith('color', 'red', 'important');
+    });
+
+    it('should preserve kebab-case property names for !important declarations', () => {
+      setStyle(element.style, 'background-color', 'red !important');
+
+      expect(element.style.backgroundColor).toBe('red');
+      expect(element.style.getPropertyPriority('background-color')).toBe('important');
+    });
+
+    it('should strip !important priority from CSS custom property values', () => {
+      setStyle(element.style, '--accent-color', 'blue !important');
+
+      expect(element.style.getPropertyValue('--accent-color')).toBe('blue');
+      expect(element.style.getPropertyPriority('--accent-color')).toBe('important');
     });
   });
 

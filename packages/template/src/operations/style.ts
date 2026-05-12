@@ -1,4 +1,4 @@
-import { camelCase, capitalize, isArray, isObject, isString } from '@estjs/shared';
+import { camelCase, capitalize, isArray, isObject, isString, kebabCase } from '@estjs/shared';
 
 /**
  * Internal symbol used to mark raw CSS variable text in style objects.
@@ -95,7 +95,11 @@ export function patchStyle(el: HTMLElement, prev: unknown, next?: unknown) {
  * @param val - Style value.
  * @private
  */
-export function setStyle(style: CSSStyleDeclaration, name: string, val: string | string[]): void {
+export function setStyle(
+  style: CSSStyleDeclaration,
+  name: string,
+  val: string | string[] | null | undefined,
+): void {
   // Array values represent multiple candidates for the same property.
   if (isArray(val)) {
     for (const element of val) {
@@ -108,9 +112,18 @@ export function setStyle(style: CSSStyleDeclaration, name: string, val: string |
     val = '';
   }
 
+  const priority = isString(val) && importantRE.test(val) ? 'important' : '';
+  if (priority) {
+    val = val.replace(importantRE, '');
+  }
+
   // CSS variables must be written through `setProperty()`.
   if (name.startsWith('--')) {
-    style.setProperty(name, val);
+    if (priority) {
+      style.setProperty(name, val, priority);
+    } else {
+      style.setProperty(name, val);
+    }
     return;
   }
 
@@ -118,11 +131,18 @@ export function setStyle(style: CSSStyleDeclaration, name: string, val: string |
   const prefixed = autoPrefix(style, name);
 
   // `!important` cannot use direct property assignment and must go through `setProperty()`.
-  if (isString(val) && importantRE.test(val)) {
-    style.setProperty(camelCase(prefixed), val.replace(importantRE, ''), 'important');
+  if (priority) {
+    style.setProperty(toCssPropertyName(prefixed), val, priority);
   } else {
     style[prefixed] = val;
   }
+}
+
+function toCssPropertyName(name: string): string {
+  const hyphenated = kebabCase(name);
+  return name.startsWith('Webkit') || name.startsWith('Moz') || name.startsWith('ms')
+    ? `-${hyphenated}`
+    : hyphenated;
 }
 
 /**
