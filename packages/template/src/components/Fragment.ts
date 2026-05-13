@@ -38,14 +38,16 @@ export interface FragmentProps extends ComponentProps {
  * ```
  */
 export function Fragment(props?: FragmentProps): AnyNode {
+  const children = props?.children;
+
   // `<Fragment />` and `<Fragment>{null}</Fragment>` are legitimate:
   // they render nothing. Returning `null` here keeps the caller tree
   // valid and lets the template runtime drop the placeholder.
-  if (!props || props.children == null) return null;
+  if (children == null) return null;
 
   // Client-side rendering: return children directly — the template
   // system handles arrays/signals/components on its own.
-  return props.children as AnyNode;
+  return children as AnyNode;
 }
 
 Fragment[FRAGMENT_COMPONENT] = true;

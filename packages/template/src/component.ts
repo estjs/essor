@@ -182,14 +182,15 @@ export class Component<P extends ComponentProps = {}> {
     this.releaseSpecialProps();
 
     for (const key of Object.getOwnPropertyNames(props)) {
-      const value = readProp(props, key);
-
       if (key === REF_KEY) {
+        const value = readProp(props, key);
         this.rootRefCleanup = this.bindRootRef(value, root);
         continue;
       }
 
-      if (isOn(key) && isFunction(value)) {
+      if (isOn(key)) {
+        const value = readProp(props, key);
+        if (!isFunction(value)) continue;
         const eventName = key.slice(2).toLowerCase();
         this.rootEventCleanups.push(addEvent(root, eventName, value as EventListener));
       }

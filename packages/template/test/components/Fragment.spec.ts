@@ -1,7 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment, isFragment } from '../../src/components/Fragment';
 import { mount } from '../test-utils';
-import { createComponent } from '../../src';
+import { createComponent, insert } from '../../src';
 
 describe('fragment component', () => {
   let container;
@@ -30,6 +30,28 @@ describe('fragment component', () => {
     expect(container.children.length).toBe(2);
     expect(container.querySelector('div')).not.toBeNull();
     expect(container.querySelector('span')).not.toBeNull();
+  });
+
+  it('reads dynamic children once during mount', () => {
+    const childFactory = vi.fn(() => {
+      const child = document.createElement('span');
+      child.textContent = 'child';
+      return child;
+    });
+
+    const app = () =>
+      createComponent(Fragment, {
+        get children() {
+          const section = document.createElement('section');
+          insert(section, createComponent(childFactory));
+          return [section];
+        },
+      });
+
+    mount(app, container);
+
+    expect(childFactory).toHaveBeenCalledTimes(1);
+    expect(container.innerHTML).toBe('<section><span>child</span></section>');
   });
 
   it('should handle empty children', () => {

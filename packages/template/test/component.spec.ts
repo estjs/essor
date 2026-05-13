@@ -267,6 +267,22 @@ describe('component', () => {
       instance.mount(root);
       expect(ref.value).toBe(instance.firstChild);
     });
+
+    it('does not evaluate non-special getter props while syncing root props', () => {
+      const root = createTestRoot();
+      const readLabel = vi.fn(() => 'label');
+      const props = {} as any;
+      Object.defineProperty(props, 'label', {
+        enumerable: true,
+        configurable: true,
+        get: readLabel,
+      });
+
+      const instance = createComponent(() => document.createElement('div'), props) as any;
+      instance.mount(root);
+
+      expect(readLabel).not.toHaveBeenCalled();
+    });
   });
 
   // ── reactive props perception ────────────────────────────────────
