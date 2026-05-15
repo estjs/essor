@@ -16,7 +16,7 @@ import type { AnyNode } from '../types';
 export interface ForProps<T> {
   each: T[] | Signal<T[]> | (() => T[]);
   children: (item: T, index: number) => AnyNode;
-  key?: (item: T) => unknown;
+  key?: (item: T, index: number) => unknown;
   fallback?: () => AnyNode;
 }
 
@@ -51,7 +51,7 @@ export function For<T>(props: ForProps<T>): Node {
     return (input as T[]) ?? [];
   };
 
-  const getKey = (item: T): unknown => (keyFn ? keyFn(item) : item);
+  const getKey = (item: T, index: number): unknown => (keyFn ? keyFn(item, index) : item);
 
   const normalizeNodes = (value: AnyNode): Node[] => {
     if (Array.isArray(value)) {
@@ -94,7 +94,13 @@ export function For<T>(props: ForProps<T>): Node {
   /**
    * Render item with detached scope.
    */
-  const renderItem = (item: T, index: number, parent: Node, before: Node | null): ItemEntry => {
+  const renderItem = (
+    item: T,
+    index: number,
+    parent: Node,
+    before: Node | null,
+    key = getKey(item, index),
+  ): ItemEntry => {
     const parentScope = getActiveScope();
     const scope = createScope(parentScope);
     let mountedNodes: Node[] = [];
@@ -102,7 +108,7 @@ export function For<T>(props: ForProps<T>): Node {
       mountedNodes = mountValue(renderFn(item, index), parent, before);
     });
 
-    return { key: getKey(item), item, nodes: mountedNodes, scope };
+    return { key, item, nodes: mountedNodes, scope };
   };
 
   const disposeItem = (entry: ItemEntry) => {
@@ -220,7 +226,7 @@ export function For<T>(props: ForProps<T>): Node {
     // Pre-compute keys for all new items to avoid redundant getKey calls
     const newKeys = new Array<unknown>(newLen);
     for (let i = 0; i < newLen; i++) {
-      newKeys[i] = getKey(newItems[i]);
+      newKeys[i] = getKey(newItems[i], i);
     }
 
     for (let i = 0; i < newLen; i++) {
@@ -239,11 +245,11 @@ export function For<T>(props: ForProps<T>): Node {
         } else {
           if (!batchFragment) batchFragment = document.createDocumentFragment();
           disposeItem(reused);
-          newEntries[i] = renderItem(item, i, batchFragment, null);
+          newEntries[i] = renderItem(item, i, batchFragment, null, key);
         }
       } else {
         if (!batchFragment) batchFragment = document.createDocumentFragment();
-        newEntries[i] = renderItem(item, i, batchFragment, null);
+        newEntries[i] = renderItem(item, i, batchFragment, null, key);
         // newIndexToOldIndex[i] remains 0 (fresh entry).
       }
     }

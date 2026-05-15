@@ -99,6 +99,48 @@ describe('for component', () => {
     expect(textList()).toEqual(['Ch', 'Ct', 'Bh', 'Bt']);
   });
 
+  it('passes item index to key functions', async () => {
+    const $items = signal([
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B' },
+    ]);
+    const keyCalls: Array<[string, number]> = [];
+
+    scope = mount(
+      () =>
+        For({
+          each: $items,
+          key: (item, index) => {
+            keyCalls.push([item.id, index]);
+            return item.id;
+          },
+          children: (item) => {
+            const div = document.createElement('div');
+            div.textContent = item.label;
+            return div;
+          },
+        }),
+      container,
+    );
+
+    expect(keyCalls).toEqual([
+      ['a', 0],
+      ['b', 1],
+    ]);
+
+    keyCalls.length = 0;
+    $items.value = [
+      { id: 'b', label: 'B' },
+      { id: 'a', label: 'A' },
+    ];
+    await Promise.resolve();
+
+    expect(keyCalls).toEqual([
+      ['b', 0],
+      ['a', 1],
+    ]);
+  });
+
   it('refreshes row content when key is stable but item object changes', async () => {
     // With keyed reconciliation, the same key == same logical row, so the
     // DOM node and its owning scope are preserved across updates. Row
