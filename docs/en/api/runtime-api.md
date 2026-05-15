@@ -86,6 +86,12 @@ import { For } from '@estjs/template';
 - `fallback` — Fallback content displayed when the array is empty
 - `children` — Render function `(item, index) => JSX`
 
+`key` must be pure and stable. When JSX `.map()` is lowered to `For`, Essor may extract
+`key` into a separate callback from the render callback. In keyed `.map()` block callbacks,
+statements before the returned JSX may run for key extraction too. Do not mutate state,
+increment counters, call non-idempotent functions, or early-return alternate JSX from that
+prelude.
+
 ### Example
 
 ```tsx

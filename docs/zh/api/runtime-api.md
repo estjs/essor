@@ -86,6 +86,11 @@ import { For } from '@estjs/template';
 - `fallback` — 数组为空时显示的回退内容
 - `children` — 渲染函数 `(item, index) => JSX`
 
+`key` 必须是纯且稳定的。JSX `.map()` 被 lowered 成 `For` 时，Essor 可能会把
+`key` 提取成独立于渲染回调的函数。在带 key 的 `.map()` block callback 中，
+返回 JSX 前的语句也可能为了提取 key 再执行一次。不要在这段 prelude 中修改状态、
+递增计数器、调用非幂等函数，或提前返回另一段 JSX。
+
 ### 示例
 
 ```tsx
