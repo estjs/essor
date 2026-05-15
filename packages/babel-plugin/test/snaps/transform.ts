@@ -9,10 +9,11 @@ import myPlugin from '../../src/index';
 export function getTransform(
   transformName: string | string[],
   opts: Record<string, unknown> = {},
+  filename = 'test.jsx',
 ): (code: string) => string {
   return (code) => {
     const result = babel.transformSync(code, {
-      filename: 'test.jsx',
+      filename,
       sourceType: 'module',
       plugins: [[myPlugin, opts]],
     });

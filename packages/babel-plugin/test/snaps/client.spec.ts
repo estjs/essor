@@ -2,6 +2,7 @@ import { afterEach, beforeEach, vi } from 'vitest';
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'client', hmr: false });
 const transformCodeWithFor = getTransform('jsx', { mode: 'client', hmr: false, enableFor: true });
+const transformTsxCode = getTransform('jsx', { mode: 'client', hmr: false }, 'test.tsx');
 
 describe('should work with jsx client transform', () => {
   let warnSpy: ReturnType<typeof vi.spyOn>;
@@ -505,6 +506,106 @@ describe('should work with jsx client transform', () => {
       );
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('preserves statements before returned JSX in map block callbacks', () => {
+    const inputCode = `
+      const NavIconLinks = ({ links }) => {
+        if (!links?.length) {
+          return null;
+        }
+
+        return (
+          <div class="hidden items-center sm:flex">
+            {links.map((item) => {
+              const label = getIconLinkLabel(item);
+              const iconClass = getIconLinkClass(item.icon);
+
+              return (
+                <a
+                  href={item.link}
+                  class="nav-icon-link ml-3"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={label}
+                  title={label}>
+                  {isSvgIcon(item.icon) ? (
+                    <span class="nav-icon-link-svg h-5 w-5" innerHTML={item.icon.svg} />
+                  ) : iconClass ? (
+                    <span class={\`\${iconClass} h-5 w-5 fill-current\`} />
+                  ) : (
+                    <span class="text-sm">{label}</span>
+                  )}
+                </a>
+              );
+            })}
+          </div>
+        );
+      };
+    `;
+    const output = transformTsxCode(inputCode);
+
+    expect(output).toContain('const label = getIconLinkLabel(item);');
+    expect(output).toContain('const iconClass = getIconLinkClass(item.icon);');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('preserves map callback statements and extracts keys into For callbacks', () => {
+    const inputCode = `
+      const element = (
+        <ul>
+          {items.map((item) => {
+            const label = getIconLinkLabel(item);
+            return <li key={label}>{label}</li>;
+          })}
+        </ul>
+      );
+    `;
+    const output = transformCode(inputCode);
+    expect(output).toContain('key: item => {');
+    expect(output).toContain('return label;');
+    expect(output).not.toContain('_patchAttr$(_root$2, "key"');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('extracts item-derived keys when map callback statements are present', () => {
+    const inputCode = `
+      const element = (
+        <ul>
+          {items.map((item) => {
+            const label = getIconLinkLabel(item);
+            return <li key={item.id} data-test={label}>{label}</li>;
+          })}
+        </ul>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('const label = getIconLinkLabel(item);');
+    expect(output).toContain('key: item => {');
+    expect(output).toContain('return item.id;');
+    expect(output).not.toContain('_patchAttr$(_root$2, "key"');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('compiles prelude-derived keys into generated key callbacks', () => {
+    const inputCode = `
+      const element = (
+        <ul>
+          {items.map((item) => {
+            const id = nextId++;
+            return <li key={id}>{id}</li>;
+          })}
+        </ul>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('const id = nextId++;');
+    expect(output).toContain(`key: item => {
+      const id = nextId++;
+      return id;
+    }`);
   });
 
   it('should work with nested components and props', () => {

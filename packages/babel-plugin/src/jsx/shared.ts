@@ -11,6 +11,7 @@ import { resolveComponentCallee } from './utils';
 export function buildForProps(node: IRFor, bodyExpr: t.Expression): t.ObjectExpression {
   const childrenParams = [t.cloneNode(node.itemParam, true)];
   if (node.indexParam) childrenParams.push(t.cloneNode(node.indexParam, true));
+  const childrenBody = buildForCallbackBody(node, bodyExpr);
 
   const props: t.ObjectMember[] = [
     t.objectMethod(
@@ -21,21 +22,37 @@ export function buildForProps(node: IRFor, bodyExpr: t.Expression): t.ObjectExpr
       false,
       false,
     ),
-    t.objectProperty(t.identifier('children'), t.arrowFunctionExpression(childrenParams, bodyExpr)),
+    t.objectProperty(
+      t.identifier('children'),
+      t.arrowFunctionExpression(childrenParams, childrenBody),
+    ),
   ];
 
   if (node.key) {
     const keyParams = [t.cloneNode(node.itemParam, true)];
     if (node.indexParam) keyParams.push(t.cloneNode(node.indexParam, true));
+    const keyBody = buildForCallbackBody(node, t.cloneNode(node.key, true));
     props.push(
       t.objectProperty(
         t.identifier('key'),
-        t.arrowFunctionExpression(keyParams, t.cloneNode(node.key, true)),
+        t.arrowFunctionExpression(keyParams, keyBody),
       ),
     );
   }
 
   return t.objectExpression(props);
+}
+
+function buildForCallbackBody(
+  node: IRFor,
+  returnValue: t.Expression,
+): t.Expression | t.BlockStatement {
+  return node.bodyPrelude.length
+    ? t.blockStatement([
+        ...node.bodyPrelude.map((statement) => t.cloneNode(statement, true)),
+        t.returnStatement(returnValue),
+      ])
+    : returnValue;
 }
 
 /**

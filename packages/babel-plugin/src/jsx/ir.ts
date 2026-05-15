@@ -101,6 +101,7 @@ export interface IRFor {
   each: t.Expression;
   itemParam: t.Identifier | t.Pattern;
   indexParam?: t.Identifier | t.Pattern | null;
+  bodyPrelude: t.Statement[];
   body: IRNode;
   key?: t.Expression | null;
   loc?: t.SourceLocation | null;
@@ -390,19 +391,20 @@ function buildForIR(expression: NodePath<t.Expression>, ctx: CompileContext): IR
     return null;
   }
 
-  const bodyPath = getForCallbackBodyPath(
+  const callbackBody = getForCallbackBody(
     callback as NodePath<t.ArrowFunctionExpression | t.FunctionExpression>,
   );
-  if (!bodyPath) return null;
+  if (!callbackBody) return null;
 
-  const key = extractKeyExpression(bodyPath);
+  const key = extractKeyExpression(callbackBody.path);
 
   return {
     type: IRType.FOR,
     each: callee.node.object as t.Expression,
     itemParam,
     indexParam: indexParam ?? null,
-    body: buildIR(bodyPath, ctx),
+    bodyPrelude: callbackBody.prelude,
+    body: buildIR(callbackBody.path, ctx),
     key,
     loc: expression.node.loc,
   };
@@ -419,13 +421,23 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
     if (!t.isJSXIdentifier(attrPath.node.name, { name: 'key' })) continue;
 
     const value = attrPath.node.value;
-    attrPath.remove();
 
-    if (!value) return t.booleanLiteral(true);
-    if (t.isStringLiteral(value)) return t.stringLiteral(value.value);
-    if (t.isJSXExpressionContainer(value) && !t.isJSXEmptyExpression(value.expression)) {
-      return value.expression as t.Expression;
+    if (!value) {
+      attrPath.remove();
+      return t.booleanLiteral(true);
     }
+    if (t.isStringLiteral(value)) {
+      attrPath.remove();
+      return t.stringLiteral(value.value);
+    }
+    const valuePath = attrPath.get('value');
+    if (!Array.isArray(valuePath) && valuePath.isJSXExpressionContainer()) {
+      const expressionPath = valuePath.get('expression');
+      attrPath.remove();
+      if (expressionPath.isJSXEmptyExpression()) return null;
+      return expressionPath.node as t.Expression;
+    }
+    attrPath.remove();
     return null;
   }
 
@@ -435,29 +447,44 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
 /**
  * Resolves the JSX body returned by a `.map()` callback.
  */
-function getForCallbackBodyPath(
+function getForCallbackBody(
   callback: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>,
-): NodePath<JSXElement> | null {
+): {
+  path: NodePath<JSXElement>;
+  prelude: t.Statement[];
+} | null {
   const bodyPath = callback.get('body');
   if (Array.isArray(bodyPath)) return null;
 
   if (bodyPath.isJSXElement() || bodyPath.isJSXFragment()) {
-    return bodyPath as NodePath<JSXElement>;
+    return {
+      path: bodyPath as NodePath<JSXElement>,
+      prelude: [],
+    };
   }
 
   if (!bodyPath.isBlockStatement()) {
     return null;
   }
 
+  const prelude: t.Statement[] = [];
   for (const statement of bodyPath.get('body')) {
-    if (!statement.isReturnStatement()) continue;
+    if (!statement.isReturnStatement()) {
+      prelude.push(t.cloneNode(statement.node, true));
+      continue;
+    }
 
     const argument = statement.get('argument');
-    if (Array.isArray(argument) || !argument.node) continue;
+    if (Array.isArray(argument) || !argument.node) {
+      prelude.push(t.cloneNode(statement.node, true));
+      continue;
+    }
 
     if (argument.isJSXElement() || argument.isJSXFragment()) {
-      return argument as NodePath<JSXElement>;
+      return { path: argument as NodePath<JSXElement>, prelude };
     }
+
+    prelude.push(t.cloneNode(statement.node, true));
   }
 
   return null;

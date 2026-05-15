@@ -1,5 +1,41 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`should work with jsx client transform > extracts item-derived keys when map callback statements are present 1`] = `
+"import { template as _template$, child as _child$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$, For as _For$ } from "essor";
+const _t$2 = _template$("<li><!></li>");
+const _t$ = _template$("<ul><!></ul>");
+const element = (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_For$, {
+    get each() {
+      return items;
+    },
+    children: item => {
+      const label = getIconLinkLabel(item);
+      return (() => {
+        const _root$2 = _t$2();
+        const _n$2 = _child$(_root$2);
+        _memoEffect$(_p$ => {
+          var _v$ = label;
+          _v$ !== _p$.a0 && _patchAttr$(_root$2, "data-test", _p$.a0, _p$.a0 = _v$);
+          return _p$;
+        }, {
+          a0: undefined
+        });
+        _insert$(_root$2, () => label, _n$2);
+        return _root$2;
+      })();
+    },
+    key: item => {
+      const label = getIconLinkLabel(item);
+      return item.id;
+    }
+  }), _n$);
+  return _root$;
+})();"
+`;
+
 exports[`should work with jsx client transform > handles signal variables in JSX expressions 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div><!></div>");
@@ -46,6 +82,107 @@ const _t$ = _template$("<tbody><!></tbody>");
   }), _n$);
   return _root$;
 })();"
+`;
+
+exports[`should work with jsx client transform > preserves map callback statements and extracts keys into For callbacks 1`] = `
+"import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
+const _t$2 = _template$("<li><!></li>");
+const _t$ = _template$("<ul><!></ul>");
+const element = (() => {
+  const _root$ = _t$();
+  const _n$ = _child$(_root$);
+  _insert$(_root$, _createComponent$(_For$, {
+    get each() {
+      return items;
+    },
+    children: item => {
+      const label = getIconLinkLabel(item);
+      return (() => {
+        const _root$2 = _t$2();
+        const _n$2 = _child$(_root$2);
+        _insert$(_root$2, () => label, _n$2);
+        return _root$2;
+      })();
+    },
+    key: item => {
+      const label = getIconLinkLabel(item);
+      return label;
+    }
+  }), _n$);
+  return _root$;
+})();"
+`;
+
+exports[`should work with jsx client transform > preserves statements before returned JSX in map block callbacks 1`] = `
+"import { template as _template$, child as _child$, insert as _insert$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, createComponent as _createComponent$, For as _For$, patchClass as _patchClass$ } from "essor";
+const _t$5 = _template$("<span class=\\"text-sm\\"><!></span>");
+const _t$4 = _template$("<span></span>");
+const _t$3 = _template$("<span class=\\"nav-icon-link-svg h-5 w-5\\"></span>");
+const _t$2 = _template$("<a class=\\"nav-icon-link ml-3\\" target=\\"_blank\\" rel=\\"noopener noreferrer\\"><!></a>");
+const _t$ = _template$("<div class=\\"hidden items-center sm:flex\\"><!></div>");
+const NavIconLinks = __props => {
+  if (!__props.links?.length) {
+    return null;
+  }
+  return (() => {
+    const _root$ = _t$();
+    const _n$ = _child$(_root$);
+    _insert$(_root$, _createComponent$(_For$, {
+      get each() {
+        return __props.links;
+      },
+      children: item => {
+        const label = getIconLinkLabel(item);
+        const iconClass = getIconLinkClass(item.icon);
+        return (() => {
+          const _root$2 = _t$2();
+          const _n$2 = _child$(_root$2);
+          _memoEffect$(_p$ => {
+            var _v$ = item.link;
+            _v$ !== _p$.a0 && _patchAttr$(_root$2, "href", _p$.a0, _p$.a0 = _v$);
+            var _v$2 = label;
+            _v$2 !== _p$.a1 && _patchAttr$(_root$2, "aria-label", _p$.a1, _p$.a1 = _v$2);
+            var _v$3 = label;
+            _v$3 !== _p$.a2 && _patchAttr$(_root$2, "title", _p$.a2, _p$.a2 = _v$3);
+            return _p$;
+          }, {
+            a0: undefined,
+            a1: undefined,
+            a2: undefined
+          });
+          _insert$(_root$2, () => isSvgIcon(item.icon) ? (() => {
+            const _root$3 = _t$3();
+            _memoEffect$(_p$ => {
+              var _v$4 = item.icon.svg;
+              _v$4 !== _p$.a0 && _patchAttr$(_root$3, "innerHTML", _p$.a0, _p$.a0 = _v$4);
+              return _p$;
+            }, {
+              a0: undefined
+            });
+            return _root$3;
+          })() : iconClass ? (() => {
+            const _root$4 = _t$4();
+            _memoEffect$(_p$ => {
+              var _v$5 = \`\${iconClass} h-5 w-5 fill-current\`;
+              _v$5 !== _p$.c0 && _patchClass$(_root$4, _p$.c0, _p$.c0 = _v$5);
+              return _p$;
+            }, {
+              c0: undefined
+            });
+            return _root$4;
+          })() : (() => {
+            const _root$5 = _t$5();
+            const _n$3 = _child$(_root$5);
+            _insert$(_root$5, () => label, _n$3);
+            return _root$5;
+          })(), _n$2);
+          return _root$2;
+        })();
+      }
+    }), _n$);
+    return _root$;
+  })();
+};"
 `;
 
 exports[`should work with jsx client transform > should correctly compile Fragment with element children 1`] = `
