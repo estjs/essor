@@ -1,0 +1,19 @@
+[build.environment]
+  NPM_FLAGS = "--version"
+  NODE_VERSION = "22"
+
+[build]
+
+  publish = "docs/dist" 
+  command = "pnpm run docs:build"
+
+[[headers]]
+  for = "*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
+[[headers]]
+  for = "*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000"
+
