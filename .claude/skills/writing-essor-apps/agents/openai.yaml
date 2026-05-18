@@ -1,4 +1,4 @@
 interface:
   display_name: "Writing Essor Apps"
-  short_description: "Write Essor apps, pages, examples, and demos with correct reactive patterns, rendering modes, and SSR/hydration boundaries"
-  default_prompt: "Use $writing-essor-apps to write or revise an Essor app/example. Ensure correct $ prefix usage, rendering mode (createApp/hydrate/renderToString), SSR/hydration contract, component patterns (For/Suspense/Portal), and proper import boundaries (essor / @estjs/server)."
+  short_description: "Write Essor reactive apps with correct $ prefix, rendering mode, SSR/hydration, component patterns, and import boundaries"
+  default_prompt: "Use $writing-essor-apps to write or revise Essor app code. Essor is a signal-based reactive frontend framework with no virtual DOM. The `$` prefix auto-transforms variables into reactive signals. Ensure correct rendering mode (createApp for client-only, hydrate for SSR/SSG, renderToString for server), the SSR/hydration contract (identical initial HTML), component patterns (For, Suspense, Portal, createResource, defineAsyncComponent), and public import boundaries (essor / @estjs/server)."

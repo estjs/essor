@@ -1,156 +1,94 @@
 ---
-description: Essor reactive framework patterns — $ prefix, SSR/hydration, components, stores
+description: Essor reactive framework — $ prefix system, SSR/hydration, component patterns, stores
 globs: **/*.tsx,**/*.ts
 alwaysApply: false
 ---
 
-# Essor Framework Rules
+# Essor Framework
 
-You are writing an **Essor** application. Essor is a signal-based reactive frontend framework with no virtual DOM. Its defining feature is the `$` prefix — variables named `$x` are auto-transformed into reactive signals by the Babel plugin.
+Essor is a signal-based reactive framework. **`$`-prefixed variables auto-transform into reactive signals** via Babel. No `$`, no reactivity.
 
-## 1. $ Prefix System (Most Important)
+## $ Prefix (Critical)
 
 ```tsx
-// Write this:              // Becomes:
-const $count = 0;            // signal(0)
-const $list: string[] = [];  // reactive([])
-let $name = 'John';          // signal('John')
+let $count = 0;            // → signal(0)
+const $list: Item[] = [];  // → reactive([])
 
-// In JSX, $-variables auto-unwrap:
-<div>{$count}</div>              // reads $count.value reactively
-<button onClick={() => $count++}> // writes $count.value
-
-// Two-way binding:
-<input bind:value={$name} />
+<div>{$count}</div>               // auto-unwrap → () => $count.value
+<button onClick={() => $count++}> // → $count.value++
+<input bind:value={$name} />      // two-way binding
 ```
 
-**No `$` = no reactivity:**
+**Reactive arrays: mutate, never reassign:**
 ```tsx
-const count = 0; // ❌ NOT reactive — changes won't update UI
+$items.push(x);     // ✅
+$items[0].done = true; // ✅
+$items = [...$items, x]; // ❌ loses reactivity
 ```
 
-**Reactive arrays/objects: mutate in place, never reassign:**
-```tsx
-$todos.push({ id: 1, title: 'new' }); // ✅
-$todos[0].done = true;                 // ✅
-$todos.splice(i, 1);                   // ✅
-$todos = [...$todos, item];            // ❌ loses reactivity
-```
+**Derived values: plain functions** — `const active = () => $todos.filter(t => !t.done).length`
 
-**Derived values use plain functions (not computed):**
-```tsx
-const activeCount = () => $todos.filter(t => !t.done).length;
-// In JSX: <span>{activeCount()}</span>
-```
-
-## 2. Imports
+## Imports
 
 ```tsx
-// Browser — always from 'essor':
-import { createApp, hydrate, For, Suspense, Portal, Fragment } from 'essor';
+// Browser — from 'essor':
+import { createApp, hydrate, For, Suspense, Portal } from 'essor';
 import { onMount, onDestroy, onUpdate } from 'essor';
-import { signal, reactive, computed, effect, watch, batch, createStore } from 'essor';
+import { signal, reactive, computed, effect, createStore } from 'essor';
 import { provide, inject, createResource, defineAsyncComponent } from 'essor';
 
-// Server — always from '@estjs/server':
+// Server — from '@estjs/server':
 import { renderToString, renderToStringAsync } from '@estjs/server';
 ```
 
-## 3. Rendering Mode
+## Rendering
 
-- **Client-only:** `createApp(App, '#app')` — creates fresh DOM
-- **SSR/SSG hydrate:** `hydrate(App, '#app')` — attaches to existing server HTML
-- **Server:** `renderToString(App, {})` or `renderToStringAsync(App, {})`
+- **Client-only:** `createApp(App, '#app')`
+- **SSR/SSG:** `hydrate(App, '#app')` — NEVER `createApp`
+- **Server:** `renderToString(App, {})`
 
-## 4. SSR/Hydration Contract (Critical)
+## Hydration Safety
 
-Server and client MUST produce identical initial HTML. Never use these in shared components:
-- `window` / `document` → use `onMount()` instead
-- `Date.now()` / `Math.random()` → pass as props or use `onMount()`
-- Browser layout APIs → use `onMount()`
+Server/client must produce identical HTML. Never in shared components: `window`, `document`, `Date.now()`, `Math.random()`. Defer to `onMount()`.
+
+## Key Patterns
 
 ```tsx
-// ✅ Safe pattern:
-function App() {
-  let $width = 0;
-  onMount(() => { $width = window.innerWidth; });
-  return <div>{$width}</div>;
-}
-```
-
-## 5. Component Patterns
-
-### For (keyed list with reconciliation):
-```tsx
+// For (keyed list):
 <For each={$items} key={(item) => item.id} fallback={() => <p>Empty</p>}>
-  {(item, index) => <li>{item.name}</li>}
+  {(item) => <li>{item.name}</li>}
 </For>
-```
 
-### Suspense + createResource:
-```tsx
-const [user] = createResource(() => fetch('/api/user').then(r => r.json()));
-<Suspense fallback={<Loading />}>
-  <div>{user()?.name}</div>
-</Suspense>
-```
+// Suspense + createResource:
+const [data] = createResource(() => fetch('/api/data').then(r => r.json()));
+<Suspense fallback={<Loading />}><div>{data()?.name}</div></Suspense>
 
-### defineAsyncComponent (lazy loading):
-```tsx
-const Chart = defineAsyncComponent(() => import('./Chart'), {
-  loading: () => <Spinner />,
-  error: ({ error, retry }) => <button onClick={retry}>Retry</button>,
-  delay: 200,
-  timeout: 10000,
-  ssr: 'blocking', // or 'client-only'
-});
-```
-
-### Store (shared state):
-```tsx
-const useCounter = createStore({
+// Store:
+const useStore = createStore({
   state: { count: 0 },
   getters: { double: (s) => s.count * 2 },
   actions: { increment() { this.count++; } },
 });
-```
 
-### Form binding:
-```tsx
+// Forms:
 <input bind:value={$email} />
 <input bind:value.trim={$name} />
 <input bind:value.number={$age} />
 <input bind:checked={$agree} type="checkbox" />
+
+// Lifecycle:
+onMount(() => { /* browser setup */ });
+onDestroy(() => { /* cleanup */ });
+const r = effect(() => { /* ... */ return cleanup; });
+onDestroy(() => r.stop());
 ```
 
-### Portal:
-```tsx
-<Portal target="#modal-root" disabled={isMobile()}>
-  <div class="modal">Content</div>
-</Portal>
-```
-
-### Lifecycle:
-```tsx
-onMount(() => { /* DOM ready, browser-only setup */ });
-onDestroy(() => { /* cleanup: clearInterval, runner.stop(), etc. */ });
-onUpdate(() => { /* after reactive update */ });
-```
-
-## 6. Context (provide/inject):
-```tsx
-const ThemeKey: InjectionKey<string> = Symbol('theme');
-provide(ThemeKey, 'dark');
-const theme = inject(ThemeKey, 'light');
-```
-
-## Delivery Checklist
-- [ ] `$` prefix on all reactive variables
-- [ ] Arrays mutated in place (`.push()`, not reassignment)
-- [ ] SSR pages use `hydrate()`, not `createApp()`
-- [ ] No browser globals in shared `App.tsx`
-- [ ] Effects have cleanup: `onDestroy(() => runner.stop())`
-- [ ] `For` has `key` when items can reorder
-- [ ] Async data wrapped in `<Suspense>` with `fallback`
-- [ ] Same root component for client and server entries
-- [ ] Only import from `essor` or `@estjs/server` (no internal paths)
+## Checklist
+1. `$` on all reactive variables
+2. Arrays mutated in place
+3. `hydrate()` for SSR, `createApp()` for client-only
+4. No browser globals in shared App.tsx
+5. Effects cleaned up
+6. `For` has `key` when reordering
+7. Async data in `<Suspense>`
+8. Only import from `essor` or `@estjs/server`

@@ -1,93 +1,71 @@
 # Essor Framework
 
-Essor is a signal-based reactive frontend framework with no virtual DOM. Its defining feature: `$`-prefixed variables auto-transform into reactive signals.
+Essor is a signal-based reactive framework. **`$`-prefixed variables auto-transform into reactive signals** via Babel. No `$`, no reactivity.
 
-## $ Prefix System
+## $ Prefix (Critical)
 
 ```tsx
-const $count = 0;            // → signal(0)
-const $list: string[] = [];  // → reactive([])
+let $count = 0;            // → signal(0)
+const $list: Item[] = [];  // → reactive([])
 
-// Auto-unwrap in JSX:
-<div>{$count}</div>              // reads $count.value
+<div>{$count}</div>               // auto-unwrap
 <button onClick={() => $count++}> // writes $count.value
-<input bind:value={$name} />     // two-way binding
+<input bind:value={$name} />      // two-way binding
 ```
 
-**No `$` = no reactivity.** Plain `const count = 0` won't update the UI.
-
-**Reactive arrays: mutate in place, never reassign:**
+**Arrays: mutate in place, never reassign:**
 ```tsx
-$items.push(item);        // ✅
+$items.push(x);           // ✅
 $items = [...$items, x];  // ❌ loses reactivity
 ```
+
+**Derived values: plain functions** — `const active = () => $todos.filter(t => !t.done).length`
 
 ## Imports
 
 ```tsx
-// Browser — from 'essor':
+// Browser: from 'essor'
 import { createApp, hydrate, For, Suspense, Portal } from 'essor';
-import { onMount, onDestroy, onUpdate } from 'essor';
+import { onMount, onDestroy } from 'essor';
 import { signal, reactive, computed, effect, createStore } from 'essor';
 import { provide, inject, createResource, defineAsyncComponent } from 'essor';
 
-// Server — from '@estjs/server':
+// Server: from '@estjs/server'
 import { renderToString, renderToStringAsync } from '@estjs/server';
 ```
 
 ## Rendering
 
-- `createApp(App, '#app')` — client-only, fresh DOM
-- `hydrate(App, '#app')` — SSR/SSG, attaches to existing server HTML (NEVER use createApp here)
-- `renderToString(App, {})` — server-side to HTML string
+- **Client-only:** `createApp(App, '#app')`
+- **SSR/SSG:** `hydrate(App, '#app')` — NEVER `createApp`
+- **Server:** `renderToString(App, {})`
 
-## Hydration Safety (Critical)
+## Hydration Safety
 
-Server and client MUST produce identical initial HTML. Never use in shared components: `window`, `document`, `Date.now()`, `Math.random()`, or browser layout APIs. Defer to `onMount()`.
+Server/client must produce identical HTML. Never in shared components: `window`, `document`, `Date.now()`, `Math.random()`. Defer to `onMount()`.
 
 ## Key Patterns
 
-**For:**
 ```tsx
 <For each={$items} key={(item) => item.id} fallback={() => <p>Empty</p>}>
   {(item) => <li>{item.name}</li>}
 </For>
-```
 
-**Async:**
-```tsx
 const [data] = createResource(() => fetch('/api/data').then(r => r.json()));
 <Suspense fallback={<Loading />}><div>{data()?.name}</div></Suspense>
-```
 
-**Store:**
-```tsx
 const useStore = createStore({
   state: { count: 0 },
   getters: { double: (s) => s.count * 2 },
   actions: { increment() { this.count++; } },
 });
-```
 
-**Forms:**
-```tsx
-<input bind:value={$email} />
-<input bind:value.trim={$name} />
-<input bind:value.number={$age} />
-```
+<input bind:value={$email} /> <input bind:value.trim={$name} /> <input bind:value.number={$age} />
 
-**Lifecycle:**
-```tsx
-onMount(() => { /* browser setup */ });
-onDestroy(() => { /* cleanup, runner.stop() */ });
+onMount(() => { /* browser */ }); onDestroy(() => { /* cleanup */ });
 ```
 
 ## Checklist
-1. `$` on all reactive variables
-2. Arrays mutated in place (push, splice, index assignment)
-3. `hydrate()` for SSR pages, `createApp()` for client-only
-4. No browser globals in shared App.tsx
-5. `For` has `key` when items can reorder
-6. Async data wrapped in `<Suspense>` with `fallback`
-7. Effects cleaned up: `onDestroy(() => runner.stop())`
-8. Only import from `essor` or `@estjs/server`
+1. `$` on reactive variables  2. Arrays mutated in place  3. `hydrate()` for SSR
+4. No browser globals in shared components  5. `For` has `key` when reordering
+6. Async in `<Suspense>`  7. Only import from `essor` / `@estjs/server`

@@ -1,97 +1,87 @@
 # Essor Framework
 
-This project uses **Essor**, a signal-based reactive frontend framework with no virtual DOM. Follow these rules at all times.
+Essor is a signal-based reactive framework. **`$`-prefixed variables auto-transform into reactive signals** via Babel. No `$`, no reactivity.
 
-## $ Prefix = Reactivity
-
-Variables prefixed with `$` are auto-transformed into reactive signals by the Babel plugin. **No `$` = no reactivity.**
+## $ Prefix (Critical)
 
 ```tsx
-// Write:         // Becomes:
-const $count = 0;  // signal(0)
-const $list = [];  // reactive([])
+let $count = 0;            // → signal(0)
+const $list: Item[] = [];  // → reactive([])
 
-// JSX auto-unwrap:
-<div>{$count}</div>              // reads $count.value
-<button onClick={() => $count++}> // writes $count.value
-<input bind:value={$name} />     // two-way binding
+<div>{$count}</div>               // auto-unwrap → () => $count.value
+<button onClick={() => $count++}> // → $count.value++
+<input bind:value={$name} />      // two-way binding
 ```
 
-**Reactive arrays: mutate in place. Never reassign.**
+**Arrays: mutate in place, never reassign:**
 ```tsx
-$items.push(newItem);     // ✅ correct
-$items[0].done = true;    // ✅ correct
-$items = [...$items, x];  // ❌ wrong
+$items.push(x);           // ✅
+$items = [...$items, x];  // ❌ loses reactivity
 ```
 
-**Derived values use plain functions:**
-```tsx
-const active = () => $todos.filter(t => !t.done).length;
-```
+**Derived values: plain functions** — `const active = () => $todos.filter(t => !t.done).length`
 
 ## Imports
 
 ```tsx
-// Browser (from 'essor'):
+// Browser: from 'essor'
 import { createApp, hydrate, For, Suspense, Portal } from 'essor';
 import { onMount, onDestroy } from 'essor';
 import { signal, reactive, computed, effect, createStore } from 'essor';
 import { provide, inject, createResource, defineAsyncComponent } from 'essor';
 
-// Server (from '@estjs/server'):
+// Server: from '@estjs/server'
 import { renderToString, renderToStringAsync } from '@estjs/server';
 ```
 
 ## Rendering
 
-- `createApp(App, '#app')` — client-only, creates fresh DOM
-- `hydrate(App, '#app')` — SSR/SSG, attaches to existing server HTML
-- `renderToString(App, {})` — server-side rendering
+- **Client-only:** `createApp(App, '#app')`
+- **SSR/SSG:** `hydrate(App, '#app')` — NEVER `createApp` on server HTML
+- **Server:** `renderToString(App, {})`
 
 ## Hydration Safety
 
-Server and client MUST produce identical initial HTML. Never use in shared components:
-- `window`, `document` → defer to `onMount()`
-- `Date.now()`, `Math.random()` → pass as prop or defer to `onMount()`
+Server and client must produce identical HTML. Never in shared components: `window`, `document`, `Date.now()`, `Math.random()`. Defer to `onMount()`.
 
-## Patterns
+## Key Patterns
 
-**For:**
 ```tsx
+// For:
 <For each={$items} key={(item) => item.id} fallback={() => <p>Empty</p>}>
   {(item) => <li>{item.name}</li>}
 </For>
-```
 
-**Async:**
-```tsx
+// Async:
 const [data] = createResource(() => fetch('/api/data').then(r => r.json()));
 <Suspense fallback={<Loading />}><div>{data()?.name}</div></Suspense>
-```
 
-**Store:**
-```tsx
+// Store:
 const useStore = createStore({
   state: { count: 0 },
   getters: { double: (s) => s.count * 2 },
   actions: { increment() { this.count++; } },
 });
-```
 
-**Forms:**
-```tsx
+// Forms:
 <input bind:value={$email} />
 <input bind:value.trim={$name} />
 <input bind:value.number={$age} />
 <input bind:checked={$agree} type="checkbox" />
+
+// Lifecycle:
+onMount(() => { /* browser setup */ });
+onDestroy(() => { /* cleanup */ });
+const r = effect(() => { /* ... */ return cleanup; });
+onDestroy(() => r.stop());
 ```
 
 ## Checklist
 1. `$` on all reactive variables
-2. Arrays mutated in place
-3. `hydrate()` for SSR pages, never `createApp()` on server HTML
-4. No browser globals in shared components
-5. Effects cleaned up with `onDestroy(() => runner.stop())`
-6. `For` has `key` when items can reorder
+2. Arrays mutated in place (push, splice, index assign)
+3. `hydrate()` for SSR, `createApp()` for client-only
+4. No browser globals in shared App.tsx
+5. Effects cleaned up with `onDestroy`
+6. `For` has `key` when reordering
 7. Async data in `<Suspense>` with `fallback`
 8. Only import from `essor` or `@estjs/server`

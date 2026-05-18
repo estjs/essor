@@ -1,110 +1,90 @@
 # Essor Framework — Agent Prompt
 
-You are writing an application using **Essor**, a signal-based reactive frontend framework with no virtual DOM. Follow these rules strictly.
+You are writing **Essor** applications. Essor is a signal-based reactive frontend framework with no virtual DOM. Its defining feature: `$`-prefixed variables auto-transform into reactive signals.
 
-## Critical Rule: `$` Prefix = Reactivity
-
-Variables prefixed with `$` are auto-transformed into reactive signals by the Babel plugin. **Without `$`, there is NO reactivity.**
+## Critical Rule: $ Prefix
 
 ```tsx
-// What you write → What it becomes:
-const $count = 0;          // → signal(0)
-const $list: string[] = []; // → reactive([])
+// Write → Compiled:
+let $count = 0;            // → signal(0)
+const $list: Item[] = [];  // → reactive([])
 
-// In JSX — auto-unwrapped to getters:
-<div>{$count}</div>              // → () => $count.value
+// JSX — auto-unwrapped:
+<div>{$count}</div>               // → () => $count.value
 <button onClick={() => $count++}> // → $count.value++
+<input bind:value={$name} />      // two-way binding
 
-// Two-way binding:
-<input bind:value={$name} />
+// ❌ No $ prefix = NOT reactive:
+const count = 0;
 ```
 
-**Reactive arrays use mutation, not reassignment:**
+## Reactive Arrays: Mutate, Never Reassign
+
 ```tsx
-// ✅ Correct
+// ✅ Correct:
 $items.push(newItem);
 $items[0].done = true;
-
-// ❌ Wrong — loses reactivity
-$items = [...$items, newItem];
+// ❌ Wrong:
+$items = [...$items, newItem]; // loses reactivity
 ```
 
-**Derived values use plain functions:**
+## Derived Values: Plain Functions
+
 ```tsx
-const activeCount = () => $todos.filter(t => !t.done).length;
-// In JSX: <span>{activeCount()} items</span>
+// ✅ Preferred:
+const active = () => $todos.filter(t => !t.done).length;
 ```
 
-## Rendering Mode Decision
-
-```
-Browser needs DOM?
-├── Server already produced HTML? → hydrate()
-└── Client-only? → createApp()
-
-Server needs HTML?
-├── Sync data → renderToString()
-├── Async data → renderToStringAsync()
-└── Streaming → renderToStream()
-```
-
-## Import Map
+## Imports
 
 ```tsx
 // Browser (from 'essor'):
-import { createApp, hydrate, For, Suspense, Portal, Fragment } from 'essor';
-import { signal, reactive, computed, effect, watch, batch, untrack } from 'essor';
+import { createApp, hydrate, For, Suspense, Portal } from 'essor';
 import { onMount, onDestroy, onUpdate } from 'essor';
+import { signal, reactive, computed, effect, createStore, batch } from 'essor';
 import { provide, inject, createResource, defineAsyncComponent } from 'essor';
-import { createStore, ref } from 'essor';
 
 // Server (from '@estjs/server'):
-import { renderToString, renderToStringAsync } from '@estjs/server';
+import { renderToString, renderToStringAsync, renderToStream } from '@estjs/server';
 ```
 
-## SSR/Hydration Contract
+## Rendering
 
-**Server and client MUST produce identical initial HTML.** Violations:
-- `window`/`document` in shared components
-- `Date.now()`/`Math.random()` in shared components
-- Different root components for client vs server
+- **Client-only:** `createApp(App, '#app')`
+- **SSR/SSG (HTML exists):** `hydrate(App, '#app')` — NEVER `createApp`
+- **Server:** `renderToString(App, {})` / `renderToStringAsync(App, {})`
 
-**Safe pattern:**
+## Hydration Safety
+
+Server and client produce identical initial HTML. Never in shared `App.tsx`:
+- `window`, `document` → use `onMount()`
+- `Date.now()`, `Math.random()` → pass as prop or use `onMount()`
+
+## Key Patterns
+
+**For (keyed list):**
 ```tsx
-// App.tsx — shared, no browser APIs
-function App() {
-  let $hydrated = false;
-  onMount(() => { $hydrated = true; });  // browser-only in onMount
-  return <div>{$hydrated ? 'Client' : 'Server'}</div>;
-}
-```
-
-## Component Patterns
-
-### For — Keyed Lists
-```tsx
-<For each={$items} fallback={() => <p>Empty</p>}>
-  {(item, index) => <li>{item.name}</li>}
+<For each={$items} key={(item) => item.id} fallback={() => <p>Empty</p>}>
+  {(item) => <li>{item.name}</li>}
 </For>
 ```
 
-### Suspense + createResource
+**Suspense + createResource:**
 ```tsx
-const [user] = createResource(() => fetch('/api/user').then(r => r.json()));
-<Suspense fallback={<Loading />}>
-  <div>{user()?.name}</div>
-</Suspense>
+const [data, { mutate, refetch }] = createResource(() => fetch('/api/data').then(r => r.json()));
+<Suspense fallback={<Loading />}><div>{data()?.name}</div></Suspense>
 ```
 
-### defineAsyncComponent
+**defineAsyncComponent:**
 ```tsx
-const LazyChart = defineAsyncComponent(
-  () => import('./Chart'),
-  { loading: () => <Spinner />, error: ({ error, retry }) => <Error msg={error.message} onRetry={retry} /> }
-);
+const Chart = defineAsyncComponent(() => import('./Chart'), {
+  loading: () => <Spinner />,
+  error: ({ error, retry }) => <button onClick={retry}>Retry</button>,
+  ssr: 'blocking', // or 'client-only'
+});
 ```
 
-### Store
+**Store:**
 ```tsx
 const useCounter = createStore({
   state: { count: 0 },
@@ -113,34 +93,28 @@ const useCounter = createStore({
 });
 ```
 
-### Form Binding
+**Forms:**
 ```tsx
 <input bind:value={$email} />
 <input bind:value.trim={$name} />
 <input bind:value.number={$age} />
-<input bind:value.lazy={$search} />
 <input bind:checked={$agree} type="checkbox" />
 ```
 
-### Portal
+**Lifecycle:**
 ```tsx
-<Portal target="#modal-root" disabled={isMobile()}>
-  <div class="modal">Content</div>
-</Portal>
-```
-
-## Lifecycle
-```tsx
-onMount(() => { /* DOM ready */ });
+onMount(() => { /* browser setup */ });
 onDestroy(() => { /* cleanup */ });
-onUpdate(() => { /* after reactive update */ });
+const runner = effect(() => { /* ... */ });
+onDestroy(() => runner.stop());
 ```
 
-## Quick Checklist
-- [ ] Reactive variables use `$` prefix
-- [ ] Arrays mutated in place (`.push`, not reassignment)
-- [ ] Hydration entry uses `hydrate()`, not `createApp()`
-- [ ] Shared `App.tsx` has no `window`/`document`/`Date.now()`/`Math.random()`
-- [ ] Effects have cleanup (`runner.stop()` or `onDestroy`)
-- [ ] `For` has `key` when items can reorder
-- [ ] Async data in `Suspense` with `fallback`
+## Checklist
+1. `$` prefix on all reactive variables
+2. Arrays mutated in place (push, splice, index assign)
+3. `hydrate()` for SSR, `createApp()` for client-only
+4. No browser globals in shared components
+5. Effects cleaned up with `onDestroy`
+6. `For` has `key` when items can reorder
+7. Async data in `<Suspense>` with `fallback`
+8. Only import from `essor` or `@estjs/server`
