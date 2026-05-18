@@ -1,0 +1,4 @@
+interface:
+  display_name: "Writing Essor Apps"
+  short_description: "Write Essor apps, pages, examples, and demos with correct reactive patterns, rendering modes, and SSR/hydration boundaries"
+  default_prompt: "Use $writing-essor-apps to write or revise an Essor app/example. Ensure correct $ prefix usage, rendering mode (createApp/hydrate/renderToString), SSR/hydration contract, component patterns (For/Suspense/Portal), and proper import boundaries (essor / @estjs/server)."
