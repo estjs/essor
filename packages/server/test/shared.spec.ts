@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { addAttributes, convertTextChildToString, convertToString } from '../src/utils';
+import {
+  addAttributes,
+  convertTextChildToString,
+  convertToString,
+  markSafeHtml,
+} from '../src/utils';
 
 describe('server/ssr-utils', () => {
   describe('convertToString', () => {
@@ -27,6 +32,13 @@ describe('server/ssr-utils', () => {
       expect(convertToString(null)).toBe('');
       expect(convertToString(undefined)).toBe('');
     });
+
+    it('preserves marked safe HTML', () => {
+      const html = markSafeHtml('<span>safe</span>');
+
+      expect(convertToString(html)).toBe('<span>safe</span>');
+      expect(convertToString(markSafeHtml(html))).toBe('<span>safe</span>');
+    });
   });
 
   describe('convertTextChildToString', () => {
@@ -42,6 +54,14 @@ describe('server/ssr-utils', () => {
       expect(convertTextChildToString(false)).toBe('');
       expect(convertTextChildToString(null)).toBe('');
       expect(convertTextChildToString(undefined)).toBe('');
+    });
+
+    it('preserves marked safe HTML while still escaping normal text', () => {
+      expect(convertTextChildToString(markSafeHtml('<span>safe</span>'))).toBe('<span>safe</span>');
+      expect(convertTextChildToString(['before ', markSafeHtml('<b>bold</b>'), ' <after>'])).toBe(
+        'before <b>bold</b> &lt;after&gt;',
+      );
+      expect(convertTextChildToString(markSafeHtml(false))).toBe('');
     });
   });
 
@@ -61,10 +81,17 @@ describe('server/ssr-utils', () => {
       expect(addAttributes(html, '1')).toBe('<img src="x" data-hk="1"/>');
     });
 
-    it('prefixes data-idx attributes', () => {
-      const html = '<div><span data-idx="0">child</span></div>';
+    it('prefixes internal hydration anchor attributes', () => {
+      const html = '<div><span data-hk-idx="0">child</span></div>';
       expect(addAttributes(html, '1')).toBe(
-        '<div data-hk="1"><span data-idx="1-0">child</span></div>',
+        '<div data-hk="1"><span data-hk-idx="1-0">child</span></div>',
+      );
+    });
+
+    it('does not rewrite user data-idx attributes', () => {
+      const html = '<div><span data-idx="row" data-hk-idx="0">child</span></div>';
+      expect(addAttributes(html, '1')).toBe(
+        '<div data-hk="1"><span data-idx="row" data-hk-idx="1-0">child</span></div>',
       );
     });
 

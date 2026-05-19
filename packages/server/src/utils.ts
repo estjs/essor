@@ -1,29 +1,58 @@
-import { escapeHTML, isArray, isFunction, isNil, isString } from '@estjs/shared';
+import { escapeHTML, isArray, isFunction, isNil, isObject, isString } from '@estjs/shared';
+
+const safeHtmlMarker = Symbol('safeHtml');
+export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';
+interface SafeHtml {
+  readonly html: string;
+}
+
+function isSafeHtml(content: unknown): content is SafeHtml {
+  return Boolean(
+    isObject(content) && (content as Record<PropertyKey, unknown>)[safeHtmlMarker] === true,
+  );
+}
+
+function stringify(content: unknown, escape: boolean, omitFalse: boolean): string {
+  if (isSafeHtml(content)) {
+    return content.html;
+  }
+  if (isNil(content) || (omitFalse && content === false)) {
+    return '';
+  }
+  if (isArray(content)) {
+    return (content as unknown[]).map((item) => stringify(item, escape, omitFalse)).join('');
+  }
+  if (isFunction(content)) {
+    return stringify((content as () => unknown)(), escape, omitFalse);
+  }
+
+  if (isString(content)) {
+    return escape ? escapeHTML(content) : content;
+  }
+
+  const text = String(content);
+  return escape ? escapeHTML(text) : text;
+}
+
+export function markSafeHtml(content: unknown): SafeHtml {
+  if (isSafeHtml(content)) {
+    return content;
+  }
+
+  return {
+    [safeHtmlMarker]: true,
+    html: stringify(content, false, true),
+  } as SafeHtml;
+}
 
 /**
  * Convert content to string for SSR output.
  *
  * @param content - The content to convert.
- * @param isSvg - Whether the content is SVG.
  * @returns {string} The content as a string.
  */
-export function convertToString(content: unknown, isSvg = false): string {
-  if (isNil(content)) {
-    return '';
-  }
-
-  if (isString(content)) {
-    return content;
-  }
-  if (isArray(content)) {
-    return (content as unknown[]).map((item: unknown) => convertToString(item, isSvg)).join('');
-  }
-
-  if (isFunction(content)) {
-    return convertToString((content as () => unknown)(), isSvg);
-  }
-
-  return String(content);
+export function convertToString(content: unknown): string {
+  return stringify(content, false, false);
 }
 
 /**
@@ -33,34 +62,18 @@ export function convertToString(content: unknown, isSvg = false): string {
  * before interpolation into the surrounding HTML template.
  */
 export function convertTextChildToString(content: unknown): string {
-  if (content === false || isNil(content)) {
-    return '';
-  }
-
-  if (isString(content)) {
-    return escapeHTML(content);
-  }
-
-  if (isArray(content)) {
-    return (content as unknown[]).map((item) => convertTextChildToString(item)).join('');
-  }
-
-  if (isFunction(content)) {
-    return convertTextChildToString((content as () => unknown)());
-  }
-
-  return escapeHTML(String(content));
+  return stringify(content, true, true);
 }
 
 /**
- * Combined regex that matches either a `data-idx="<digits>"` attribute or a
- * hydration comment marker (numeric body only) in a single scan. Capture groups:
- *   1. data-idx index value (if attribute matched)
+ * Combined regex that matches either an internal hydration anchor attribute or
+ * a hydration comment marker (numeric body only) in a single scan. Capture groups:
+ *   1. hydration anchor index value (if attribute matched)
  *   2. numeric comment body (if hydration marker matched)
  *
  * Non-numeric comments (e.g. `<!-- user content -->`) are preserved unchanged.
  */
-const HYDRATION_REWRITE_REGEX = /data-idx="(\d+)"|<!--(\d+)-->/g;
+const HYDRATION_REWRITE_REGEX = new RegExp(`${HYDRATION_ANCHOR_ATTR}="(\\d+)"|<!--(\\d+)-->`, 'g');
 
 /**
  * Inject the root hydration attribute into the opening tag without corrupting
@@ -116,13 +129,13 @@ function injectRootHydrationAttribute(htmlContent: string, hydrationId: string):
  * @returns {string} The html content with hydration attributes.
  */
 export function addAttributes(htmlContent: string, hydrationId: string): string {
-  // Single-pass rewrite for both `data-idx` and comment markers — half the
+  // Single-pass rewrite for both element anchors and comment markers — half the
   // string traversals compared to chained `replaceAll` calls.
   return injectRootHydrationAttribute(htmlContent, hydrationId).replaceAll(
     HYDRATION_REWRITE_REGEX,
     (_match, dataIdx, commentBody) =>
       dataIdx !== undefined
-        ? `data-idx="${hydrationId}-${dataIdx}"`
+        ? `${HYDRATION_ANCHOR_ATTR}="${hydrationId}-${dataIdx}"`
         : `<!--${hydrationId}-${commentBody}-->`,
   );
 }

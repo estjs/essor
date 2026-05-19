@@ -1,5 +1,5 @@
 export { renderToString, renderToStringAsync, render, createSSGComponent } from './render';
-export { convertToString, convertTextChildToString, addAttributes } from './utils';
+export { convertToString, convertTextChildToString, markSafeHtml, addAttributes } from './utils';
 export { escapeHTML } from '@estjs/shared';
 export { setSSGAttr, normalizeProps } from './attrs';
 

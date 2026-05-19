@@ -31,7 +31,7 @@ export function createCoreBuildConfig(nodeEnv = env) {
     treeshake: true,
     cjsInterop: true,
     sourcemap: isDev,
-    noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
+    external: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
     minify: !isDev,
     tsconfig: '../../tsconfig.build.json',
     define: {

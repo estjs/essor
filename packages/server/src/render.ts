@@ -114,6 +114,10 @@ export function render(templates: string[], hydrationKey: string, ...components:
     }
   }
 
+  if (!hydrationKey) {
+    return content;
+  }
+
   // Add hydration key attribute (data-hk) to the root element
   return addAttributes(content, hydrationKey);
 }
