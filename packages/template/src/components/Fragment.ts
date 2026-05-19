@@ -1,3 +1,4 @@
+import { isReactive } from '@estjs/signals';
 import { FRAGMENT_COMPONENT } from '../constants';
 import type { AnyNode, ComponentProps } from '../types';
 
@@ -38,15 +39,16 @@ export interface FragmentProps extends ComponentProps {
  * ```
  */
 export function Fragment(props?: FragmentProps): AnyNode {
+  // Getter-based children and reactive Proxy props both need a thunk so the
+  // effect system re-evaluates when dependencies change.
+  if (props && (Object.getOwnPropertyDescriptor(props, 'children')?.get || isReactive(props))) {
+    return [() => props.children];
+  }
+
   const children = props?.children;
 
-  // `<Fragment />` and `<Fragment>{null}</Fragment>` are legitimate:
-  // they render nothing. Returning `null` here keeps the caller tree
-  // valid and lets the template runtime drop the placeholder.
   if (children == null) return null;
 
-  // Client-side rendering: return children directly — the template
-  // system handles arrays/signals/components on its own.
   return children as AnyNode;
 }
 

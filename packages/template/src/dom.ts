@@ -3,7 +3,7 @@ import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { KEY_PROP } from './constants';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { isHydrating } from './hydration';
+import { claimHydratedNodes, isHydrating } from './hydration';
 import { reconcileArrays } from './reconcile';
 import type { AnyNode } from './types';
 
@@ -238,6 +238,14 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
         renderedNodes = nodes;
         isFirstRun = false;
         return;
+      }
+      if (isFirstRun && isHydrating()) {
+        const hydratedNodes = claimHydratedNodes(parent, nodes, before);
+        if (hydratedNodes) {
+          renderedNodes = hydratedNodes;
+          isFirstRun = false;
+          return;
+        }
       }
       renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
       isFirstRun = false;

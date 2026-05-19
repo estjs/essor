@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Fragment, isFragment } from '../../src/components/Fragment';
 import { mount } from '../test-utils';
+import { reactive, signal } from '@estjs/signals';
 import { createComponent, insert } from '../../src';
 
 describe('fragment component', () => {
@@ -52,6 +53,41 @@ describe('fragment component', () => {
 
     expect(childFactory).toHaveBeenCalledTimes(1);
     expect(container.innerHTML).toBe('<section><span>child</span></section>');
+  });
+
+  it('updates getter children when dependencies change', async () => {
+    const result = signal<{ ok: boolean } | null>(null);
+
+    const app = () =>
+      createComponent(Fragment, {
+        get children() {
+          const value = result.value;
+          if (!value) return [null];
+
+          const pre = document.createElement('pre');
+          pre.textContent = `Last submission result: ${JSON.stringify(value)}`;
+          return [pre];
+        },
+      });
+
+    mount(app, container);
+    expect(container.textContent).toBe('');
+
+    result.value = { ok: true };
+    await Promise.resolve();
+
+    expect(container.textContent).toContain('Last submission result: {"ok":true}');
+  });
+
+  it('detects reactive Proxy props and returns a thunk', () => {
+    const pre = document.createElement('pre');
+    const state = reactive({ children: [pre] });
+
+    const result = Fragment(state);
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(1);
+    expect(typeof result[0]).toBe('function');
+    expect(result[0]()).toBe(state.children);
   });
 
   it('should handle empty children', () => {

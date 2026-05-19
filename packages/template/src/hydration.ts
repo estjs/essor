@@ -1,4 +1,5 @@
 import { isBrowser, warn } from '@estjs/shared';
+import { HYDRATION_ANCHOR_ATTR } from './constants';
 import { patchAttr } from './operations/attr';
 import { patchClass } from './operations/class';
 import { patchStyle } from './operations/style';
@@ -162,6 +163,96 @@ export function endHydration(): void {
   _registry.clear();
   _teleportCallsiteAnchors.length = 0;
   _teleportTargetStarts.clear();
+}
+
+export function claimHydratedNodes(parent: Node, expected: Node[], before?: Node): Node[] | null {
+  if (!_isHydrating || (before && before.parentNode !== parent)) return null;
+  if (expected.length === 0) return [];
+
+  const claimed: Node[] = new Array(expected.length);
+  let cursor: Node | null = before ? before.previousSibling : parent.lastChild;
+
+  for (let i = expected.length - 1; i >= 0; i--) {
+    if (!cursor) return null;
+
+    const expectedNode = expected[i];
+
+    const expectedType = expectedNode.nodeType;
+    if (expectedType === Node.TEXT_NODE) {
+      const expectedText = expectedNode.textContent ?? '';
+      if (!expectedText || cursor.nodeType !== Node.TEXT_NODE) return null;
+
+      const existingText = cursor.textContent ?? '';
+      if (existingText === expectedText) {
+        claimed[i] = cursor;
+        cursor = cursor.previousSibling;
+        continue;
+      }
+
+      if (!existingText.endsWith(expectedText)) return null;
+
+      const prefix = existingText.slice(0, existingText.length - expectedText.length);
+      if (!prefix) return null;
+      const prefixNode = document.createTextNode(prefix);
+      parent.insertBefore(prefixNode, cursor);
+      cursor.textContent = expectedText;
+      claimed[i] = cursor;
+      cursor = prefixNode;
+      continue;
+    }
+
+    if (cursor.nodeType !== expectedType) return null;
+    if (expectedType === Node.ELEMENT_NODE) {
+      if ((cursor as Element).tagName !== (expectedNode as Element).tagName) return null;
+    } else if (
+      expectedType === Node.COMMENT_NODE &&
+      (cursor as Comment).data !== (expectedNode as Comment).data
+    ) {
+      return null;
+    }
+
+    claimed[i] = cursor;
+    cursor = cursor.previousSibling;
+  }
+
+  return claimed;
+}
+
+function resolveHydrationKey(parent: Element): string | null {
+  const el = parent as HTMLElement;
+  return el.dataset.hk ?? (parent.closest('[data-hk]') as HTMLElement | null)?.dataset.hk ?? null;
+}
+
+export function hydrationMarker(parent: Node | null, index: number): Comment | null {
+  if (!_isHydrating || !parent || index < 0) return null;
+
+  const key = parent instanceof Element ? resolveHydrationKey(parent) : null;
+  const expected = key ? `${key}-${index}` : String(index);
+
+  let cursor = parent.firstChild;
+  while (cursor) {
+    if (cursor.nodeType === Node.COMMENT_NODE && (cursor as Comment).data === expected) {
+      return cursor as Comment;
+    }
+    cursor = cursor.nextSibling;
+  }
+
+  return null;
+}
+
+export function hydrationAnchor(parent: Node | null, index: number): Node | null {
+  if (!_isHydrating || !(parent instanceof Element) || index < 0) return null;
+
+  const key = resolveHydrationKey(parent);
+  const expected = key ? `${key}-${index}` : String(index);
+  let cursor = parent.firstChild;
+  while (cursor) {
+    if (cursor instanceof Element && cursor.getAttribute(HYDRATION_ANCHOR_ATTR) === expected) {
+      return cursor;
+    }
+    cursor = cursor.nextSibling;
+  }
+  return null;
 }
 
 /**

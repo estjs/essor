@@ -12,6 +12,11 @@ export const UPDATE_PREFIX = 'update';
  * children property name
  */
 export const CHILDREN_PROP = 'children';
+
+/**
+ * Internal markerless hydration anchor attribute.
+ */
+export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';
 /**
  * Key name for the Spread attribute
  */

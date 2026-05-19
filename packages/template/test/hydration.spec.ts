@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   beginHydration,
+  claimHydratedNodes,
   endHydration,
   getHydrationKey,
   getRenderedElement,
+  hydrationAnchor,
   isHydrating,
   patchAttrHydrate,
   patchClassHydrate,
@@ -90,6 +92,18 @@ describe('hydration utilities', () => {
     expect(first).not.toBe(second);
   });
 
+  it('finds markerless hydration anchors with the internal attribute', () => {
+    const root = document.createElement('div');
+    root.innerHTML = '<div data-hk="0"><form data-idx="row" data-hk-idx="0-0"></form></div>';
+    document.body.appendChild(root);
+
+    beginHydration(root);
+
+    const wrapper = root.firstElementChild;
+    const form = wrapper?.firstElementChild;
+    expect(hydrationAnchor(wrapper, 0)).toBe(form);
+  });
+
   it('suppresses DOM writes during hydration and resumes them afterwards', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
@@ -113,5 +127,43 @@ describe('hydration utilities', () => {
     expect(el.className).toBe('active');
     expect(el.getAttribute('title')).toBe('hello');
     expect(el.style.color).toBe('red');
+  });
+
+  describe('claimHydratedNodes', () => {
+    it('splits browser-merged text nodes back to expected boundaries', () => {
+      const root = document.createElement('div');
+      document.body.appendChild(root);
+
+      // Simulate SSR producing three adjacent text nodes that the browser
+      // merges into a single text node: "Hello, beautiful World"
+      const merged = document.createTextNode('Hello, beautiful World');
+      root.appendChild(merged);
+
+      beginHydration(root);
+
+      const expected = [
+        document.createTextNode('Hello, '),
+        document.createTextNode('beautiful '),
+        document.createTextNode('World'),
+      ];
+
+      const claimed = claimHydratedNodes(root, expected, undefined);
+      expect(claimed).not.toBeNull();
+      expect(claimed).toHaveLength(3);
+      expect(claimed![0].textContent).toBe('Hello, ');
+      expect(claimed![1].textContent).toBe('beautiful ');
+      expect(claimed![2].textContent).toBe('World');
+
+      // All three should be real DOM nodes under the parent
+      expect(claimed![0].parentNode).toBe(root);
+      expect(claimed![1].parentNode).toBe(root);
+      expect(claimed![2].parentNode).toBe(root);
+
+      // DOM order should be preserved
+      expect(claimed![0].nextSibling).toBe(claimed![1]);
+      expect(claimed![1].nextSibling).toBe(claimed![2]);
+
+      endHydration();
+    });
   });
 });

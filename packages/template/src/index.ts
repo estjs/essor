@@ -24,6 +24,8 @@ export {
   patchClassHydrate,
   patchAttrHydrate,
   patchStyleHydrate,
+  hydrationAnchor,
+  hydrationMarker,
   consumeTeleportAnchor,
   consumeTeleportBlock,
 } from './hydration';
