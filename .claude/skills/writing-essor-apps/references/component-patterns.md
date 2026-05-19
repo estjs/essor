@@ -2,7 +2,7 @@
 
 ## Component Model
 
-Components are **functions that return DOM nodes**. The function body executes once — no re-render cycle. Only fine-grained reactive bindings update.
+Components are **functions that return Essor-renderable nodes**: DOM nodes, text, arrays, null, or components. The function body executes once — no re-render cycle. Only fine-grained reactive bindings update.
 
 ```tsx
 interface Props { name: string; $count?: () => number; }
@@ -60,7 +60,7 @@ function Profile({ id }: { id: string }) {
 
 - Resource auto-registers with nearest `<Suspense>` during render
 - Pending → shows `fallback`; resolved → shows `children`
-- On SSR → renders `fallback` immediately
+- On SSR → the server Suspense component renders children when present, otherwise fallback. Async resources still need server rendering choices that keep initial HTML deterministic.
 
 ## Portal — Teleport
 

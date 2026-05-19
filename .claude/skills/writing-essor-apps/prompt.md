@@ -39,13 +39,13 @@ const active = () => $todos.filter(t => !t.done).length;
 
 ```tsx
 // Browser (from 'essor'):
-import { createApp, hydrate, For, Suspense, Portal } from 'essor';
-import { onMount, onDestroy, onUpdate } from 'essor';
-import { signal, reactive, computed, effect, createStore, batch } from 'essor';
-import { provide, inject, createResource, defineAsyncComponent } from 'essor';
+import { For, Portal, Suspense, createApp, hydrate } from 'essor';
+import { onDestroy, onMount, onUpdate } from 'essor';
+import { batch, computed, createStore, effect, reactive, signal } from 'essor';
+import { createResource, defineAsyncComponent, inject, provide } from 'essor';
 
 // Server (from '@estjs/server'):
-import { renderToString, renderToStringAsync, renderToStream } from '@estjs/server';
+import { renderToString, renderToStringAsync } from '@estjs/server';
 ```
 
 ## Rendering
@@ -53,6 +53,7 @@ import { renderToString, renderToStringAsync, renderToStream } from '@estjs/serv
 - **Client-only:** `createApp(App, '#app')`
 - **SSR/SSG (HTML exists):** `hydrate(App, '#app')` — NEVER `createApp`
 - **Server:** `renderToString(App, {})` / `renderToStringAsync(App, {})`
+- `@estjs/server` does not export `renderToStream` in Essor 0.0.16-beta.8.
 
 ## Hydration Safety
 
@@ -96,17 +97,14 @@ const useCounter = createStore({
 **Forms:**
 ```tsx
 <input bind:value={$email} />
-<input bind:value.trim={$name} />
-<input bind:value.number={$age} />
 <input bind:checked={$agree} type="checkbox" />
 ```
 
 **Lifecycle:**
 ```tsx
 onMount(() => { /* browser setup */ });
-onDestroy(() => { /* cleanup */ });
-const runner = effect(() => { /* ... */ });
-onDestroy(() => runner.stop());
+onDestroy(() => { /* cleanup timers/listeners */ });
+effect(() => { /* component-scoped reactive side effect */ });
 ```
 
 ## Checklist
@@ -114,7 +112,7 @@ onDestroy(() => runner.stop());
 2. Arrays mutated in place (push, splice, index assign)
 3. `hydrate()` for SSR, `createApp()` for client-only
 4. No browser globals in shared components
-5. Effects cleaned up with `onDestroy`
+5. Effects created in component scope; timers/listeners cleaned up with `onDestroy`
 6. `For` has `key` when items can reorder
 7. Async data in `<Suspense>` with `fallback`
-8. Only import from `essor` or `@estjs/server`
+8. Framework imports only from `essor` or `@estjs/server`; local app modules and platform APIs are allowed when needed

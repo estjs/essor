@@ -13,11 +13,12 @@ HTML comes from?
 
 Server HTML via?
 ├── Sync data     → renderToString()
-├── Async data    → renderToStringAsync()
-└── Streaming     → renderToStream()
+└── Async data    → renderToStringAsync()
 
 SSG vs SSR: same entry-server.tsx, different call timing (build vs request).
 ```
+
+`@estjs/server` does not export a public streaming renderer in Essor 0.0.16-beta.8.
 
 ## Minimum Setup
 

@@ -114,8 +114,9 @@ const addTodo = async (title: string) => {
 
 ```tsx
 watch(() => userId, () => refetch());
-// or: let the fetcher close over reactive deps — resource re-runs automatically in reactive context
 ```
+
+`createResource()` starts one fetch when created. Use `refetch()` explicitly, usually from `watch()`, when reactive inputs change.
 
 ## Choosing State
 

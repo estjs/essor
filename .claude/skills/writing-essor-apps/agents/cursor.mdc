@@ -78,9 +78,8 @@ const useStore = createStore({
 
 // Lifecycle:
 onMount(() => { /* browser setup */ });
-onDestroy(() => { /* cleanup */ });
-const r = effect(() => { /* ... */ return cleanup; });
-onDestroy(() => r.stop());
+onDestroy(() => { /* cleanup timers/listeners */ });
+effect(() => { /* component-scoped reactive side effect */ });
 ```
 
 ## Checklist
@@ -88,7 +87,7 @@ onDestroy(() => r.stop());
 2. Arrays mutated in place
 3. `hydrate()` for SSR, `createApp()` for client-only
 4. No browser globals in shared App.tsx
-5. Effects cleaned up
+5. Effects created in component scope; timers/listeners cleaned up
 6. `For` has `key` when reordering
 7. Async data in `<Suspense>`
-8. Only import from `essor` or `@estjs/server`
+8. Framework imports only from `essor` or `@estjs/server`; local app modules and platform APIs are allowed when needed

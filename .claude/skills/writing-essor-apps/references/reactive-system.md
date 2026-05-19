@@ -73,15 +73,15 @@ const doubled = () => count.value * 2; // simpler, auto-tracks in JSX
 Auto-tracking side effect. Runs immediately, re-runs when tracked deps change.
 
 ```tsx
-const runner = effect(() => {
+effect(() => {
   console.log('count:', count.value);
-  return () => { /* cleanup on re-run + stop */ };
 });
-runner.stop(); // dispose
 
 // Wait for DOM updates:
 effect(() => { const v = count.value; nextTick(() => { /* DOM ready */ }); });
 ```
+
+Effects created while a component/setup scope is active are recorded in that scope and disposed automatically with it. Keep timer, DOM listener, and subscription cleanup in lifecycle hooks such as `onDestroy()`.
 
 ## watch(source, cb)
 

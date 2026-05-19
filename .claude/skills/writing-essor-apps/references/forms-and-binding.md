@@ -50,8 +50,8 @@ let $opt = 'b';
   <option value="b">B</option>
 </select>
 
-// Multiple select — use reactive array:
-const $sel = reactive<string[]>([]);
+// Multiple select — $ array declarations become reactive arrays:
+let $sel: string[] = [];
 <select multiple bind:value={$sel}>...</select>
 ```
 
