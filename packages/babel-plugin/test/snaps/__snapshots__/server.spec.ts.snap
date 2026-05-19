@@ -1,9 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx server transform > should work with CSS-in-JS in server 1`] = `
-"import { ssrClass as _ssrClass$, convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
+"import { ssrClass as _ssrClass$, convertToString as _convertToString$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
 const _tmpl$ = ["<div", " data-styled>", "</div>"];
-const StyledComponent = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrClass$(__props.className), _convertTextChildToString$(__props.children));
+const StyledComponent = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrClass$(__props.className), _convertToString$(__props.children));
 const element = _createSSGComponent$(StyledComponent, {
   "className": "generated-class",
   "children": ["Styled Content"]
@@ -38,13 +38,13 @@ _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > should work with conditional rendering in server 1`] = `
-"import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
+"import { markSafeHtml as _markSafeHtml$, convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$4 = ["<span>False</span>"];
 const _tmpl$3 = ["<span>True</span>"];
 const _tmpl$2 = ["<p>Visible Content</p>"];
-const _tmpl$ = ["<div>", "", "</div>"];
+const _tmpl$ = ["<div>", "<!--0-->", "<!--1--></div>"];
 const isVisible = true;
-const element = _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(isVisible && _render$(_tmpl$2, _getHydrationKey$())), _convertTextChildToString$(isVisible ? _render$(_tmpl$3, _getHydrationKey$()) : _render$(_tmpl$4, _getHydrationKey$())));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(isVisible && _markSafeHtml$(_render$(_tmpl$2, _getHydrationKey$()))), _convertTextChildToString$(isVisible ? _markSafeHtml$(_render$(_tmpl$3, _getHydrationKey$())) : _markSafeHtml$(_render$(_tmpl$4, _getHydrationKey$()))));"
 `;
 
 exports[`jsx server transform > should work with context in server 1`] = `
@@ -101,11 +101,11 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > should work with head management in server 1`] = `
-"import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
+"import { convertToString as _convertToString$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
 const _tmpl$3 = ["<meta name=\\"description\\" content=\\"Page description\\"/>"];
 const _tmpl$2 = ["<title>Page Title</title>"];
 const _tmpl$ = ["<head data-ssr>", "</head>"];
-const Head = __props => _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(__props.children));
+const Head = __props => _render$(_tmpl$, _getHydrationKey$(), _convertToString$(__props.children));
 const element = _createSSGComponent$(Head, {
   "children": [() => _render$(_tmpl$2, _getHydrationKey$()), () => _render$(_tmpl$3, _getHydrationKey$())]
 });"
@@ -134,8 +134,8 @@ const element = _render$(_tmpl$2, _getHydrationKey$(), _createSSGComponent$(_For
 
 exports[`jsx server transform > should work with nested components and props in server 1`] = `
 "import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
-const _tmpl$2 = ["<div>", "", "</div>"];
-const _tmpl$ = ["<div>Name: ", ", Age: ", "</div>"];
+const _tmpl$2 = ["<div>", "<!--0-->", "<!--1--></div>"];
+const _tmpl$ = ["<div>Name: ", "<!--0-->, Age: ", "<!--1--></div>"];
 const Child = __props => _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(__props.name), _convertTextChildToString$(__props.age));
 const Parent = () => _render$(_tmpl$2, _getHydrationKey$(), _createSSGComponent$(Child, {
   "name": "John",
@@ -192,7 +192,7 @@ exports[`jsx server transform > should work with static error pages 1`] = `
 const _tmpl$3 = ["<div", " data-error>", "", "</div>"];
 const _tmpl$2 = ["<p>", "</p>"];
 const _tmpl$ = ["<h1>", "</h1>"];
-const StaticError = __props => _render$(_tmpl$3, _getHydrationKey$(), _ssrAttr$("data-code", __props.code), _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(__props.code)), _render$(_tmpl$2, _getHydrationKey$(), _convertTextChildToString$(__props.message)));
+const StaticError = __props => _render$(_tmpl$3, _getHydrationKey$(), _ssrAttr$("data-code", __props.code), _render$(_tmpl$, "", _convertTextChildToString$(__props.code)), _render$(_tmpl$2, "", _convertTextChildToString$(__props.message)));
 const element = _createSSGComponent$(StaticError, {
   "code": "404",
   "message": "Page not found"
@@ -275,11 +275,11 @@ const element = _createSSGComponent$(StaticManifest, {
 `;
 
 exports[`jsx server transform > should work with static metadata 1`] = `
-"import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$, ssrAttr as _ssrAttr$, createSSGComponent as _createSSGComponent$ } from "essor/server";
+"import { convertTextChildToString as _convertTextChildToString$, render as _render$, ssrAttr as _ssrAttr$, getHydrationKey as _getHydrationKey$, createSSGComponent as _createSSGComponent$ } from "essor/server";
 const _tmpl$3 = ["<head data-static-metadata>", "", "</head>"];
 const _tmpl$2 = ["<meta", " name=\\"description\\"/>"];
 const _tmpl$ = ["<title>", "</title>"];
-const StaticMetadata = __props => _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(__props.metadata.title)), _render$(_tmpl$2, _getHydrationKey$(), _ssrAttr$("content", __props.metadata.description)));
+const StaticMetadata = __props => _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, "", _convertTextChildToString$(__props.metadata.title)), _render$(_tmpl$2, "", _ssrAttr$("content", __props.metadata.description)));
 const element = _createSSGComponent$(StaticMetadata, {
   "metadata": {
     title: 'Static Page',
@@ -488,14 +488,14 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 
 exports[`jsx server transform > transforms JSX element with dynamic expressions 1`] = `
 "import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<div>Hello, ", "!</div>"];
+const _tmpl$ = ["<div>Hello, ", "<!--0-->!</div>"];
 const name = 'John';
 const element = _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(name));"
 `;
 
 exports[`jsx server transform > transforms JSX element with function components 1`] = `
 "import { createSSGComponent as _createSSGComponent$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<div>", "", "</div>"];
+const _tmpl$ = ["<div>", "<!--0-->", "<!--1--></div>"];
 const element = _render$(_tmpl$, _getHydrationKey$(), _createSSGComponent$(MyComponent, {
   "text": "Component 1"
 }), _createSSGComponent$(MyComponent, {
@@ -511,16 +511,16 @@ const element = _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("id", null), _ss
 
 exports[`jsx server transform > transforms JSX element with null and undefined children 1`] = `
 "import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<div>", "<p>Paragraph 1</p>", "", "<p>Paragraph 2</p></div>"];
+const _tmpl$ = ["<div>", "<p data-hk-idx=\\"0\\">Paragraph 1</p>", "<!--1-->", "<!--2--><p>Paragraph 2</p></div>"];
 const element = _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(null), _convertTextChildToString$(undefined), _convertTextChildToString$(false));"
 `;
 
 exports[`jsx server transform > transforms JSX element with null and undefined in expressions 1`] = `
 "import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$2 = ["<div>", "", "<p>Paragraph 2</p></div>"];
-const _tmpl$ = ["<p>", "'s Profile</p>"];
+const _tmpl$2 = ["<div>", "", "<p data-hk-idx=\\"0\\">Paragraph 2</p></div>"];
+const _tmpl$ = ["<p>", "<!--0-->'s Profile</p>"];
 const name = null;
-const element = _render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(name)), _convertTextChildToString$(undefined));"
+const element = _render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _convertTextChildToString$(name)), _convertTextChildToString$(undefined));"
 `;
 
 exports[`jsx server transform > transforms JSX element with self-closing tags 1`] = `
@@ -550,15 +550,15 @@ const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms server JSX element with nested expressions and children 1`] = `
-"import { convertTextChildToString as _convertTextChildToString$, render as _render$, getHydrationKey as _getHydrationKey$, ssrAttr as _ssrAttr$ } from "essor/server";
-const _tmpl$4 = ["<li", ">Item ", "</li>"];
+"import { convertTextChildToString as _convertTextChildToString$, render as _render$, markSafeHtml as _markSafeHtml$, getHydrationKey as _getHydrationKey$, ssrAttr as _ssrAttr$ } from "essor/server";
+const _tmpl$4 = ["<li", ">Item ", "<!--0--></li>"];
 const _tmpl$3 = ["<div class=\\"root\\">", "", "</div>"];
 const _tmpl$2 = ["<ul>", "</ul>"];
-const _tmpl$ = ["<p class=\\"John\\">itis:", "'s Profile</p>"];
+const _tmpl$ = ["<p class=\\"John\\">itis:", "<!--0-->'s Profile</p>"];
 const name = 'John';
-const element = _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, _getHydrationKey$(), _convertTextChildToString$(name)), _render$(_tmpl$2, _getHydrationKey$(), _convertTextChildToString$(Array.from({
+const element = _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, "", _convertTextChildToString$(name)), _render$(_tmpl$2, "", _convertTextChildToString$(Array.from({
   length: 3
-}, (_, i) => _render$(_tmpl$4, _getHydrationKey$(), _ssrAttr$("key", i), _convertTextChildToString$(i + 1))))));"
+}, (_, i) => _markSafeHtml$(_render$(_tmpl$4, _getHydrationKey$(), _ssrAttr$("key", i), _convertTextChildToString$(i + 1)))))));"
 `;
 
 exports[`jsx server transform > transforms simple JSX element 1`] = `

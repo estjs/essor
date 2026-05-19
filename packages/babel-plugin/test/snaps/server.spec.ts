@@ -186,6 +186,111 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('treats component children props as raw SSR children content', () => {
+    const inputCode = `
+      const Layout = (ctx) => <main>{ctx.children}</main>;
+      const ComputedLayout = (ctx) => <main>{ctx["children"]}</main>;
+      const Destructured = ({ children }) => <section>{children}</section>;
+      const element = (
+        <>
+          <Layout><span>Child</span></Layout>
+          <ComputedLayout><span>Child</span></ComputedLayout>
+          <Destructured><span>Child</span></Destructured>
+        </>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('convertToString as _convertToString$');
+    expect(output).toContain('_convertToString$(ctx.children)');
+    expect(output).toContain('_convertToString$(ctx["children"])');
+    expect(output).toContain('_convertToString$(__props.children)');
+    expect(output).not.toContain('_convertTextChildToString$(ctx.children)');
+    expect(output).not.toContain('_convertTextChildToString$(ctx["children"])');
+    expect(output).not.toContain('_convertTextChildToString$(__props.children)');
+  });
+
+  it('keeps local children variables escaped in SSR text nodes', () => {
+    const inputCode = `
+      const children = '<span>unsafe</span>';
+      const element = <div>{children}</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_convertTextChildToString$(children)');
+    expect(output).not.toContain('_convertToString$(children)');
+  });
+
+  it('keeps arbitrary children properties escaped in SSR text nodes', () => {
+    const inputCode = `
+      const element = <div>{state.children}</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_convertTextChildToString$(state.children)');
+    expect(output).not.toContain('_convertToString$(state.children)');
+  });
+
+  it('does not trust user calls named like generated SSR helpers', () => {
+    const inputCode = `
+      const _render$2 = (value) => value;
+      const element = <div>{_render$2(userText)}</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_convertTextChildToString$(_render$2(userText))');
+    expect(output).not.toContain('_markSafeHtml$(_render$2(userText))');
+  });
+
+  it('omits dynamic comment markers when a stable static sibling can anchor hydration', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form>
+            <button>Save</button>
+          </form>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('"<div>", "<form data-hk-idx=\\"0\\"><button>Save</button></form></div>"');
+    expect(output).not.toContain('<!--0--><form>');
+  });
+
+  it('uses an internal hydration anchor attribute without colliding with user data-idx', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form data-idx="row">
+            <button>Save</button>
+          </form>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('data-idx=\\"row\\" data-hk-idx=\\"0\\"');
+    expect(output).not.toContain('data-idx=\\"row\\" data-idx=\\"0\\"');
+  });
+
+  it('omits trailing dynamic comment markers', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <header>Title</header>
+          {footer}
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('"<div><header>Title</header>", "</div>"');
+    expect(output).not.toContain('<!--0--></div>');
+  });
+
   it('transforms JSX element with self-closing tags', () => {
     const inputCode = `
       const element = (
@@ -259,6 +364,24 @@ describe('jsx server transform', () => {
       );
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('marks JSX branches in text expressions as safe server HTML', () => {
+    const inputCode = `
+      const isVisible = true;
+      const element = (
+        <div>
+          {isVisible && <p>No response yet</p>}
+          {isVisible ? <span>True</span> : '<unsafe>'}
+        </div>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('markSafeHtml as _markSafeHtml$');
+    expect(output).toContain('_convertTextChildToString$(isVisible && _markSafeHtml$(_render$');
+    expect(output).toContain('isVisible ? _markSafeHtml$(_render$');
+    expect(output).toContain(': \'<unsafe>\'');
   });
 
   it('should work with list rendering in server', () => {

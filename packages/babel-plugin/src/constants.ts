@@ -29,9 +29,13 @@ export const IMPORTS_MAPS = [
   'addEventListener',
   // rendering related
   'render',
+  'convertToString',
   'convertTextChildToString',
+  'markSafeHtml',
   'escapeHTML',
   'getHydrationKey',
+  'hydrationAnchor',
+  'hydrationMarker',
   // server attr helpers
   'ssrAttr',
   'ssrClass',
@@ -72,7 +76,9 @@ export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
  */
 const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
   'render',
+  'convertToString',
   'convertTextChildToString',
+  'markSafeHtml',
   'escapeHTML',
   'Fragment',
   'Portal',
@@ -99,3 +105,4 @@ export const TRANSFORM_PROPERTY_NAME = '__props';
 export const FRAGMENT_NAME = 'Fragment';
 export const UPDATE_PREFIX = 'update';
 export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;
+export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';

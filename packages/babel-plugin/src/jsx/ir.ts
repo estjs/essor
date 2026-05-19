@@ -1,6 +1,6 @@
 import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
-import { UPDATE_PREFIX } from '../constants';
+import { TRANSFORM_PROPERTY_NAME, UPDATE_PREFIX } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
 import { createBindingSetter } from './emitters';
 import {
@@ -22,6 +22,15 @@ export enum IRType {
   TEXT,
   EXPRESSION,
   FOR,
+}
+
+export function hasDynamicBoundary(children: IRNode[], index: number): boolean {
+  const prev = children[index - 1];
+  const next = children[index + 1];
+  const isText = (n: IRNode | undefined) => n?.type === IRType.TEXT;
+  const isDynamic = (n: IRNode | undefined) =>
+    n?.type === IRType.EXPRESSION || n?.type === IRType.COMPONENT || n?.type === IRType.FOR;
+  return isText(prev) || isText(next) || isDynamic(prev) || isDynamic(next);
 }
 
 export interface IRStaticAttr {
@@ -93,6 +102,7 @@ export interface IRText {
 export interface IRExpression {
   type: IRType.EXPRESSION;
   value: t.Expression;
+  asRawChildren?: boolean;
   loc?: t.SourceLocation | null;
 }
 
@@ -332,11 +342,14 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
       return buildIR(expression as unknown as NodePath<JSXElement>, ctx);
     }
 
+    const asRawChildren = isPropsChildrenExpression(expression);
+
     // Dynamic expression
     if (expression.isExpression()) {
       return {
         type: IRType.EXPRESSION,
         value: expression.node,
+        asRawChildren,
         loc: node.loc,
       };
     }
@@ -357,6 +370,54 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
   }
 
   return null;
+}
+
+function isPropsChildrenExpression(expression: NodePath<t.Expression>): boolean {
+  const node = expression.node;
+  // `props` transform currently uses scope.rename(name, "__props.children")`.
+  // Babel stores that intermediate value as an Identifier and prints it as a
+  // member expression later, so SSR raw-children detection must accept it here.
+  if (t.isIdentifier(node) && node.name === `${TRANSFORM_PROPERTY_NAME}.children`) return true;
+
+  if (!t.isMemberExpression(node) || !isChildrenProperty(node)) return false;
+  if (!t.isIdentifier(node.object)) return false;
+  if (node.object.name === TRANSFORM_PROPERTY_NAME) return true;
+
+  const binding = expression.scope.getBinding(node.object.name);
+  const bindingPath = binding?.path;
+  if (!bindingPath?.isIdentifier()) return false;
+
+  const owner = bindingPath.findParent(
+    (candidate) =>
+      candidate.isFunctionDeclaration() ||
+      candidate.isFunctionExpression() ||
+      candidate.isArrowFunctionExpression(),
+  );
+
+  if (!owner) return false;
+
+  if (owner.isFunctionDeclaration() || owner.isFunctionExpression() || owner.isArrowFunctionExpression()) {
+    const fn = owner.node;
+    const parent = owner.parentPath;
+    const componentName =
+      t.isFunctionDeclaration(fn) && fn.id
+        ? fn.id.name
+        : parent?.isVariableDeclarator() && t.isIdentifier(parent.node.id)
+          ? parent.node.id.name
+          : parent?.isAssignmentExpression() && t.isIdentifier(parent.node.left)
+            ? parent.node.left.name
+            : '';
+
+    return fn.params[0] === bindingPath.node && /^[A-Z]/.test(componentName);
+  }
+
+  return false;
+}
+
+function isChildrenProperty(expression: t.MemberExpression): boolean {
+  return expression.computed
+    ? t.isStringLiteral(expression.property, { value: 'children' })
+    : t.isIdentifier(expression.property, { name: 'children' });
 }
 
 /**

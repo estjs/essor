@@ -131,6 +131,102 @@ describe('jsx hydrate transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('uses static sibling anchors instead of comment markers for later static nodes', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form>
+            <button>Save</button>
+          </form>
+          <section>
+            <p>Pending: {String(status.pending)}</p>
+          </section>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).toContain('<form data-hk-idx=\\"0\\">');
+    expect(output).not.toContain('const _n$ = _child$(_root$)');
+    expect(output).toMatchSnapshot();
+  });
+
+  it('preserves markerless dynamic anchors for later sibling navigation', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form>
+            <button>Save</button>
+          </form>
+          <section>
+            <p>Pending: {String(status.pending)}</p>
+          </section>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).toContain('const _n$ = _next$(_hk$');
+    expect(output).not.toContain('const _n$ = _nthChild$(_root$, 1)');
+  });
+
+  it('uses an internal hydration anchor attribute without colliding with user data-idx', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form data-idx="row">
+            <button>Save</button>
+          </form>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('data-idx=\\"row\\" data-hk-idx=\\"0\\"');
+    expect(output).not.toContain('data-idx=\\"row\\" data-idx=\\"0\\"');
+    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+  });
+
+  it('omits dynamic comment anchors when a stable static sibling can anchor hydration', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <Feedback result={result} />
+          <form>
+            <button>Save</button>
+          </form>
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_insert$(_root$, _createComponent$(Feedback');
+    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).not.toContain('_hydrationMarker$(_root$, 0)');
+    expect(output).not.toContain('<!><form>');
+  });
+
+  it('omits trailing dynamic comment anchors during hydration', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          <header>Title</header>
+          {footer}
+        </div>
+      );
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_insert$(_root$, () => footer)');
+    expect(output).not.toContain('_hydrationMarker$(_root$, 0)');
+    expect(output).not.toContain('<!></div>');
+  });
+
   it('transforms JSX element with null and undefined in expressions', () => {
     const inputCode = `
       const name = null;

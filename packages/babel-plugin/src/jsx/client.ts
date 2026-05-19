@@ -1,6 +1,7 @@
 import { types as t } from '@babel/core';
 import { escapeHTML } from '@estjs/shared';
 import { type CompileContext, genUid, registerTemplate, useImport } from '../context';
+import { HYDRATION_ANCHOR_ATTR } from '../constants';
 import { serializeStaticAttrs } from './utils';
 import {
   type IRBind,
@@ -13,6 +14,7 @@ import {
   type IRNode,
   type IRSpread,
   IRType,
+  hasDynamicBoundary,
 } from './ir';
 import {
   createBindingSetter,
@@ -39,15 +41,13 @@ interface FlatNode {
   kind: 'element' | 'text' | 'anchor';
   irElement?: IRElement; // only for kind='element'
   dynamicChild?: IRExpression | IRComponent | IRFor; // only for kind='anchor'
+  anchorKind?: 'comment' | 'element' | 'tail';
+  staticIndex?: number;
+  markerIndex?: number; // only for kind='anchor'
   parentId: number; // -1 for root
   childIndex: number; // position in parent's DOM children (0-based)
+  domChildIndex: number; // logical DOM position used for sibling navigation
   needsRef: boolean;
-}
-
-function isDynamicChild(node: IRNode): node is IRExpression | IRComponent | IRFor {
-  return (
-    node.type === IRType.EXPRESSION || node.type === IRType.COMPONENT || node.type === IRType.FOR
-  );
 }
 
 function hasOwnEffects(element: IRElement): boolean {
@@ -57,6 +57,12 @@ function hasOwnEffects(element: IRElement): boolean {
     element.spreads.length > 0 ||
     element.ref != null ||
     element.binds.length > 0
+  );
+}
+
+function isDynamicChild(node: IRNode | undefined): node is IRExpression | IRComponent | IRFor {
+  return (
+    node?.type === IRType.EXPRESSION || node?.type === IRType.COMPONENT || node?.type === IRType.FOR
   );
 }
 
@@ -73,9 +79,21 @@ function buildTemplateAndFlatten(
   let template = '';
   let nextId = 0;
 
-  function visit(element: IRElement, parentId: number, childIndex: number): void {
+  function visit(
+    element: IRElement,
+    parentId: number,
+    childIndex: number,
+    forcedStaticIndex?: number,
+  ): void {
     const myId = nextId++;
-    const attrs = serializeStaticAttrs(element.staticAttrs);
+    const staticAttrs =
+      mode === 'hydrate' && forcedStaticIndex !== undefined
+        ? [
+            ...element.staticAttrs,
+            { name: HYDRATION_ANCHOR_ATTR, value: String(forcedStaticIndex) },
+          ]
+        : element.staticAttrs;
+    const attrs = serializeStaticAttrs(staticAttrs);
 
     if (element.selfClosing) {
       template += `<${element.tag}${attrs}/>`;
@@ -83,8 +101,10 @@ function buildTemplateAndFlatten(
         id: myId,
         kind: 'element',
         irElement: element,
+        staticIndex: forcedStaticIndex,
         parentId,
         childIndex,
+        domChildIndex: childIndex,
         needsRef: hasOwnEffects(element),
       });
       return;
@@ -98,13 +118,19 @@ function buildTemplateAndFlatten(
       id: myId,
       kind: 'element',
       irElement: element,
+      staticIndex: forcedStaticIndex,
       parentId,
       childIndex,
+      domChildIndex: childIndex,
       needsRef: hasOwnEffects(element) || hasDynamicChildren,
     });
 
     let templateChildIndex = 0;
-    for (const child of element.children) {
+    let domChildIndex = 0;
+    let markerIndex = 0;
+    let pendingAnchorIndex: number | undefined;
+    for (let i = 0; i < element.children.length; i++) {
+      const child = element.children[i];
       switch (child.type) {
         case IRType.TEXT:
           template += mode === 'hydrate' ? child.value : escapeHTML(child.value);
@@ -113,25 +139,50 @@ function buildTemplateAndFlatten(
             kind: 'text',
             parentId: myId,
             childIndex: templateChildIndex++,
+            domChildIndex: domChildIndex++,
             needsRef: false,
           });
           break;
         case IRType.ELEMENT:
-          visit(child, myId, templateChildIndex++);
+          visit(child, myId, templateChildIndex++, pendingAnchorIndex);
+          domChildIndex++;
+          pendingAnchorIndex = undefined;
           break;
         case IRType.EXPRESSION:
         case IRType.COMPONENT:
-        case IRType.FOR:
-          template += '<!>';
+        case IRType.FOR: {
+          const next = element.children[i + 1];
+          const anchorKind =
+            mode === 'hydrate' && !hasDynamicBoundary(element.children, i)
+              ? next?.type === IRType.ELEMENT
+                ? 'element'
+                : 'tail'
+              : 'comment';
+          const index = markerIndex++;
+          if (anchorKind === 'comment') {
+            template += '<!>';
+          } else if (anchorKind === 'element') {
+            pendingAnchorIndex = index;
+          }
           nodes.push({
             id: nextId++,
             kind: 'anchor',
             dynamicChild: child,
+            anchorKind,
+            markerIndex: index,
             parentId: myId,
-            childIndex: templateChildIndex++,
+            childIndex: templateChildIndex,
+            domChildIndex,
             needsRef: true,
           });
+          if (anchorKind === 'comment') {
+            templateChildIndex++;
+            domChildIndex++;
+          } else {
+            domChildIndex++;
+          }
           break;
+        }
       }
     }
 
@@ -196,12 +247,17 @@ interface IndexedNavStep extends NavStep {
   index: number;
 }
 
-type NavigationStep = ChildNavStep | IndexedNavStep;
+interface HydrationNavStep extends NavStep {
+  type: 'hydrationMarker' | 'hydrationAnchor';
+  index: number;
+}
+
+type NavigationStep = ChildNavStep | IndexedNavStep | HydrationNavStep;
 
 /**
  * Computes `child()` and `next()` steps for nodes that need DOM references.
  */
-function planNavigation(nodes: FlatNode[]): NavigationStep[] {
+function planNavigation(nodes: FlatNode[], mode: RenderMode): NavigationStep[] {
   const steps: NavigationStep[] = [];
   const navigated = new Set<number>();
 
@@ -210,7 +266,7 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
 
   // Build lookups for O(1) access
   const nodeMap = new Map<number, FlatNode>();
-  const siblingMap = new Map<number, Map<number, FlatNode>>(); // parentId -> childIndex -> node
+  const siblingMap = new Map<number, Map<number, FlatNode[]>>(); // parentId -> childIndex -> nodes
 
   for (const node of nodes) {
     nodeMap.set(node.id, node);
@@ -218,7 +274,13 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
       if (!siblingMap.has(node.parentId)) {
         siblingMap.set(node.parentId, new Map());
       }
-      siblingMap.get(node.parentId)!.set(node.childIndex, node);
+      const siblings = siblingMap.get(node.parentId)!;
+      const bucket = siblings.get(node.childIndex);
+      if (bucket) {
+        bucket.push(node);
+      } else {
+        siblings.set(node.childIndex, [node]);
+      }
     }
   }
 
@@ -232,6 +294,32 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
     if (node.parentId >= 0 && !navigated.has(node.parentId)) {
       const parent = nodeMap.get(node.parentId);
       if (parent) ensureNavigated(parent);
+    }
+
+    if (mode === 'hydrate' && node.kind === 'anchor') {
+      if (node.anchorKind === 'tail') {
+        navigated.add(node.id);
+        return;
+      }
+      steps.push({
+        nodeId: node.id,
+        type: node.anchorKind === 'element' ? 'hydrationAnchor' : 'hydrationMarker',
+        fromNodeId: node.parentId,
+        index: node.markerIndex ?? 0,
+      });
+      navigated.add(node.id);
+      return;
+    }
+
+    if (mode === 'hydrate' && node.kind === 'element' && node.staticIndex !== undefined) {
+      steps.push({
+        nodeId: node.id,
+        type: 'hydrationAnchor',
+        fromNodeId: node.parentId,
+        index: node.staticIndex,
+      });
+      navigated.add(node.id);
+      return;
     }
 
     if (node.childIndex === 0) {
@@ -251,11 +339,22 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
 
     if (parentSiblings) {
       for (let i = node.childIndex - 1; i >= 0; i--) {
-        const sib = parentSiblings.get(i);
-        if (sib && navigated.has(sib.id)) {
-          prevNav = sib;
-          break;
+        const siblings = parentSiblings.get(i);
+        if (!siblings) continue;
+
+        for (let j = siblings.length - 1; j >= 0; j--) {
+          const sib = siblings[j];
+          if (sib && mode === 'hydrate' && sib.kind === 'anchor') {
+            ensureNavigated(sib);
+            prevNav = sib;
+            break;
+          }
+          if (sib && navigated.has(sib.id)) {
+            prevNav = sib;
+            break;
+          }
         }
+        if (prevNav) break;
       }
     }
 
@@ -264,7 +363,7 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
         nodeId: node.id,
         type: 'next',
         fromNodeId: prevNav.id,
-        index: node.childIndex - prevNav.childIndex,
+        index: node.domChildIndex - prevNav.domChildIndex,
       });
       navigated.add(node.id);
       return;
@@ -275,7 +374,7 @@ function planNavigation(nodes: FlatNode[]): NavigationStep[] {
       nodeId: node.id,
       type: 'nthChild',
       fromNodeId: node.parentId,
-      index: node.childIndex,
+      index: node.domChildIndex,
     });
     navigated.add(node.id);
   }
@@ -297,6 +396,14 @@ function createNavigationExpression(step: NavigationStep, fromExpr: t.Expression
 
   if (step.type === 'nthChild') {
     return t.callExpression(useImport('nthChild'), [fromExpr, t.numericLiteral(step.index)]);
+  }
+
+  if (step.type === 'hydrationMarker') {
+    return t.callExpression(useImport('hydrationMarker'), [fromExpr, t.numericLiteral(step.index)]);
+  }
+
+  if (step.type === 'hydrationAnchor') {
+    return t.callExpression(useImport('hydrationAnchor'), [fromExpr, t.numericLiteral(step.index)]);
   }
 
   return t.callExpression(useImport('next'), [fromExpr, t.numericLiteral(step.index)]);
@@ -334,7 +441,7 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
 
   // Single walk: build template string + flatten, then plan navigation.
   const { template, nodes: flatNodes } = buildTemplateAndFlatten(node, mode);
-  const navSteps = planNavigation(flatNodes);
+  const navSteps = planNavigation(flatNodes, mode);
 
   const body: t.Statement[] = [];
   const tmplId = registerTemplate(template);
@@ -369,7 +476,9 @@ function emitNavigationDeclarations(
   body: t.Statement[],
 ): void {
   for (const step of steps) {
-    const varName = genUid('n$');
+    const varName = genUid(
+      step.type === 'hydrationMarker' || step.type === 'hydrationAnchor' ? 'hk$' : 'n$',
+    );
     const fromExpr = varMap.get(step.fromNodeId) ?? rootId;
     const navExpr = createNavigationExpression(step, fromExpr);
 
@@ -434,7 +543,8 @@ function emitDynamicChildInserts(
 
     const parent = varMap.get(flatNode.parentId);
     const anchor = varMap.get(flatNode.id);
-    if (!parent || !anchor) continue;
+    if (!parent) continue;
+    if (flatNode.anchorKind !== 'tail' && !anchor) continue;
 
     body.push(
       t.expressionStatement(createInsertCall(parent, flatNode.dynamicChild, anchor, state)),
@@ -445,16 +555,20 @@ function emitDynamicChildInserts(
 function createInsertCall(
   parent: t.Expression,
   child: IRExpression | IRComponent | IRFor,
-  anchor: t.Expression,
+  anchor: t.Expression | undefined,
   state: GenState,
 ): t.CallExpression {
   if (child.type === IRType.FOR) {
     const insert = useImport('insert');
-    return t.callExpression(insert, [parent, generateFor(child, state), anchor]);
+    const args = [parent, generateFor(child, state)];
+    if (anchor) args.push(anchor);
+    return t.callExpression(insert, args);
   }
 
   const childExpression = createDynamicChildExpression(child, state);
-  return t.callExpression(useImport('insert'), [parent, childExpression, anchor]);
+  const args = [parent, childExpression];
+  if (anchor) args.push(anchor);
+  return t.callExpression(useImport('insert'), args);
 }
 
 function createDynamicChildExpression(
