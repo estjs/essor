@@ -113,7 +113,7 @@ const addTodo = async (title: string) => {
 ### Refetch on Change
 
 ```tsx
-watch(() => userId, () => refetch());
+watch(() => $userId, () => refetch());
 ```
 
 `createResource()` starts one fetch when created. Use `refetch()` explicitly, usually from `watch()`, when reactive inputs change.

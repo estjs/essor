@@ -122,3 +122,31 @@ const theme = inject(ThemeKey, 'light'); // 'dark' from parent, 'light' as defau
 ```
 
 Traverses UP the scope chain. Only works from descendants of the provider.
+
+## Fragment — Multiple Root Nodes
+
+```tsx
+import { Fragment } from 'essor';
+
+// JSX shorthand (preferred):
+function Row() {
+  return (
+    <>
+      <td>Name</td>
+      <td>Value</td>
+    </>
+  );
+}
+
+// Explicit import (same result):
+function Row() {
+  return (
+    <Fragment>
+      <td>Name</td>
+      <td>Value</td>
+    </Fragment>
+  );
+}
+```
+
+Fragments produce no wrapper DOM element. Use when a component must return multiple siblings (e.g., table rows, list items).

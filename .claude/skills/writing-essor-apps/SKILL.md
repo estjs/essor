@@ -35,6 +35,7 @@ For SSR/SSG, use the same root component and container selector on server and cl
 ```tsx
 let $count = 0;              // signal(0)
 const $items: Item[] = [];   // reactive([])
+const $double = () => $count * 2;  // computed — $ prefix on arrow fn
 
 <button onClick={() => $count++}>{$count}</button>
 <input bind:value={$name} />
@@ -45,13 +46,16 @@ const $items: Item[] = [];   // reactive([])
 - Prefer derived functions in JSX: `const openCount = () => $items.filter(i => !i.done).length`.
 - Use `computed()` when callers need `.value` or shared caching outside JSX.
 - Create `effect()` inside component/setup scope so Essor owns disposal automatically; do not add `onDestroy(() => runner.stop())` for normal component effects.
+- Use `untrack(() => expr)` to read reactive values without creating a dependency.
+- Use `watch(() => $x, (next, prev) => {})` for explicit old/new value callbacks.
+- Use `nextTick()` / `await nextTick()` to run code after the current reactive flush.
 
 ## Hydration Rules
 
 - Shared SSR/client components must produce identical initial HTML.
 - Do not read `window`, `document`, `localStorage`, `Date.now()`, or `Math.random()` during shared render.
 - Defer browser-only work to `onMount()`, or pass deterministic values from the server entry.
-- For `Portal`, create an SSR context and place collected `ctx.teleports` in the final document.
+- For `Portal`, create an SSR context with `createSSRContext()` and place collected `ctx.teleports` in the final document.
 
 ## Component Rules
 
@@ -60,6 +64,7 @@ const $items: Item[] = [];   // reactive([])
 - `createResource()` returns `[resource, { mutate, refetch }]`; read state through `resource.loading.value`, `resource.error.value`, and `resource.state.value`.
 - Use `provide()`/`inject()` only within the component scope chain.
 - Use `bind:value` for input/textarea/select values and `bind:checked` for checkbox/radio controls.
+- Use `<Fragment>` / `<>...</>` to return multiple root nodes without a wrapper element.
 
 ## Delivery Checklist
 

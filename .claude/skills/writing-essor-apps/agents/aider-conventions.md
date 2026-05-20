@@ -1,9 +1,9 @@
 # Essor App Conventions for Aider
 
-Configure Aider to read this file or the repository `AGENTS.md`.
+Configure Aider to read `AGENTS.md` (project root) or `agents/AGENTS.md` (this skill directory).
 
 ```yaml
-read: .claude/skills/writing-essor-apps/agents/AGENTS.md
+read: AGENTS.md
 ```
 
-If the project has no `AGENTS.md`, follow the adapter rules in `agents/AGENTS.md` for all Essor app code.
+`agents/AGENTS.md` is the source of truth for all Essor app writing rules.

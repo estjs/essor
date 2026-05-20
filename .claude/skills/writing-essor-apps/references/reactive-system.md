@@ -10,6 +10,7 @@ The Babel plugin auto-transforms `$`-prefixed declarations:
 | `let $x = 0` | `signal(0)` | Same |
 | `const $x = []` | `reactive([])` | `$x` → `() => $x` |
 | `const $x = {}` | `reactive({})` | `$x` → `() => $x` |
+| `const $x = () => expr` | `computed(() => expr)` | `$x` → `() => $x.value` |
 | `const x = 0` | (no transform) | static value |
 
 ```tsx

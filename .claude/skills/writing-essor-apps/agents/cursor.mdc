@@ -6,88 +6,63 @@ alwaysApply: false
 
 # Essor Framework
 
-Essor is a signal-based reactive framework. **`$`-prefixed variables auto-transform into reactive signals** via Babel. No `$`, no reactivity.
+Source of truth: `agents/AGENTS.md`. The rules below are a compact summary.
 
-## $ Prefix (Critical)
+Essor is signal-based with no virtual DOM. **`$`-prefixed variables auto-transform into reactive signals** via Babel.
 
-```tsx
-let $count = 0;            // → signal(0)
-const $list: Item[] = [];  // → reactive([])
-
-<div>{$count}</div>               // auto-unwrap → () => $count.value
-<button onClick={() => $count++}> // → $count.value++
-<input bind:value={$name} />      // two-way binding
-```
-
-**Reactive arrays: mutate, never reassign:**
-```tsx
-$items.push(x);     // ✅
-$items[0].done = true; // ✅
-$items = [...$items, x]; // ❌ loses reactivity
-```
-
-**Derived values: plain functions** — `const active = () => $todos.filter(t => !t.done).length`
-
-## Imports
+## $ Prefix
 
 ```tsx
-// Browser — from 'essor':
-import { createApp, hydrate, For, Suspense, Portal } from 'essor';
-import { onMount, onDestroy, onUpdate } from 'essor';
-import { signal, reactive, computed, effect, createStore } from 'essor';
-import { provide, inject, createResource, defineAsyncComponent } from 'essor';
+let $count = 0;              // signal(0)
+const $items: Item[] = [];   // reactive([])
+const $double = () => $x * 2; // computed
 
-// Server — from '@estjs/server':
-import { renderToString, renderToStringAsync } from '@estjs/server';
+<div>{$count}</div>                // auto-unwrap
+<button onClick={() => $count++}>  // .value++
+<input bind:value={$name} />       // two-way binding
 ```
+
+Mutate arrays in place: `$items.push(x)` ✅ — never `$items = [...$items, x]` ❌
 
 ## Rendering
 
 - **Client-only:** `createApp(App, '#app')`
 - **SSR/SSG:** `hydrate(App, '#app')` — NEVER `createApp`
-- **Server:** `renderToString(App, {})`
-
-## Hydration Safety
-
-Server/client must produce identical HTML. Never in shared components: `window`, `document`, `Date.now()`, `Math.random()`. Defer to `onMount()`.
+- **Server:** `renderToString(App, {})` / `renderToStringAsync(App, {})`
 
 ## Key Patterns
 
 ```tsx
-// For (keyed list):
+// Fragment:
+function Row() { return <><td>A</td><td>B</td></>; }
+
+// For:
 <For each={$items} key={(item) => item.id} fallback={() => <p>Empty</p>}>
   {(item) => <li>{item.name}</li>}
 </For>
 
-// Suspense + createResource:
-const [data] = createResource(() => fetch('/api/data').then(r => r.json()));
+// Suspense + resource:
+const [data, { mutate, refetch }] = createResource(() => fetch('/api').then(r => r.json()));
 <Suspense fallback={<Loading />}><div>{data()?.name}</div></Suspense>
-
-// Store:
-const useStore = createStore({
-  state: { count: 0 },
-  getters: { double: (s) => s.count * 2 },
-  actions: { increment() { this.count++; } },
-});
 
 // Forms:
 <input bind:value={$email} />
 <input bind:value.trim={$name} />
 <input bind:value.number={$age} />
-<input bind:checked={$agree} type="checkbox" />
+<input type="checkbox" bind:checked={$agree} />
 
-// Lifecycle:
-onMount(() => { /* browser setup */ });
-onDestroy(() => { /* cleanup timers/listeners */ });
-effect(() => { /* component-scoped reactive side effect */ });
+// watch / untrack / nextTick:
+watch(() => $x, (next, prev) => {});
+untrack(() => $x);
+await nextTick();
 ```
 
 ## Checklist
 1. `$` on all reactive variables
 2. Arrays mutated in place
 3. `hydrate()` for SSR, `createApp()` for client-only
-4. No browser globals in shared App.tsx
-5. Effects created in component scope; timers/listeners cleaned up
-6. `For` has `key` when reordering
+4. No browser globals in shared components
+5. Timers/listeners cleaned up with `onDestroy()`
+6. `For` has `key` when items reorder
 7. Async data in `<Suspense>`
-8. Framework imports only from `essor` or `@estjs/server`; local app modules and platform APIs are allowed when needed
+8. Imports only from `essor` or `@estjs/server`

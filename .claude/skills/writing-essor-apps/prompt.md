@@ -6,8 +6,9 @@ You are writing **Essor** applications. Essor is a signal-based reactive fronten
 
 ```tsx
 // Write → Compiled:
-let $count = 0;            // → signal(0)
-const $list: Item[] = [];  // → reactive([])
+let $count = 0;              // → signal(0)
+const $list: Item[] = [];    // → reactive([])
+const $double = () => $x * 2; // → computed(() => $x * 2)
 
 // JSX — auto-unwrapped:
 <div>{$count}</div>               // → () => $count.value
@@ -39,13 +40,13 @@ const active = () => $todos.filter(t => !t.done).length;
 
 ```tsx
 // Browser (from 'essor'):
-import { For, Portal, Suspense, createApp, hydrate } from 'essor';
+import { Fragment, For, Portal, Suspense, createApp, hydrate } from 'essor';
 import { onDestroy, onMount, onUpdate } from 'essor';
-import { batch, computed, createStore, effect, reactive, signal } from 'essor';
-import { createResource, defineAsyncComponent, inject, provide } from 'essor';
+import { batch, computed, effect, nextTick, reactive, signal, untrack, watch } from 'essor';
+import { createStore, createResource, defineAsyncComponent, inject, provide } from 'essor';
 
 // Server (from '@estjs/server'):
-import { renderToString, renderToStringAsync } from '@estjs/server';
+import { createSSRContext, renderToString, renderToStringAsync } from '@estjs/server';
 ```
 
 ## Rendering
@@ -62,6 +63,28 @@ Server and client produce identical initial HTML. Never in shared `App.tsx`:
 - `Date.now()`, `Math.random()` → pass as prop or use `onMount()`
 
 ## Key Patterns
+
+**Fragment (multiple roots):**
+```tsx
+function Row() {
+  return <><td>Name</td><td>Value</td></>;
+}
+```
+
+**watch / untrack / nextTick:**
+```tsx
+watch(() => $userId, (next, prev) => refetch());
+const name = untrack(() => $name);   // read without tracking
+await nextTick();                     // after reactive flush
+```
+
+**SSR with Portal:**
+```tsx
+import { createSSRContext, renderToString } from '@estjs/server';
+const ctx = createSSRContext();
+const html = renderToString(App, {}, ctx);
+// ctx.teleports['#modal-root'] contains Portal content
+```
 
 **For (keyed list):**
 ```tsx
@@ -116,3 +139,5 @@ effect(() => { /* component-scoped reactive side effect */ });
 6. `For` has `key` when items can reorder
 7. Async data in `<Suspense>` with `fallback`
 8. Framework imports only from `essor` or `@estjs/server`; local app modules and platform APIs are allowed when needed
+9. `Fragment` / `<>` used for multiple root nodes instead of wrapper divs
+10. `watch()` source is a reactive getter `() => $x`, not a plain variable
