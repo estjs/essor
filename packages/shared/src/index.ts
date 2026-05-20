@@ -40,7 +40,7 @@ export {
   type StringNumber,
 } from './is';
 
-export { camelCase, kebabCase, capitalize } from './string';
+export { camelCase, kebabCase, capitalize, startsWith } from './string';
 
 export { warn, info, error } from './logger';
 

@@ -1,4 +1,5 @@
 import { cacheStringFunction } from './base';
+import { isString } from './is';
 
 /**
  * Regular expression for converting camelCase to kebab-case
@@ -65,3 +66,18 @@ export const capitalize: <T extends string>(str: T) => Capitalize<T> = cacheStri
     return (str.charAt(0).toUpperCase() + str.slice(1)) as Capitalize<T>;
   },
 );
+/**
+ * Checks if a string starts with a specified substring
+ *
+ * Uses indexOf for better performance in most cases
+ * @see https://www.measurethat.net/Benchmarks/Show/12350/0/startswith-vs-test-vs-match-vs-indexof#latest_results_block
+ * @param {string} str - The string to check
+ * @param {string} searchString - The substring to search for
+ * @returns {boolean} - Returns true if the string starts with the substring, false otherwise
+ */
+export function startsWith(str: string, searchString: string): boolean {
+  if (!isString(str)) {
+    return false;
+  }
+  return str.indexOf(searchString) === 0;
+}
