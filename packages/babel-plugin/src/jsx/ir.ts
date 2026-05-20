@@ -1,4 +1,4 @@
-import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString } from '@estjs/shared';
+import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString, startsWith } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { TRANSFORM_PROPERTY_NAME, UPDATE_PREFIX } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
@@ -220,7 +220,7 @@ function buildComponentIR(
         value: attr.value,
         kind: attr.effectKind,
       });
-    } else if (attr.name.startsWith('bind:')) {
+    } else if (startsWith(attr.name, 'bind:')) {
       const binding = attr.name.slice('bind:'.length);
       props.push({
         name: `${UPDATE_PREFIX}:${binding}`,
@@ -277,7 +277,7 @@ function applyDynamicAttr(node: IRElement, attr: DynamicAttr, ctx: CompileContex
   }
 
   // bind:xxx
-  if (name.startsWith('bind:')) {
+  if (startsWith(name, 'bind:')) {
     node.binds.push({
       name: name.slice('bind:'.length),
       value,

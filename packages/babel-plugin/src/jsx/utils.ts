@@ -15,6 +15,7 @@ import {
   isPlainObject,
   isString,
   propsToAttrMap,
+  startsWith,
 } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { BUILT_IN_COMPONENTS, FRAGMENT_NAME } from '../constants';
@@ -234,7 +235,7 @@ function styleToString(style: Record<string, string | number>): string {
  * Checks whether an evaluated collection attribute can be serialized statically.
  */
 function shouldResolveStaticCollection(attrName: string): boolean {
-  return attrName !== 'ref' && !attrName.startsWith('bind:') && !normalizeEventName(attrName);
+  return attrName !== 'ref' && !startsWith(attrName, 'bind:') && !normalizeEventName(attrName);
 }
 
 function normalizeTemplateAttrName(attrName: string): string {

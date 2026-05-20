@@ -1,4 +1,4 @@
-import { camelCase, capitalize, isArray, isObject, isString, kebabCase } from '@estjs/shared';
+import { camelCase, capitalize, isArray, isObject, isString, kebabCase, startsWith } from '@estjs/shared';
 
 /**
  * Internal symbol used to mark raw CSS variable text in style objects.
@@ -118,7 +118,7 @@ export function setStyle(
   }
 
   // CSS variables must be written through `setProperty()`.
-  if (name.startsWith('--')) {
+  if (startsWith(name, '--')) {
     if (priority) {
       style.setProperty(name, val, priority);
     } else {
@@ -140,7 +140,7 @@ export function setStyle(
 
 function toCssPropertyName(name: string): string {
   const hyphenated = kebabCase(name);
-  return name.startsWith('Webkit') || name.startsWith('Moz') || name.startsWith('ms')
+  return startsWith(name, 'Webkit') || startsWith(name, 'Moz') || startsWith(name, 'ms')
     ? `-${hyphenated}`
     : hyphenated;
 }

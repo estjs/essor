@@ -1,4 +1,5 @@
 import { types as t } from '@babel/core';
+import { startsWith } from '@estjs/shared';
 import type { IRComponent, IRDynamicAttr, IRSpread } from './ir';
 
 export interface BuildComponentPropsOptions {
@@ -45,7 +46,7 @@ function createPropNode(
   const key = createComponentPropKey(name, options.forceStringLiteralKeys);
   const val = cloneValue(value, options.cloneValues);
 
-  if (options.dynamicPropsAsGetters && kind === 'dynamic' && !name.startsWith('on')) {
+  if (options.dynamicPropsAsGetters && kind === 'dynamic' && !startsWith(name, 'on')) {
     return t.objectMethod('get', key, [], t.blockStatement([t.returnStatement(val)]), false, false);
   }
 

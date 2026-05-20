@@ -1,4 +1,4 @@
-import { escapeHTML, isArray, isNil, isObject, isString } from '@estjs/shared';
+import { escapeHTML, isArray, isNil, isObject, isString, startsWith } from '@estjs/shared';
 
 // ---------------------------------------------------------------------------
 // SSR attribute helpers
@@ -45,7 +45,7 @@ export function ssrStyle(value: unknown): string {
     for (const key in obj) {
       const v = obj[key];
       if (v != null && v !== false) {
-        const prop = key.startsWith('--') ? key : camelToKebab(key);
+        const prop = startsWith(key, '--') ? key : camelToKebab(key);
         parts.push(`${prop}:${escapeHTML(String(v))}`);
       }
     }
@@ -66,7 +66,7 @@ export function ssrSpread(props: Record<string, unknown>): string {
   if (!props || !isObject(props)) return '';
   let out = '';
   for (const key in props) {
-    if (key === 'children' || key === 'ref' || key.startsWith('on')) continue;
+    if (key === 'children' || key === 'ref' || startsWith(key, 'on')) continue;
     if (key === 'class' || key === 'className') {
       out += ssrClass(props[key]);
     } else if (key === 'style') {

@@ -15,7 +15,7 @@
  */
 
 import { type NodePath, types as t } from '@babel/core';
-import { isPlainObject, warn } from '@estjs/shared';
+import { isPlainObject, startsWith, warn } from '@estjs/shared';
 import { TRANSFORM_PROPERTY_NAME, importMap } from '../constants';
 import { getCompileContext, useImport } from '../context';
 import { checkHasJSXReturn } from './utils';
@@ -227,7 +227,7 @@ export function transformFnProps(
     .map((prop) => (t.isIdentifier(prop.key) ? prop.key.name : null))
     .filter((name): name is string => name !== null);
 
-  const signalConflicts = notRestNames.filter((name) => name.startsWith(signalPrefix));
+  const signalConflicts = notRestNames.filter((name) => startsWith(name, signalPrefix));
   if (signalConflicts.length > 0) {
     warn('transformProps', 'Property names cannot start with signal prefix', signalConflicts);
   }

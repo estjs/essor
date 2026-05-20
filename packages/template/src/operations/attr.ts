@@ -5,6 +5,7 @@ import {
   isSpecialBooleanAttr,
   isString,
   isSymbol,
+  startsWith,
   warn,
 } from '@estjs/shared';
 import {
@@ -88,8 +89,8 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
   }
 
   const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
-  const isXlink = elementIsSVG && key.startsWith('xlink:');
-  const isXmlns = elementIsSVG && key.startsWith('xmlns:');
+  const isXlink = elementIsSVG && startsWith(key, 'xlink:');
+  const isXmlns = elementIsSVG && startsWith(key, 'xmlns:');
 
   const isBoolean = isSpecialBooleanAttr(key) || isBooleanAttr(key);
 
@@ -146,7 +147,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     lowerKey === 'poster';
   if (isUrlAttr && isString(attrValue)) {
     const v = attrValue.trim().toLowerCase();
-    if (v.startsWith('javascript:') || v.startsWith('data:')) {
+    if (startsWith(v, 'javascript:') || startsWith(v, 'data:')) {
       return;
     }
   }

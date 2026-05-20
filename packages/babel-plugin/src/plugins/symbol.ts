@@ -9,6 +9,7 @@
  */
 
 import { types as t } from '@babel/core';
+import { startsWith } from '@estjs/shared';
 import { getCompileContext, useImport } from '../context';
 import type { VariableDeclarator } from '@babel/types';
 import type { NodePath } from '@babel/core';
@@ -40,7 +41,7 @@ export function isMemberAccessingProperty(node: t.MemberExpression, propertyName
  */
 export function isSignal(name: string): boolean {
   const prefix = getCompileContext().options.signalPrefix ?? '$';
-  return !!name && name.startsWith(prefix);
+  return !!name && startsWith(name, prefix);
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   isString,
   normalizeClassName,
   normalizeStyle,
+  startsWith,
   styleToString,
 } from '@estjs/shared';
 
@@ -88,7 +89,7 @@ export function ssrAttrDynamic(attrName: string, attrValue: any): string {
   }
 
   // Ignore event handler attributes (client-side behavior)
-  if (attrName.startsWith('on')) {
+  if (startsWith(attrName, 'on')) {
     return '';
   }
 

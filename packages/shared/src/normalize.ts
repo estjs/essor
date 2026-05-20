@@ -3,7 +3,7 @@
  * Shared between template (client) and server packages
  */
 
-import { kebabCase } from './string';
+import { kebabCase, startsWith } from './string';
 import { isArray, isNumber, isObject, isString } from './is';
 
 /**
@@ -108,7 +108,7 @@ export function styleToString(styleValue: NormalizedStyle | string | undefined):
 
     if (isString(propValue) || isNumber(propValue)) {
       // Keep CSS variables as is, convert other properties to kebab-case
-      const normalizedPropName = propName.startsWith('--') ? propName : kebabCase(propName);
+      const normalizedPropName = startsWith(propName, '--') ? propName : kebabCase(propName);
       cssText += `${normalizedPropName}:${propValue};`;
     }
   }
