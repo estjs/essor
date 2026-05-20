@@ -5,7 +5,6 @@ export {
   hasChanged,
   coerceArray,
   hasOwn,
-  startsWith,
   isOn,
   generateUniqueId,
   isBrowser,

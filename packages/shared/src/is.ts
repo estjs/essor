@@ -17,7 +17,7 @@ export const isObject = (val: unknown): val is Record<any, unknown> =>
  * @returns True if the value is a Promise, false otherwise.
  */
 export function isPromise<T = unknown>(val: unknown): val is Promise<T> {
-  return _toString.call(val) === '[object Promise]';
+  return !!val && typeof (val as any).then === 'function';
 }
 
 /**

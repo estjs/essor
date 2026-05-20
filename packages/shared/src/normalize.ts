@@ -138,23 +138,13 @@ export function normalizeClassName(classValue: unknown): string {
 
   // Handle objects (conditional classes)
   if (isObject(classValue)) {
-    let count = 0;
-    for (const key in classValue) {
-      if (classValue[key]) count++;
-    }
-
-    if (count === 0) return '';
-
-    const result: string[] = new Array(count);
-    let index = 0;
-
+    let result = '';
     for (const key in classValue) {
       if (classValue[key]) {
-        result[index++] = key;
+        result = result ? `${result} ${key}` : key;
       }
     }
-
-    return result.join(' ');
+    return result;
   }
 
   return String(classValue).trim();

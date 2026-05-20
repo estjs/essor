@@ -1,4 +1,4 @@
-import { isArray, isString } from './is';
+import { isArray } from './is';
 
 /**
  * Reference to Object.prototype.toString
@@ -48,34 +48,10 @@ export const hasChanged = (value: unknown, oldValue: unknown): boolean =>
  */
 export const noop = Function.prototype as () => void;
 
-/**
- * Checks if a string starts with a specified substring.
- *
- * @param str - The string to check.
- * @param searchString - The substring to search for.
- * @returns True if the string starts with the substring, false otherwise.
- */
-export function startsWith(str: string, searchString: string): boolean {
-  if (!isString(str)) {
-    return false;
-  }
-  return str.indexOf(searchString) === 0;
-}
-
-/**
- * Generates an 8-character random string as a unique identifier.
- *
- * @returns The generated unique identifier.
- */
 export function generateUniqueId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-/**
- * Checks if the current environment is a browser.
- *
- * @returns True if in a browser environment, false otherwise.
- */
 export function isBrowser(): boolean {
   return typeof window !== 'undefined' && typeof document !== 'undefined';
 }

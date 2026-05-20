@@ -70,7 +70,7 @@ class Dep implements ReactiveNode {
 }
 
 export function enqueueEffect(effect: Effect): void {
-  effect?.notify?.();
+  effect.notify();
 }
 
 export function clearPropagationFlags(node: ReactiveNode): void {

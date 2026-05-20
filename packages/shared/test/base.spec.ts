@@ -12,7 +12,6 @@ import {
   isBrowser,
   isOn,
   noop,
-  startsWith,
 } from '../src';
 
 describe('base Utils', () => {
@@ -62,26 +61,6 @@ describe('base Utils', () => {
     testCases.forEach(({ value, oldValue, expected }) => {
       it(`should return ${expected} for value ${JSON.stringify(value)} and oldValue ${JSON.stringify(oldValue)}`, () => {
         expect(hasChanged(value, oldValue)).toBe(expected);
-      });
-    });
-  });
-
-  describe('startsWith', () => {
-    const testCases = [
-      { str: 'Hello, World!', searchString: 'Hello', expected: true },
-      { str: 'Hello, World!', searchString: 'world', expected: false },
-      { str: null, searchString: 'hello', expected: false },
-      { str: 123, searchString: 'hello', expected: false },
-      { str: {}, searchString: 'hello', expected: false },
-      { str: '', searchString: '', expected: true },
-      { str: 'hello', searchString: '', expected: true },
-      { str: 'hi', searchString: 'hello', expected: false },
-    ];
-
-    testCases.forEach(({ str, searchString, expected }) => {
-      it(`should return ${expected} for startsWith('${str}', '${searchString}')`, () => {
-        // @ts-ignore
-        expect(startsWith(str, searchString)).toBe(expected);
       });
     });
   });

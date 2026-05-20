@@ -111,13 +111,11 @@ export function createScope(parent: Scope | null = activeScope): Scope {
  */
 export function runWithScope<T>(scope: Scope, fn: () => T): T {
   const prevScope = activeScope;
-  activeScope = scope;
-
+  setActiveScope(scope);
   try {
     return scope.effectScope.run(fn) as T;
   } finally {
-    // Restore previous scope directly
-    activeScope = prevScope;
+    setActiveScope(prevScope);
   }
 }
 

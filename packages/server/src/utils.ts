@@ -14,9 +14,7 @@ interface SafeHtml {
 }
 
 function isSafeHtml(content: unknown): content is SafeHtml {
-  return Boolean(
-    isObject(content) && (content as Record<PropertyKey, unknown>)[safeHtmlMarker] === true,
-  );
+  return isObject(content) && (content as Record<PropertyKey, unknown>)[safeHtmlMarker] === true;
 }
 
 function stringify(content: unknown, escape: boolean, omitFalse: boolean): string {
