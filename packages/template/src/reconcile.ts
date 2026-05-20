@@ -112,13 +112,23 @@ function reconcileUnknownSequence(
   anchor?: Node | null,
 ): void {
   const newLength = newEnd - start + 1;
-  const newIndexMap = new Map<Node, number>();
-  for (let i = start; i <= newEnd; i++) {
-    newIndexMap.set(newNodes[i], i);
-  }
+
+  // For very short sequences, linear search beats Map allocation overhead
+  const findNewIndex =
+    newLength <= 4
+      ? (node: Node) => {
+          for (let i = start; i <= newEnd; i++) {
+            if (newNodes[i] === node) return i;
+          }
+          return undefined;
+        }
+      : (() => {
+          const map = new Map<Node, number>();
+          for (let i = start; i <= newEnd; i++) map.set(newNodes[i], i);
+          return (node: Node) => map.get(node);
+        })();
 
   const newIndexToOldIndexMap = new Int32Array(newLength);
-  newIndexToOldIndexMap.fill(0);
 
   let patched = 0;
   let moved = false;
@@ -132,7 +142,7 @@ function reconcileUnknownSequence(
       continue;
     }
 
-    const newIndex = newIndexMap.get(oldNode);
+    const newIndex = findNewIndex(oldNode);
 
     if (newIndex === undefined) {
       removeNode(oldNode);

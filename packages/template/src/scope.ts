@@ -148,42 +148,30 @@ export function disposeScope(scope: Scope): void {
     scope.children.clear();
   }
 
-  // Execute destroy lifecycle hooks and cleanup functions within the scope's
-  // context so that inject/provide/getActiveScope work correctly in callbacks.
-  //
-  // NOTE: `scope.isDestroyed` is already `true` at this point — this is
-  // intentional to prevent re-entrant `disposeScope()` calls from within
-  // hooks. Callbacks that inspect `getActiveScope()?.isDestroyed` should
-  // be aware of this.
-  runWithScope(scope, () => {
-    // Execute destroy lifecycle hooks
-    if (scope.onDestroy) {
-      for (let i = 0; i < scope.onDestroy.length; i++) {
-        try {
-          scope.onDestroy[i]();
-        } catch (error_) {
-          if (__DEV__) {
-            error(`Scope(${scope.id}): Error in destroy hook:`, error_);
-          }
-        }
+  // Execute destroy hooks with this scope active so inject/provide work in callbacks.
+  const prevScope = activeScope;
+  setActiveScope(scope);
+  if (scope.onDestroy) {
+    for (let i = 0; i < scope.onDestroy.length; i++) {
+      try {
+        scope.onDestroy[i]();
+      } catch (error_) {
+        if (__DEV__) error(`Scope(${scope.id}): Error in destroy hook:`, error_);
       }
-      scope.onDestroy = null;
     }
-
-    // Execute cleanup functions
-    if (scope.cleanup) {
-      for (let i = 0; i < scope.cleanup.length; i++) {
-        try {
-          scope.cleanup[i]();
-        } catch (error_) {
-          if (__DEV__) {
-            error(`Scope(${scope.id}): Error in cleanup:`, error_);
-          }
-        }
+    scope.onDestroy = null;
+  }
+  if (scope.cleanup) {
+    for (let i = 0; i < scope.cleanup.length; i++) {
+      try {
+        scope.cleanup[i]();
+      } catch (error_) {
+        if (__DEV__) error(`Scope(${scope.id}): Error in cleanup:`, error_);
       }
-      scope.cleanup = null;
     }
-  });
+    scope.cleanup = null;
+  }
+  setActiveScope(prevScope);
 
   scope.effectScope.stop();
 

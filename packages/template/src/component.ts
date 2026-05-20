@@ -21,14 +21,13 @@ import type { Scope } from './scope';
  * `defineProperty` keeps it alive.
  */
 function syncDescriptors(target: object, source: object, pruneMissing = false): void {
-  const seen = pruneMissing ? new Set<string>() : null;
   for (const key of Object.getOwnPropertyNames(source)) {
-    seen?.add(key);
     Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)!);
   }
-  if (seen) {
+  if (pruneMissing) {
+    const sourceKeys = Object.getOwnPropertyNames(source);
     for (const key of Object.getOwnPropertyNames(target)) {
-      if (!seen.has(key)) delete (target as Record<string, unknown>)[key];
+      if (!sourceKeys.includes(key)) delete (target as Record<string, unknown>)[key];
     }
   }
 }
@@ -166,6 +165,10 @@ export class Component<P extends ComponentProps = {}> {
     this.renderedNodes = [];
     this.firstChild = undefined;
     this.parentNode = undefined;
+    // Clear all descriptors to release signal getter references
+    for (const key of Object.getOwnPropertyNames(this.reactiveProps)) {
+      delete (this.reactiveProps as Record<string, unknown>)[key];
+    }
   }
 
   /**
