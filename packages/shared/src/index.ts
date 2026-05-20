@@ -46,7 +46,14 @@ export { camelCase, kebabCase, capitalize } from './string';
 export { warn, info, error } from './logger';
 
 export { escapeHTML, escapeHTMLComment, getEscapedCssVarName } from './escape';
-export { isHTMLTag, isSVGTag, isMathMLTag, isSelfClosingTag } from './dom';
+export {
+  isHTMLTag,
+  isSVGTag,
+  isMathMLTag,
+  isSelfClosingTag,
+  HYDRATION_ANCHOR_ATTR,
+  SPREAD_NAME,
+} from './dom';
 export {
   isKnownSvgAttr,
   isKnownHtmlAttr,

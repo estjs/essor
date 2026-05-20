@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { type InjectionKey, getHydrationKey, inject, provide } from '@estjs/template';
-import { createSSGComponent, renderToString } from '../src/render';
+import { createSSRComponent, renderToString } from '../src/render';
 
 describe('server/provide-inject', () => {
   describe('renderToString with provide/inject', () => {
@@ -153,7 +153,7 @@ describe('server/provide-inject', () => {
     });
   });
 
-  describe('createSSGComponent with provide/inject', () => {
+  describe('createSSRComponent with provide/inject', () => {
     it('should support provide/inject in nested SSG components', () => {
       const key: InjectionKey<string> = Symbol('ssg-key');
 
@@ -164,14 +164,14 @@ describe('server/provide-inject', () => {
 
       const ParentComponent = () => {
         provide(key, 'ssg-value');
-        return `<div>${createSSGComponent(ChildComponent)}</div>`;
+        return `<div>${createSSRComponent(ChildComponent)}</div>`;
       };
 
       const result = renderToString(ParentComponent);
       expect(result).toBe('<div><span>ssg-value</span></div>');
     });
 
-    it('should inherit parent scope in createSSGComponent', () => {
+    it('should inherit parent scope in createSSRComponent', () => {
       const themeKey: InjectionKey<string> = Symbol('theme');
       const langKey: InjectionKey<string> = Symbol('lang');
 
@@ -183,19 +183,19 @@ describe('server/provide-inject', () => {
 
       const MiddleComponent = () => {
         provide(langKey, 'en');
-        return createSSGComponent(DeepChild);
+        return createSSRComponent(DeepChild);
       };
 
       const RootComponent = () => {
         provide(themeKey, 'light');
-        return `<div>${createSSGComponent(MiddleComponent)}</div>`;
+        return `<div>${createSSRComponent(MiddleComponent)}</div>`;
       };
 
       const result = renderToString(RootComponent);
       expect(result).toBe('<div><span>theme:light,lang:en</span></div>');
     });
 
-    it('should support multiple nested createSSGComponent calls', () => {
+    it('should support multiple nested createSSRComponent calls', () => {
       const key: InjectionKey<number> = Symbol('depth');
 
       const Level3 = () => {
@@ -204,19 +204,19 @@ describe('server/provide-inject', () => {
       };
 
       const Level2 = () => {
-        return `<div>${createSSGComponent(Level3)}</div>`;
+        return `<div>${createSSRComponent(Level3)}</div>`;
       };
 
       const Level1 = () => {
         provide(key, 3);
-        return `<section>${createSSGComponent(Level2)}</section>`;
+        return `<section>${createSSRComponent(Level2)}</section>`;
       };
 
       const result = renderToString(Level1);
       expect(result).toBe('<section><div><span>depth:3</span></div></section>');
     });
 
-    it('should support shadowing in createSSGComponent', () => {
+    it('should support shadowing in createSSRComponent', () => {
       const key: InjectionKey<string> = Symbol('shadow');
 
       const Leaf = () => {
@@ -226,16 +226,16 @@ describe('server/provide-inject', () => {
 
       const ShadowBranch = () => {
         provide(key, 'shadow-value');
-        return createSSGComponent(Leaf);
+        return createSSRComponent(Leaf);
       };
 
       const NormalBranch = () => {
-        return createSSGComponent(Leaf);
+        return createSSRComponent(Leaf);
       };
 
       const Root = () => {
         provide(key, 'root-value');
-        return `<div>${createSSGComponent(NormalBranch)}|${createSSGComponent(ShadowBranch)}</div>`;
+        return `<div>${createSSRComponent(NormalBranch)}|${createSSRComponent(ShadowBranch)}</div>`;
       };
 
       const result = renderToString(Root);
@@ -260,12 +260,12 @@ describe('server/provide-inject', () => {
 
       const Card = (props: { title: string }) => {
         const theme = inject(ThemeKey, { primary: '#000', secondary: '#fff', mode: 'light' });
-        return `<div class="card card-${theme.mode}"><h2>${props.title}</h2>${createSSGComponent(Button, { label: 'Click me' })}</div>`;
+        return `<div class="card card-${theme.mode}"><h2>${props.title}</h2>${createSSRComponent(Button, { label: 'Click me' })}</div>`;
       };
 
       const App = () => {
         provide(ThemeKey, { primary: '#007bff', secondary: '#ffffff', mode: 'dark' });
-        return `<main>${createSSGComponent(Card, { title: 'Welcome' })}</main>`;
+        return `<main>${createSSRComponent(Card, { title: 'Welcome' })}</main>`;
       };
 
       const result = renderToString(App);
@@ -299,7 +299,7 @@ describe('server/provide-inject', () => {
 
       const App = (props: { locale: string }) => {
         provide(I18nKey, createI18n(props.locale));
-        return `<div>${createSSGComponent(Greeting)}</div>`;
+        return `<div>${createSSRComponent(Greeting)}</div>`;
       };
 
       expect(renderToString(App, { locale: 'en' })).toBe('<div><p>Hello</p></div>');
@@ -323,7 +323,7 @@ describe('server/provide-inject', () => {
       };
 
       const Header = () => {
-        return `<header>${createSSGComponent(UserInfo)}</header>`;
+        return `<header>${createSSRComponent(UserInfo)}</header>`;
       };
 
       const App = (props: { user?: { name: string; role: string } }) => {
@@ -331,7 +331,7 @@ describe('server/provide-inject', () => {
           ? { isAuthenticated: true, user: props.user }
           : { isAuthenticated: false, user: null };
         provide(AuthKey, auth);
-        return `<div>${createSSGComponent(Header)}</div>`;
+        return `<div>${createSSRComponent(Header)}</div>`;
       };
 
       // Guest user
@@ -358,12 +358,12 @@ describe('server/provide-inject', () => {
       };
 
       const Nav = () => {
-        return `<nav>${createSSGComponent(Link, { to: '/', children: 'Home' })}${createSSGComponent(Link, { to: '/about', children: 'About' })}</nav>`;
+        return `<nav>${createSSRComponent(Link, { to: '/', children: 'Home' })}${createSSRComponent(Link, { to: '/about', children: 'About' })}</nav>`;
       };
 
       const App = (props: { path: string }) => {
         provide(RouterKey, { path: props.path, params: {} });
-        return `<div>${createSSGComponent(Nav)}</div>`;
+        return `<div>${createSSRComponent(Nav)}</div>`;
       };
 
       const homeResult = renderToString(App, { path: '/' });
@@ -387,7 +387,7 @@ describe('server/provide-inject', () => {
       const Parent = () => {
         provide(key, 'hydrated-value');
         const hk = getHydrationKey();
-        return `<main data-hk="${hk}">${createSSGComponent(Child)}</main>`;
+        return `<main data-hk="${hk}">${createSSRComponent(Child)}</main>`;
       };
 
       const result = renderToString(Parent);

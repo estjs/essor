@@ -618,8 +618,7 @@ export function getRawNodeText(path: NodePath<JSXChild>): string {
 export function setNodeText(path: NodePath<JSXChild>, text: string): void {
   if (path.isJSXText()) {
     path.node.value = text;
-  }
-  if (path.isJSXExpressionContainer()) {
+  } else if (path.isJSXExpressionContainer()) {
     const expression = path.get('expression');
     if (expression.isStringLiteral() || expression.isNumericLiteral()) {
       expression.replaceWith(t.stringLiteral(text));

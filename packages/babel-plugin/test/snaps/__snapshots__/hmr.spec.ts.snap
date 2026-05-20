@@ -2,7 +2,7 @@
 
 exports[`hMR transformation > should add HMR metadata to components 1`] = `
 "import { template as _template$ } from "essor";
-const _t$ = _template$("<div>Hello</div>");
+const _t$ = _template$("<div>Hello");
 import { createComponent } from 'essor';
 function App() {
   return _t$();
@@ -14,8 +14,8 @@ const __$registry$__ = [App];"
 
 exports[`hMR transformation > should handle multiple createComponent aliases 1`] = `
 "import { template as _template$, child as _child$, createComponent as _createComponent$, insert as _insert$ } from "essor";
-const _t$2 = _template$("<div><!></div>");
-const _t$ = _template$("<div>Counter</div>");
+const _t$2 = _template$("<div>");
+const _t$ = _template$("<div>Counter");
 import { createApp, signal } from 'essor';
 function Counter() {
   return _t$();
@@ -44,7 +44,7 @@ const __$registry$__ = [Counter, App];"
 
 exports[`hMR transformation > should not transform when HMR is disabled 1`] = `
 "import { template as _template$ } from "essor";
-const _t$ = _template$("<div>Hello</div>");
+const _t$ = _template$("<div>Hello");
 import { createComponent as cc } from 'essor';
 function App() {
   return _t$();
@@ -54,7 +54,7 @@ cc(App);"
 
 exports[`hMR transformation > should replace user import alias (cc) with HMR component 1`] = `
 "import { template as _template$ } from "essor";
-const _t$ = _template$("<div>Hello</div>");
+const _t$ = _template$("<div>Hello");
 import { createComponent as cc } from 'essor';
 function App() {
   return _t$();
@@ -67,7 +67,7 @@ const __$registry$__ = [App];"
 
 exports[`hMR transformation > should transform createApp to create with HMR component 1`] = `
 "import { template as _template$ } from "essor";
-const _t$ = _template$("<div>Hello</div>");
+const _t$ = _template$("<div>Hello");
 import { createApp } from 'essor';
 function App() {
   return _t$();

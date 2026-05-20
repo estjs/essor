@@ -89,6 +89,38 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('keeps ordinary closing tags regardless of omitClosingTags', () => {
+    const inputCode = `
+      const element = <div><span><em>End</em></span></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('["<div><span><em>End</em></span></div>"]');
+  });
+
+  it('keeps earlier and final sibling closing tags in SSR templates', () => {
+    const inputCode = `
+      const element = <div><span>First</span><p>Last</p></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('["<div><span>First</span><p>Last</p></div>"]');
+    expect(output).not.toContain('<span>First<p>');
+  });
+
+  it('serializes void tags with XML self-closing slashes', () => {
+    const inputCode = `
+      const element = <div><input disabled /><br /></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('["<div><input disabled /><br /></div>"]');
+    expect(output).not.toContain('<input disabled><br>');
+  });
+
   it('transforms server JSX element with nested expressions and children', () => {
     const inputCode = `
       const name = 'John';
@@ -201,13 +233,13 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('convertToString as _convertToString$');
-    expect(output).toContain('_convertToString$(ctx.children)');
-    expect(output).toContain('_convertToString$(ctx["children"])');
-    expect(output).toContain('_convertToString$(__props.children)');
-    expect(output).not.toContain('_convertTextChildToString$(ctx.children)');
-    expect(output).not.toContain('_convertTextChildToString$(ctx["children"])');
-    expect(output).not.toContain('_convertTextChildToString$(__props.children)');
+    expect(output).toContain('toRawHtmlString as _toRawHtmlString$');
+    expect(output).toContain('_toRawHtmlString$(ctx.children)');
+    expect(output).toContain('_toRawHtmlString$(ctx["children"])');
+    expect(output).toContain('_toRawHtmlString$(__props.children)');
+    expect(output).not.toContain('_toEscapedHtmlString$(ctx.children)');
+    expect(output).not.toContain('_toEscapedHtmlString$(ctx["children"])');
+    expect(output).not.toContain('_toEscapedHtmlString$(__props.children)');
   });
 
   it('keeps local children variables escaped in SSR text nodes', () => {
@@ -217,8 +249,8 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_convertTextChildToString$(children)');
-    expect(output).not.toContain('_convertToString$(children)');
+    expect(output).toContain('_toEscapedHtmlString$(children)');
+    expect(output).not.toContain('_toRawHtmlString$(children)');
   });
 
   it('keeps arbitrary children properties escaped in SSR text nodes', () => {
@@ -227,8 +259,8 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_convertTextChildToString$(state.children)');
-    expect(output).not.toContain('_convertToString$(state.children)');
+    expect(output).toContain('_toEscapedHtmlString$(state.children)');
+    expect(output).not.toContain('_toRawHtmlString$(state.children)');
   });
 
   it('does not trust user calls named like generated SSR helpers', () => {
@@ -238,8 +270,8 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_convertTextChildToString$(_render$2(userText))');
-    expect(output).not.toContain('_markSafeHtml$(_render$2(userText))');
+    expect(output).toContain('_toEscapedHtmlString$(_render$2(userText))');
+    expect(output).not.toContain('_markAsRawHtml$(_render$2(userText))');
   });
 
   it('omits dynamic comment markers when a stable static sibling can anchor hydration', () => {
@@ -378,9 +410,9 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('markSafeHtml as _markSafeHtml$');
-    expect(output).toContain('_convertTextChildToString$(isVisible && _markSafeHtml$(_render$');
-    expect(output).toContain('isVisible ? _markSafeHtml$(_render$');
+    expect(output).toContain('markAsRawHtml as _markAsRawHtml$');
+    expect(output).toContain('_toEscapedHtmlString$(isVisible && _markAsRawHtml$(_render$');
+    expect(output).toContain('isVisible ? _markAsRawHtml$(_render$');
     expect(output).toContain(': \'<unsafe>\'');
   });
 
@@ -408,7 +440,7 @@ describe('jsx server transform', () => {
     `;
     const output = transformCodeWithFor(inputCode);
     expect(output).toContain('For as _For$');
-    expect(output).toContain('_createSSGComponent$(_For$, {');
+    expect(output).toContain('_createSSRComponent$(_For$, {');
     expect(output).not.toContain('items.map(');
   });
 

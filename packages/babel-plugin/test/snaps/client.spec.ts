@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, vi } from 'vitest';
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'client', hmr: false });
+const transformCodeWithClosingTags = getTransform('jsx', {
+  mode: 'client',
+  hmr: false,
+  omitClosingTags: false,
+});
 const transformCodeWithFor = getTransform('jsx', { mode: 'client', hmr: false, enableFor: true });
 const transformTsxCode = getTransform('jsx', { mode: 'client', hmr: false }, 'test.tsx');
 
@@ -29,7 +34,7 @@ describe('should work with jsx client transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('const _t$ = _template$("<div>Hello, World!</div>");');
+    expect(output).toContain('const _t$ = _template$("<div>Hello, World!");');
     expect(output).toContain('const element = _t$();');
   });
 
@@ -154,7 +159,7 @@ describe('should work with jsx client transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_template$("<div>Hello</div>")');
+    expect(output).toContain('_template$("<div>Hello")');
     expect(output).not.toContain('id=\\"fallback\\"');
   });
 
@@ -166,7 +171,7 @@ describe('should work with jsx client transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_template$("<div id=\\"fallback\\">Hello</div>")');
+    expect(output).toContain('_template$("<div id=\\"fallback\\">Hello")');
     expect(output).not.toContain('_memoEffect$');
   });
 
@@ -257,6 +262,48 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('omits the final closing tag chain by default', () => {
+    const inputCode = `
+      const element = <div><span><em>End</em></span></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_template$("<div><span><em>End")');
+    expect(output).not.toContain('</em></span></div>');
+  });
+
+  it('preserves final closing tags when omitClosingTags is false', () => {
+    const inputCode = `
+      const element = <div><span><em>End</em></span></div>;
+    `;
+
+    expect(transformCodeWithClosingTags(inputCode)).toContain(
+      '_template$("<div><span><em>End</em></span></div>")',
+    );
+  });
+
+  it('keeps earlier sibling closing tags while omitting the final chain', () => {
+    const inputCode = `
+      const element = <div><span>First</span><p>Last</p></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_template$("<div><span>First</span><p>Last")');
+  });
+
+  it('serializes void tags with XML self-closing slashes', () => {
+    const inputCode = `
+      const element = <div><input disabled /><br /></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_template$("<div><input disabled /><br />")');
+    expect(output).not.toContain('<input disabled><br>');
   });
 
   it('keeps compiling with invalid native html nesting', () => {

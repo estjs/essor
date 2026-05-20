@@ -45,8 +45,9 @@ export interface PluginOptions {
   delegateEvents?: boolean;
 
   /**
-   * Omits trailing closing tags in templates to reduce output size.
-   * @default false
+   * Omits closing tags from DOM templates using Solid's omitLastClosingTag
+   * behavior. SSR string output keeps ordinary closing tags.
+   * @default true
    */
   omitClosingTags?: boolean;
 
@@ -63,7 +64,7 @@ const DEFAULT_OPTIONS: PluginOptions = {
   props: true,
   signalPrefix: '$',
   delegateEvents: true,
-  omitClosingTags: false,
+  omitClosingTags: true,
 };
 
 /**

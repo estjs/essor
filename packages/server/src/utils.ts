@@ -1,7 +1,14 @@
-import { escapeHTML, isArray, isFunction, isNil, isObject, isString } from '@estjs/shared';
+import {
+  HYDRATION_ANCHOR_ATTR,
+  escapeHTML,
+  isArray,
+  isFunction,
+  isNil,
+  isObject,
+  isString,
+} from '@estjs/shared';
 
 const safeHtmlMarker = Symbol('safeHtml');
-export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';
 interface SafeHtml {
   readonly html: string;
 }
@@ -34,7 +41,7 @@ function stringify(content: unknown, escape: boolean, omitFalse: boolean): strin
   return escape ? escapeHTML(text) : text;
 }
 
-export function markSafeHtml(content: unknown): SafeHtml {
+export function markAsRawHtml(content: unknown): SafeHtml {
   if (isSafeHtml(content)) {
     return content;
   }
@@ -51,7 +58,7 @@ export function markSafeHtml(content: unknown): SafeHtml {
  * @param content - The content to convert.
  * @returns {string} The content as a string.
  */
-export function convertToString(content: unknown): string {
+export function toRawHtmlString(content: unknown): string {
   return stringify(content, false, false);
 }
 
@@ -61,7 +68,7 @@ export function convertToString(content: unknown): string {
  * JSX expression children have text semantics, so primitives must be escaped
  * before interpolation into the surrounding HTML template.
  */
-export function convertTextChildToString(content: unknown): string {
+export function toEscapedHtmlString(content: unknown): string {
   return stringify(content, true, true);
 }
 
@@ -128,7 +135,7 @@ function injectRootHydrationAttribute(htmlContent: string, hydrationId: string):
  * @param hydrationId - The hydration id.
  * @returns {string} The html content with hydration attributes.
  */
-export function addAttributes(htmlContent: string, hydrationId: string): string {
+export function injectHydrationKeys(htmlContent: string, hydrationId: string): string {
   // Single-pass rewrite for both element anchors and comment markers — half the
   // string traversals compared to chained `replaceAll` calls.
   return injectRootHydrationAttribute(htmlContent, hydrationId).replaceAll(

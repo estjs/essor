@@ -33,7 +33,7 @@ export function createCoreBuildConfig(nodeEnv = env) {
     sourcemap: isDev,
     external: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
     minify: !isDev,
-    tsconfig: '../../tsconfig.build.json',
+    tsconfig: './tsconfig.json',
     define: {
       __DEV__: isDev ? 'true' : 'false',
     },

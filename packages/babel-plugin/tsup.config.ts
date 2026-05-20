@@ -17,7 +17,7 @@ export default defineConfig({
   treeshake: true,
   external: ['@babel/core'],
   noExternal: ['@estjs/shared'],
-  tsconfig: '../../tsconfig.build.json',
+  tsconfig: './tsconfig.json',
   define: {
     __DEV__: `${isDev}`,
   },

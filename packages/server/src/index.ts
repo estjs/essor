@@ -1,7 +1,7 @@
-export { renderToString, renderToStringAsync, render, createSSGComponent } from './render';
-export { convertToString, convertTextChildToString, markSafeHtml, addAttributes } from './utils';
+export { render, createSSRComponent, renderToString, renderToStringAsync } from './render';
+export { injectHydrationKeys, markAsRawHtml, toEscapedHtmlString, toRawHtmlString } from './utils';
 export { escapeHTML } from '@estjs/shared';
-export { setSSGAttr, normalizeProps } from './attrs';
+export { ssrAttrDynamic, normalizeProps } from './attrs';
 
 // SSR attribute helpers (used by babel-plugin server-mode codegen)
 export { ssrAttr, ssrClass, ssrStyle, ssrSpread } from './ssr';

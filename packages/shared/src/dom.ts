@@ -206,3 +206,7 @@ export const isMathMLTag: (key: string) => boolean = /*@__PURE__*/ makeMap(MATH_
 export const isSelfClosingTag: (key: string) => boolean = /*@__PURE__*/ makeMap(VOID_TAGS);
 
 export const isDelegatedEvent: (key: string) => boolean = /*@__PURE__*/ makeMap(DELEGATED_EVENTS);
+
+export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx' as const;
+
+export const SPREAD_NAME = '_$spread$' as const;

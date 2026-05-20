@@ -1,5 +1,5 @@
 import { isFunction, isNil, isObject, isString, warn } from '@estjs/shared';
-import { convertToString } from './utils';
+import { toRawHtmlString } from './utils';
 import { getSSRContext } from './context';
 
 export interface SSRComponentProps {
@@ -11,7 +11,7 @@ export interface SSRComponentProps {
  * SSR Fragment — returns children converted to a string.
  */
 export function Fragment(props: SSRComponentProps): string {
-  return convertToString(props.children);
+  return toRawHtmlString(props.children);
 }
 
 // ---------------------------------------------------------------------------
@@ -45,7 +45,7 @@ export const TELEPORT_BLOCK_END = '<!--teleport-end-->';
  */
 export function Portal(props: SSRPortalProps): string {
   const { target, children } = props;
-  const rendered = convertToString(children);
+  const rendered = toRawHtmlString(children);
 
   // Unwrap disabled getter (for API parity with client)
   const disabled = isFunction(props.disabled)
@@ -80,7 +80,7 @@ export function Portal(props: SSRPortalProps): string {
  */
 export function Suspense(props: SSRComponentProps & { fallback?: unknown }): string {
   const { children, fallback } = props;
-  return isNil(children) ? convertToString(fallback) : convertToString(children);
+  return isNil(children) ? toRawHtmlString(fallback) : toRawHtmlString(children);
 }
 
 // ---------------------------------------------------------------------------
@@ -114,11 +114,11 @@ export function For<T>(props: SSRForProps<T>): string {
   const list = resolveList<T>(props.each);
 
   if (list.length === 0) {
-    return convertToString(props.fallback);
+    return toRawHtmlString(props.fallback);
   }
 
   const render = props.children;
   if (!isFunction(render)) return '';
 
-  return list.map((item, i) => convertToString(render(item, i))).join('');
+  return list.map((item, i) => toRawHtmlString(render(item, i))).join('');
 }

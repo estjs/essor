@@ -1,6 +1,6 @@
 import { types as t } from '@babel/core';
+import { HYDRATION_ANCHOR_ATTR } from '@estjs/shared';
 import { type CompileContext, getCompileContext, registerDeclaration, useImport } from '../context';
-import { HYDRATION_ANCHOR_ATTR } from '../constants';
 import {
   type IRComponent,
   type IRElement,
@@ -15,7 +15,7 @@ import { buildComponentInvocation, buildForCall, renderChildExpressions } from '
 const serverTextEscapeRE = /[&<>]/g;
 
 function markSafeHtmlCall(expression: t.Expression): t.Expression {
-  return t.callExpression(useImport('markSafeHtml'), [expression]);
+  return t.callExpression(useImport('markAsRawHtml'), [expression]);
 }
 
 function isGeneratedServerHtmlCall(expression: t.CallExpression): boolean {
@@ -97,7 +97,7 @@ function generateServerNode(
       const expression = node.asRawChildren
         ? t.cloneNode(node.value, true)
         : markServerHtmlSubexpressions(t.cloneNode(node.value, true));
-      const converter = node.asRawChildren ? 'convertToString' : 'convertTextChildToString';
+      const converter = node.asRawChildren ? 'toRawHtmlString' : 'toEscapedHtmlString';
       return t.callExpression(useImport(converter), [expression]);
     }
     case IRType.COMPONENT:
@@ -187,7 +187,7 @@ function generateServerElement(
     }
   }
 
-  currentStr += `${attrs}${node.selfClosing ? '/>' : '>'}`;
+  currentStr += `${attrs}${node.selfClosing ? ' />' : '>'}`;
 
   if (!node.selfClosing) {
     let markerIndex = 0;
@@ -281,7 +281,7 @@ function buildStaticServerHTML(node: IRElement, staticIndex?: number): string | 
       : [...node.staticAttrs, { name: HYDRATION_ANCHOR_ATTR, value: String(staticIndex) }];
   const attrs = serializeStaticAttrs(staticAttrs);
   if (node.selfClosing) {
-    return `<${node.tag}${attrs}/>`;
+    return `<${node.tag}${attrs} />`;
   }
 
   let html = `<${node.tag}${attrs}>`;

@@ -56,10 +56,10 @@ export function normalizeProps(props: Record<string, any> | null): Record<string
  * @param attrValue - Attribute value
  * @returns Formatted HTML attribute string
  */
-export function setSSGAttr(attrName: string, attrValue: any): string {
+export function ssrAttrDynamic(attrName: string, attrValue: any): string {
   // Handle reactive values (signals or computed values)
   if (isSignal(attrValue) || isComputed(attrValue)) {
-    return setSSGAttr(attrName, attrValue.value);
+    return ssrAttrDynamic(attrName, attrValue.value);
   }
 
   // Ignore null, undefined, and false value attributes

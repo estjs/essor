@@ -1,30 +1,19 @@
-import { isBrowser, warn } from '@estjs/shared';
-import { HYDRATION_ANCHOR_ATTR } from './constants';
+import { HYDRATION_ANCHOR_ATTR, isBrowser, warn } from '@estjs/shared';
 import { patchAttr } from './operations/attr';
 import { patchClass } from './operations/class';
 import { patchStyle } from './operations/style';
 import { template } from './renderer';
 
 // ---------------------------------------------------------------------------
-// Hydration key counter (mirrors server-side getHydrationKey / resetHydrationKey)
+// Hydration key counter
 // ---------------------------------------------------------------------------
 
 let _hydrationKey = 0;
 
-/**
- * Returns a new hydration key.
- *
- * @returns The new hydration key as a string.
- */
 export function getHydrationKey(): string {
   return String(_hydrationKey++);
 }
 
-/**
- * Resets the client-side hydration key counter.
- *
- * @returns {void}
- */
 export function resetHydrationKey(): void {
   _hydrationKey = 0;
 }

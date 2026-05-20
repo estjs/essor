@@ -1,0 +1,11 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": [],
+    "declaration": true,
+    "declarationMap": true,
+    "stripInternal": true
+  },
+  "include": ["src/**/*", "../../globals.d.ts"],
+  "exclude": ["node_modules", "dist", "**/test/**", "**/*.spec.ts", "**/*.test.ts"]
+}

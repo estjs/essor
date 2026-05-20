@@ -1,5 +1,10 @@
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'hydrate', hmr: false });
+const transformCodeWithClosingTags = getTransform('jsx', {
+  mode: 'hydrate',
+  hmr: false,
+  omitClosingTags: false,
+});
 const transformCodeWithFor = getTransform('jsx', {
   mode: 'hydrate',
   hmr: false,
@@ -87,6 +92,49 @@ describe('jsx hydrate transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('omits the final closing tag chain by default', () => {
+    const inputCode = `
+      const element = <div><span><em>End</em></span></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_getRenderedElement$("<div><span><em>End")');
+    expect(output).not.toContain('</em></span></div>');
+  });
+
+  it('preserves final closing tags when omitClosingTags is false', () => {
+    const inputCode = `
+      const element = <div><span><em>End</em></span></div>;
+    `;
+
+    expect(transformCodeWithClosingTags(inputCode)).toContain(
+      '_getRenderedElement$("<div><span><em>End</em></span></div>")',
+    );
+  });
+
+  it('keeps earlier sibling closing tags while omitting the final chain', () => {
+    const inputCode = `
+      const element = <div><span>First</span><p>Last</p></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_getRenderedElement$("<div><span>First</span><p>Last")');
+    expect(output).not.toContain('<span>First<p>');
+  });
+
+  it('serializes void tags with XML self-closing slashes', () => {
+    const inputCode = `
+      const element = <div><input disabled /><br /></div>;
+    `;
+
+    const output = transformCode(inputCode);
+
+    expect(output).toContain('_getRenderedElement$("<div><input disabled /><br />")');
+    expect(output).not.toContain('<input disabled><br>');
   });
 
   it('transforms JSX element with nested expressions and children', () => {

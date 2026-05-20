@@ -13,7 +13,7 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
-  tsconfig: '../../tsconfig.build.json',
+  tsconfig: './tsconfig.json',
   splitting: false,
   sourcemap: isDev,
   cjsInterop: true,

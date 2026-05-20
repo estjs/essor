@@ -1,7 +1,12 @@
 import { types as t } from '@babel/core';
-import { escapeHTML } from '@estjs/shared';
-import { type CompileContext, genUid, registerTemplate, useImport } from '../context';
-import { HYDRATION_ANCHOR_ATTR } from '../constants';
+import { HYDRATION_ANCHOR_ATTR, SPREAD_NAME, escapeHTML } from '@estjs/shared';
+import {
+  type CompileContext,
+  genUid,
+  getCompileContext,
+  registerTemplate,
+  useImport,
+} from '../context';
 import { serializeStaticAttrs } from './utils';
 import {
   type IRBind,
@@ -50,6 +55,10 @@ interface FlatNode {
   needsRef: boolean;
 }
 
+interface TemplateOptions {
+  omitClosingTags: boolean;
+}
+
 function hasOwnEffects(element: IRElement): boolean {
   return (
     element.dynamicAttrs.length > 0 ||
@@ -66,6 +75,83 @@ function isDynamicChild(node: IRNode | undefined): node is IRExpression | IRComp
   );
 }
 
+function getTemplateOptions(): TemplateOptions {
+  // Default true — matches DEFAULT_OPTIONS in options.ts
+  return {
+    omitClosingTags: getCompileContext().options.omitClosingTags ?? true,
+  };
+}
+
+function openTag(element: IRElement, attrs: string): string {
+  return `<${element.tag}${attrs}>`;
+}
+
+function selfClosingTag(element: IRElement, attrs: string): string {
+  return `<${element.tag}${attrs} />`;
+}
+
+function shouldCloseTag(
+  element: IRElement,
+  isLastElement: boolean,
+  hasClosingParent: boolean,
+  options: TemplateOptions,
+): boolean {
+  return !element.selfClosing && (!options.omitClosingTags || !isLastElement || hasClosingParent);
+}
+
+function closeTag(
+  element: IRElement,
+  isLastElement: boolean,
+  hasClosingParent: boolean,
+  options: TemplateOptions,
+): string {
+  return shouldCloseTag(element, isLastElement, hasClosingParent, options)
+    ? `</${element.tag}>`
+    : '';
+}
+
+function getDynamicAnchorKind(
+  children: IRNode[],
+  index: number,
+  mode: RenderMode,
+): 'comment' | 'element' | 'tail' {
+  if ((mode === 'client' || mode === 'hydrate') && !hasDynamicBoundary(children, index)) {
+    const next = children[index + 1];
+    if (mode === 'hydrate' && next?.type === IRType.ELEMENT) {
+      return 'element';
+    }
+    if (!next) {
+      return 'tail';
+    }
+  }
+  return 'comment';
+}
+
+// Scans from the end to find the last element whose closing tag can be omitted.
+// A trailing dynamic node is skippable only when getDynamicAnchorKind returns
+// 'tail' (i.e. it is the last child and has no following sibling that would
+// need the closing tag as a DOM boundary). Any other dynamic node or unknown
+// node type blocks omission, so we return -1 immediately.
+function findLastOmittableElementIndex(children: IRNode[], mode: RenderMode): number {
+  for (let i = children.length - 1; i >= 0; i--) {
+    const child = children[i];
+    if (!child) continue;
+    if (child.type === IRType.ELEMENT) {
+      return i;
+    }
+    if (
+      child.type === IRType.EXPRESSION ||
+      child.type === IRType.COMPONENT ||
+      child.type === IRType.FOR
+    ) {
+      if (getDynamicAnchorKind(children, i, mode) === 'tail') continue;
+      return -1;
+    }
+    return -1;
+  }
+  return -1;
+}
+
 /**
  * Single-pass walker that produces both the HTML template string and the
  * flat node list. `mode` controls HTML escaping on text nodes (hydrate keeps
@@ -76,6 +162,7 @@ function buildTemplateAndFlatten(
   mode: RenderMode,
 ): { template: string; nodes: FlatNode[] } {
   const nodes: FlatNode[] = [];
+  const options = getTemplateOptions();
   let template = '';
   let nextId = 0;
 
@@ -84,6 +171,8 @@ function buildTemplateAndFlatten(
     parentId: number,
     childIndex: number,
     forcedStaticIndex?: number,
+    isLastElement = false,
+    hasClosingParent = false,
   ): void {
     const myId = nextId++;
     const staticAttrs =
@@ -96,7 +185,7 @@ function buildTemplateAndFlatten(
     const attrs = serializeStaticAttrs(staticAttrs);
 
     if (element.selfClosing) {
-      template += `<${element.tag}${attrs}/>`;
+      template += selfClosingTag(element, attrs);
       nodes.push({
         id: myId,
         kind: 'element',
@@ -110,7 +199,8 @@ function buildTemplateAndFlatten(
       return;
     }
 
-    template += `<${element.tag}${attrs}>`;
+    const closes = shouldCloseTag(element, isLastElement, hasClosingParent, options);
+    template += openTag(element, attrs);
 
     const hasDynamicChildren = element.children.some(isDynamicChild);
 
@@ -129,6 +219,7 @@ function buildTemplateAndFlatten(
     let domChildIndex = 0;
     let markerIndex = 0;
     let pendingAnchorIndex: number | undefined;
+    const lastElementIndex = findLastOmittableElementIndex(element.children, mode);
     for (let i = 0; i < element.children.length; i++) {
       const child = element.children[i];
       switch (child.type) {
@@ -144,20 +235,21 @@ function buildTemplateAndFlatten(
           });
           break;
         case IRType.ELEMENT:
-          visit(child, myId, templateChildIndex++, pendingAnchorIndex);
+          visit(
+            child,
+            myId,
+            templateChildIndex++,
+            pendingAnchorIndex,
+            i === lastElementIndex,
+            closes,
+          );
           domChildIndex++;
           pendingAnchorIndex = undefined;
           break;
         case IRType.EXPRESSION:
         case IRType.COMPONENT:
         case IRType.FOR: {
-          const next = element.children[i + 1];
-          const anchorKind =
-            mode === 'hydrate' && !hasDynamicBoundary(element.children, i)
-              ? next?.type === IRType.ELEMENT
-                ? 'element'
-                : 'tail'
-              : 'comment';
+          const anchorKind = getDynamicAnchorKind(element.children, i, mode);
           const index = markerIndex++;
           if (anchorKind === 'comment') {
             template += '<!>';
@@ -186,10 +278,10 @@ function buildTemplateAndFlatten(
       }
     }
 
-    template += `</${element.tag}>`;
+    template += closeTag(element, isLastElement, hasClosingParent, options);
   }
 
-  visit(root, -1, 0);
+  visit(root, -1, 0, undefined, true, false);
   return { template, nodes };
 }
 
@@ -214,19 +306,30 @@ function isStaticSubtree(node: IRNode): boolean {
  * `isStaticSubtree` is true, so no anchors are needed).
  */
 function buildStaticTemplateString(node: IRNode, mode: RenderMode): string {
-  switch (node.type) {
-    case IRType.TEXT:
-      return mode === 'hydrate' ? node.value : escapeHTML(node.value);
-    case IRType.ELEMENT: {
-      const attrs = serializeStaticAttrs(node.staticAttrs);
-      if (node.selfClosing) return `<${node.tag}${attrs}/>`;
-      let html = `<${node.tag}${attrs}>`;
-      for (const child of node.children) html += buildStaticTemplateString(child, mode);
-      return `${html}</${node.tag}>`;
+  const options = getTemplateOptions();
+
+  function visit(current: IRNode, isLastElement: boolean, hasClosingParent: boolean): string {
+    switch (current.type) {
+      case IRType.TEXT:
+        return mode === 'hydrate' ? current.value : escapeHTML(current.value);
+      case IRType.ELEMENT: {
+        const attrs = serializeStaticAttrs(current.staticAttrs);
+        if (current.selfClosing) return selfClosingTag(current, attrs);
+        let html = openTag(current, attrs);
+        const closes = shouldCloseTag(current, isLastElement, hasClosingParent, options);
+        const lastElementIndex = findLastOmittableElementIndex(current.children, mode);
+        for (let i = 0; i < current.children.length; i++) {
+          const child = current.children[i];
+          html += visit(child, i === lastElementIndex, closes);
+        }
+        return html + closeTag(current, isLastElement, hasClosingParent, options);
+      }
+      default:
+        return '';
     }
-    default:
-      return '';
   }
+
+  return visit(node, true, false);
 }
 
 // ─── Navigation Planning ───────────────────
@@ -675,7 +778,7 @@ function emitSpread(
 ): void {
   emitPatchOrEffect(
     target,
-    '_$spread$',
+    SPREAD_NAME,
     spread.value,
     spread.kind,
     body,

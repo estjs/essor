@@ -29,9 +29,9 @@ export const IMPORTS_MAPS = [
   'addEventListener',
   // rendering related
   'render',
-  'convertToString',
-  'convertTextChildToString',
-  'markSafeHtml',
+  'toRawHtmlString',
+  'toEscapedHtmlString',
+  'markAsRawHtml',
   'escapeHTML',
   'getHydrationKey',
   'hydrationAnchor',
@@ -52,8 +52,8 @@ export const IMPORTS_MAPS = [
  * Only entries whose runtime helper differs from the client name need listing.
  */
 export const SERVER_IMPORT_REMAPS = {
-  createComponent: 'createSSGComponent',
-  patchAttr: 'setSSGAttr',
+  createComponent: 'createSSRComponent',
+  patchAttr: 'ssrAttrDynamic',
 } as const;
 
 /**
@@ -76,9 +76,9 @@ export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
  */
 const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
   'render',
-  'convertToString',
-  'convertTextChildToString',
-  'markSafeHtml',
+  'toRawHtmlString',
+  'toEscapedHtmlString',
+  'markAsRawHtml',
   'escapeHTML',
   'Fragment',
   'Portal',
@@ -105,4 +105,3 @@ export const TRANSFORM_PROPERTY_NAME = '__props';
 export const FRAGMENT_NAME = 'Fragment';
 export const UPDATE_PREFIX = 'update';
 export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;
-export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';

@@ -20,5 +20,5 @@ export default defineConfig({
     __DEV__: env !== 'production' ? 'true' : 'false',
   },
 
-  tsconfig: '../../tsconfig.build.json',
+  tsconfig: './tsconfig.json',
 });

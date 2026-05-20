@@ -6,4 +6,5 @@ export interface Options {
   props?: boolean;
   symbol?: '$';
   hmr?: boolean;
+  omitClosingTags?: boolean;
 }

@@ -13,14 +13,7 @@ export const UPDATE_PREFIX = 'update';
  */
 export const CHILDREN_PROP = 'children';
 
-/**
- * Internal markerless hydration anchor attribute.
- */
-export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx';
-/**
- * Key name for the Spread attribute
- */
-export const SPREAD_NAME = '_$spread$';
+export { HYDRATION_ANCHOR_ATTR, SPREAD_NAME } from '@estjs/shared';
 
 /**
  * used to get the DOM element reference

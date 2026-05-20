@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getHydrationKey } from '@estjs/template';
-import { createSSGComponent, render, renderToString } from '../src/render';
-import { convertTextChildToString } from '../src/utils';
+import { render, createSSRComponent, renderToString } from '../src/render';
+import { toEscapedHtmlString } from '../src/utils';
 
 describe('server/render', () => {
   describe('renderToString', () => {
@@ -39,21 +39,21 @@ describe('server/render', () => {
     });
   });
 
-  describe('createSSGComponent', () => {
+  describe('createSSRComponent', () => {
     it('creates ssg component string', () => {
       const Component = () => '<div>hello</div>';
-      expect(createSSGComponent(Component)).toBe('<div>hello</div>');
+      expect(createSSRComponent(Component)).toBe('<div>hello</div>');
     });
 
     it('passes props', () => {
       const Component = (props: any) => `<div>${props.msg}</div>`;
-      expect(createSSGComponent(Component, { msg: 'hello' })).toBe('<div>hello</div>');
+      expect(createSSRComponent(Component, { msg: 'hello' })).toBe('<div>hello</div>');
     });
 
     it('returns empty string and logs error if component is not a function', () => {
       const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       // @ts-ignore
-      expect(createSSGComponent(null)).toBe('');
+      expect(createSSRComponent(null)).toBe('');
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
@@ -78,7 +78,7 @@ describe('server/render', () => {
 
     it('escapes text child expressions before interpolation', () => {
       const templates = ['<div>', '</div>'];
-      const result = render(templates, '0', convertTextChildToString('<img src=x onerror=1>'));
+      const result = render(templates, '0', toEscapedHtmlString('<img src=x onerror=1>'));
       expect(result).toBe('<div data-hk="0">&lt;img src=x onerror=1&gt;</div>');
     });
   });

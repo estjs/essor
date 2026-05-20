@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": [],
+    "declaration": true,
+    "declarationMap": true,
+    "stripInternal": true
+  },
+  "include": ["src/**/*", "../../globals.d.ts"],
+  "exclude": ["node_modules", "dist", "**/test/**", "**/*.spec.ts", "**/*.test.ts"]
+}

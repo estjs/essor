@@ -9,7 +9,7 @@ import {
   setActiveScope,
 } from '@estjs/template/internal';
 import { type SSRContext, runWithSSRContext } from './context';
-import { addAttributes, convertToString } from './utils';
+import { injectHydrationKeys, toRawHtmlString } from './utils';
 
 /**
  * Runs `fn` inside a freshly created scope whose parent is the currently
@@ -26,6 +26,26 @@ function runInFreshScope<T>(fn: () => T, parent: Scope | null = getActiveScope()
 }
 
 /**
+ * Async variant of {@link runInFreshScope}. Keeps the scope alive across
+ * `await` boundaries by manually saving/restoring the active scope instead
+ * of using {@link runWithScope}.
+ */
+async function runInFreshScopeAsync<T>(
+  fn: () => Promise<T>,
+  parent: Scope | null = getActiveScope(),
+): Promise<T> {
+  const scope = createScope(parent);
+  const prevScope = getActiveScope();
+  setActiveScope(scope);
+  try {
+    return await fn();
+  } finally {
+    setActiveScope(prevScope);
+    disposeScope(scope);
+  }
+}
+
+/**
  * Render a component to HTML string.
  *
  * Each invocation runs inside its own root scope so that `provide()` calls
@@ -35,7 +55,7 @@ function runInFreshScope<T>(fn: () => T, parent: Scope | null = getActiveScope()
  * @param props - The props to pass to the component.
  * @param context - Optional {@link SSRContext} that collects out-of-tree
  *   render output (currently: `Portal`/`Teleport` content). The same context
- *   is visible to nested `createSSGComponent` calls; the caller integrates
+ *   is visible to nested `createSSRComponent` calls; the caller integrates
  *   `context.teleports[selector]` into the final document.
  * @returns {string} The rendered HTML string.
  */
@@ -62,7 +82,7 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
   }
 
   // Convert the result to string
-  return convertToString(result);
+  return toRawHtmlString(result);
 }
 
 /**
@@ -94,9 +114,9 @@ export function render(templates: string[], hydrationKey: string, ...components:
    *
    * function component(props) {
    *   return render(_tmpl, getHydrationKey(),
-   *     createSSGComponent(Component1, {}),
-   *     createSSGComponent(Component2, {}),
-   *     createSSGComponent(Component3, {})
+   *     createSSRComponent(Component1, {}),
+   *     createSSRComponent(Component2, {}),
+   *     createSSRComponent(Component3, {})
    *   );
    * }
    */
@@ -110,7 +130,7 @@ export function render(templates: string[], hydrationKey: string, ...components:
   for (let i = 0; i < templateLen; i++) {
     content += templates[i];
     if (i < componentLen && components[i]) {
-      content += convertToString(components[i]);
+      content += toRawHtmlString(components[i]);
     }
   }
 
@@ -118,16 +138,16 @@ export function render(templates: string[], hydrationKey: string, ...components:
     return content;
   }
 
-  // Add hydration key attribute (data-hk) to the root element
-  return addAttributes(content, hydrationKey);
+  // Inject hydration key attribute (data-hk) into the root element
+  return injectHydrationKeys(content, hydrationKey);
 }
 
 /**
  * Async variant of {@link renderToString}. Awaits component results so that
  * `async` components and promise-returning expressions can participate in SSR.
  *
- * The awaited value is passed through the same {@link convertToString}
- * pipeline as the synchronous path, which itself transparently awaits any
+ * The awaited value is passed through the same toRawHtmlString pipeline as the
+ * synchronous path, which itself transparently awaits any
  * nested promises (arrays of promises, promise-returning thunks, etc.).
  */
 export async function renderToStringAsync<P extends ComponentProps = ComponentProps>(
@@ -142,42 +162,40 @@ export async function renderToStringAsync<P extends ComponentProps = ComponentPr
 
   resetHydrationKey();
 
-  const scope = createScope(null);
-  const prevScope = getActiveScope();
-  setActiveScope(scope);
-  try {
-    // Keep both the SSR context and the reactive scope active for the entire
-    // async render lifetime. This ensures that Portal() calls after an `await`
-    // inside async components can still access `getSSRContext()`.
-    return await runWithSSRContext(context, async () => {
-      let result: unknown = component(props as P);
-      if (isPromise(result)) {
-        result = await result;
-      }
-      return convertToStringAsync(result);
-    });
-  } finally {
-    setActiveScope(prevScope);
-    disposeScope(scope);
-  }
+  // Keep both the SSR context and the reactive scope active for the entire
+  // async render lifetime. This ensures that Portal() calls after an `await`
+  // inside async components can still access `getSSRContext()`.
+  const result = await runInFreshScopeAsync(
+    () =>
+      runWithSSRContext(context, async () => {
+        let result: unknown = component(props as P);
+        if (isPromise(result)) {
+          result = await result;
+        }
+        return result;
+      }),
+    null,
+  );
+
+  return toRawHtmlStringAsync(result);
 }
 
 /**
- * Promise-aware variant of `convertToString` used by {@link renderToStringAsync}.
+ * Promise-aware variant of `toRawHtmlString` used by {@link renderToStringAsync}.
  * Recursively unwraps promises and arrays of promises.
  */
-async function convertToStringAsync(content: unknown): Promise<string> {
+async function toRawHtmlStringAsync(content: unknown): Promise<string> {
   if (isPromise(content)) {
-    return convertToStringAsync(await content);
+    return toRawHtmlStringAsync(await content);
   }
   if (Array.isArray(content)) {
-    const parts = await Promise.all(content.map((c) => convertToStringAsync(c)));
+    const parts = await Promise.all(content.map((c) => toRawHtmlStringAsync(c)));
     return parts.join('');
   }
   if (isFunction(content)) {
-    return convertToStringAsync((content as () => unknown)());
+    return toRawHtmlStringAsync((content as () => unknown)());
   }
-  return convertToString(content);
+  return toRawHtmlString(content);
 }
 
 /**
@@ -191,19 +209,19 @@ async function convertToStringAsync(content: unknown): Promise<string> {
  * @param props - The props to pass to the component.
  * @returns {string} The rendered component as a string.
  */
-export function createSSGComponent<P extends ComponentProps = ComponentProps>(
+export function createSSRComponent<P extends ComponentProps = ComponentProps>(
   component: ComponentFn<P>,
   props: P | ComponentProps = {},
 ): string {
   if (!isFunction(component)) {
-    error('createSSGComponent: Component is not a function');
+    error('createSSRComponent: Component is not a function');
     return '';
   }
 
   // Inherit the active scope (set by the enclosing renderToString call or by
-  // an outer createSSGComponent) so that provide/inject follow the component
+  // an outer createSSRComponent) so that provide/inject follow the component
   // tree hierarchy.
   const result = runInFreshScope(() => component(props as P));
 
-  return convertToString(result);
+  return toRawHtmlString(result);
 }

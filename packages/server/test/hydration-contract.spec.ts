@@ -10,7 +10,7 @@ import {
   nthChild,
   resetHydrationKey,
 } from '../../template/src';
-import { convertTextChildToString } from '../src/utils';
+import { toEscapedHtmlString } from '../src/utils';
 import { render } from '../src/render';
 
 describe('server/client hydration contract', () => {
@@ -30,7 +30,7 @@ describe('server/client hydration contract', () => {
     root.innerHTML = render(
       ['<p>', '<!--0-->!</p>'],
       '0',
-      convertTextChildToString(['Hello, ', 'John']),
+      toEscapedHtmlString(['Hello, ', 'John']),
     );
     document.body.appendChild(root);
 

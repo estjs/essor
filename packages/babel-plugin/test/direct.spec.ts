@@ -150,6 +150,14 @@ describe('babel plugin direct helpers', () => {
   });
 
   describe('context helpers', () => {
+    it('keeps omitClosingTags enabled by default and allows opting out', () => {
+      expect(resolveOptions({ mode: 'server' }, 'options.tsx').omitClosingTags).toBe(true);
+      expect(
+        resolveOptions({ mode: 'server', omitClosingTags: false }, 'options.tsx')
+          .omitClosingTags,
+      ).toBe(false);
+    });
+
     it('maps helper identifiers according to render mode', () => {
       const path = getProgramPath('const value = 1;');
 
@@ -157,8 +165,8 @@ describe('babel plugin direct helpers', () => {
       const hydrateIds = createImportIdentifiers(path, 'hydrate');
       const clientIds = createImportIdentifiers(path, 'client');
 
-      expect(serverIds.createComponent.name).toContain('createSSGComponent');
-      expect(serverIds.patchAttr.name).toContain('setSSGAttr');
+      expect(serverIds.createComponent.name).toContain('createSSRComponent');
+      expect(serverIds.patchAttr.name).toContain('ssrAttrDynamic');
       expect(hydrateIds.template.name).toContain('getRenderedElement');
       expect(hydrateIds.patchStyle.name).toContain('patchStyleHydrate');
       expect(clientIds.template.name).toContain('template');

@@ -23,6 +23,7 @@ const DEFAULT_OPTIONS = {
   props: true,
   hmr: true,
   enableFor: false,
+  omitClosingTags: true,
 };
 
 /**

@@ -18,7 +18,7 @@ export default defineConfig({
   cjsInterop: true,
   sourcemap: false,
   minify: !isDev,
-  tsconfig: '../../tsconfig.build.json',
+  tsconfig: './tsconfig.json',
   external: ['@estjs/shared'],
   define: {
     __DEV__: isDev ? 'true' : 'false',
