@@ -79,8 +79,8 @@ function sumMs(delays: string, durations: string): number {
   const d = delays.split(', ');
   const u = durations.split(', ');
   let max = 0;
-  for (let i = 0; i < u.length; i++) {
-    const total = toMs(u[i]) + toMs(d[i % d.length] || '0s');
+  for (const [i, dur] of u.entries()) {
+    const total = toMs(dur) + toMs(d[i % d.length] || '0s');
     if (total > max) max = total;
   }
   return max;
@@ -168,4 +168,3 @@ export function Transition(props: TransitionProps): Node {
 export function isTransition(node: unknown): boolean {
   return !!node && !!(node as Record<symbol, unknown>)[TRANSITION_COMPONENT];
 }
-
