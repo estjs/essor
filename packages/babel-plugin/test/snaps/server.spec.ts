@@ -947,4 +947,14 @@ describe('jsx server transform', () => {
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it('Transition: SSR output contains the child markup with no animation classes', () => {
+    const inputCode = `
+    const r = <Transition name="fade"><div class="box">hi</div></Transition>
+    `;
+    const out = transformCode(inputCode);
+    expect(out).not.toMatch(/fade-enter-from|fade-enter-active|fade-enter-to/);
+    expect(out).not.toMatch(/fade-leave-from|fade-leave-active|fade-leave-to/);
+    expect(out).toContain('Transition');
+  });
 });

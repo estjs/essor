@@ -137,6 +137,25 @@ function resolveSlot(props: TransitionProps): unknown {
   return typeof c === 'function' ? (c as () => unknown)() : c;
 }
 
+function validateSlot(value: unknown): Element | null {
+  if (value == null || value === false) return null;
+  if (Array.isArray(value)) {
+    if (__DEV__) {
+      throw new Error(
+        '[essor] <Transition> expects a single root child. Use <TransitionGroup> for multiple children.',
+      );
+    }
+    return value[0] instanceof Element ? value[0] : null;
+  }
+  if (value instanceof Element) return value;
+  if (__DEV__) {
+    console.warn(
+      '[essor] <Transition> received a non-element child; animation will be skipped.',
+    );
+  }
+  return null;
+}
+
 type State = 'idle' | 'entering' | 'entered' | 'leaving';
 
 export function Transition(props: TransitionProps): Node {
@@ -295,8 +314,7 @@ export function Transition(props: TransitionProps): Node {
 
   onMount(() => {
     effect(() => {
-      const next = resolveSlot(props);
-      const nextEl = next instanceof Element ? next : null;
+      const nextEl = validateSlot(resolveSlot(props));
       const isFirst = !mounted;
       mounted = true;
 

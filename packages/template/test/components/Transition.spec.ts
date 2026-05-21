@@ -764,3 +764,79 @@ describe('Transition cancellation: leave→enter (T14)', () => {
     cleanupContext(ctx);
   });
 });
+
+describe('Transition disposal (T15)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+
+  it('removes the element synchronously when Transition scope is cleaned up mid-leave', async () => {
+    const show = signal(true);
+    const after = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onAfterLeave: after,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    show.value = false;
+    await Promise.resolve();
+    expect(container.querySelector('.box')).not.toBeNull();
+    popContextStack();
+    cleanupContext(ctx);   // destroys Transition's scope mid-leave
+    expect(container.querySelector('.box')).toBeNull();
+  });
+});
+
+describe('Transition validation (T16)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+
+  it('throws in __DEV__ when slot resolves to multiple elements', async () => {
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      children: () => [document.createElement('div'), document.createElement('div')],
+    });
+    container.appendChild(anchor);
+    expect(() => flushMount(ctx)).toThrow(/single root child/);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('warns in __DEV__ when slot resolves to a text node / primitive', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({ children: () => 'plain text' as any });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/non-element/i));
+    warn.mockRestore();
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
