@@ -38,9 +38,12 @@ export const IMPORTS_MAPS = [
   'hydrationMarker',
   // server attr helpers
   'ssrAttr',
+  'ssrBind',
   'ssrClass',
+  'ssrSelected',
   'ssrStyle',
   'ssrSpread',
+  'ssrTextValue',
   // DOM navigation helpers
   'child',
   'next',
@@ -85,9 +88,12 @@ const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
   'Suspense',
   'getHydrationKey',
   'ssrAttr',
+  'ssrBind',
   'ssrClass',
+  'ssrSelected',
   'ssrStyle',
   'ssrSpread',
+  'ssrTextValue',
   'createComponent',
   'patchAttr',
 ];
@@ -103,5 +109,4 @@ export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, na
 // jsx function props transform property name
 export const TRANSFORM_PROPERTY_NAME = '__props';
 export const FRAGMENT_NAME = 'Fragment';
-export const UPDATE_PREFIX = 'update';
 export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;

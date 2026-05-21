@@ -4,11 +4,6 @@
 export const EVENT_PREFIX = 'on';
 
 /**
- * update prefix, used to identify update callback properties
- */
-export const UPDATE_PREFIX = 'update';
-
-/**
  * children property name
  */
 export const CHILDREN_PROP = 'children';

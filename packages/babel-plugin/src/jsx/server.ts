@@ -14,6 +14,20 @@ import { buildComponentInvocation, buildForCall, renderChildExpressions } from '
 
 const serverTextEscapeRE = /[&<>]/g;
 
+interface SSRBindElementContext {
+  tag?: string;
+  type?: t.Expression | null;
+}
+
+interface ServerBindExpression {
+  value: t.Expression;
+  modifiers: t.Expression | null;
+}
+
+interface ServerElementOptions {
+  prependAttrExprs?: t.Expression[];
+}
+
 function markSafeHtmlCall(expression: t.Expression): t.Expression {
   return t.callExpression(useImport('markAsRawHtml'), [expression]);
 }
@@ -78,6 +92,113 @@ function escapeServerTemplateText(value: string): string {
         return char;
     }
   });
+}
+
+function unwrapServerBindValue(value: t.Expression): ServerBindExpression {
+  if (
+    t.isArrayExpression(value) &&
+    value.elements.length === 2 &&
+    value.elements[0] != null &&
+    !t.isSpreadElement(value.elements[0])
+  ) {
+    return {
+      value: value.elements[0] as t.Expression,
+      modifiers: value.elements[1] as t.Expression,
+    };
+  }
+  return { value, modifiers: null };
+}
+
+function findBind(node: IRElement, name: string): ServerBindExpression | null {
+  const bind = node.binds.find((entry) => entry.name === name);
+  return bind ? unwrapServerBindValue(bind.value) : null;
+}
+
+function getStaticStringAttr(node: IRElement, name: string): string | null {
+  const attr = node.staticAttrs.find((entry) => entry.name === name);
+  return attr && typeof attr.value === 'string' ? attr.value : null;
+}
+
+function getDynamicAttrExpression(node: IRElement, name: string): t.Expression | null {
+  return node.dynamicAttrs.find((entry) => entry.name === name)?.value ?? null;
+}
+
+function getAttrExpression(node: IRElement, name: string): t.Expression | null {
+  const dynamic = getDynamicAttrExpression(node, name);
+  if (dynamic) return t.cloneNode(dynamic, true);
+  const staticValue = getStaticStringAttr(node, name);
+  return staticValue == null ? null : t.stringLiteral(staticValue);
+}
+
+function getOptionValueExpression(node: IRElement): t.Expression | null {
+  const attrValue = getAttrExpression(node, 'value');
+  if (attrValue) return attrValue;
+  const text = node.children.every((child) => child.type === IRType.TEXT)
+    ? node.children.map((child) => (child.type === IRType.TEXT ? child.value : '')).join('')
+    : '';
+  return text ? t.stringLiteral(text) : null;
+}
+
+function createServerBindContextExpression(
+  context: SSRBindElementContext,
+): t.ObjectExpression | null {
+  const props: t.ObjectProperty[] = [];
+  if (context.tag) {
+    props.push(t.objectProperty(t.identifier('tag'), t.stringLiteral(context.tag)));
+  }
+  if (context.type) {
+    props.push(t.objectProperty(t.identifier('type'), context.type));
+  }
+  return props.length > 0 ? t.objectExpression(props) : null;
+}
+
+function getBindElementContext(node: IRElement): SSRBindElementContext {
+  if (node.tag === 'input') {
+    return {
+      tag: 'input',
+      type: getAttrExpression(node, 'type'),
+    };
+  }
+  if (node.tag === 'select') return { tag: 'select' };
+  if (node.tag === 'textarea') return { tag: 'textarea' };
+  return {};
+}
+
+function createSSRBindExpression(
+  node: IRElement,
+  name: string,
+  value: t.Expression,
+  modifiers: t.Expression | null,
+): t.Expression | null {
+  if (name === 'value' && (node.tag === 'select' || node.tag === 'textarea')) {
+    return null;
+  }
+
+  const ownValue = name === 'checked' ? getAttrExpression(node, 'value') : null;
+  const context = createServerBindContextExpression(getBindElementContext(node));
+  const args: t.Expression[] = [t.stringLiteral(name), t.cloneNode(value, true)];
+
+  if (modifiers || ownValue || context) {
+    args.push(modifiers ? t.cloneNode(modifiers, true) : t.identifier('undefined'));
+  }
+  if (ownValue || context) {
+    args.push(ownValue ? t.cloneNode(ownValue, true) : t.identifier('undefined'));
+  }
+  if (context) {
+    args.push(context);
+  }
+
+  return t.callExpression(useImport('ssrBind'), args);
+}
+
+function createSSRSelectedExpression(
+  selectValue: t.Expression,
+  optionValue: t.Expression,
+): t.Expression {
+  return t.callExpression(useImport('ssrSelected'), [
+    t.cloneNode(selectValue, true),
+    t.cloneNode(optionValue, true),
+  ]);
 }
 
 // ─── Server Node Generation ────────────────
@@ -147,8 +268,9 @@ function generateServerElement(
   ctx: CompileContext,
   withHydrationKey = true,
   staticIndex?: number,
+  options: ServerElementOptions = {},
 ): t.Expression {
-  const dynamicAttrExprs: t.Expression[] = [];
+  const dynamicAttrExprs: t.Expression[] = [...(options.prependAttrExprs ?? [])];
   for (const attr of node.dynamicAttrs) {
     let expr: t.Expression;
     if (attr.name === 'class') {
@@ -169,6 +291,15 @@ function generateServerElement(
     );
   }
 
+  // bind:* — render initial value into HTML so the markup matches what the
+  // client will eventually show after hydration. Unwraps the tuple form
+  // `[signal, modifiers]` so modifiers like { trim } are honoured server-side.
+  for (const bind of node.binds) {
+    const { value, modifiers } = unwrapServerBindValue(bind.value);
+    const expr = createSSRBindExpression(node, bind.name, value, modifiers);
+    if (expr) dynamicAttrExprs.push(expr);
+  }
+
   const templates: string[] = [];
   const expressions: t.Expression[] = [];
   const staticAttrs =
@@ -176,6 +307,7 @@ function generateServerElement(
       ? node.staticAttrs
       : [...node.staticAttrs, { name: HYDRATION_ANCHOR_ATTR, value: String(staticIndex) }];
   const attrs = serializeStaticAttrs(staticAttrs);
+  const textareaValueBind = node.tag === 'textarea' ? findBind(node, 'value') : null;
 
   let currentStr = `<${node.tag}`;
 
@@ -187,38 +319,65 @@ function generateServerElement(
     }
   }
 
-  currentStr += `${attrs}${node.selfClosing ? ' />' : '>'}`;
+  const isSelfClosing = node.selfClosing && !textareaValueBind;
+  currentStr += `${attrs}${isSelfClosing ? ' />' : '>'}`;
 
-  if (!node.selfClosing) {
-    let markerIndex = 0;
-    let pendingAnchorIndex: number | undefined;
-    for (let i = 0; i < node.children.length; i++) {
-      const child = node.children[i];
-      if (child.type === IRType.TEXT) {
-        currentStr += escapeServerTemplateText(child.value);
-      } else if (
-        child.type === IRType.EXPRESSION ||
-        child.type === IRType.COMPONENT ||
-        child.type === IRType.FOR
-      ) {
-        const marker = hasDynamicBoundary(node.children, i);
-        const slotIndex = markerIndex++;
-        templates.push(currentStr);
-        currentStr = marker ? `<!--${slotIndex}-->` : '';
-        if (!marker && node.children[i + 1]?.type === IRType.ELEMENT) {
-          pendingAnchorIndex = slotIndex;
-        }
-        expressions.push(generateServerNode(child, ctx));
-      } else if (child.type === IRType.ELEMENT) {
-        const anchorIndex = pendingAnchorIndex;
-        pendingAnchorIndex = undefined;
-        const staticHTML = buildStaticServerHTML(child, anchorIndex);
-        if (staticHTML !== null) {
-          currentStr += staticHTML;
-        } else {
+  if (!isSelfClosing) {
+    if (textareaValueBind) {
+      templates.push(currentStr);
+      currentStr = '';
+      const args: t.Expression[] = [t.cloneNode(textareaValueBind.value, true)];
+      if (textareaValueBind.modifiers) {
+        args.push(t.cloneNode(textareaValueBind.modifiers, true));
+      }
+      expressions.push(t.callExpression(useImport('ssrTextValue'), args));
+    } else {
+      let markerIndex = 0;
+      let pendingAnchorIndex: number | undefined;
+      const selectValueBind = node.tag === 'select' ? findBind(node, 'value') : null;
+      for (let i = 0; i < node.children.length; i++) {
+        const child = node.children[i];
+        if (child.type === IRType.TEXT) {
+          currentStr += escapeServerTemplateText(child.value);
+        } else if (
+          child.type === IRType.EXPRESSION ||
+          child.type === IRType.COMPONENT ||
+          child.type === IRType.FOR
+        ) {
+          const marker = hasDynamicBoundary(node.children, i);
+          const slotIndex = markerIndex++;
           templates.push(currentStr);
-          currentStr = '';
-          expressions.push(generateServerElement(child, ctx, false, anchorIndex));
+          currentStr = marker ? `<!--${slotIndex}-->` : '';
+          if (!marker && node.children[i + 1]?.type === IRType.ELEMENT) {
+            pendingAnchorIndex = slotIndex;
+          }
+          expressions.push(generateServerNode(child, ctx));
+        } else if (child.type === IRType.ELEMENT) {
+          const anchorIndex = pendingAnchorIndex;
+          pendingAnchorIndex = undefined;
+          if (selectValueBind && child.tag === 'option') {
+            const optionValue = getOptionValueExpression(child);
+            if (optionValue) {
+              templates.push(currentStr);
+              currentStr = '';
+              expressions.push(
+                generateServerElement(child, ctx, false, anchorIndex, {
+                  prependAttrExprs: [
+                    createSSRSelectedExpression(selectValueBind.value, optionValue),
+                  ],
+                }),
+              );
+              continue;
+            }
+          }
+          const staticHTML = buildStaticServerHTML(child, anchorIndex);
+          if (staticHTML !== null) {
+            currentStr += staticHTML;
+          } else {
+            templates.push(currentStr);
+            currentStr = '';
+            expressions.push(generateServerElement(child, ctx, false, anchorIndex));
+          }
         }
       }
     }
@@ -271,7 +430,7 @@ function generateServerInlineComponent(node: IRComponent, ctx: CompileContext): 
  * Serializes a fully static element subtree for server output.
  */
 function buildStaticServerHTML(node: IRElement, staticIndex?: number): string | null {
-  if (node.dynamicAttrs.length > 0 || node.spreads.length > 0) {
+  if (node.binds.length > 0 || node.dynamicAttrs.length > 0 || node.spreads.length > 0) {
     return null;
   }
 
@@ -289,6 +448,7 @@ function buildStaticServerHTML(node: IRElement, staticIndex?: number): string | 
     if (child.type === IRType.TEXT) {
       html += escapeServerTemplateText(child.value);
     } else if (child.type === IRType.ELEMENT) {
+      if (child.binds.length > 0) return null;
       const nested = buildStaticServerHTML(child);
       if (nested === null) return null;
       html += nested;

@@ -370,6 +370,105 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('emits ssrBind for bind:value with signal', () => {
+    const inputCode = `
+    const $name = '';
+    <input bind:value={$name} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('"value"');
+  });
+
+  it('emits ssrBind for bind nested inside an otherwise static parent', () => {
+    const inputCode = `
+    const $name = '';
+    <form><input bind:value={$name} /></form>;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).not.toContain('"<form><input /></form>"');
+  });
+
+  it('emits ssrBind with trim modifier', () => {
+    const inputCode = `
+    const $name = '';
+    <input bind:value={[$name, { trim: true }]} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('trim');
+  });
+
+  it('emits ssrBind for bind:checked', () => {
+    const inputCode = `
+    const $agree = false;
+    <input type="checkbox" bind:checked={$agree} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('"checked"');
+  });
+
+  it('emits ssrBind with ownValue for checkbox group', () => {
+    const inputCode = `
+    const $skills = [];
+    <input type="checkbox" value="ts" bind:checked={$skills} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('"checked"');
+    expect(output).toContain('"ts"');
+  });
+
+  it('emits dynamic own value for checkbox group SSR', () => {
+    const inputCode = `
+    const skill = { id: 'ts' };
+    const $skills = [];
+    <input type="checkbox" value={skill.id} bind:checked={$skills} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('skill.id');
+    expect(output).toContain('ssrBind');
+  });
+
+  it('emits radio SSR bind with element type and own value context', () => {
+    const inputCode = `
+    const $theme = 'dark';
+    <input type="radio" value="dark" bind:checked={$theme} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('"radio"');
+    expect(output).toContain('"dark"');
+  });
+
+  it('emits selected SSR bindings for select value binding', () => {
+    const inputCode = `
+    const $city = 'shanghai';
+    <select bind:value={$city}>
+      <option value="beijing">Beijing</option>
+      <option value="shanghai">Shanghai</option>
+    </select>;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrSelected');
+    expect(output).toContain('"shanghai"');
+    expect(output).not.toContain('ssrAttr("selected"');
+    expect(output).not.toContain('ssrBind("value", $city.value)');
+  });
+
+  it('emits textarea SSR value as escaped text content', () => {
+    const inputCode = `
+    const $bio = '<hello>';
+    <textarea bind:value={$bio} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('ssrTextValue');
+    expect(output).not.toContain('ssrBind("value", $bio.value)');
+  });
+
+  it('does not emit ssrBind for bind:files', () => {
+    const inputCode = `
+    let $files = null;
+    <input type="file" bind:files={$files} />;`;
+    const output = transformCode(inputCode);
+    // files binding is present in output but ssrBind("files",...) returns '' at runtime
+    expect(output).toContain('ssrBind');
+    expect(output).toContain('"files"');
+  });
+
   it('should work with event handlers in server', () => {
     const inputCode = `
       const handleClick = () => console.log('clicked');

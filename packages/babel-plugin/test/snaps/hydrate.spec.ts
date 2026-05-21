@@ -377,6 +377,42 @@ describe('jsx hydrate transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('emits bindElement for bind:value with signal in hydrate mode', () => {
+    const inputCode = `
+    const $name = '';
+    <input bind:value={$name} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('"value"');
+  });
+
+  it('emits bindElement with modifier tuple in hydrate mode', () => {
+    const inputCode = `
+    const $name = '';
+    <input bind:value={[$name, { trim: true }]} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('trim');
+  });
+
+  it('emits bindElement for bind:checked in hydrate mode', () => {
+    const inputCode = `
+    const $agree = false;
+    <input type="checkbox" bind:checked={$agree} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('"checked"');
+  });
+
+  it('emits bindElement for checkbox group in hydrate mode', () => {
+    const inputCode = `
+    const $skills = [];
+    <input type="checkbox" value="ts" bind:checked={$skills} />;`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toContain('"checked"');
+  });
+
   it('should work with event handlers in hydrate', () => {
     const inputCode = `
       const handleClick = () => console.log('clicked');

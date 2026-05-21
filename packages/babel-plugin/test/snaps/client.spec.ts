@@ -471,6 +471,49 @@ describe('should work with jsx client transform', () => {
     expect(output).toContain('"value"');
   });
 
+  it('passes tuple modifier object through to bindElement', () => {
+    const inputCode = `
+    const value = '';
+    <input bind:value={[value, { trim: true, number: true, lazy: true }]} />`;
+    const output = transformCode(inputCode);
+    expect(output).toContain('bindElement');
+    expect(output).toMatch(/trim:\s*true/);
+    expect(output).toMatch(/number:\s*true/);
+    expect(output).toMatch(/lazy:\s*true/);
+  });
+
+  it('throws at compile time on unknown bind modifier', () => {
+    const inputCode = `
+    const value = '';
+    <input bind:value={[value, { trimm: true }]} />`;
+    expect(() => transformCode(inputCode)).toThrow(/Unknown bind:value modifier/);
+  });
+
+  it('compiles bind on a component to value + update:value props', () => {
+    const inputCode = `
+    function MyInput(props) { return <input />; }
+    const value = '';
+    <MyInput bind:value={value} />`;
+    const output = transformCode(inputCode);
+    // Two normal props, no tuple wrapper.
+    expect(output).toContain('value');
+    expect(output).toContain('"update:value"');
+    // No accidental `on` prefix — `update:value` must not be treated as a
+    // DOM event handler.
+    expect(output).not.toMatch(/['"]onUpdate:value['"]/);
+  });
+
+  it('unwraps tuple modifier when bind is on a component (modifier dropped)', () => {
+    const inputCode = `
+    function MyInput(props) { return <input />; }
+    const value = '';
+    <MyInput bind:value={[value, { trim: true }]} />`;
+    const output = transformCode(inputCode);
+    // Component receives the bare signal as `value` + a setter as `update:value`.
+    expect(output).toContain('"update:value"');
+    expect(output).not.toContain('trim');
+  });
+
   it('should work with comment in JSX', () => {
     const inputCode = `
     const value = 1;

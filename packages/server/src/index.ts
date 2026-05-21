@@ -4,7 +4,7 @@ export { escapeHTML } from '@estjs/shared';
 export { ssrAttrDynamic, normalizeProps } from './attrs';
 
 // SSR attribute helpers (used by babel-plugin server-mode codegen)
-export { ssrAttr, ssrClass, ssrStyle, ssrSpread } from './ssr';
+export { ssrAttr, ssrBind, ssrClass, ssrSelected, ssrStyle, ssrSpread, ssrTextValue } from './ssr';
 
 // SSR versions of built-in components
 export {

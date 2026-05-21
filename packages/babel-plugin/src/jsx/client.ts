@@ -717,6 +717,31 @@ function emitEvent(event: IREvent, target: t.Expression, body: t.Statement[]): v
   }
 }
 
+// Modifier whitelist — keep in sync with `BindModifiers` in `packages/template/src/binding.ts`.
+const ALLOWED_BIND_MODIFIERS = new Set(['trim', 'number', 'lazy']);
+
+/**
+ * Validates a tuple `bind:` modifier object literal. Unknown keys → throw at
+ * compile time so typos like `{ trimm: true }` are caught instead of silently
+ * ignored.
+ */
+function validateBindModifiers(modifiers: t.Expression, bindName: string): void {
+  if (!t.isObjectExpression(modifiers)) return; // dynamic — can't validate
+  for (const prop of modifiers.properties) {
+    if (!t.isObjectProperty(prop) || prop.computed) continue;
+    const key = t.isIdentifier(prop.key)
+      ? prop.key.name
+      : t.isStringLiteral(prop.key)
+        ? prop.key.value
+        : null;
+    if (key && !ALLOWED_BIND_MODIFIERS.has(key)) {
+      throw new Error(
+        `[essor] Unknown bind:${bindName} modifier "${key}". Allowed: ${[...ALLOWED_BIND_MODIFIERS].join(', ')}.`,
+      );
+    }
+  }
+}
+
 /**
  * Emits bind.
  */
@@ -732,6 +757,7 @@ function emitBind(bind: IRBind, target: t.Expression, body: t.Statement[]): void
   ) {
     valueExpr = bind.value.elements[0] as t.Expression;
     modifiersArg = bind.value.elements[1] as t.Expression;
+    validateBindModifiers(modifiersArg, bind.name);
   }
 
   const args: t.Expression[] = [

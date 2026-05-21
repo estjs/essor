@@ -10,7 +10,6 @@ import {
   registerTemplate,
   setCompileContext,
 } from '../src/context';
-import { UPDATE_PREFIX } from '../src/constants';
 import { buildComponentPropsExpression } from '../src/jsx/component-props';
 import { type IRComponent, IRType, buildIR } from '../src/jsx/ir';
 import { resolveOptions } from '../src/options';
@@ -131,7 +130,7 @@ describe('babel plugin direct helpers', () => {
       }
 
       expect(ir.props.map((prop) => prop.name)).toEqual(
-        expect.arrayContaining(['onClick', `${UPDATE_PREFIX}:model`]),
+        expect.arrayContaining(['onClick', 'model', 'update:model']),
       );
       expect(ir.spreads).toHaveLength(1);
       expect(ir.children).toHaveLength(1);

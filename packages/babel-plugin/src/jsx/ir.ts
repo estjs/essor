@@ -1,6 +1,6 @@
 import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString, startsWith } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
-import { TRANSFORM_PROPERTY_NAME, UPDATE_PREFIX } from '../constants';
+import { TRANSFORM_PROPERTY_NAME } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
 import { createBindingSetter } from './emitters';
 import {
@@ -222,10 +222,33 @@ function buildComponentIR(
       });
     } else if (startsWith(attr.name, 'bind:')) {
       const binding = attr.name.slice('bind:'.length);
+      // Two-way binding sugar on components: `bind:x={$v}` → two normal props,
+      // `x={$v}` (the current value) + `update:x={(_v$) => $v = _v$}` (the
+      // setter callback). Modifiers on the tuple form are dropped at the
+      // component boundary — they belong to the DOM leaf, not the component
+      // contract.
+      let valueExpr = attr.value;
+      if (
+        t.isArrayExpression(attr.value) &&
+        attr.value.elements.length === 2 &&
+        attr.value.elements[0] != null &&
+        !t.isSpreadElement(attr.value.elements[0])
+      ) {
+        valueExpr = attr.value.elements[0] as t.Expression;
+      }
       props.push({
-        name: `${UPDATE_PREFIX}:${binding}`,
-        value: t.arrayExpression([t.cloneNode(attr.value), createBindingSetter(attr.value)]),
+        name: binding,
+        value: t.cloneNode(valueExpr),
         kind: attr.effectKind,
+      });
+      // The setter is a static arrow function — it captures the assignment
+      // target by reference and never reads reactive state itself. Marking
+      // it `static` keeps a single function identity across renders instead
+      // of allocating a fresh closure on every prop access via a getter.
+      props.push({
+        name: `update:${binding}`,
+        value: createBindingSetter(valueExpr),
+        kind: 'static',
       });
     } else {
       props.push({

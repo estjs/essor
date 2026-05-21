@@ -4,9 +4,9 @@ exports[`hMR - Rspack Platform > should work with rspack 1`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
-var _t$3 = _template$("<div><!><!></div>");
-var _t$2 = _template$("<div>Bar</div>");
-var _t$ = _template$("<div>Foo</div>");
+var _t$3 = _template$("<div><!><!>");
+var _t$2 = _template$("<div>Bar");
+var _t$ = _template$("<div>Foo");
 import { createApp } from "essor";
 function Foo() {
     return _t$();
@@ -48,9 +48,9 @@ exports[`hMR - Rspack Platform > should work with rspack 2`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
-var _t$3 = _template$("<div><!><!></div>");
-var _t$2 = _template$("<div>B</div>");
-var _t$ = _template$("<div>A</div>");
+var _t$3 = _template$("<div><!><!>");
+var _t$2 = _template$("<div>B");
+var _t$ = _template$("<div>A");
 import { createApp } from 'essor';
 export function ComponentA() {
     return _t$();
@@ -92,7 +92,7 @@ exports[`hMR - Rspack Platform > should work with rspack 3`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
-var _t$ = _template$("<div>Hello <!></div>");
+var _t$ = _template$("<div>Hello <!>");
 import { createApp } from 'essor';
 function PropsComponent(props) {
     return function() {
@@ -126,7 +126,7 @@ exports[`hMR - Rspack Platform > should work with rspack 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
-var _t$ = _template$("<div>Count: <!></div>");
+var _t$ = _template$("<div>Count: <!>");
 import { createApp, signal } from 'essor';
 function SignalComponent() {
     var count = signal(0);

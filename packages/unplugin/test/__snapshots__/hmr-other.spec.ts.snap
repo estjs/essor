@@ -410,9 +410,9 @@ function hmrAccept(bundlerType, hot, registry) {
   return true;
 }
 
-const _t$3 = template("<div><!><!></div>");
-const _t$2 = template("<div>Bar</div>");
-const _t$ = template("<div>Foo</div>");
+const _t$3 = template("<div><!><!>");
+const _t$2 = template("<div>Bar");
+const _t$ = template("<div>Foo");
 function Foo() {
   return _t$();
 }
@@ -854,9 +854,9 @@ function hmrAccept(bundlerType, hot, registry) {
   return true;
 }
 
-const _t$3 = template("<div><!><!></div>");
-const _t$2 = template("<div>B</div>");
-const _t$ = template("<div>A</div>");
+const _t$3 = template("<div><!><!>");
+const _t$2 = template("<div>B");
+const _t$ = template("<div>A");
 function ComponentA() {
   return _t$();
 }
@@ -1298,7 +1298,7 @@ function hmrAccept(bundlerType, hot, registry) {
   return true;
 }
 
-const _t$ = template("<div>Hello <!></div>");
+const _t$ = template("<div>Hello <!>");
 function PropsComponent(props) {
   return (() => {
     const _root$ = _t$();
@@ -1730,7 +1730,7 @@ function hmrAccept(bundlerType, hot, registry) {
   return true;
 }
 
-const _t$ = template("<div>Count: <!></div>");
+const _t$ = template("<div>Count: <!>");
 function SignalComponent() {
   const count = signal(0);
   return (() => {

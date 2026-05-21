@@ -23,18 +23,20 @@ const element = _createSSRComponent$(AsyncComponent, {
 `;
 
 exports[`jsx server transform > should work with bind api 1`] = `
-"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<div><p>Paragraph 1</p><p>Paragraph 2</p></div>"];
+"import { ssrBind as _ssrBind$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
+const _tmpl$2 = ["<div>", "<p>Paragraph 2</p></div>"];
+const _tmpl$ = ["<p", ">Paragraph 1</p>"];
 const value = 1;
-_render$(_tmpl$, _getHydrationKey$());"
+_render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _ssrBind$("value", value)));"
 `;
 
 exports[`jsx server transform > should work with comment in JSX 1`] = `
 "import { signal as _signal$ } from "essor";
-import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<div><p>Paragraph 1</p><p>Paragraph 2</p></div>"];
+import { ssrBind as _ssrBind$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
+const _tmpl$2 = ["<div>", "<p>Paragraph 2</p></div>"];
+const _tmpl$ = ["<p", ">Paragraph 1</p>"];
 const $value = _signal$(1);
-_render$(_tmpl$, _getHydrationKey$());"
+_render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _ssrBind$("value", $value.value)));"
 `;
 
 exports[`jsx server transform > should work with conditional rendering in server 1`] = `

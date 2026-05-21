@@ -138,6 +138,19 @@ export namespace JSX {
 
   interface IntrinsicAttributes {
     ref?: unknown | ((e: unknown) => void) | undefined;
+    /**
+     * Two-way binding sugar on components.
+     *
+     * `<Comp bind:foo={$x} />` compiles to two normal props:
+     * `foo={$x}` plus `'update:foo'={(v) => $x = v}`. The component is
+     * responsible for declaring matching `foo` and `update:foo` props in
+     * its own prop type — this index signature only allows the `bind:` JSX
+     * syntax to typecheck on component call sites.
+     *
+     * On intrinsic DOM elements (e.g. `<input>`), the stricter per-key types
+     * declared on `BindAttributes` apply instead.
+     */
+    [key: `bind:${string}`]: unknown;
   }
   interface CustomAttributes<T> {
     ref?: Signal<T> | ((el: T) => void);
@@ -154,9 +167,32 @@ export namespace JSX {
   interface CustomEvents {}
   /** @deprecated Replaced by CustomEvents */
   interface CustomCaptureEvents {}
-  type BindAttributes = {
-    [Key in string | number | symbol as `bind:${Key}`]?: ExplicitAttributes[Key];
-  };
+  /**
+   * Value form for `bind:*` attributes on DOM elements. Either a writable
+   * target (signal / variable) directly, or a `[target, modifiers]` tuple
+   * — see {@link BindModifiers} for the supported modifier keys.
+   */
+  type BindValue<T = unknown> = T | readonly [T, import('@estjs/template').BindModifiers];
+  /**
+   * `bind:*` attributes available on intrinsic DOM elements. Per-key narrowing
+   * mirrors what the matching DOM element actually accepts.
+   */
+  interface BindAttributes {
+    /**
+     * Two-way bind for `<input>` (text/number/range), `<textarea>`, and
+     * `<select>` (multi-select binds to a string array).
+     */
+    'bind:value'?: BindValue<
+      string | number | readonly string[] | readonly number[]
+    >;
+    /**
+     * Two-way bind for `<input type="checkbox">` (boolean, or string[] when
+     * grouped by shared name) and `<input type="radio">` (string).
+     */
+    'bind:checked'?: BindValue<boolean | string | readonly string[]>;
+    /** Two-way bind for `<input type="file">`. */
+    'bind:files'?: BindValue<FileList | null>;
+  }
   type OnCaptureAttributes<T> = {
     [Key in keyof CustomCaptureEvents as `oncapture:${Key}`]?: EventHandler<
       T,

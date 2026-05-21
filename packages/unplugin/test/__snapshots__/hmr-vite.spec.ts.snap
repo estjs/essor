@@ -6,9 +6,9 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 1`] =
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
-const _t$3 = _template$("<div><!><!></div>");
-const _t$2 = _template$("<div>Bar</div>");
-const _t$ = _template$("<div>Foo</div>");
+const _t$3 = _template$("<div><!><!>");
+const _t$2 = _template$("<div>Bar");
+const _t$ = _template$("<div>Foo");
 import { createApp } from "essor";
 function Foo() {
   return _t$();
@@ -46,9 +46,9 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 2`] =
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
-const _t$3 = _template$("<div><!><!></div>");
-const _t$2 = _template$("<div>B</div>");
-const _t$ = _template$("<div>A</div>");
+const _t$3 = _template$("<div><!><!>");
+const _t$2 = _template$("<div>B");
+const _t$ = _template$("<div>A");
 import { createApp } from 'essor';
 export function ComponentA() {
   return _t$();
@@ -84,7 +84,7 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 3`] =
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _template$("<div>Hello <!></div>");
+const _t$ = _template$("<div>Hello <!>");
 import { createApp } from 'essor';
 function PropsComponent(props: {
   name: string;
@@ -114,7 +114,7 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 4`] =
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
-const _t$ = _template$("<div>Count: <!></div>");
+const _t$ = _template$("<div>Count: <!>");
 import { createApp, signal } from 'essor';
 function SignalComponent() {
   const count = signal(0);

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { ssrAttr, ssrClass, ssrSpread, ssrStyle } from '../src/ssr';
+import {
+  ssrAttr,
+  ssrBind,
+  ssrClass,
+  ssrSelected,
+  ssrSpread,
+  ssrStyle,
+  ssrTextValue,
+} from '../src/ssr';
 
 describe('server/ssr helpers', () => {
   describe('ssrAttr', () => {
@@ -64,6 +72,95 @@ describe('server/ssr helpers', () => {
     it('returns an empty string for non-object inputs', () => {
       expect(ssrSpread(null as any)).toBe('');
       expect(ssrSpread('nope' as any)).toBe('');
+    });
+  });
+
+  describe('ssrBind', () => {
+    it('renders value attribute with string model', () => {
+      expect(ssrBind('value', 'hello')).toBe(' value="hello"');
+    });
+
+    it('applies trim modifier', () => {
+      expect(ssrBind('value', '  hi  ', { trim: true })).toBe(' value="hi"');
+    });
+
+    it('applies number modifier', () => {
+      expect(ssrBind('value', '42', { number: true })).toBe(' value="42"');
+    });
+
+    it('does not coerce blank/whitespace to 0 with number modifier', () => {
+      expect(ssrBind('value', '   ', { number: true })).toBe(' value="   "');
+      expect(ssrBind('value', '', { number: true })).toBe(' value=""');
+    });
+
+    it('renders checked for truthy boolean model', () => {
+      expect(ssrBind('checked', true)).toBe(' checked');
+      expect(ssrBind('checked', false)).toBe('');
+    });
+
+    it('renders radio checked state by comparing model with own value', () => {
+      expect(ssrBind('checked', 'dark', undefined, 'dark', {
+        tag: 'input',
+        type: 'radio',
+      })).toBe(' checked');
+      expect(ssrBind('checked', 'dark', undefined, 'light', {
+        tag: 'input',
+        type: 'radio',
+      })).toBe('');
+    });
+
+    it('renders checked for checkbox group (array model)', () => {
+      expect(ssrBind('checked', ['ts', 'react'], undefined, 'ts')).toBe(' checked');
+      expect(ssrBind('checked', ['ts', 'react'], undefined, 'essor')).toBe('');
+    });
+
+    it('uses the browser default checkbox value for checkbox groups without a value attr', () => {
+      expect(ssrBind('checked', ['on'], undefined, undefined, {
+        tag: 'input',
+        type: 'checkbox',
+      })).toBe(' checked');
+    });
+
+    it('matches explicit empty checkbox values in checkbox groups', () => {
+      expect(ssrBind('checked', [''], undefined, '', {
+        tag: 'input',
+        type: 'checkbox',
+      })).toBe(' checked');
+    });
+
+    it('returns empty string for files binding', () => {
+      expect(ssrBind('files', null)).toBe('');
+    });
+
+    it('returns empty string for array model on value binding', () => {
+      expect(ssrBind('value', ['a', 'b'])).toBe('');
+    });
+
+    it('does not serialize select or textarea value bindings as attributes', () => {
+      expect(ssrBind('value', 'shanghai', undefined, undefined, { tag: 'select' })).toBe('');
+      expect(ssrBind('value', 'bio', undefined, undefined, { tag: 'textarea' })).toBe('');
+    });
+  });
+
+  describe('ssrSelected', () => {
+    it('renders selected when a single select model matches the option value', () => {
+      expect(ssrSelected('dark', 'dark')).toBe(' selected');
+      expect(ssrSelected('dark', 'light')).toBe('');
+    });
+
+    it('renders selected when a multiple select model contains the option value', () => {
+      expect(ssrSelected(['ts', 'react'], 'react')).toBe(' selected');
+      expect(ssrSelected(['ts', 'react'], 'essor')).toBe('');
+    });
+
+    it('returns empty string when no option value can be determined', () => {
+      expect(ssrSelected(['on'], undefined)).toBe('');
+    });
+  });
+
+  describe('ssrTextValue', () => {
+    it('renders escaped textarea text with bind modifiers applied', () => {
+      expect(ssrTextValue('  <bio>  ', { trim: true })).toBe('&lt;bio&gt;');
     });
   });
 });

@@ -145,10 +145,10 @@ const theme = inject(ThemeKey, 'light');
 **Forms:**
 ```tsx
 <input bind:value={$email} />
-<input bind:value.trim={$name} />
-<input bind:value.number={$age} />
-<input bind:value.lazy={$search} />
-<input type="checkbox" bind:checked={$agree} />
+<input bind:value={[$name, { trim: true }]} />
+<input bind:value={[$age, { number: true }]} />               // or <input type="number" bind:value={$age} />
+<input bind:value={[$search, { lazy: true, trim: true }]} />
+<input type="checkbox" bind:checked={$agree} />               // boolean or array (checkbox group)
 <select bind:value={$opt}>...</select>
 ```
 

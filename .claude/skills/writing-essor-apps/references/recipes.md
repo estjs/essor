@@ -85,7 +85,7 @@ let $age = 0;
 let $agree = false;
 
 <input bind:value={$email} />
-<input bind:value.number={$age} />
+<input type="number" bind:value={$age} />  // auto-coerces to number
 <input type="checkbox" bind:checked={$agree} />
 ```
 

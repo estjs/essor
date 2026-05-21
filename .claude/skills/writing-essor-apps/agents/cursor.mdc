@@ -47,8 +47,8 @@ const [data, { mutate, refetch }] = createResource(() => fetch('/api').then(r =>
 
 // Forms:
 <input bind:value={$email} />
-<input bind:value.trim={$name} />
-<input bind:value.number={$age} />
+<input bind:value={[$name, { trim: true }]} />
+<input type="number" bind:value={$age} />     // auto number coercion
 <input type="checkbox" bind:checked={$agree} />
 
 // watch / untrack / nextTick:

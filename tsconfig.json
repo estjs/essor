@@ -17,7 +17,8 @@
     "sourceMap": false,
     "esModuleInterop": true,
     "skipDefaultLibCheck": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0"
   },
   "exclude": ["node_modules", "dist", "./dist/**/*"]
 }

@@ -348,6 +348,190 @@ describe('binding utilities', () => {
       });
     });
 
+    describe('number modifier — Vue parity', () => {
+      it('keeps whitespace-only input as the original string (does not coerce to 0)', () => {
+        const input = document.createElement('input');
+        const s = signal<number | string>('initial');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+          { number: true },
+        );
+
+        input.value = '   ';
+        input.dispatchEvent(new Event('input'));
+        // Without the guard, Number('   ') would silently produce 0.
+        expect(s.value).toBe('   ');
+      });
+
+      it('coerces untrimmed numeric strings (" 42 " -> 42)', () => {
+        const input = document.createElement('input');
+        const s = signal<number | string>('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+          { number: true },
+        );
+
+        input.value = ' 42 ';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe(42);
+      });
+
+      it('<input type="number"> auto-coerces without explicit modifier', () => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        const s = signal<number | string>('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+        );
+
+        input.value = '7';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe(7);
+      });
+
+      it('<input type="range"> auto-coerces without explicit modifier', () => {
+        const input = document.createElement('input');
+        input.type = 'range';
+        const s = signal<number | string>('');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as number | string),
+        );
+
+        input.value = '55';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe(55);
+      });
+    });
+
+    describe('checkbox group (array model)', () => {
+      it('adds and removes its own value as the checkbox toggles', () => {
+        const a = document.createElement('input');
+        a.type = 'checkbox';
+        a.value = 'a';
+        const b = document.createElement('input');
+        b.type = 'checkbox';
+        b.value = 'b';
+        const list = signal<string[]>([]);
+
+        for (const el of [a, b]) {
+          bindElement(
+            el,
+            'checked',
+            () => list.value,
+            (v) => (list.value = v as string[]),
+          );
+        }
+
+        a.checked = true;
+        a.dispatchEvent(new Event('change'));
+        expect(list.value).toEqual(['a']);
+        expect(a.checked).toBe(true);
+        expect(b.checked).toBe(false);
+
+        b.checked = true;
+        b.dispatchEvent(new Event('change'));
+        expect(list.value).toEqual(['a', 'b']);
+
+        a.checked = false;
+        a.dispatchEvent(new Event('change'));
+        expect(list.value).toEqual(['b']);
+        expect(b.checked).toBe(true);
+      });
+
+      it('reflects external model changes onto DOM', () => {
+        const a = document.createElement('input');
+        a.type = 'checkbox';
+        a.value = 'a';
+        const b = document.createElement('input');
+        b.type = 'checkbox';
+        b.value = 'b';
+        const list = signal<string[]>([]);
+
+        for (const el of [a, b]) {
+          bindElement(
+            el,
+            'checked',
+            () => list.value,
+            (v) => (list.value = v as string[]),
+          );
+        }
+
+        list.value = ['b'];
+        expect(a.checked).toBe(false);
+        expect(b.checked).toBe(true);
+      });
+
+      it('still works as a plain boolean when model is not an array', () => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        const s = signal(false);
+        bindElement(
+          input,
+          'checked',
+          () => s.value,
+          (v) => (s.value = v as boolean),
+        );
+
+        input.checked = true;
+        input.dispatchEvent(new Event('change'));
+        expect(s.value).toBe(true);
+      });
+    });
+
+    describe('lazy IME guard', () => {
+      it('does not overwrite the input while IME is composing in lazy mode', () => {
+        const input = document.createElement('input');
+        const s = signal('start');
+        bindElement(
+          input,
+          'value',
+          () => s.value,
+          (v) => (s.value = v as string),
+          { lazy: true },
+        );
+
+        input.dispatchEvent(new Event('compositionstart'));
+        input.value = 'pending';
+        // External model update during composition must not clobber the input.
+        s.value = 'remote';
+        expect(input.value).toBe('pending');
+
+        input.dispatchEvent(new Event('compositionend'));
+      });
+    });
+
+    describe('input element with unknown property', () => {
+      it('routes to custom strategy instead of TEXT_LIKE for unknown INPUT props', () => {
+        const input = document.createElement('input');
+        // 'placeholder' is a real INPUT property unrelated to value/checked/files.
+        const s = signal('hint');
+        bindElement(
+          input,
+          'placeholder',
+          () => s.value,
+          (v) => (s.value = v as string),
+        );
+        expect(input.placeholder).toBe('hint');
+
+        s.value = 'updated';
+        expect(input.placeholder).toBe('updated');
+        // The shared TEXT_LIKE strategy would have written to .value instead.
+        expect(input.value).toBe('');
+      });
+    });
+
     describe('lifecycle', () => {
       it('stops the model->DOM effect when scope is disposed', () => {
         const input = document.createElement('input');

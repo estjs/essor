@@ -13,7 +13,7 @@ const $double = () => $x * 2; // → computed(() => $x * 2)
 // JSX — auto-unwrapped:
 <div>{$count}</div>               // → () => $count.value
 <button onClick={() => $count++}> // → $count.value++
-<input bind:value={$name} />      // two-way binding
+<input bind:value={$name} />      // two-way binding (modifiers: <input bind:value={[$name, { trim: true }]} />)
 
 // ❌ No $ prefix = NOT reactive:
 const count = 0;

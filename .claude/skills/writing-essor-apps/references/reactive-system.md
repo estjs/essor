@@ -15,11 +15,12 @@ The Babel plugin auto-transforms `$`-prefixed declarations:
 
 ```tsx
 // Two-way binding compiles to bindElement():
-<input bind:value={$name} />        // → bindElement(input, 'value', g, s)
-<input bind:value.trim={$name} />   // → bindElement(input, 'value', g, s, { trim: true })
-<input bind:value.number={$age} />  // → bindElement(input, 'value', g, s, { number: true })
-<input bind:value.lazy={$q} />      // → bindElement(input, 'value', g, s, { lazy: true })
-<input bind:checked={$agree} />     // → bindElement(input, 'checked', g, s)
+<input bind:value={$name} />                                    // → bindElement(input, 'value', g, s)
+<input bind:value={[$name, { trim: true }]} />                  // → ..., { trim: true }
+<input bind:value={[$age, { number: true }]} />                 // → ..., { number: true }
+<input bind:value={[$q, { lazy: true }]} />                     // → ..., { lazy: true }
+<input bind:checked={$agree} />                                 // → bindElement(input, 'checked', g, s)
+<input type="number" bind:value={$age} />                       // auto number coercion (no modifier needed)
 ```
 
 ## signal(value)
