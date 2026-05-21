@@ -145,26 +145,45 @@ export function Transition(props: TransitionProps): Node {
   const useCss = props.css !== false;
 
   let currentEl: Element | null = null;
+  let leavingEl: Element | null = null; // element mid-leave animation (after currentEl was cleared)
   let state: State = 'idle';
   let finishEnter: (() => void) | null = null;
   let finishLeave: (() => void) | null = null;
 
-  const enter = (el: Element): void => {
+  function scrubEnterClasses(el: Element): void {
+    removeClass(el, classes.enterFrom);
+    removeClass(el, classes.enterActive);
+    removeClass(el, classes.enterTo);
+    removeClass(el, classes.appearFrom);
+    removeClass(el, classes.appearActive);
+    removeClass(el, classes.appearTo);
+  }
+
+  function scrubLeaveClasses(el: Element): void {
+    removeClass(el, classes.leaveFrom);
+    removeClass(el, classes.leaveActive);
+    removeClass(el, classes.leaveTo);
+  }
+
+  const enter = (el: Element, phase: 'enter' | 'appear' = 'enter'): void => {
     state = 'entering';
     finishEnter = null;
+    const fromCls = phase === 'appear' ? classes.appearFrom : classes.enterFrom;
+    const activeCls = phase === 'appear' ? classes.appearActive : classes.enterActive;
+    const toCls = phase === 'appear' ? classes.appearTo : classes.enterTo;
     props.onBeforeEnter?.(el);
 
     if (useCss) {
-      addClass(el, classes.enterFrom);
-      addClass(el, classes.enterActive);
+      addClass(el, fromCls);
+      addClass(el, activeCls);
     }
 
     nextFrame(() => {
       if (state !== 'entering' || currentEl !== el) return;
 
       if (useCss) {
-        removeClass(el, classes.enterFrom);
-        addClass(el, classes.enterTo);
+        removeClass(el, fromCls);
+        addClass(el, toCls);
       }
 
       let called = false;
@@ -172,8 +191,8 @@ export function Transition(props: TransitionProps): Node {
         if (called) return;
         called = true;
         if (useCss) {
-          removeClass(el, classes.enterActive);
-          removeClass(el, classes.enterTo);
+          removeClass(el, activeCls);
+          removeClass(el, toCls);
         }
         finishEnter = null;
         state = 'entered';
@@ -205,6 +224,7 @@ export function Transition(props: TransitionProps): Node {
 
   const leave = (el: Element, after: () => void): void => {
     state = 'leaving';
+    leavingEl = el;
     finishLeave = null;
     props.onBeforeLeave?.(el);
 
@@ -214,10 +234,7 @@ export function Transition(props: TransitionProps): Node {
 
     if (!info && !props.onLeave && explicit == null) {
       // No CSS transition and no JS hook — remove synchronously
-      if (useCss) {
-        // Still apply leave-from/leave-active in case caller inspects them,
-        // but clean up immediately and remove
-      }
+      leavingEl = null;
       state = 'idle';
       after();
       props.onAfterLeave?.(el);
@@ -230,8 +247,8 @@ export function Transition(props: TransitionProps): Node {
     }
 
     nextFrame(() => {
-      if (state !== 'leaving' || currentEl !== null) {
-        // either re-entered (currentEl set) or another cycle started
+      if (state !== 'leaving' || leavingEl !== el) {
+        // either re-entered or another cycle started
         return;
       }
 
@@ -249,6 +266,7 @@ export function Transition(props: TransitionProps): Node {
           removeClass(el, classes.leaveTo);
         }
         finishLeave = null;
+        leavingEl = null;
         state = 'idle';
         after();
         props.onAfterLeave?.(el);
@@ -273,14 +291,37 @@ export function Transition(props: TransitionProps): Node {
     });
   };
 
+  let mounted = false;
+
   onMount(() => {
     effect(() => {
       const next = resolveSlot(props);
       const nextEl = next instanceof Element ? next : null;
+      const isFirst = !mounted;
+      mounted = true;
+
       if (nextEl === currentEl) return;
+
+      // Leave → Enter reversal: toggling back on while an element is mid-leave
+      if (nextEl && state === 'leaving' && leavingEl) {
+        props.onLeaveCancelled?.(leavingEl);
+        finishLeave = null;
+        scrubLeaveClasses(leavingEl);
+        currentEl = leavingEl;
+        leavingEl = null;
+        enter(currentEl);
+        return;
+      }
 
       const outgoing = currentEl;
       currentEl = nextEl;
+
+      // Enter → Leave reversal: toggling off while outgoing is mid-enter
+      if (outgoing && state === 'entering') {
+        props.onEnterCancelled?.(outgoing);
+        finishEnter = null;
+        scrubEnterClasses(outgoing);
+      }
 
       if (outgoing) {
         leave(outgoing, () => {
@@ -290,7 +331,12 @@ export function Transition(props: TransitionProps): Node {
 
       if (nextEl && anchor.parentNode) {
         anchor.parentNode.insertBefore(nextEl, anchor);
-        enter(nextEl);
+        if (isFirst && !props.appear) {
+          // Initial mount, no appear — skip animation
+          state = 'entered';
+        } else {
+          enter(nextEl, isFirst && props.appear ? 'appear' : 'enter');
+        }
       } else if (!outgoing) {
         state = 'idle';
       }
@@ -301,7 +347,9 @@ export function Transition(props: TransitionProps): Node {
     finishEnter?.();
     finishLeave?.();
     if (currentEl?.parentNode) currentEl.parentNode.removeChild(currentEl);
+    if (leavingEl?.parentNode) leavingEl.parentNode.removeChild(leavingEl);
     currentEl = null;
+    leavingEl = null;
     state = 'idle';
   });
 

@@ -551,3 +551,216 @@ describe('Transition duration (T11)', () => {
     }
   });
 });
+
+describe('Transition appear (T12)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('runs enter classes on initial mount when appear=true', async () => {
+    const show = signal(true);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      appear: true,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.classList.contains('fade-enter-active')).toBe(true);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('uses appear-* classes when explicitly set', async () => {
+    const show = signal(true);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      appear: true,
+      appearActiveClass: 'magic-appear',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el.classList.contains('magic-appear')).toBe(true);
+    expect(el.classList.contains('fade-enter-active')).toBe(false);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('does NOT animate on initial mount when appear is omitted', async () => {
+    const show = signal(true);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.classList.contains('fade-enter-active')).toBe(false);
+    expect(el.classList.contains('fade-enter-from')).toBe(false);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+describe('Transition cancellation: enter→leave (T13)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('fires onEnterCancelled when leave starts during enter', async () => {
+    const show = signal(false);
+    const cancel = vi.fn();
+    const afterLeave = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onEnterCancelled: cancel,
+      onAfterLeave: afterLeave,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    show.value = true;
+    await Promise.resolve();
+    // mid-enter — flip back to false BEFORE rAFs complete
+    show.value = false;
+    await Promise.resolve();
+    expect(cancel).toHaveBeenCalledTimes(1);
+    // let leave finish
+    await rafTick();
+    await rafTick();
+    const el = container.querySelector('.box') as HTMLElement;
+    if (el) el.dispatchEvent(new Event('transitionend'));
+    expect(afterLeave).toHaveBeenCalledTimes(1);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('strips enter classes when cancelled', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    show.value = true;
+    await Promise.resolve();
+    const elBefore = container.querySelector('.box') as HTMLElement;
+    expect(elBefore.classList.contains('fade-enter-from')).toBe(true);
+    show.value = false;
+    await Promise.resolve();
+    // enter classes scrubbed; leave classes (or removed) replace them
+    expect(elBefore.classList.contains('fade-enter-from')).toBe(false);
+    expect(elBefore.classList.contains('fade-enter-active')).toBe(false);
+    expect(elBefore.classList.contains('fade-enter-to')).toBe(false);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+describe('Transition cancellation: leave→enter (T14)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('fires onLeaveCancelled and preserves the element when enter restarts during leave', async () => {
+    const show = signal(true);
+    const cancel = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onLeaveCancelled: cancel,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    const elInitial = container.querySelector('.box');
+    show.value = false;
+    await Promise.resolve();
+    show.value = true;
+    await Promise.resolve();
+    const elAfter = container.querySelector('.box');
+    expect(cancel).toHaveBeenCalledTimes(1);
+    expect(elAfter).toBe(elInitial);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
