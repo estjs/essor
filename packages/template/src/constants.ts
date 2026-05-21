@@ -39,6 +39,7 @@ export const FRAGMENT_COMPONENT = Symbol(__DEV__ ? 'Fragment Component' : '');
 export const PORTAL_COMPONENT = Symbol(__DEV__ ? 'Portal Component' : '');
 export const SUSPENSE_COMPONENT = Symbol(__DEV__ ? 'Suspense Component' : '');
 export const FOR_COMPONENT = Symbol(__DEV__ ? 'For Component' : '');
+export const TRANSITION_COMPONENT = Symbol(__DEV__ ? 'Transition Component' : '');
 export enum COMPONENT_STATE {
   /** Initial state */
   INITIAL,
@@ -59,4 +60,5 @@ export enum COMPONENT_TYPE {
   PORTAL = 'portal',
   SUSPENSE = 'suspense',
   FOR = 'for',
+  TRANSITION = 'transition',
 }
