@@ -13,6 +13,7 @@ export const IMPORTS_MAPS = [
   'For',
   'Suspense',
   'Portal',
+  'Transition',
 
   // Template related
   'mapNodes',
@@ -109,4 +110,4 @@ export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, na
 // jsx function props transform property name
 export const TRANSFORM_PROPERTY_NAME = '__props';
 export const FRAGMENT_NAME = 'Fragment';
-export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For'] as const;
+export const BUILT_IN_COMPONENTS = ['Fragment', 'Portal', 'Suspense', 'For', 'Transition'] as const;

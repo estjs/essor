@@ -1141,4 +1141,14 @@ describe('should work with jsx client transform', () => {
     expect(output).not.toContain('Fragment as _Fragment$');
     expect(output).not.toContain('_patchAttr$(_root$, "key"');
   });
+
+  it('compiles <Transition> as a built-in import from essor', () => {
+    const inputCode = `
+    let $show = true
+    const r = <Transition name="fade">{$show && <div>hi</div>}</Transition>
+    `;
+    const output = transformCode(inputCode);
+    expect(output).toMatch(/Transition as _Transition\$/);
+    expect(output).not.toMatch(/typeof Transition[^$]/);
+  });
 });
