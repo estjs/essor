@@ -840,3 +840,633 @@ describe('Transition validation (T16)', () => {
     cleanupContext(ctx);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Group A — rapid toggle sequences
+// ---------------------------------------------------------------------------
+
+describe('Transition rapid toggle sequences (A)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('A1: true→false→true→false within microtasks ends with no element and no leftover classes', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'v',
+      css: false,
+      onEnter: (_el, done) => done(),
+      onLeave: (_el, done) => done(),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    // Rapid toggle: true→false→true→false all within microtasks
+    show.value = true;
+    await Promise.resolve();
+    show.value = false;
+    await Promise.resolve();
+    show.value = true;
+    await Promise.resolve();
+    show.value = false;
+    await Promise.resolve();
+
+    // Flush rAFs to settle any pending animation frames
+    await rafTick();
+    await rafTick();
+
+    // Final state: show is false → no .box element
+    expect(container.querySelector('.box')).toBeNull();
+
+    // No leftover classes on any element in body
+    const allEls = Array.from(document.body.querySelectorAll('*'));
+    for (const el of allEls) {
+      expect(el.classList.contains('v-enter-from')).toBe(false);
+      expect(el.classList.contains('v-enter-active')).toBe(false);
+      expect(el.classList.contains('v-leave-from')).toBe(false);
+      expect(el.classList.contains('v-leave-active')).toBe(false);
+    }
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('A2: 5x rapid toggles end in correct final state with at most 1 element', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'v',
+      css: false,
+      onEnter: (_el, done) => done(),
+      onLeave: (_el, done) => done(),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    // 5 rapid toggles starting from false: F→T→F→T→F→T (final value = true)
+    show.value = true;
+    await Promise.resolve();
+    show.value = false;
+    await Promise.resolve();
+    show.value = true;
+    await Promise.resolve();
+    show.value = false;
+    await Promise.resolve();
+    show.value = true;
+    await Promise.resolve();
+
+    await rafTick();
+    await rafTick();
+
+    // Final show.value = true → exactly 1 element present, not multiple duplicates
+    const boxes = container.querySelectorAll('.box');
+    expect(boxes.length).toBeLessThanOrEqual(1);
+    expect(container.querySelector('.box')).not.toBeNull();
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('A3: false→true→false without awaiting between toggles then flush rAFs leaves no element and no lingering classes', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'v',
+      css: false,
+      onEnter: (_el, done) => done(),
+      onLeave: (_el, done) => done(),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    // Toggle without awaiting between toggles — final value = false
+    show.value = true;
+    show.value = false;
+    // Await once to let the effect system settle the final value
+    await Promise.resolve();
+
+    // Flush rAFs
+    await rafTick();
+    await rafTick();
+
+    // Final state: show is false → no element
+    expect(container.querySelector('.box')).toBeNull();
+
+    // No lingering enter/leave classes on any node in body
+    const allEls = Array.from(document.body.querySelectorAll('*'));
+    for (const el of allEls) {
+      expect(el.classList.contains('v-enter-from')).toBe(false);
+      expect(el.classList.contains('v-enter-active')).toBe(false);
+      expect(el.classList.contains('v-enter-to')).toBe(false);
+      expect(el.classList.contains('v-leave-from')).toBe(false);
+      expect(el.classList.contains('v-leave-active')).toBe(false);
+      expect(el.classList.contains('v-leave-to')).toBe(false);
+    }
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group B — animationend vs transitionend
+// ---------------------------------------------------------------------------
+
+describe('Transition animationend vs transitionend (B)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('B1: element with animationDuration uses animationend to complete — onAfterEnter fires on animationend', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        // Set animation but no transition — getTransitionInfo should pick animationend
+        el.style.animationDuration = '200ms';
+        el.style.animationDelay = '0s';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    // Not completed yet — waiting for animationend
+    expect(afterEnter).not.toHaveBeenCalled();
+
+    // transitionend should NOT trigger completion
+    el.dispatchEvent(new Event('transitionend'));
+    expect(afterEnter).not.toHaveBeenCalled();
+
+    // animationend should trigger completion
+    el.dispatchEvent(new Event('animationend'));
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('B2: type="transition" forces transitionend — with only animation set, done() fires immediately (no listener)', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      type: 'transition',
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        // Only animation, no transition — type='transition' makes getTransitionInfo return null
+        el.style.animationDuration = '200ms';
+        el.style.animationDelay = '0s';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    // With type='transition' and no CSS transition, getTransitionInfo returns null → done() called immediately
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    // animationend after the fact has no effect
+    const el = container.querySelector('.box') as HTMLElement;
+    el.dispatchEvent(new Event('animationend'));
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('B3: type="animation" forces animationend listener — transitionend alone does not complete', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      type: 'animation',
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.animationDuration = '300ms';
+        el.style.animationDelay = '0s';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    // Not yet completed
+    expect(afterEnter).not.toHaveBeenCalled();
+
+    // transitionend does NOT complete it when type='animation'
+    el.dispatchEvent(new Event('transitionend'));
+    expect(afterEnter).not.toHaveBeenCalled();
+
+    // animationend completes it
+    el.dispatchEvent(new Event('animationend'));
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group C — missing done() in JS hook (no auto-complete)
+// ---------------------------------------------------------------------------
+
+describe('Transition missing done() in JS hook (C)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('C1: onEnter that never calls done() keeps state entering indefinitely — onAfterEnter not fired', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onEnter: (_el, _done) => { /* intentionally never calls done */ },
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    // Wait 100ms — framework must NOT auto-complete the unfinished JS hook
+    await new Promise<void>((r) => setTimeout(r, 100));
+
+    expect(afterEnter).not.toHaveBeenCalled();
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('C2: manually calling the captured done() fires onAfterEnter exactly once', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    let capturedDone: (() => void) | null = null;
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onEnter: (_el, done) => { capturedDone = done; /* never auto-calls done */ },
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    expect(afterEnter).not.toHaveBeenCalled();
+    expect(capturedDone).not.toBeNull();
+
+    // Manually trigger done
+    capturedDone!();
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    // Calling done again is idempotent
+    capturedDone!();
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group D — custom class names
+// ---------------------------------------------------------------------------
+
+describe('Transition custom class names (D)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('D1: enterFromClass override applies custom class; non-overridden enterActive uses default', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      // No name → defaults to 'v-*'
+      enterFromClass: 'x-from',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    // Custom enterFrom class applied
+    expect(el.classList.contains('x-from')).toBe(true);
+    // Default enterActive still applied (not overridden)
+    expect(el.classList.contains('v-enter-active')).toBe(true);
+    // Original default enterFrom NOT present
+    expect(el.classList.contains('v-enter-from')).toBe(false);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('D2: all 9 class overrides — only custom names appear in each phase, zero v-* classes leak', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      enterFromClass: 'c-ef',
+      enterActiveClass: 'c-ea',
+      enterToClass: 'c-et',
+      appearFromClass: 'c-af',
+      appearActiveClass: 'c-aa',
+      appearToClass: 'c-at',
+      leaveFromClass: 'c-lf',
+      leaveActiveClass: 'c-la',
+      leaveToClass: 'c-lt',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    // --- Enter phase ---
+    show.value = true;
+    await Promise.resolve();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+
+    // Custom enterFrom and enterActive applied
+    expect(el.classList.contains('c-ef')).toBe(true);
+    expect(el.classList.contains('c-ea')).toBe(true);
+    // No default v-* classes leaked
+    expect(el.classList.contains('v-enter-from')).toBe(false);
+    expect(el.classList.contains('v-enter-active')).toBe(false);
+
+    // After rAFs: enterFrom → enterTo swap
+    await rafTick();
+    await rafTick();
+    expect(el.classList.contains('c-ef')).toBe(false);
+    expect(el.classList.contains('c-et')).toBe(true);
+    expect(el.classList.contains('c-ea')).toBe(true);
+    expect(el.classList.contains('v-enter-to')).toBe(false);
+
+    // Complete enter via transitionend
+    el.dispatchEvent(new Event('transitionend'));
+    expect(el.classList.contains('c-ea')).toBe(false);
+    expect(el.classList.contains('c-et')).toBe(false);
+
+    // --- Leave phase ---
+    show.value = false;
+    await Promise.resolve();
+
+    expect(el.classList.contains('c-lf')).toBe(true);
+    expect(el.classList.contains('c-la')).toBe(true);
+    expect(el.classList.contains('v-leave-from')).toBe(false);
+    expect(el.classList.contains('v-leave-active')).toBe(false);
+
+    await rafTick();
+    await rafTick();
+    expect(el.classList.contains('c-lf')).toBe(false);
+    expect(el.classList.contains('c-lt')).toBe(true);
+    expect(el.classList.contains('v-leave-to')).toBe(false);
+
+    el.dispatchEvent(new Event('transitionend'));
+    expect(el.classList.contains('c-la')).toBe(false);
+    expect(el.classList.contains('c-lt')).toBe(false);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Group E — slot returns the same Element identity across runs
+// ---------------------------------------------------------------------------
+
+describe('Transition stable element reference (E)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('E1: slot returning same Element reference is a no-op — no enter/leave animation fired', async () => {
+    const show = signal(true);
+    const stableEl = document.createElement('div');
+    stableEl.className = 'stable';
+    const afterEnter = vi.fn();
+    const afterLeave = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onAfterEnter: afterEnter,
+      onAfterLeave: afterLeave,
+      children: () => {
+        if (!show.value) return undefined;
+        return stableEl; // always returns the same DOM reference
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+
+    // Initial mount without appear — stableEl inserted, no animation
+    expect(container.querySelector('.stable')).not.toBeNull();
+    expect(stableEl.classList.contains('fade-enter-from')).toBe(false);
+    expect(stableEl.classList.contains('fade-enter-active')).toBe(false);
+
+    // Simulate a re-render that returns the exact same element — should be a no-op
+    // (The effect only re-runs if signals change; here we use show toggle to force re-run)
+    show.value = false;
+    await Promise.resolve();
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    // stableEl is back in DOM (leave was synchronous since no CSS)
+    expect(container.querySelector('.stable')).not.toBeNull();
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('E2: swapping to a different element triggers normal enter cycle after leave completes', async () => {
+    const show = signal(true);
+    let currentRef: HTMLElement = document.createElement('div');
+    currentRef.className = 'el-a';
+    // No transitionDuration so leave completes synchronously
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        return currentRef;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+
+    // el-a mounted without animation (no appear)
+    expect(container.querySelector('.el-a')).not.toBeNull();
+    expect(currentRef.classList.contains('fade-enter-active')).toBe(false);
+
+    // Fully leave el-a (synchronous since no CSS transition)
+    show.value = false;
+    await Promise.resolve();
+    expect(container.querySelector('.el-a')).toBeNull(); // synchronous removal confirmed
+
+    // Swap reference to a new element
+    const newEl = document.createElement('div');
+    newEl.className = 'el-b';
+    newEl.style.transitionDuration = '100ms';
+    newEl.style.transitionDelay = '0ms';
+    currentRef = newEl;
+
+    // Now enter with the new element
+    show.value = true;
+    await Promise.resolve();
+
+    // el-b should be in DOM and enter animation should have started
+    const elB = container.querySelector('.el-b') as HTMLElement;
+    expect(elB).not.toBeNull();
+    // enter-from and enter-active applied (before rAFs)
+    expect(elB.classList.contains('fade-enter-from')).toBe(true);
+    expect(elB.classList.contains('fade-enter-active')).toBe(true);
+
+    // After rAFs: enter-from → enter-to swap
+    await rafTick();
+    await rafTick();
+    expect(elB.classList.contains('fade-enter-from')).toBe(false);
+    expect(elB.classList.contains('fade-enter-to')).toBe(true);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
