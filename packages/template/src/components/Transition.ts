@@ -119,10 +119,7 @@ function forceReflow(el: Element): void {
   void (el as HTMLElement).offsetHeight;
 }
 
-// keep references to suppress "unused variable" warnings until the state machine uses them
-void addClass;
-void removeClass;
-void nextFrame;
+// forceReflow is reserved for future use (e.g. appear transitions)
 void forceReflow;
 
 // ---------------------------------------------------------------------------
@@ -134,24 +131,164 @@ function resolveSlot(props: TransitionProps): unknown {
   return typeof c === 'function' ? (c as () => unknown)() : c;
 }
 
+type State = 'idle' | 'entering' | 'entered' | 'leaving';
+
 export function Transition(props: TransitionProps): Node {
   const anchor = document.createComment('');
+  const classes = resolveTransitionClasses(props);
+  const useCss = props.css !== false;
+
   let currentEl: Element | null = null;
+  let state: State = 'idle';
+  let finishEnter: (() => void) | null = null;
+  let finishLeave: (() => void) | null = null;
+
+  const enter = (el: Element): void => {
+    state = 'entering';
+    finishEnter = null;
+    props.onBeforeEnter?.(el);
+
+    if (useCss) {
+      addClass(el, classes.enterFrom);
+      addClass(el, classes.enterActive);
+    }
+
+    nextFrame(() => {
+      if (state !== 'entering' || currentEl !== el) return;
+
+      if (useCss) {
+        removeClass(el, classes.enterFrom);
+        addClass(el, classes.enterTo);
+      }
+
+      let called = false;
+      const done = (): void => {
+        if (called) return;
+        called = true;
+        if (useCss) {
+          removeClass(el, classes.enterActive);
+          removeClass(el, classes.enterTo);
+        }
+        finishEnter = null;
+        state = 'entered';
+        props.onAfterEnter?.(el);
+      };
+      finishEnter = done;
+
+      props.onEnter?.(el, done);
+
+      if (useCss && !props.onEnter) {
+        const info = getTransitionInfo(el, props.type);
+        if (info) {
+          const onEnd = (): void => {
+            el.removeEventListener(info.event, onEnd);
+            done();
+          };
+          el.addEventListener(info.event, onEnd);
+        } else {
+          done();
+        }
+      }
+    });
+  };
+
+  const leave = (el: Element, after: () => void): void => {
+    state = 'leaving';
+    finishLeave = null;
+    props.onBeforeLeave?.(el);
+
+    // Check whether there's actually a CSS transition/animation before going async
+    const info = useCss && !props.onLeave ? getTransitionInfo(el, props.type) : null;
+
+    if (!info && !props.onLeave) {
+      // No CSS transition and no JS hook — remove synchronously
+      if (useCss) {
+        // Still apply leave-from/leave-active in case caller inspects them,
+        // but clean up immediately and remove
+      }
+      state = 'idle';
+      after();
+      props.onAfterLeave?.(el);
+      return;
+    }
+
+    if (useCss) {
+      addClass(el, classes.leaveFrom);
+      addClass(el, classes.leaveActive);
+    }
+
+    nextFrame(() => {
+      if (state !== 'leaving' || currentEl !== null) {
+        // either re-entered (currentEl set) or another cycle started
+        return;
+      }
+
+      if (useCss) {
+        removeClass(el, classes.leaveFrom);
+        addClass(el, classes.leaveTo);
+      }
+
+      let called = false;
+      const done = (): void => {
+        if (called) return;
+        called = true;
+        if (useCss) {
+          removeClass(el, classes.leaveActive);
+          removeClass(el, classes.leaveTo);
+        }
+        finishLeave = null;
+        state = 'idle';
+        after();
+        props.onAfterLeave?.(el);
+      };
+      finishLeave = done;
+
+      props.onLeave?.(el, done);
+
+      if (useCss && !props.onLeave) {
+        if (info) {
+          const onEnd = (): void => {
+            el.removeEventListener(info.event, onEnd);
+            done();
+          };
+          el.addEventListener(info.event, onEnd);
+        } else {
+          done();
+        }
+      }
+    });
+  };
 
   onMount(() => {
     effect(() => {
       const next = resolveSlot(props);
       const nextEl = next instanceof Element ? next : null;
       if (nextEl === currentEl) return;
-      if (currentEl?.parentNode) currentEl.parentNode.removeChild(currentEl);
-      if (nextEl && anchor.parentNode) anchor.parentNode.insertBefore(nextEl, anchor);
+
+      const outgoing = currentEl;
       currentEl = nextEl;
+
+      if (outgoing) {
+        leave(outgoing, () => {
+          if (outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
+        });
+      }
+
+      if (nextEl && anchor.parentNode) {
+        anchor.parentNode.insertBefore(nextEl, anchor);
+        enter(nextEl);
+      } else if (!outgoing) {
+        state = 'idle';
+      }
     });
   });
 
   onCleanup(() => {
+    finishEnter?.();
+    finishLeave?.();
     if (currentEl?.parentNode) currentEl.parentNode.removeChild(currentEl);
     currentEl = null;
+    state = 'idle';
   });
 
   return anchor;

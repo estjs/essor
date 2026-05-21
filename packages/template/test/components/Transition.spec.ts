@@ -193,3 +193,124 @@ describe('getTransitionInfo', () => {
     expect(getTransitionInfo(host, 'transition')).toBeNull();
   });
 });
+
+describe('Transition enter flow', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+
+  function rafTick(): Promise<void> {
+    return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  it('applies enter-from + enter-active, swaps to enter-to, clears on transitionend', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.classList.contains('fade-enter-from')).toBe(true);
+    expect(el.classList.contains('fade-enter-active')).toBe(true);
+
+    // advance through both rAFs that nextFrame schedules
+    await rafTick();
+    await rafTick();
+
+    expect(el.classList.contains('fade-enter-from')).toBe(false);
+    expect(el.classList.contains('fade-enter-to')).toBe(true);
+    expect(el.classList.contains('fade-enter-active')).toBe(true);
+
+    el.dispatchEvent(new Event('transitionend'));
+    expect(el.classList.contains('fade-enter-active')).toBe(false);
+    expect(el.classList.contains('fade-enter-to')).toBe(false);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+describe('Transition leave flow', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+
+  function rafTick(): Promise<void> {
+    return new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  it('keeps the element in the DOM until transitionend fires', async () => {
+    const show = signal(true);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    // initial mount might apply enter-* classes; trigger transitionend to clean them
+    const elInit = container.querySelector('.box') as HTMLElement;
+    if (elInit) elInit.dispatchEvent(new Event('transitionend'));
+
+    show.value = false;
+    await Promise.resolve();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.classList.contains('fade-leave-from')).toBe(true);
+    expect(el.classList.contains('fade-leave-active')).toBe(true);
+    expect(container.contains(el)).toBe(true);
+
+    await rafTick();
+    await rafTick();
+
+    expect(el.classList.contains('fade-leave-from')).toBe(false);
+    expect(el.classList.contains('fade-leave-to')).toBe(true);
+    expect(container.contains(el)).toBe(true); // still in DOM
+
+    el.dispatchEvent(new Event('transitionend'));
+    expect(container.contains(el)).toBe(false);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
