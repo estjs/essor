@@ -1,8 +1,9 @@
-import type { AnyNode } from '../types';
 import { effect } from '@estjs/signals';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
 import { TRANSITION_COMPONENT } from '../constants';
+import { useChildren } from '../utils';
+import type { AnyNode } from '../types';
 
 export interface TransitionProps {
   name?: string;
@@ -31,7 +32,7 @@ export interface TransitionProps {
 }
 
 // ---------------------------------------------------------------------------
-// Exported pure helpers
+// Pure helpers (exported — tests + consumers rely on these)
 // ---------------------------------------------------------------------------
 
 export interface TransitionClassNames {
@@ -100,7 +101,7 @@ export function getTransitionInfo(
 }
 
 // ---------------------------------------------------------------------------
-// Private DOM helpers (used by the state machine in later tasks)
+// Private DOM helpers
 // ---------------------------------------------------------------------------
 
 function addClass(el: Element, cls: string): void {
@@ -119,22 +120,10 @@ function forceReflow(el: Element): void {
   void (el as HTMLElement).offsetHeight;
 }
 
-// forceReflow is reserved for future use (e.g. appear transitions)
-void forceReflow;
-
 function resolveDuration(d: TransitionProps['duration'], dir: 'enter' | 'leave'): number | null {
   if (d == null) return null;
   if (typeof d === 'number') return d;
   return d[dir];
-}
-
-// ---------------------------------------------------------------------------
-// Transition component
-// ---------------------------------------------------------------------------
-
-function resolveSlot(props: TransitionProps): unknown {
-  const c = props.children;
-  return typeof c === 'function' ? (c as () => unknown)() : c;
 }
 
 function validateSlot(value: unknown): Element | null {
@@ -149,12 +138,32 @@ function validateSlot(value: unknown): Element | null {
   }
   if (value instanceof Element) return value;
   if (__DEV__) {
-    console.warn(
-      '[essor] <Transition> received a non-element child; animation will be skipped.',
-    );
+    console.warn('[essor] <Transition> received a non-element child; animation will be skipped.');
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// Transition component
+//
+// Architecture:
+//   - Slot is read inside a single `effect()` via `useChildren()`. The effect
+//     body ONLY reads the slot and queues a microtask — it never invokes user
+//     hooks. This keeps signal writes (e.g. counters incremented in onEnter)
+//     out of the effect's tracking phase, eliminating dep-link corruption.
+//   - The state machine runs in `flushCommit()` after the microtask drains.
+//   - Cancellation uses Symbol-keyed callbacks on the element itself
+//     (Vue-style el[ENTER_CB] / el[LEAVE_CB]) — robust across reentrancy and
+//     mid-flight reversals.
+//   - End-of-animation detection is centralized in `whenTransitionEnds()`:
+//     explicit `duration` wins; otherwise observe the appropriate end event
+//     with a `+1ms` safety net (in case the browser drops the event).
+// ---------------------------------------------------------------------------
+
+const ENTER_CB = Symbol('enter_cb');
+const LEAVE_CB = Symbol('leave_cb');
+
+type CancelCb = ((cancelled?: boolean) => void) | undefined;
 
 type State = 'idle' | 'entering' | 'entered' | 'leaving';
 
@@ -162,34 +171,61 @@ export function Transition(props: TransitionProps): Node {
   const anchor = document.createComment('');
   const classes = resolveTransitionClasses(props);
   const useCss = props.css !== false;
+  const readSlot = useChildren<unknown>(props);
 
-  let currentEl: Element | null = null;
-  let leavingEl: Element | null = null; // element mid-leave animation (after currentEl was cleared)
   let state: State = 'idle';
-  let finishEnter: (() => void) | null = null;
-  let finishLeave: (() => void) | null = null;
+  let currentEl: Element | null = null;
+  let leavingEl: Element | null = null; // mid-leave element awaiting cleanup
+  let mounted = false;
 
-  function scrubEnterClasses(el: Element): void {
-    removeClass(el, classes.enterFrom);
-    removeClass(el, classes.enterActive);
-    removeClass(el, classes.enterTo);
-    removeClass(el, classes.appearFrom);
-    removeClass(el, classes.appearActive);
-    removeClass(el, classes.appearTo);
-  }
+  // Microtask scheduling — keeps the state machine outside the effect's
+  // tracking phase, so user hooks that write signals don't corrupt deps.
+  // We stash the RAW slot value (pre-validation) so the initial validation
+  // can be deferred to onMount; otherwise the multi-child throw would fire
+  // during component setup instead of during the mount phase.
+  let pendingRaw: unknown = undefined;
+  let hasPending = false;
+  let scheduled = false;
+  let disposed = false;
 
-  function scrubLeaveClasses(el: Element): void {
-    removeClass(el, classes.leaveFrom);
-    removeClass(el, classes.leaveActive);
-    removeClass(el, classes.leaveTo);
-  }
+  const whenTransitionEnds = (
+    el: Element,
+    type: TransitionProps['type'],
+    explicit: number | null,
+    resolve: () => void,
+  ): void => {
+    if (explicit != null) {
+      setTimeout(resolve, explicit);
+      return;
+    }
+    const info = getTransitionInfo(el, type);
+    if (!info) {
+      resolve();
+      return;
+    }
+    let done = false;
+    const finish = (): void => {
+      if (done) return;
+      done = true;
+      el.removeEventListener(info.event, onEnd);
+      resolve();
+    };
+    const onEnd = (): void => finish();
+    el.addEventListener(info.event, onEnd);
+    // Safety net — guard against missed end events.
+    setTimeout(finish, info.timeout + 1);
+  };
 
-  const enter = (el: Element, phase: 'enter' | 'appear' = 'enter'): void => {
+  const enter = (el: Element, phase: 'enter' | 'appear'): void => {
+    // Cancel any in-flight leave on the same element.
+    const prevLeave = (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB];
+    if (prevLeave) prevLeave(true);
+
     state = 'entering';
-    finishEnter = null;
     const fromCls = phase === 'appear' ? classes.appearFrom : classes.enterFrom;
     const activeCls = phase === 'appear' ? classes.appearActive : classes.enterActive;
     const toCls = phase === 'appear' ? classes.appearTo : classes.enterTo;
+
     props.onBeforeEnter?.(el);
 
     if (useCss) {
@@ -197,175 +233,207 @@ export function Transition(props: TransitionProps): Node {
       addClass(el, activeCls);
     }
 
-    nextFrame(() => {
-      if (state !== 'entering' || currentEl !== el) return;
+    let called = false;
+    const done = (cancelled?: boolean): void => {
+      if (called) return;
+      called = true;
+      (el as unknown as Record<symbol, CancelCb>)[ENTER_CB] = undefined;
+      if (useCss) {
+        removeClass(el, fromCls);
+        removeClass(el, activeCls);
+        removeClass(el, toCls);
+      }
+      if (cancelled) {
+        props.onEnterCancelled?.(el);
+      } else {
+        state = 'entered';
+        props.onAfterEnter?.(el);
+      }
+    };
+    (el as unknown as Record<symbol, CancelCb>)[ENTER_CB] = done;
 
+    nextFrame(() => {
+      if (called) return;
       if (useCss) {
         removeClass(el, fromCls);
         addClass(el, toCls);
       }
 
-      let called = false;
-      const done = (): void => {
-        if (called) return;
-        called = true;
-        if (useCss) {
-          removeClass(el, activeCls);
-          removeClass(el, toCls);
-        }
-        finishEnter = null;
-        state = 'entered';
-        props.onAfterEnter?.(el);
-      };
-      finishEnter = done;
-
-      props.onEnter?.(el, done);
-
-      if (useCss && !props.onEnter) {
+      if (props.onEnter) {
+        props.onEnter(el, () => done(false));
+      } else if (useCss) {
         const explicit = resolveDuration(props.duration, 'enter');
-        if (explicit != null) {
-          setTimeout(done, explicit);
-        } else {
-          const info = getTransitionInfo(el, props.type);
-          if (info) {
-            const onEnd = (): void => {
-              el.removeEventListener(info.event, onEnd);
-              done();
-            };
-            el.addEventListener(info.event, onEnd);
-          } else {
-            done();
-          }
-        }
+        whenTransitionEnds(el, props.type, explicit, () => done(false));
+      } else {
+        // css=false and no JS hook — no animation
+        done(false);
       }
     });
   };
 
   const leave = (el: Element, after: () => void): void => {
-    state = 'leaving';
-    leavingEl = el;
-    finishLeave = null;
-    props.onBeforeLeave?.(el);
-
-    // Check whether there's actually a CSS transition/animation before going async
-    const explicit = resolveDuration(props.duration, 'leave');
-    const info = useCss && !props.onLeave && explicit == null ? getTransitionInfo(el, props.type) : null;
-
-    if (!info && !props.onLeave && explicit == null) {
-      // No CSS transition and no JS hook — remove synchronously
-      leavingEl = null;
-      state = 'idle';
-      after();
-      props.onAfterLeave?.(el);
-      return;
+    // Cancel any in-flight enter on the same element, then settle a reflow so
+    // the swap to leave-from/leave-active takes effect cleanly (vue#10677).
+    const prevEnter = (el as unknown as Record<symbol, CancelCb>)[ENTER_CB];
+    if (prevEnter) {
+      prevEnter(true);
+      forceReflow(el);
     }
+
+    state = 'leaving';
+    props.onBeforeLeave?.(el);
 
     if (useCss) {
       addClass(el, classes.leaveFrom);
       addClass(el, classes.leaveActive);
     }
 
-    nextFrame(() => {
-      if (state !== 'leaving' || leavingEl !== el) {
-        // either re-entered or another cycle started
-        return;
+    let called = false;
+    const done = (cancelled?: boolean): void => {
+      if (called) return;
+      called = true;
+      (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB] = undefined;
+      if (useCss) {
+        removeClass(el, classes.leaveFrom);
+        removeClass(el, classes.leaveActive);
+        removeClass(el, classes.leaveTo);
       }
+      if (cancelled) {
+        props.onLeaveCancelled?.(el);
+      } else {
+        state = 'idle';
+        after();
+        props.onAfterLeave?.(el);
+      }
+    };
+    (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB] = done;
 
+    // Decide whether there is any animation to wait for. We must query
+    // computed style AFTER applying leave-active so the rule on that class
+    // is visible.
+    const explicit = resolveDuration(props.duration, 'leave');
+    const hasCssInfo =
+      useCss && !props.onLeave && explicit == null ? !!getTransitionInfo(el, props.type) : false;
+
+    if (!props.onLeave && explicit == null && !hasCssInfo) {
+      // No animation path — tear down synchronously to preserve the
+      // no-animation contract relied on by tests and the SSR sanity checks.
+      done(false);
+      return;
+    }
+
+    nextFrame(() => {
+      if (called) return;
       if (useCss) {
         removeClass(el, classes.leaveFrom);
         addClass(el, classes.leaveTo);
       }
 
-      let called = false;
-      const done = (): void => {
-        if (called) return;
-        called = true;
-        if (useCss) {
-          removeClass(el, classes.leaveActive);
-          removeClass(el, classes.leaveTo);
-        }
-        finishLeave = null;
-        leavingEl = null;
-        state = 'idle';
-        after();
-        props.onAfterLeave?.(el);
-      };
-      finishLeave = done;
-
-      props.onLeave?.(el, done);
-
-      if (useCss && !props.onLeave) {
-        if (explicit != null) {
-          setTimeout(done, explicit);
-        } else if (info) {
-          const onEnd = (): void => {
-            el.removeEventListener(info.event, onEnd);
-            done();
-          };
-          el.addEventListener(info.event, onEnd);
-        } else {
-          done();
-        }
+      if (props.onLeave) {
+        props.onLeave(el, () => done(false));
+      } else if (useCss) {
+        whenTransitionEnds(el, props.type, explicit, () => done(false));
+      } else {
+        done(false);
       }
     });
   };
 
-  let mounted = false;
+  const commit = (next: Element | null, isFirst: boolean): void => {
+    // Leave → Enter reversal — revive the still-leaving element rather than
+    // mounting a fresh node from the slot (Vue parity).
+    if (next && state === 'leaving' && leavingEl) {
+      const reviving = leavingEl;
+      const leaveCb = (reviving as unknown as Record<symbol, CancelCb>)[LEAVE_CB];
+      if (leaveCb) leaveCb(true); // fires onLeaveCancelled + scrubs leave classes
+      leavingEl = null;
+      currentEl = reviving;
+      enter(reviving, 'enter');
+      return;
+    }
+
+    if (next === currentEl) return;
+
+    const outgoing = currentEl;
+    currentEl = next;
+
+    if (outgoing) {
+      leavingEl = outgoing;
+      const captured = outgoing;
+      leave(captured, () => {
+        if (captured.parentNode) captured.parentNode.removeChild(captured);
+        if (leavingEl === captured) leavingEl = null;
+      });
+    }
+
+    if (next && anchor.parentNode) {
+      anchor.parentNode.insertBefore(next, anchor);
+      if (isFirst && !props.appear) {
+        // Initial mount, no `appear` — render immediately, skip animation.
+        state = 'entered';
+      } else {
+        enter(next, isFirst && props.appear ? 'appear' : 'enter');
+      }
+    } else if (!outgoing && !next) {
+      state = 'idle';
+    }
+  };
+
+  const flush = (): void => {
+    scheduled = false;
+    if (disposed || !hasPending) return;
+    const raw = pendingRaw;
+    hasPending = false;
+    pendingRaw = undefined;
+    try {
+      commit(validateSlot(raw), false);
+    } catch (error) {
+      if (__DEV__) console.error('[essor] <Transition>', error);
+    }
+  };
+
+  const scheduleCommit = (raw: unknown): void => {
+    pendingRaw = raw;
+    hasPending = true;
+    if (scheduled) return;
+    scheduled = true;
+    queueMicrotask(flush);
+  };
+
+  // ---------- Lifecycle ----------
+
+  // Effect: pure read. Tracks slot deps, never writes signals. Validation is
+  // deferred to commit() so the initial throw lands at mount time, matching
+  // the legacy contract (T16 tests).
+  const effectRunner = effect(() => {
+    const raw = readSlot();
+    if (mounted) {
+      scheduleCommit(raw);
+    } else {
+      pendingRaw = raw;
+      hasPending = true;
+    }
+  });
 
   onMount(() => {
-    effect(() => {
-      const nextEl = validateSlot(resolveSlot(props));
-      const isFirst = !mounted;
-      mounted = true;
-
-      if (nextEl === currentEl) return;
-
-      // Leave → Enter reversal: toggling back on while an element is mid-leave
-      if (nextEl && state === 'leaving' && leavingEl) {
-        props.onLeaveCancelled?.(leavingEl);
-        finishLeave = null;
-        scrubLeaveClasses(leavingEl);
-        currentEl = leavingEl;
-        leavingEl = null;
-        enter(currentEl);
-        return;
-      }
-
-      const outgoing = currentEl;
-      currentEl = nextEl;
-
-      // Enter → Leave reversal: toggling off while outgoing is mid-enter
-      if (outgoing && state === 'entering') {
-        props.onEnterCancelled?.(outgoing);
-        finishEnter = null;
-        scrubEnterClasses(outgoing);
-      }
-
-      if (outgoing) {
-        leave(outgoing, () => {
-          if (outgoing.parentNode) outgoing.parentNode.removeChild(outgoing);
-        });
-      }
-
-      if (nextEl && anchor.parentNode) {
-        anchor.parentNode.insertBefore(nextEl, anchor);
-        if (isFirst && !props.appear) {
-          // Initial mount, no appear — skip animation
-          state = 'entered';
-        } else {
-          enter(nextEl, isFirst && props.appear ? 'appear' : 'enter');
-        }
-      } else if (!outgoing) {
-        state = 'idle';
-      }
-    });
+    mounted = true;
+    const initial = hasPending ? validateSlot(pendingRaw) : null;
+    hasPending = false;
+    pendingRaw = undefined;
+    commit(initial, true);
   });
 
   onCleanup(() => {
-    finishEnter?.();
-    finishLeave?.();
-    if (currentEl?.parentNode) currentEl.parentNode.removeChild(currentEl);
-    if (leavingEl?.parentNode) leavingEl.parentNode.removeChild(leavingEl);
+    disposed = true;
+    effectRunner.stop();
+    for (const el of [currentEl, leavingEl]) {
+      if (!el) continue;
+      const ec = (el as unknown as Record<symbol, CancelCb>)[ENTER_CB];
+      const lc = (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB];
+      ec?.(true);
+      lc?.(true);
+      if (el.parentNode) el.parentNode.removeChild(el);
+    }
     currentEl = null;
     leavingEl = null;
     state = 'idle';

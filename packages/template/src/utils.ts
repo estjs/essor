@@ -1,4 +1,39 @@
 /**
+ * Read a slot value, unwrapping the common compilation shapes.
+ *
+ * The babel plugin compiles `<Wrap>{() => expr}</Wrap>` to a single-element
+ * array `[() => expr]`. We unwrap that, then invoke the function if present
+ * so that callers always observe the final value (Element / null / etc.).
+ */
+function unwrapSlotValue(raw: unknown): unknown {
+  let v: unknown = raw;
+  if (Array.isArray(v) && v.length === 1) v = v[0];
+  return typeof v === 'function' ? (v as () => unknown)() : v;
+}
+
+/**
+ * Build a stable accessor for a single-child slot.
+ *
+ * Returns a function that, when invoked inside a reactive `effect()`, reads
+ * `props.children` (preserving getter semantics from the babel plugin) and
+ * unwraps the compiled array/function shape.
+ *
+ * @example
+ * const read = useChildren(props);
+ * effect(() => {
+ *   const child = read(); // tracks deps on every run
+ *   // ...
+ * });
+ */
+export function useChildren<T = unknown>(props: { children?: unknown }): () => T {
+  const desc = Object.getOwnPropertyDescriptor(props, 'children');
+  if (desc?.get) {
+    return () => unwrapSlotValue(desc.get!.call(props)) as T;
+  }
+  return () => unwrapSlotValue(props.children) as T;
+}
+
+/**
  * Shallow compare two objects
  * @param {any} a - The first object to compare
  * @param {any} b - The second object to compare

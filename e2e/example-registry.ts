@@ -8,6 +8,7 @@ export const EXAMPLE_REGISTRY = {
   'suspense': { port: 4107 },
   'hmr': { port: 4108 },
   'hydrate': { port: 4109 },
+  'transition': { port: 4110 },
 } as const;
 
 export const E2E_READY_PORT = 4199;

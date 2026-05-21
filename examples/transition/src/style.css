@@ -1,0 +1,17 @@
+* { box-sizing: border-box; }
+body { font-family: system-ui, sans-serif; padding: 24px; }
+.page { max-width: 720px; margin: 0 auto; }
+.scenario { padding: 16px; margin-bottom: 16px; border: 1px solid #ddd; border-radius: 8px; }
+.box { padding: 16px; margin-top: 12px; background: #f0f4ff; border: 1px solid #bcd; border-radius: 6px; }
+
+/* Scenario 1: Fade (name=fade) */
+.fade-enter-active, .fade-leave-active { transition: opacity 250ms ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Scenario 2: Slide (name=slide) */
+.slide-enter-active, .slide-leave-active { transition: transform 300ms ease, opacity 300ms ease; }
+.slide-enter-from, .slide-leave-to { transform: translateX(-30px); opacity: 0; }
+
+/* Scenario 3: Scale (name=scale) — duration prop overrides; CSS just paints */
+.scale-enter-active, .scale-leave-active { transition: transform 200ms ease, opacity 200ms ease; }
+.scale-enter-from, .scale-leave-to { transform: scale(0.8); opacity: 0; }

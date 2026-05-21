@@ -276,8 +276,10 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 
 具体实现见
 [`packages/template/src/components/Transition.ts`](../../packages/template/src/components/Transition.ts)
-中 `onMount` 的 effect —— 状态机在决定走哪条分支前会检查 `state === 'leaving'`
-/ `state === 'entering'`。
+中的 `commit()`:当新子节点到来时若 `state === 'leaving'`,会复用正在离开的元素
+(对其 `LEAVE_CB` 传入 `cancelled=true`),而不是从插槽重新挂载新节点。中途打断
+进入的逻辑对称地写在 `leave()` 中 —— 先调用元素挂着的 `ENTER_CB`,强制 reflow
+后再切到离开类。
 
 ## SSR
 

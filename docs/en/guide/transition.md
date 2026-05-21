@@ -284,8 +284,11 @@ leaves orphan elements in the DOM.
 
 This is implemented in
 [`packages/template/src/components/Transition.ts`](../../packages/template/src/components/Transition.ts)
-inside the `onMount` effect — the state machine checks `state === 'leaving'` /
-`state === 'entering'` before deciding which path to take.
+inside `commit()` — when a new child arrives while `state === 'leaving'`, the
+still-leaving element is revived (its `LEAVE_CB` is invoked with `cancelled=true`)
+instead of mounting a fresh node from the slot. Mid-enter cancellation is handled
+symmetrically inside `leave()`, which calls the element's pending `ENTER_CB` and
+forces a reflow before swapping to the leave classes.
 
 ## SSR
 

@@ -19,7 +19,7 @@ function flushMount(scope: any): void {
   scope.children?.forEach((c: any) => flushMount(c));
 }
 
-describe('Transition (stub passthrough)', () => {
+describe('transition (stub passthrough)', () => {
   let container: HTMLElement;
 
   beforeEach(() => {
@@ -194,7 +194,7 @@ describe('getTransitionInfo', () => {
   });
 });
 
-describe('Transition enter flow', () => {
+describe('transition enter flow', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -252,7 +252,7 @@ describe('Transition enter flow', () => {
   });
 });
 
-describe('Transition leave flow', () => {
+describe('transition leave flow', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -315,7 +315,7 @@ describe('Transition leave flow', () => {
   });
 });
 
-describe('Transition JS hooks (T9)', () => {
+describe('transition JS hooks (T9)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -325,7 +325,9 @@ describe('Transition JS hooks (T9)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('fires enter hooks in order: before → enter → after', async () => {
     const show = signal(false);
@@ -335,7 +337,10 @@ describe('Transition JS hooks (T9)', () => {
     const anchor = Transition({
       name: 'fade',
       onBeforeEnter: () => calls.push('before'),
-      onEnter: (_el, done) => { calls.push('enter'); done(); },
+      onEnter: (_el, done) => {
+        calls.push('enter');
+        done();
+      },
       onAfterEnter: () => calls.push('after'),
       children: () => {
         if (!show.value) return undefined;
@@ -363,7 +368,10 @@ describe('Transition JS hooks (T9)', () => {
     const anchor = Transition({
       name: 'fade',
       onBeforeLeave: () => calls.push('before'),
-      onLeave: (_el, done) => { calls.push('leave'); done(); },
+      onLeave: (_el, done) => {
+        calls.push('leave');
+        done();
+      },
       onAfterLeave: () => calls.push('after'),
       children: () => {
         if (!show.value) return undefined;
@@ -393,8 +401,14 @@ describe('Transition JS hooks (T9)', () => {
     pushContextStack(ctx);
     const anchor = Transition({
       name: 'fade',
-      onEnter: (_el, done) => { done(); done(); done(); },
-      onAfterEnter: () => { afterCount++; },
+      onEnter: (_el, done) => {
+        done();
+        done();
+        done();
+      },
+      onAfterEnter: () => {
+        afterCount++;
+      },
       children: () => {
         if (!show.value) return undefined;
         const el = document.createElement('div');
@@ -414,7 +428,7 @@ describe('Transition JS hooks (T9)', () => {
   });
 });
 
-describe('Transition css: false (T10)', () => {
+describe('transition css: false (T10)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -424,7 +438,9 @@ describe('Transition css: false (T10)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('does not apply any CSS classes when css=false', async () => {
     const show = signal(false);
@@ -458,7 +474,7 @@ describe('Transition css: false (T10)', () => {
   });
 });
 
-describe('Transition duration (T11)', () => {
+describe('transition duration (T11)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -468,7 +484,9 @@ describe('Transition duration (T11)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('uses setTimeout when duration is a number', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
@@ -552,7 +570,7 @@ describe('Transition duration (T11)', () => {
   });
 });
 
-describe('Transition appear (T12)', () => {
+describe('transition appear (T12)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -562,7 +580,9 @@ describe('Transition appear (T12)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('runs enter classes on initial mount when appear=true', async () => {
     const show = signal(true);
@@ -640,7 +660,7 @@ describe('Transition appear (T12)', () => {
   });
 });
 
-describe('Transition cancellation: enter→leave (T13)', () => {
+describe('transition cancellation: enter→leave (T13)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -650,7 +670,9 @@ describe('Transition cancellation: enter→leave (T13)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('fires onEnterCancelled when leave starts during enter', async () => {
     const show = signal(false);
@@ -720,7 +742,7 @@ describe('Transition cancellation: enter→leave (T13)', () => {
   });
 });
 
-describe('Transition cancellation: leave→enter (T14)', () => {
+describe('transition cancellation: leave→enter (T14)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -730,7 +752,9 @@ describe('Transition cancellation: leave→enter (T14)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
   it('fires onLeaveCancelled and preserves the element when enter restarts during leave', async () => {
     const show = signal(true);
@@ -765,7 +789,7 @@ describe('Transition cancellation: leave→enter (T14)', () => {
   });
 });
 
-describe('Transition disposal (T15)', () => {
+describe('transition disposal (T15)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -799,12 +823,12 @@ describe('Transition disposal (T15)', () => {
     await Promise.resolve();
     expect(container.querySelector('.box')).not.toBeNull();
     popContextStack();
-    cleanupContext(ctx);   // destroys Transition's scope mid-leave
+    cleanupContext(ctx); // destroys Transition's scope mid-leave
     expect(container.querySelector('.box')).toBeNull();
   });
 });
 
-describe('Transition validation (T16)', () => {
+describe('transition validation (T16)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -845,7 +869,7 @@ describe('Transition validation (T16)', () => {
 // Group A — rapid toggle sequences
 // ---------------------------------------------------------------------------
 
-describe('Transition rapid toggle sequences (A)', () => {
+describe('transition rapid toggle sequences (A)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -855,9 +879,11 @@ describe('Transition rapid toggle sequences (A)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
-  it('A1: true→false→true→false within microtasks ends with no element and no leftover classes', async () => {
+  it('a1: true→false→true→false within microtasks ends with no element and no leftover classes', async () => {
     const show = signal(false);
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -906,7 +932,7 @@ describe('Transition rapid toggle sequences (A)', () => {
     cleanupContext(ctx);
   });
 
-  it('A2: 5x rapid toggles end in correct final state with at most 1 element', async () => {
+  it('a2: 5x rapid toggles end in correct final state with at most 1 element', async () => {
     const show = signal(false);
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -949,7 +975,7 @@ describe('Transition rapid toggle sequences (A)', () => {
     cleanupContext(ctx);
   });
 
-  it('A3: false→true→false without awaiting between toggles then flush rAFs leaves no element and no lingering classes', async () => {
+  it('a3: false→true→false without awaiting between toggles then flush rAFs leaves no element and no lingering classes', async () => {
     const show = signal(false);
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -1001,7 +1027,7 @@ describe('Transition rapid toggle sequences (A)', () => {
 // Group B — animationend vs transitionend
 // ---------------------------------------------------------------------------
 
-describe('Transition animationend vs transitionend (B)', () => {
+describe('transition animationend vs transitionend (B)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -1011,9 +1037,11 @@ describe('Transition animationend vs transitionend (B)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
-  it('B1: element with animationDuration uses animationend to complete — onAfterEnter fires on animationend', async () => {
+  it('b1: element with animationDuration uses animationend to complete — onAfterEnter fires on animationend', async () => {
     const show = signal(false);
     const afterEnter = vi.fn();
     const ctx = createContext(null);
@@ -1056,7 +1084,7 @@ describe('Transition animationend vs transitionend (B)', () => {
     cleanupContext(ctx);
   });
 
-  it('B2: type="transition" forces transitionend — with only animation set, done() fires immediately (no listener)', async () => {
+  it('b2: type="transition" forces transitionend — with only animation set, done() fires immediately (no listener)', async () => {
     const show = signal(false);
     const afterEnter = vi.fn();
     const ctx = createContext(null);
@@ -1095,7 +1123,7 @@ describe('Transition animationend vs transitionend (B)', () => {
     cleanupContext(ctx);
   });
 
-  it('B3: type="animation" forces animationend listener — transitionend alone does not complete', async () => {
+  it('b3: type="animation" forces animationend listener — transitionend alone does not complete', async () => {
     const show = signal(false);
     const afterEnter = vi.fn();
     const ctx = createContext(null);
@@ -1142,7 +1170,7 @@ describe('Transition animationend vs transitionend (B)', () => {
 // Group C — missing done() in JS hook (no auto-complete)
 // ---------------------------------------------------------------------------
 
-describe('Transition missing done() in JS hook (C)', () => {
+describe('transition missing done() in JS hook (C)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -1152,16 +1180,20 @@ describe('Transition missing done() in JS hook (C)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
-  it('C1: onEnter that never calls done() keeps state entering indefinitely — onAfterEnter not fired', async () => {
+  it('c1: onEnter that never calls done() keeps state entering indefinitely — onAfterEnter not fired', async () => {
     const show = signal(false);
     const afterEnter = vi.fn();
     const ctx = createContext(null);
     pushContextStack(ctx);
     const anchor = Transition({
       name: 'fade',
-      onEnter: (_el, _done) => { /* intentionally never calls done */ },
+      onEnter: (_el, _done) => {
+        /* intentionally never calls done */
+      },
       onAfterEnter: afterEnter,
       children: () => {
         if (!show.value) return undefined;
@@ -1187,7 +1219,7 @@ describe('Transition missing done() in JS hook (C)', () => {
     cleanupContext(ctx);
   });
 
-  it('C2: manually calling the captured done() fires onAfterEnter exactly once', async () => {
+  it('c2: manually calling the captured done() fires onAfterEnter exactly once', async () => {
     const show = signal(false);
     const afterEnter = vi.fn();
     let capturedDone: (() => void) | null = null;
@@ -1195,7 +1227,9 @@ describe('Transition missing done() in JS hook (C)', () => {
     pushContextStack(ctx);
     const anchor = Transition({
       name: 'fade',
-      onEnter: (_el, done) => { capturedDone = done; /* never auto-calls done */ },
+      onEnter: (_el, done) => {
+        capturedDone = done; /* never auto-calls done */
+      },
       onAfterEnter: afterEnter,
       children: () => {
         if (!show.value) return undefined;
@@ -1232,7 +1266,7 @@ describe('Transition missing done() in JS hook (C)', () => {
 // Group D — custom class names
 // ---------------------------------------------------------------------------
 
-describe('Transition custom class names (D)', () => {
+describe('transition custom class names (D)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -1242,9 +1276,11 @@ describe('Transition custom class names (D)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
-  it('D1: enterFromClass override applies custom class; non-overridden enterActive uses default', async () => {
+  it('d1: enterFromClass override applies custom class; non-overridden enterActive uses default', async () => {
     const show = signal(false);
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -1277,7 +1313,7 @@ describe('Transition custom class names (D)', () => {
     cleanupContext(ctx);
   });
 
-  it('D2: all 9 class overrides — only custom names appear in each phase, zero v-* classes leak', async () => {
+  it('d2: all 9 class overrides — only custom names appear in each phase, zero v-* classes leak', async () => {
     const show = signal(false);
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -1358,7 +1394,7 @@ describe('Transition custom class names (D)', () => {
 // Group E — slot returns the same Element identity across runs
 // ---------------------------------------------------------------------------
 
-describe('Transition stable element reference (E)', () => {
+describe('transition stable element reference (E)', () => {
   let container: HTMLElement;
   beforeEach(() => {
     resetEnvironment();
@@ -1368,9 +1404,11 @@ describe('Transition stable element reference (E)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+  function rafTick() {
+    return new Promise<void>((r) => requestAnimationFrame(() => r()));
+  }
 
-  it('E1: slot returning same Element reference is a no-op — no enter/leave animation fired', async () => {
+  it('e1: slot returning same Element reference is a no-op — no enter/leave animation fired', async () => {
     const show = signal(true);
     const stableEl = document.createElement('div');
     stableEl.className = 'stable';
@@ -1412,7 +1450,7 @@ describe('Transition stable element reference (E)', () => {
     cleanupContext(ctx);
   });
 
-  it('E2: swapping to a different element triggers normal enter cycle after leave completes', async () => {
+  it('e2: swapping to a different element triggers normal enter cycle after leave completes', async () => {
     const show = signal(true);
     let currentRef: HTMLElement = document.createElement('div');
     currentRef.className = 'el-a';
@@ -1469,4 +1507,3 @@ describe('Transition stable element reference (E)', () => {
     cleanupContext(ctx);
   });
 });
-
