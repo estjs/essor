@@ -4,3 +4,4 @@ export * from './Suspense';
 export * from './createResource';
 export * from './AsyncComponent';
 export * from './For';
+export * from './Transition';

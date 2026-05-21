@@ -50,6 +50,9 @@ export {
   defineAsyncComponent,
   type AsyncComponentOptions,
   For,
+  Transition,
+  isTransition,
+  type TransitionProps,
 } from './components';
 
 export type { ComponentProps, ComponentFn } from './types';
