@@ -122,6 +122,12 @@ function forceReflow(el: Element): void {
 // forceReflow is reserved for future use (e.g. appear transitions)
 void forceReflow;
 
+function resolveDuration(d: TransitionProps['duration'], dir: 'enter' | 'leave'): number | null {
+  if (d == null) return null;
+  if (typeof d === 'number') return d;
+  return d[dir];
+}
+
 // ---------------------------------------------------------------------------
 // Transition component
 // ---------------------------------------------------------------------------
@@ -178,15 +184,20 @@ export function Transition(props: TransitionProps): Node {
       props.onEnter?.(el, done);
 
       if (useCss && !props.onEnter) {
-        const info = getTransitionInfo(el, props.type);
-        if (info) {
-          const onEnd = (): void => {
-            el.removeEventListener(info.event, onEnd);
-            done();
-          };
-          el.addEventListener(info.event, onEnd);
+        const explicit = resolveDuration(props.duration, 'enter');
+        if (explicit != null) {
+          setTimeout(done, explicit);
         } else {
-          done();
+          const info = getTransitionInfo(el, props.type);
+          if (info) {
+            const onEnd = (): void => {
+              el.removeEventListener(info.event, onEnd);
+              done();
+            };
+            el.addEventListener(info.event, onEnd);
+          } else {
+            done();
+          }
         }
       }
     });
@@ -198,9 +209,10 @@ export function Transition(props: TransitionProps): Node {
     props.onBeforeLeave?.(el);
 
     // Check whether there's actually a CSS transition/animation before going async
-    const info = useCss && !props.onLeave ? getTransitionInfo(el, props.type) : null;
+    const explicit = resolveDuration(props.duration, 'leave');
+    const info = useCss && !props.onLeave && explicit == null ? getTransitionInfo(el, props.type) : null;
 
-    if (!info && !props.onLeave) {
+    if (!info && !props.onLeave && explicit == null) {
       // No CSS transition and no JS hook — remove synchronously
       if (useCss) {
         // Still apply leave-from/leave-active in case caller inspects them,
@@ -246,7 +258,9 @@ export function Transition(props: TransitionProps): Node {
       props.onLeave?.(el, done);
 
       if (useCss && !props.onLeave) {
-        if (info) {
+        if (explicit != null) {
+          setTimeout(done, explicit);
+        } else if (info) {
           const onEnd = (): void => {
             el.removeEventListener(info.event, onEnd);
             done();

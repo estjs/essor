@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
 import {
   Transition,
@@ -312,5 +312,242 @@ describe('Transition leave flow', () => {
 
     popContextStack();
     cleanupContext(ctx);
+  });
+});
+
+describe('Transition JS hooks (T9)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('fires enter hooks in order: before → enter → after', async () => {
+    const show = signal(false);
+    const calls: string[] = [];
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onBeforeEnter: () => calls.push('before'),
+      onEnter: (_el, done) => { calls.push('enter'); done(); },
+      onAfterEnter: () => calls.push('after'),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    expect(calls).toEqual(['before', 'enter', 'after']);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('fires leave hooks in order: before → leave → after', async () => {
+    const show = signal(true);
+    const calls: string[] = [];
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onBeforeLeave: () => calls.push('before'),
+      onLeave: (_el, done) => { calls.push('leave'); done(); },
+      onAfterLeave: () => calls.push('after'),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    show.value = false;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    expect(calls).toEqual(['before', 'leave', 'after']);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('done() is idempotent — repeated calls do not retrigger onAfterEnter', async () => {
+    const show = signal(false);
+    let afterCount = 0;
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onEnter: (_el, done) => { done(); done(); done(); },
+      onAfterEnter: () => { afterCount++; },
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    expect(afterCount).toBe(1);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+describe('Transition css: false (T10)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('does not apply any CSS classes when css=false', async () => {
+    const show = signal(false);
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      css: false,
+      onEnter: (_el, done) => done(),
+      onLeave: (_el, done) => done(),
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+    const el = container.querySelector('.box') as HTMLElement;
+    expect(el).not.toBeNull();
+    expect(el.classList.contains('fade-enter-from')).toBe(false);
+    expect(el.classList.contains('fade-enter-active')).toBe(false);
+    expect(el.classList.contains('fade-enter-to')).toBe(false);
+    popContextStack();
+    cleanupContext(ctx);
+  });
+});
+
+describe('Transition duration (T11)', () => {
+  let container: HTMLElement;
+  beforeEach(() => {
+    resetEnvironment();
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+  afterEach(() => {
+    if (container.parentNode) container.parentNode.removeChild(container);
+  });
+  function rafTick() { return new Promise<void>((r) => requestAnimationFrame(() => r())); }
+
+  it('uses setTimeout when duration is a number', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
+    try {
+      const show = signal(false);
+      const after = vi.fn();
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const anchor = Transition({
+        name: 'fade',
+        duration: 150,
+        onAfterEnter: after,
+        children: () => {
+          if (!show.value) return undefined;
+          const el = document.createElement('div');
+          el.className = 'box';
+          return el;
+        },
+      });
+      container.appendChild(anchor);
+      flushMount(ctx);
+      show.value = true;
+      await Promise.resolve();
+      // flush both rAFs that nextFrame schedules (each rAF = ~16ms in fake timers)
+      vi.advanceTimersByTime(34);
+      await Promise.resolve();
+      // now advance past the duration setTimeout
+      vi.advanceTimersByTime(150);
+      await Promise.resolve();
+      expect(after).toHaveBeenCalled();
+      popContextStack();
+      cleanupContext(ctx);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('honors { enter, leave } per-direction durations', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
+    try {
+      const show = signal(true);
+      const after = vi.fn();
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const anchor = Transition({
+        name: 'fade',
+        duration: { enter: 100, leave: 500 },
+        onAfterLeave: after,
+        children: () => {
+          if (!show.value) return undefined;
+          const el = document.createElement('div');
+          el.className = 'box';
+          return el;
+        },
+      });
+      container.appendChild(anchor);
+      flushMount(ctx);
+      // flush initial enter: 2 rAF ticks (32ms) + enter duration (100ms) = 132ms
+      await Promise.resolve();
+      vi.advanceTimersByTime(200);
+      await Promise.resolve();
+
+      show.value = false;
+      await Promise.resolve();
+      // flush 2 rAF ticks for leave nextFrame (32ms), then advance to just before 500ms leave duration
+      vi.advanceTimersByTime(32); // flush the 2 rAFs, leave setTimeout(done, 500) now registered
+      await Promise.resolve();
+      // leave setTimeout fires 500ms after it was registered; advance only 400ms — should NOT fire
+      vi.advanceTimersByTime(400);
+      await Promise.resolve();
+      expect(after).not.toHaveBeenCalled();
+      // advance the remaining 101ms — total past 500ms — should fire
+      vi.advanceTimersByTime(101);
+      await Promise.resolve();
+      expect(after).toHaveBeenCalled();
+      popContextStack();
+      cleanupContext(ctx);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
