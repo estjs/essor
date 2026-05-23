@@ -2,8 +2,10 @@ import { effect } from '@estjs/signals';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
 import { TRANSITION_COMPONENT } from '../constants';
+import { isComponent } from '../component';
 import { useChildren } from '../utils';
 import type { AnyNode } from '../types';
+import type { Component } from '../component';
 
 export interface TransitionProps {
   name?: string;
@@ -101,26 +103,63 @@ export function getTransitionInfo(
 }
 
 // ---------------------------------------------------------------------------
-// Private DOM helpers
+// Shared DOM helpers (exported — TransitionGroup reuses these so we don't
+// fork the same primitives across two files)
 // ---------------------------------------------------------------------------
 
-function addClass(el: Element, cls: string): void {
+export function addClass(el: Element, cls: string): void {
   for (const c of cls.split(/\s+/)) if (c) el.classList.add(c);
 }
 
-function removeClass(el: Element, cls: string): void {
+export function removeClass(el: Element, cls: string): void {
   for (const c of cls.split(/\s+/)) if (c) el.classList.remove(c);
 }
 
-function nextFrame(cb: () => void): void {
+export function nextFrame(cb: () => void): void {
   requestAnimationFrame(() => requestAnimationFrame(cb));
 }
 
-function forceReflow(el: Element): void {
+export function forceReflow(el: Element): void {
   void (el as HTMLElement).offsetHeight;
 }
 
-function resolveDuration(d: TransitionProps['duration'], dir: 'enter' | 'leave'): number | null {
+/**
+ * Wait for a transition/animation on `el` to finish, then call `resolve`.
+ * If `explicit` is set, use that as a fixed timeout (Vue's `duration` prop
+ * semantics); otherwise probe computed style for the longest active timing
+ * and listen for the matching end event with a +1ms safety net.
+ */
+export function whenTransitionEnds(
+  el: Element,
+  type: TransitionProps['type'],
+  explicit: number | null,
+  resolve: () => void,
+): void {
+  if (explicit != null) {
+    setTimeout(resolve, explicit);
+    return;
+  }
+  const info = getTransitionInfo(el, type);
+  if (!info) {
+    resolve();
+    return;
+  }
+  let done = false;
+  const finish = (): void => {
+    if (done) return;
+    done = true;
+    el.removeEventListener(info.event, onEnd);
+    resolve();
+  };
+  const onEnd = (): void => finish();
+  el.addEventListener(info.event, onEnd);
+  setTimeout(finish, info.timeout + 1);
+}
+
+export function resolveDuration(
+  d: TransitionProps['duration'],
+  dir: 'enter' | 'leave',
+): number | null {
   if (d == null) return null;
   if (typeof d === 'number') return d;
   return d[dir];
@@ -137,6 +176,36 @@ function validateSlot(value: unknown): Element | null {
     return value[0] instanceof Element ? value[0] : null;
   }
   if (value instanceof Element) return value;
+  // A Component instance was passed (e.g. `<Transition><EFoo/></Transition>`):
+  // mount it into a detached fragment so we can pluck its rendered root
+  // Element, then return that. The Component owns its scope/cleanup, so
+  // its disposal will happen via the outer mount tree just like a normal
+  // child. We only need the DOM node for class manipulation / events.
+  //
+  // Note: Transition can only animate a SINGLE root element. If the child
+  // component renders multiple roots (fragment-style return), only the
+  // first one participates — the rest stay in the detached fragment and
+  // never reach the DOM. Surface that as a dev warning.
+  if (isComponent(value)) {
+    const comp = value as Component;
+    if (comp.scope == null) {
+      const fragment = document.createDocumentFragment();
+      comp.mount(fragment);
+    }
+    if (__DEV__ && comp.renderedNodes.length > 1) {
+      console.warn(
+        '[essor] <Transition> child component rendered multiple root nodes; ' +
+          'only the first is animated. Wrap the children in a single element ' +
+          'or use <TransitionGroup>.',
+      );
+    }
+    const first = comp.firstChild;
+    if (first instanceof Element) return first;
+    if (__DEV__) {
+      console.warn('[essor] <Transition> child component did not render an Element root.');
+    }
+    return null;
+  }
   if (__DEV__) {
     console.warn('[essor] <Transition> received a non-element child; animation will be skipped.');
   }
@@ -187,34 +256,6 @@ export function Transition(props: TransitionProps): Node {
   let hasPending = false;
   let scheduled = false;
   let disposed = false;
-
-  const whenTransitionEnds = (
-    el: Element,
-    type: TransitionProps['type'],
-    explicit: number | null,
-    resolve: () => void,
-  ): void => {
-    if (explicit != null) {
-      setTimeout(resolve, explicit);
-      return;
-    }
-    const info = getTransitionInfo(el, type);
-    if (!info) {
-      resolve();
-      return;
-    }
-    let done = false;
-    const finish = (): void => {
-      if (done) return;
-      done = true;
-      el.removeEventListener(info.event, onEnd);
-      resolve();
-    };
-    const onEnd = (): void => finish();
-    el.addEventListener(info.event, onEnd);
-    // Safety net — guard against missed end events.
-    setTimeout(finish, info.timeout + 1);
-  };
 
   const enter = (el: Element, phase: 'enter' | 'appear'): void => {
     // Cancel any in-flight leave on the same element.

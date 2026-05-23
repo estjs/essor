@@ -61,6 +61,10 @@ export default defineConfig({
                   link: '/zh/guide/bind',
                 },
                 {
+                  text: 'Transition 过渡动画',
+                  link: '/zh/guide/transition',
+                },
+                {
                   text: '迁移到同构 API',
                   link: '/zh/guide/migration-to-isomorphic',
                 },
@@ -199,6 +203,10 @@ export default defineConfig({
                 {
                   text: 'bind two-way binding',
                   link: '/en/guide/bind',
+                },
+                {
+                  text: 'Transition & TransitionGroup',
+                  link: '/en/guide/transition',
                 },
               ],
             },

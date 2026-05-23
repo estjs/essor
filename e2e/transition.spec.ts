@@ -102,4 +102,106 @@ test.describe('transition example', () => {
     await page.waitForTimeout(500);
     await assertNoConsoleErrors();
   });
+
+  // ---------------------------------------------------------------------------
+  // TransitionGroup scenario
+  // ---------------------------------------------------------------------------
+
+  test('group scenario: initial render shows seeded list without animation classes', async ({
+    page,
+  }) => {
+    const items = page.locator('[data-test^="group-item-"]');
+    await expect(items).toHaveCount(3);
+    // Initial mount must not run enter — none of the items should carry
+    // list-enter-from / list-enter-active by the time the page has settled.
+    for (const id of [1, 2, 3]) {
+      const li = page.locator(`[data-test="group-item-${id}"]`);
+      await expect(li).not.toHaveClass(/list-enter-from|list-enter-active/);
+    }
+  });
+
+  test('group scenario: Add appends an item with enter classes during the transition', async ({
+    page,
+  }) => {
+    await page.locator('[data-test="group-add"]').click();
+    const added = page.locator('[data-test="group-item-4"]');
+    await expect(added).toBeVisible();
+    // The enter-active class should be observable while the animation runs
+    // (~300ms in the example CSS). Give it generous slack to catch it.
+    await expect(added).toHaveClass(/list-enter-active/, { timeout: 200 });
+    // After the animation, the active class is gone.
+    await page.waitForTimeout(500);
+    await expect(added).not.toHaveClass(/list-enter-active|list-enter-from|list-enter-to/);
+  });
+
+  test('group scenario: Remove last animates the trailing item out with leave classes', async ({
+    page,
+  }) => {
+    const last = page.locator('[data-test="group-item-3"]');
+    await expect(last).toBeVisible();
+    await page.locator('[data-test="group-remove"]').click();
+    // While the leave animation runs, the element stays in the DOM with the
+    // leave-active class AND absolute positioning so siblings can reflow.
+    await expect(last).toHaveClass(/list-leave-active/, { timeout: 200 });
+    // After the animation finishes the element is detached.
+    await expect(last).toHaveCount(0, { timeout: 1000 });
+    // And the remaining items keep their order.
+    const remaining = page.locator('[data-test^="group-item-"]');
+    await expect(remaining).toHaveCount(2);
+  });
+
+  test('group scenario: Shuffle applies the list-move class to staying items', async ({
+    page,
+  }) => {
+    await page.locator('[data-test="group-shuffle"]').click();
+    // After "shuffle" (last → first), all 3 items moved → all should have the
+    // list-move class applied while the FLIP animation runs. We assert at
+    // least one to keep the test resilient against future timing tweaks.
+    const moveItems = page.locator('.list-move');
+    await expect(moveItems.first()).toBeVisible({ timeout: 300 });
+    // Visual order in the DOM must reflect the new sequence: 3, 1, 2.
+    const order = await page.$$eval('[data-test^="group-item-"]', (els) =>
+      els.map((el) => el.getAttribute('data-test')),
+    );
+    expect(order).toEqual(['group-item-3', 'group-item-1', 'group-item-2']);
+    // After ~500ms the move class is gone.
+    await page.waitForTimeout(600);
+    await expect(page.locator('.list-move')).toHaveCount(0);
+  });
+
+  test('group scenario: Clear removes every item (after leave animation)', async ({ page }) => {
+    await page.locator('[data-test="group-clear"]').click();
+    const items = page.locator('[data-test^="group-item-"]');
+    // All items animate out simultaneously.
+    await expect(items).toHaveCount(0, { timeout: 1000 });
+  });
+
+  test('group scenario: rapid Add/Remove sequence ends in a consistent state', async ({
+    page,
+  }) => {
+    // Drive the list quickly to flush several enter/leave overlaps. The end
+    // state must reflect a deterministic +3 / -2 net result.
+    for (let i = 0; i < 3; i++) await page.locator('[data-test="group-add"]').click();
+    await page.locator('[data-test="group-remove"]').click();
+    await page.locator('[data-test="group-remove"]').click();
+    // Let pending animations finish.
+    await page.waitForTimeout(800);
+    // 3 seed + 3 add - 2 remove = 4 items
+    await expect(page.locator('[data-test^="group-item-"]')).toHaveCount(4);
+  });
+
+  test('group scenario: no console errors during list interactions', async ({
+    page,
+    assertNoConsoleErrors,
+  }) => {
+    await page.locator('[data-test="group-add"]').click();
+    await page.waitForTimeout(150);
+    await page.locator('[data-test="group-shuffle"]').click();
+    await page.waitForTimeout(450);
+    await page.locator('[data-test="group-remove"]').click();
+    await page.waitForTimeout(450);
+    await page.locator('[data-test="group-clear"]').click();
+    await page.waitForTimeout(450);
+    await assertNoConsoleErrors();
+  });
 });

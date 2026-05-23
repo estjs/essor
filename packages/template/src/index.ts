@@ -53,6 +53,9 @@ export {
   Transition,
   isTransition,
   type TransitionProps,
+  TransitionGroup,
+  isTransitionGroup,
+  type TransitionGroupProps,
 } from './components';
 
 export type { ComponentProps, ComponentFn } from './types';

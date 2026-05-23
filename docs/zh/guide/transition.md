@@ -1,21 +1,29 @@
-# Transition 过渡动画
+# Transition 与 TransitionGroup
 
-`<Transition>` 在单个子元素**挂载**和**卸载**时自动播放进入/离开动画。把任意
-条件渲染的 UI 包在 `<Transition>` 里,定义好 CSS 类,运行时负责整个序列编排。
+Essor 内置两个动画组件:
+
+- **`<Transition>`** —— 对**单个元素**的挂载和卸载做过渡动画。
+- **`<TransitionGroup>`** —— 对**带 key 的列表**做动画:进入、离开,以及位置
+  变化(FLIP)。
+
+两个组件默认都用 CSS 类驱动,同时支持 JS 钩子,可以完全命令式接管动画。
+
+## `<Transition>`
+
+把任意条件渲染的 UI 包在 `<Transition>` 里,定义好 CSS 类,运行时负责整个进入/
+离开动画的编排。
 
 功能一览:
 
-- **CSS 类过渡** — 经典的 6-class `*-enter-*` / `*-leave-*` 序列
-- **JS 钩子** — `onBeforeEnter`、`onEnter(done)`、`onAfterEnter`、`onEnterCancelled` 及 leave 对应钩子
-- **appear** — 首次挂载时也播放进入动画
-- **duration 覆盖** — 用精确毫秒值跳过 CSS 事件检测
-- **取消动画** — 进行中被反向触发时干净处理,不留孤立元素
-- **`css={false}`** — 完全关闭类操作,专用 Web Animations API 或外部库
-- **type 检测** — 同时存在 transition 和 animation 时强制指定监听哪个结束事件
+- **CSS 类过渡** —— 经典的 6-class `*-enter-*` / `*-leave-*` 序列
+- **JS 钩子** —— `onBeforeEnter`、`onEnter(done)`、`onAfterEnter`、`onEnterCancelled` 及 leave 对应钩子
+- **appear** —— 首次挂载时也播放进入动画
+- **duration 覆盖** —— 用精确毫秒值跳过 CSS 事件检测
+- **取消动画** —— 进行中被反向触发时干净处理,不留孤立元素
+- **`css={false}`** —— 完全关闭类操作,专用 Web Animations API 或外部库
+- **type 检测** —— 同时存在 transition 和 animation 时强制指定监听哪个结束事件
 
-> `<TransitionGroup>`(列表动画)暂未实现,计划中。
-
-## 基本用法
+### 基本用法
 
 ```tsx
 import { useSignal } from 'essor'
@@ -57,12 +65,12 @@ function Demo() {
 
 `name`(默认 `'v'`)决定 CSS 类前缀:
 
-| `name`   | 进入类                                      | 离开类                                      |
-| -------- | ------------------------------------------ | ------------------------------------------ |
-| `'v'`    | `v-enter-from`, `v-enter-active`, `v-enter-to` | `v-leave-from`, `v-leave-active`, `v-leave-to` |
+| `name`   | 进入类                                                  | 离开类                                                  |
+| -------- | ------------------------------------------------------- | ------------------------------------------------------- |
+| `'v'`    | `v-enter-from`, `v-enter-active`, `v-enter-to`          | `v-leave-from`, `v-leave-active`, `v-leave-to`          |
 | `'fade'` | `fade-enter-from`, `fade-enter-active`, `fade-enter-to` | `fade-leave-from`, `fade-leave-active`, `fade-leave-to` |
 
-## CSS 类序列
+### CSS 类序列
 
 运行时用精确的两帧序列来确保浏览器在过渡开始前先提交初始状态:
 
@@ -98,7 +106,7 @@ function Demo() {
 `transition: ...` 或 `animation: ...` 规则写在 **`-active` 类**上;
 `-from` / `-to` 类定义起始/结束值。
 
-## JS 钩子
+### JS 钩子
 
 8 个钩子可拦截每个阶段,可与 CSS 类并用,也可配合 `css={false}` 单独使用:
 
@@ -139,7 +147,7 @@ function Demo() {
 钩子触发顺序:`onBeforeEnter` → `onEnter(done)` → `onAfterEnter`(或被中断时
 触发 `onEnterCancelled`)。
 
-## `css={false}` — 纯 JS 模式
+### `css={false}` —— 纯 JS 模式
 
 `css={false}` 会阻止 `<Transition>` 操作任何 CSS 类,由你全权用 JS 驱动动画 ——
 Web Animations API、motion-one、anime.js、GSAP 等均可:
@@ -167,7 +175,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 > 未提供 JS 钩子时设 `css={false}`,元素会**瞬间**出现 / 消失 —— 什么都没有
 > 驱动动画。
 
-## `duration` prop
+### `duration` prop
 
 默认情况下 `<Transition>` 通过 `transitionend` / `animationend` 事件检测结束时
 机。`duration` prop 用精确超时值(毫秒)覆盖这一行为:
@@ -187,7 +195,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 当 CSS 里用了 `all` 缩写(会产生多余的 `transitionend` 事件),或者你有复杂链式
 动画需要精确时机时,推荐使用 `duration`。
 
-## `appear` prop
+### `appear` prop
 
 默认情况下,**首次挂载**时子元素直接出现,不播放进入动画。设置 `appear` 即可让
 首次挂载也有动画:
@@ -213,7 +221,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 </Transition>
 ```
 
-## `type` prop
+### `type` prop
 
 当元素**同时**有 CSS `transition` 和 CSS `animation` 时,`<Transition>` 会选择
 时长较长的那个。用 `type` 强制指定:
@@ -230,7 +238,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 | `'animation'`  | `animationend`         |
 | _(省略)_       | 取计算时长较长的那个    |
 
-## 自定义类名
+### 自定义类名
 
 集成第三方 CSS 框架(Animate.css、Tailwind `transition` 等)时,可以单独覆盖
 每个类名:
@@ -258,7 +266,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 </Transition>
 ```
 
-## 取消动画
+### 取消动画
 
 `<Transition>` 能正确处理快速反复切换 —— 绝不会二次挂载或在 DOM 中留下孤立元素。
 
@@ -274,14 +282,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 2. 移除离开类。
 3. 元素被保留在 DOM 中,继续播放进入动画。
 
-具体实现见
-[`packages/template/src/components/Transition.ts`](../../packages/template/src/components/Transition.ts)
-中的 `commit()`:当新子节点到来时若 `state === 'leaving'`,会复用正在离开的元素
-(对其 `LEAVE_CB` 传入 `cancelled=true`),而不是从插槽重新挂载新节点。中途打断
-进入的逻辑对称地写在 `leave()` 中 —— 先调用元素挂着的 `ENTER_CB`,强制 reflow
-后再切到离开类。
-
-## SSR
+### SSR
 
 服务端渲染时,`<Transition>` 直接将子元素输出为**静态 HTML** —— 动画类**不会**
 写入 HTML 字符串。这是安全的:动画类在客户端 hydration 之后才由客户端代码添加。
@@ -289,7 +290,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 - `appear={true}` 在客户端 hydration 完成后触发一次进入动画。
 - SSR 渲染期间触发的离开/进入切换只输出当前子节点状态。
 
-## 约束
+### 约束
 
 - **只支持单个根子节点。** 传入子节点数组时,`__DEV__` 下会抛出:
   ```
@@ -299,11 +300,229 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
   印警告,不执行动画。
 - **插槽应为函数。** 标准写法是 `{() => show.value && <div/>}`。函数会被响应式追
   踪;返回真值 `Element` 则挂载,返回假值则触发离开。
-- **`<TransitionGroup>` 暂未实现。**
+
+---
+
+## `<TransitionGroup>`
+
+`<TransitionGroup>` 给**带 key 的列表**做三种协同动画:
+
+- **进入(enter)** —— 新加入的项目用 `*-enter-*` 类淡入或滑入
+- **离开(leave)** —— 被移除的项目播放离场动画;运行时会将它们设为
+  `position: absolute`,让其它项目能在下方平滑回流,动画结束后再卸载
+- **移动(move)** —— 留在列表中但位置变化的项目用 **FLIP** 技术做位置过渡:
+  先快照旧位置,DOM 重排后量出位移,先用 `transform` 跳回旧位置,再过渡到
+  新位置,过渡期间挂载 `moveClass`
+
+继承了 `<Transition>` 的全部单项配置(name、css、type、duration、JS 钩子、自定
+义类名等),并新增了一些列表专属的 prop。
+
+### 基本用法
+
+```tsx
+import { useSignal } from 'essor'
+import { TransitionGroup } from 'essor'
+
+function TodoList() {
+  const $items = useSignal([
+    { id: 1, label: '买牛奶' },
+    { id: 2, label: '遛狗' },
+  ])
+
+  const add = () =>
+    ($items.value = [...$items.value, { id: Date.now(), label: '新任务' }])
+
+  const remove = (id: number) =>
+    ($items.value = $items.value.filter(i => i.id !== id))
+
+  return (
+    <>
+      <button onClick={add}>添加</button>
+      <TransitionGroup name='list' each={$items} key={item => item.id} tag='ul'>
+        {(item) => (
+          <li onClick={() => remove(item.id)}>{item.label}</li>
+        )}
+      </TransitionGroup>
+    </>
+  )
+}
+```
+
+```css
+/* enter / leave / move 共享同一条过渡规则 */
+.list-enter-active,
+.list-leave-active,
+.list-move {
+  transition: all 300ms ease;
+}
+
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateY(10px);
+}
+```
+
+> `<TransitionGroup>` 在离开阶段会**自动**给离开的项目设置
+> `position: absolute` 并锁定 `top` / `left` / `width` / `height`,让周围
+> 项目正常回流。**不需要**自己写 `position: absolute` 规则。
+
+### 必需 prop
+
+| Prop       | 类型                                                | 说明                                                                        |
+| ---------- | --------------------------------------------------- | --------------------------------------------------------------------------- |
+| `each`     | `T[] \| Signal<T[]> \| () => T[]`                   | 源列表,变化时响应式触发更新。                                              |
+| `key`      | `(item: T, index: number) => unknown`               | 每一行的稳定唯一标识,用于检测新增 / 删除 / 移动。                          |
+| `children` | `(item: T, index: number) => Element \| Component`  | 单行的渲染函数,必须返回单个根 Element 或 Component。                       |
+
+### 可选 prop
+
+| Prop        | 默认值          | 说明                                                          |
+| ----------- | --------------- | ------------------------------------------------------------- |
+| `tag`       | `'div'`         | 外层包裹元素。提供布局根,用作 FLIP 测量基准。                |
+| `moveClass` | `${name}-move`  | 移动动画期间挂载在子项上的 class。                            |
+
+`<Transition>` 的其余 prop 都被继承 —— `name`、`css`、`type`、`duration`、
+`enterFromClass` … `leaveToClass`,以及下面的 JS 钩子。
+
+### 单项钩子
+
+钩子集合与 `<Transition>` 完全一致,**按行触发**:
+
+| 钩子               | 触发时机                                |
+| ------------------ | --------------------------------------- |
+| `onBeforeEnter`    | 给新加项目添加进入类之前                |
+| `onEnter`          | 进入 active 阶段开始时                  |
+| `onAfterEnter`     | 进入动画完成后                          |
+| `onEnterCancelled` | 进入过程中又触发了离开                  |
+| `onBeforeLeave`    | 添加离开类之前                          |
+| `onLeave`          | 离开 active 阶段开始时                  |
+| `onAfterLeave`     | 离开动画完成后                          |
+| `onLeaveCancelled` | 离开过程中同一 key 又回到列表           |
+
+```tsx
+<TransitionGroup
+  name='list'
+  each={$items}
+  key={i => i.id}
+  onEnter={(el, done) => {
+    el.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 200 },
+    ).finished.then(done)
+  }}
+>
+  {(item) => <div class='card'>{item.label}</div>}
+</TransitionGroup>
+```
+
+### FLIP 移动动画
+
+当同一 key 出现在新的索引位置时,运行时对该行的元素执行 **FLIP**:
+
+```
+1. 重排前快照 getBoundingClientRect()。
+2. 将 DOM 子节点重排成新顺序。
+3. 重排后再快照,计算 (dx, dy) 位移。
+4. 设置 transform: translate(dx, dy),transitionDuration: 0s,触发 reflow。
+5. 添加 moveClass,恢复原 transitionDuration。
+6. 清空 transform —— 浏览器自动过渡回原位置。
+7. 等待 transitionend,移除 moveClass。
+```
+
+默认 `moveClass` 为 `${name}-move`(例如 `list-move`)。在该 class 上写
+`transition` 规则即可,通常和 enter/leave 共用同一条:
+
+```css
+.list-move {
+  transition: transform 300ms ease;
+}
+```
+
+如果新旧位置完全一致(没有位移),FLIP 一步直接跳过。
+
+### 子节点为 Component
+
+`children(item, index)` 既可以返回 `Element`,也可以返回一个 `Component`
+实例。返回 Component 时:
+
+- 该 Component 会被挂载到 wrapper 中,作为普通子节点存在。
+- 它**渲染出的第一个 Element** 参与 enter/leave/move。
+- 若 Component 渲染出多个根节点,只有第一个动画 —— `__DEV__` 下会打印警告。
+
+```tsx
+<TransitionGroup name='cards' each={$items} key={i => i.id}>
+  {(item) => <Card data={item} />}  {/* Card 是一个 Essor 组件 */}
+</TransitionGroup>
+```
+
+### 每行独立作用域
+
+每一行的渲染函数运行在**独立的响应式作用域**中(行为与 `<For>` 一致)。在
+`children(item, index)` 中创建的 signal、effect、`onCleanup` 等会在该行被
+移除时**自动清理** —— 不需要等整个 `<TransitionGroup>` 卸载。
+
+### `css={false}`
+
+语义和 `<Transition>` 一致 —— 完全禁用类操作。未提供 JS 钩子时,被移除的项目
+会**同步**从 DOM 上拆除(无离开动画),新加项目立即出现。
+
+### 首次挂载不会播放进入动画
+
+首屏渲染就在列表中的项目**不会**触发进入动画。`<TransitionGroup>` 不支持
+`appear`。如需首屏动画,可在挂载后再 push 项目,或自己在 JS 钩子里做一次性
+处理。
+
+### 约束
+
+- **`key` 必须稳定且唯一。** 两个项目返回同一 key 会被视为重复 —— 第二个
+  不会进入,reconcile 时也会错乱。
+- **渲染函数必须返回单个根 Element 或 Component。** 返回 `null`、字符串、
+  数字时该行会被跳过,`__DEV__` 下打印警告。
+- **Component 渲染多个根节点时只动画第一个**,其余根节点不参与过渡。
+- **不支持 `appear`。** 首屏渲染的项目跳过进入动画。需要首屏动画时,可先用
+  空列表挂载、再 push 项目,或自己写 JS 钩子。
+- **离开时 `position` 由运行时接管。** 自定义 `*-leave-active` 样式时**不要**
+  覆盖 `position`,运行时会在离开期间设为 `absolute`。
+
+### 常见写法
+
+**列表交错(stagger):**
+
+```tsx
+<TransitionGroup
+  name='list'
+  each={$items}
+  key={i => i.id}
+  onEnter={(el, done) => {
+    const i = Number((el as HTMLElement).dataset.index)
+    setTimeout(done, 50 * i + 200)
+  }}
+>
+  {(item, index) => (
+    <li data-index={index}>{item.label}</li>
+  )}
+</TransitionGroup>
+```
+
+**只做移动动画:**
+
+```css
+.list-move {
+  transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* enter/leave 立即完成 */
+.list-enter-active,
+.list-leave-active {
+  transition: none;
+}
+```
+
+---
 
 ## 常见错误
 
-### 1. 多个子节点
+### 1. `<Transition>` 内多个子节点
 
 ```tsx
 {/* ❌ __DEV__ 下抛出异常 */}
@@ -311,7 +530,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
   {() => [<div key='a' />, <div key='b' />]}
 </Transition>
 
-{/* ✅ 包一个容器 */}
+{/* ✅ 包一个容器 —— 或对列表使用 TransitionGroup */}
 <Transition name='fade'>
   {() => $show.value && (
     <div>
@@ -364,6 +583,36 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 </Transition>
 ```
 
+### 5. `<TransitionGroup>` 没有给 `moveClass` 写过渡规则
+
+```css
+/* ❌ 列表项突变到新位置,没有移动动画 */
+.list-enter-active, .list-leave-active {
+  transition: opacity 300ms;
+}
+
+/* ✅ 一并给 .list-move 加规则 */
+.list-enter-active, .list-leave-active, .list-move {
+  transition: all 300ms;
+}
+```
+
+### 6. key 不唯一
+
+```tsx
+{/* ❌ 两项共享 key=0 — 第二项被当作重复,行为异常 */}
+<TransitionGroup each={items} key={() => 0}>
+  {item => <li>{item.label}</li>}
+</TransitionGroup>
+
+{/* ✅ 用稳定的业务 id 作为 key */}
+<TransitionGroup each={items} key={item => item.id}>
+  {item => <li>{item.label}</li>}
+</TransitionGroup>
+```
+
+---
+
 ## 最佳实践
 
 1. **始终写 `-active` 规则**,并明确指定 `transition-duration` 或
@@ -377,3 +626,7 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 5. **插槽保持函数形式** —— `{() => cond && <El/>}` 是标准写法。传静态节点意味
    着 `<Transition>` 始终看到"子节点存在",离开路径永远不会触发。
 6. **纯出场动画**(如页面加载淡入)设置 `appear`,插槽函数始终返回该元素即可。
+7. **`<TransitionGroup>` 的 key 用稳定身份** —— 用 `item.id`,不要用数组下
+   标。下标作为 key 会让移动动画完全失效。
+8. **`-enter-active`、`-leave-active`、`-move` 使用同一条 transition 规则**,
+   列表动画看起来才连贯。

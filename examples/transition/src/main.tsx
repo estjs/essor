@@ -1,4 +1,4 @@
-import { Transition, createApp } from 'essor';
+import { Transition, TransitionGroup, createApp } from 'essor';
 import './style.css';
 
 function App() {
@@ -9,6 +9,14 @@ function App() {
   let $appearShow = true;
   let $hookCount = 0;
   let $hookShow = false;
+  // TransitionGroup demo state — keep ids unique so leave→re-enter and FLIP
+  // move animations both have stable identity to work with.
+  let $listItems: Array<{ id: number; label: string }> = [
+    { id: 1, label: 'Apple' },
+    { id: 2, label: 'Banana' },
+    { id: 3, label: 'Cherry' },
+  ];
+  let $nextId = 4;
 
   return (
     <main data-test="example-root" class="page">
@@ -128,6 +136,63 @@ function App() {
             )
           }
         </Transition>
+      </section>
+
+      <section class="scenario" data-test="scenario-group">
+        <h2>7. TransitionGroup (enter/leave/move FLIP)</h2>
+        <div class="group-controls">
+          <button
+            data-test="group-add"
+            onClick={() => {
+              $listItems = [
+                ...$listItems,
+                { id: $nextId, label: `Item ${$nextId}` },
+              ];
+              $nextId = $nextId + 1;
+            }}>
+            Add
+          </button>
+          <button
+            data-test="group-remove"
+            onClick={() => {
+              if ($listItems.length > 0) {
+                $listItems = $listItems.slice(0, -1);
+              }
+            }}>
+            Remove last
+          </button>
+          <button
+            data-test="group-shuffle"
+            onClick={() => {
+              // Deterministic non-trivial reorder so the FLIP move animation
+              // always triggers (last → first).
+              if ($listItems.length < 2) return;
+              const next = [...$listItems];
+              const tail = next.pop()!;
+              next.unshift(tail);
+              $listItems = next;
+            }}>
+            Shuffle (move last → first)
+          </button>
+          <button
+            data-test="group-clear"
+            onClick={() => {
+              $listItems = [];
+            }}>
+            Clear
+          </button>
+        </div>
+        <TransitionGroup
+          name="list"
+          tag="ul"
+          each={() => $listItems}
+          key={(it) => it.id}>
+          {(it) => (
+            <li class="list-item" data-test={`group-item-${it.id}`}>
+              {it.label}
+            </li>
+          )}
+        </TransitionGroup>
       </section>
     </main>
   );

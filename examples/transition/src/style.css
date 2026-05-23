@@ -15,3 +15,32 @@ body { font-family: system-ui, sans-serif; padding: 24px; }
 /* Scenario 3: Scale (name=scale) — duration prop overrides; CSS just paints */
 .scale-enter-active, .scale-leave-active { transition: transform 200ms ease, opacity 200ms ease; }
 .scale-enter-from, .scale-leave-to { transform: scale(0.8); opacity: 0; }
+
+/* Scenario 7: TransitionGroup (name=list) */
+ul { list-style: none; margin: 12px 0 0; padding: 0; position: relative; }
+.list-item {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: #fff7e6;
+  border: 1px solid #f0c36d;
+  border-radius: 4px;
+}
+.group-controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+
+/* Per-item enter / leave */
+.list-enter-active,
+.list-leave-active {
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+/* FLIP move — applied to staying items whose position changed */
+.list-move { transition: transform 400ms ease; }
+
+/* Leaving items are absolutely positioned by TransitionGroup; keep the
+   transition active on this state so the leave animation actually plays. */
+.list-leave-active { position: absolute; }
