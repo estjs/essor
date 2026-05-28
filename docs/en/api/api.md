@@ -15,6 +15,7 @@ Essor APIs are organized into three categories: reactive core, runtime component
 
 - [`createApp`](./runtime-api.md#createapp) — Mount an application to the DOM
 - [`hydrate`](./runtime-api.md#hydrate) — Hydrate SSR-rendered HTML on the client
+- [`definePlugin`](./runtime-api.md#defineplugin) — Define a plugin with typed options
 - [`template`](./runtime-api.md#template) — Create a reusable DOM template factory
 - [`For`](./runtime-api.md#for) — List rendering component
 - [`Fragment`](./runtime-api.md#fragment) — Render multiple children without wrapper nodes

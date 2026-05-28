@@ -24,6 +24,7 @@
 
 - [`createApp`](./runtime-api.md) - Mount an application to the DOM
 - [`hydrate`](./runtime-api.md#hydrate) - Hydrate SSR-rendered HTML
+- [`definePlugin`](./runtime-api.md#defineplugin) - Define a plugin
 - [`template`](./runtime-api.md#template) - DOM template factory
 - [`For`](./runtime-api.md#for) - List rendering
 - [`Fragment`](../components/Fragment.md) - Fragment rendering

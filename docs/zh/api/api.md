@@ -15,6 +15,7 @@ Essor 的 API 分为响应式核心、运行时组件和工具函数三大类别
 
 - [`createApp`](./runtime-api.md#createapp) — 挂载应用到 DOM
 - [`hydrate`](./runtime-api.md#hydrate) — 客户端激活 SSR 渲染的 HTML
+- [`definePlugin`](./runtime-api.md#defineplugin) — 定义带类型化 options 的插件
 - [`template`](./runtime-api.md#template) — 创建可复用的 DOM 模板工厂
 - [`For`](./runtime-api.md#for) — 列表渲染组件
 - [`Fragment`](./runtime-api.md#fragment) — 无包裹节点渲染多个子元素

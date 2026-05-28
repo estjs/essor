@@ -4,24 +4,105 @@
 
 ## createApp
 
-将组件挂载到指定的 DOM 节点。
+将组件挂载到 DOM 节点；或构建带插件的应用 builder。
 
 ```ts
-function createApp(component: Component, container: string | Element): () => void;
+// 形式 1 —— 直接挂载（最常用）
+function createApp(component: Component, container: string | Element): AppInstance | undefined;
+
+// 形式 2 —— builder（暂无插件）
+function createApp(component: Component): App;
+
+// 形式 3 —— 带配置的 builder
+function createApp(component: Component, options: CreateAppOptions): App;
 ```
 
-- `component` — 组件函数
-- `container` — CSS 选择器或 DOM 元素
-- 返回值 — 销毁函数；调用它可以销毁应用
+### 直接挂载
 
 ```tsx
 import { createApp } from 'essor';
 import App from './App';
 
-const dispose = createApp(App, '#app');
+const app = createApp(App, '#app');
+app?.unmount();
+```
 
-// 卸载
-// dispose();
+`AppInstance` 形如 `{ root, unmount }`。`unmount()` 释放响应式 scope 并卸载根组件。
+
+### 带插件
+
+传配置对象注册插件，再自行调用 `mount` / `hydrate`。当任意插件的 `setup` 为 async 时，`mount` 返回 `Promise`；否则同步返回。
+
+```ts
+interface CreateAppOptions {
+  plugins?: Array<Plugin<any> | [Plugin<any>, unknown]>;
+  config?: Partial<AppConfig>;
+}
+```
+
+```tsx
+import { createApp } from 'essor';
+import App from './App';
+import { router } from './plugins/router';
+import { store } from './plugins/store';
+
+await createApp(App, {
+  plugins: [
+    router,
+    [store, { initial: {} }],
+  ],
+  config: {
+    errorHandler(info, err) {
+      console.error(`[${info.phase}${info.plugin ? ':' + info.plugin : ''}]`, err);
+    },
+  },
+}).mount('#app');
+```
+
+## definePlugin
+
+撰写插件的类型工具。运行时是恒等函数 —— 作用只是推断 options 类型。
+
+```ts
+function definePlugin<TOptions = void>(plugin: Plugin<TOptions>): Plugin<TOptions>;
+```
+
+```ts
+interface Plugin<TOptions = void> {
+  name: string;                                // 必填
+  enforce?: 'pre' | 'default' | 'post';        // 排序桶
+  setup(ctx: AppContext, options: TOptions): void | Promise<void>;
+}
+```
+
+插件的 `setup(ctx, options)` 在 mount 时执行一次。插件先按 `enforce` 分到三档（`pre` → `default` → `post`），档内按数组顺序执行。重复插件（按引用或按 name）会被跳过并在 dev 模式打 warn。
+
+`ctx` 提供：
+
+| 成员 | 用途 |
+|---|---|
+| `provide(key, value)` / `inject(key, default?)` | 应用级依赖注入。 |
+| `onMount(fn)` | 根组件挂载后触发。 |
+| `onCleanup(fn)` | `app.unmount()` 时触发。 |
+| `warn(msg)` | 非致命报告。路由到 `config.warnHandler`，自动携带 `{ plugin }`。 |
+| `error(msg)` | 抛错。路由到 `config.errorHandler`，`phase: 'install'`。 |
+| `config` / `version` | 应用配置（可改）和框架版本字符串。 |
+
+### 示例
+
+```ts
+import { definePlugin } from 'essor';
+
+export const router = definePlugin<{ routes: Route[] }>({
+  name: 'router',
+  enforce: 'pre',
+  setup(ctx, options) {
+    if (!options.routes.length) ctx.warn('No routes configured');
+    ctx.provide(RouterKey, createRouter(options.routes));
+    ctx.onMount(() => attachHistory());
+    ctx.onCleanup(() => detachHistory());
+  },
+});
 ```
 
 ## hydrate
@@ -29,11 +110,12 @@ const dispose = createApp(App, '#app');
 在客户端对服务端渲染的静态 HTML 进行 hydration。
 
 ```ts
-function hydrate(component: Component, container: string | Element, options?: HydrateOptions): () => void;
+function hydrate(component: Component, container: string | Element): AppInstance | undefined | Promise<AppInstance | undefined>;
 ```
 
 - 复用服务端生成的 DOM 节点，只附加事件监听器和响应式系统
 - 显著减少客户端初始化时间
+- 需要插件支持时使用 `createApp(App, { plugins }).hydrate('#app')`
 
 ```tsx
 import { hydrate } from 'essor';

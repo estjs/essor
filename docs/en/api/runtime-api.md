@@ -4,24 +4,105 @@ This document covers the core runtime APIs provided by the `@estjs/template` pac
 
 ## createApp
 
-Mount a component to a specified DOM node.
+Mount a component to a DOM node, or build a configured app with plugins.
 
 ```ts
-function createApp(component: Component, container: string | Element): () => void;
+// Form 1 — direct mount (most common)
+function createApp(component: Component, container: string | Element): AppInstance | undefined;
+
+// Form 2 — builder (no plugins yet)
+function createApp(component: Component): App;
+
+// Form 3 — builder with options
+function createApp(component: Component, options: CreateAppOptions): App;
 ```
 
-- `component` — Component function
-- `container` — CSS selector or DOM element
-- Return value — Dispose function; calling it destroys the app
+### Direct mount
 
 ```tsx
 import { createApp } from 'essor';
 import App from './App';
 
-const dispose = createApp(App, '#app');
+const app = createApp(App, '#app');
+app?.unmount();
+```
 
-// Unmount
-// dispose();
+`AppInstance` has `{ root, unmount }`. `unmount()` disposes the reactive scope and removes the root component.
+
+### With plugins
+
+Pass an options object to register plugins, then call `mount` / `hydrate` yourself. `mount` returns a `Promise` when any plugin has an async `setup`, and the synchronous value otherwise.
+
+```ts
+interface CreateAppOptions {
+  plugins?: Array<Plugin<any> | [Plugin<any>, unknown]>;
+  config?: Partial<AppConfig>;
+}
+```
+
+```tsx
+import { createApp } from 'essor';
+import App from './App';
+import { router } from './plugins/router';
+import { store } from './plugins/store';
+
+await createApp(App, {
+  plugins: [
+    router,
+    [store, { initial: {} }],
+  ],
+  config: {
+    errorHandler(info, err) {
+      console.error(`[${info.phase}${info.plugin ? ':' + info.plugin : ''}]`, err);
+    },
+  },
+}).mount('#app');
+```
+
+## definePlugin
+
+Type helper for authoring plugins. Identity at runtime — its job is to infer the options type.
+
+```ts
+function definePlugin<TOptions = void>(plugin: Plugin<TOptions>): Plugin<TOptions>;
+```
+
+```ts
+interface Plugin<TOptions = void> {
+  name: string;                                // required
+  enforce?: 'pre' | 'default' | 'post';        // ordering bucket
+  setup(ctx: AppContext, options: TOptions): void | Promise<void>;
+}
+```
+
+A plugin's `setup(ctx, options)` runs once at mount. Plugins are sorted into three buckets — `pre` → `default` → `post` — and within a bucket array order wins. Duplicate plugins (by reference or by name) are skipped with a dev warning.
+
+`ctx` exposes:
+
+| Member | Purpose |
+|---|---|
+| `provide(key, value)` / `inject(key, default?)` | App-level dependency injection. |
+| `onMount(fn)` | Fired after the root component mounts. |
+| `onCleanup(fn)` | Fired on `app.unmount()`. |
+| `warn(msg)` | Non-fatal report. Routed to `config.warnHandler` with `{ plugin }` attribution. |
+| `error(msg)` | Throws. Routed to `config.errorHandler` with `phase: 'install'`. |
+| `config` / `version` | App config (mutable) and framework version string. |
+
+### Example
+
+```ts
+import { definePlugin } from 'essor';
+
+export const router = definePlugin<{ routes: Route[] }>({
+  name: 'router',
+  enforce: 'pre',
+  setup(ctx, options) {
+    if (!options.routes.length) ctx.warn('No routes configured');
+    ctx.provide(RouterKey, createRouter(options.routes));
+    ctx.onMount(() => attachHistory());
+    ctx.onCleanup(() => detachHistory());
+  },
+});
 ```
 
 ## hydrate
@@ -29,11 +110,12 @@ const dispose = createApp(App, '#app');
 Hydrate server-rendered static HTML on the client.
 
 ```ts
-function hydrate(component: Component, container: string | Element, options?: HydrateOptions): () => void;
+function hydrate(component: Component, container: string | Element): AppInstance | undefined | Promise<AppInstance | undefined>;
 ```
 
 - Reuses server-generated DOM nodes and only attaches event listeners and the reactive system
 - Significantly reduces client initialization time
+- For plugin support, use `createApp(App, { plugins }).hydrate('#app')`
 
 ```tsx
 import { hydrate } from 'essor';

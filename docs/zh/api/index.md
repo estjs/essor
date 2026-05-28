@@ -24,6 +24,7 @@
 
 - [`createApp`](./runtime-api.md) - 挂载应用到 DOM
 - [`hydrate`](./runtime-api.md#hydrate) - 客户端激活
+- [`definePlugin`](./runtime-api.md#defineplugin) - 定义插件
 - [`template`](./runtime-api.md#template) - DOM 模板工厂
 - [`For`](./runtime-api.md#for) - 列表渲染
 - [`Fragment`](../components/Fragment.md) - 无包裹节点

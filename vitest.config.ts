@@ -2,8 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   define: {
-    __DEV__: true,
-    __BROWSER__: true,
+    __DEV__: JSON.stringify(true),
+    __BROWSER__: JSON.stringify(true),
+    __VERSION__: JSON.stringify('0.0.0'),
   },
   test: {
     coverage: {
