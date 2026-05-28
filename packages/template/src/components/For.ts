@@ -9,9 +9,11 @@ import {
   runWithScope,
 } from '../scope';
 import { FOR_COMPONENT } from '../constants';
-import { normalizeNode } from '../dom';
+import { isComponent } from '../component';
+import { insertNode, normalizeNode } from '../dom';
 import { getSequence } from '../reconcile';
 import type { AnyNode } from '../types';
+import type { Component } from '../component';
 
 export interface ForProps<T> {
   each: T[] | Signal<T[]> | (() => T[]);
@@ -42,7 +44,17 @@ export function For<T>(props: ForProps<T>): Node {
   let fallbackNodes: Node[] = [];
 
   const keyFn = props.key;
-  const renderFn = props.children;
+  // The JSX babel pipeline wraps a single arrow child in a 1-element array —
+  // `<For>{(item) => …}</For>` becomes `children: [(item) => …]` at runtime.
+  // Unwrap it here so the rest of the component only deals with a function.
+  const raw = props.children as unknown;
+  const renderFn: ForProps<T>['children'] =
+    Array.isArray(raw) && raw.length === 1 && isFunction(raw[0])
+      ? (raw[0] as ForProps<T>['children'])
+      : (props.children as ForProps<T>['children']);
+  if (!isFunction(renderFn)) {
+    throw new TypeError('<For> requires `children` to be a function (item, index) => Node');
+  }
 
   const getList = (): T[] => {
     const input = props.each;
@@ -53,27 +65,30 @@ export function For<T>(props: ForProps<T>): Node {
 
   const getKey = (item: T, index: number): unknown => (keyFn ? keyFn(item, index) : item);
 
-  const normalizeNodes = (value: AnyNode): Node[] => {
+  // Resolve whatever `children(item, index)` returned into actual DOM nodes
+  // and insert them at `before`. Accepts arrays (recursed), Components
+  // (mounted via insertNode), primitives (text via normalizeNode), and
+  // `null`/`false` (skipped — lets children short-circuit a row).
+  const mountValue = (value: AnyNode, parent: Node, before: Node | null): Node[] => {
+    if (value == null || value === false) return [];
+
     if (Array.isArray(value)) {
       const nodes: Node[] = [];
-      for (const item of value) {
-        nodes.push(...normalizeNodes(item as AnyNode));
-      }
+      for (const child of value) nodes.push(...mountValue(child as AnyNode, parent, before));
       return nodes;
     }
-    return [normalizeNode(value)];
-  };
 
-  const mountValue = (value: AnyNode, parent: Node, before: Node | null): Node[] => {
-    const nodes = normalizeNodes(value);
-    for (const node of nodes) {
-      if (before) {
-        parent.insertBefore(node, before);
-      } else {
-        parent.appendChild(node);
-      }
+    if (isComponent(value)) {
+      insertNode(parent, value, before ?? undefined);
+      // Safe to return the live array: Component only ever reassigns
+      // `renderedNodes` (mount/destroy), never mutates it in place, and For
+      // treats `entry.nodes` as read-only.
+      return (value as Component).renderedNodes;
     }
-    return nodes;
+
+    const node = normalizeNode(value);
+    insertNode(parent, node, before ?? undefined);
+    return [node];
   };
 
   const mountFallback = (parent: Node, before: Node | null) => {

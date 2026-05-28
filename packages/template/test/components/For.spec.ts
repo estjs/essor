@@ -1,5 +1,7 @@
 import { effect, signal } from '@estjs/signals';
 import { For } from '../../src/components/For';
+import { createComponent } from '../../src/component';
+import { onCleanup as onCleanupFromTestScope } from '../../src/scope';
 import { mount, resetEnvironment, unmount } from '../test-utils';
 import type { Scope } from '../../src/scope';
 
@@ -439,5 +441,325 @@ describe('for component', () => {
 
     // 4. Verify that Row rendering function was NOT run again! (i.e. we correctly reused everything and just re-ran effects)
     expect(renderCount).toBe(25);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Component children
+  //
+  // The For renderer added support for rows that return a Component instance
+  // (e.g. `<For>{(item) => <Row item={item}/>}</For>` after Babel transform).
+  // These tests pin the contract:
+  //   1. Initial mount renders the component's DOM in order.
+  //   2. Reorder via key reuses the mounted instances (no remount) and the DOM
+  //      order matches.
+  //   3. Removing a row destroys the component scope so onCleanup runs.
+  // ---------------------------------------------------------------------------
+  describe('component children', () => {
+    it('mounts each row through Component.mount and renders DOM in order', () => {
+      const items = signal([1, 2, 3]);
+      const Row = (props: { value: number }) => {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.textContent = `r${props.value}`;
+        return div;
+      };
+
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (v) => v,
+            children: (v) => createComponent(Row, { value: v }),
+          }),
+        container,
+      );
+
+      const rows = container.querySelectorAll('.row');
+      expect(rows.length).toBe(3);
+      expect([...rows].map((n) => n.textContent)).toEqual(['r1', 'r2', 'r3']);
+    });
+
+    it('reorder reuses component instances and only moves their DOM', async () => {
+      const items = signal([1, 2, 3]);
+      const renderCalls: number[] = [];
+      const Row = (props: { value: number }) => {
+        renderCalls.push(props.value);
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.textContent = `r${props.value}`;
+        return div;
+      };
+
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (v) => v,
+            children: (v) => createComponent(Row, { value: v }),
+          }),
+        container,
+      );
+
+      const initialNodes = [...container.querySelectorAll('.row')];
+      expect(renderCalls).toEqual([1, 2, 3]);
+
+      items.value = [3, 1, 2];
+      await Promise.resolve();
+
+      const afterNodes = [...container.querySelectorAll('.row')];
+      expect(afterNodes.map((n) => n.textContent)).toEqual(['r3', 'r1', 'r2']);
+      // Same instances reused — no second Row() render call
+      expect(renderCalls).toEqual([1, 2, 3]);
+      // Node identity preserved (reused, not recreated)
+      expect(afterNodes.includes(initialNodes[0])).toBe(true);
+      expect(afterNodes.includes(initialNodes[1])).toBe(true);
+      expect(afterNodes.includes(initialNodes[2])).toBe(true);
+    });
+
+    it('removing a row disposes the row scope so onCleanup runs', async () => {
+      const items = signal([1, 2]);
+      const cleanups: number[] = [];
+      const Row = (props: { value: number }) => {
+        // Register a cleanup on the row's scope (the active scope when the
+        // component renders is the per-row For scope)
+        onCleanupFromTestScope(() => cleanups.push(props.value));
+        const div = document.createElement('div');
+        div.textContent = `r${props.value}`;
+        return div;
+      };
+
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (v) => v,
+            children: (v) => createComponent(Row, { value: v }),
+          }),
+        container,
+      );
+
+      items.value = [2];
+      await Promise.resolve();
+      expect(cleanups).toEqual([1]);
+    });
+
+  });
+
+  // ---------------------------------------------------------------------------
+  // Mixed / edge-case children
+  //
+  // The single-pass `mount` helper accepts arrays of arbitrary depth, mixed
+  // Component + Element children, falsy short-circuits, and very large
+  // reorders. These tests pin the boundaries.
+  // ---------------------------------------------------------------------------
+  describe('mixed / edge-case children', () => {
+    it('handles nested arrays in children() (recursive walk)', async () => {
+      const items = signal([1, 2]);
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (n) => n,
+            children: (n) => {
+              // Children returns an array of [Element, Element] — a shape the
+              // babel transform produces for compound expressions.
+              const a = document.createElement('span');
+              a.className = 'a';
+              a.textContent = `a${n}`;
+              const b = document.createElement('span');
+              b.className = 'b';
+              b.textContent = `b${n}`;
+              return [a, b];
+            },
+          }),
+        container,
+      );
+
+      expect([...container.querySelectorAll('span')].map((s) => s.textContent)).toEqual([
+        'a1',
+        'b1',
+        'a2',
+        'b2',
+      ]);
+    });
+
+    it('skips null/false children without inserting nodes', async () => {
+      const items = signal([1, 2, 3]);
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (n) => n,
+            children: (n) => {
+              if (n === 2) return null as any;
+              const div = document.createElement('div');
+              div.textContent = String(n);
+              return div;
+            },
+          }),
+        container,
+      );
+      const text = container.textContent ?? '';
+      expect(text.includes('1')).toBe(true);
+      expect(text.includes('3')).toBe(true);
+      // No DOM node was inserted for n=2
+      expect(container.querySelectorAll('div').length).toBe(2);
+    });
+
+    it('mixes Component and Element rows in the same list', async () => {
+      const items = signal([1, 2, 3, 4]);
+      const Row = (props: { value: number }) => {
+        const div = document.createElement('div');
+        div.className = 'cmp';
+        div.textContent = `c${props.value}`;
+        return div;
+      };
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (n) => n,
+            children: (n) =>
+              n % 2 === 0
+                ? createComponent(Row, { value: n })
+                : (() => {
+                    const div = document.createElement('div');
+                    div.className = 'el';
+                    div.textContent = `e${n}`;
+                    return div;
+                  })(),
+          }),
+        container,
+      );
+
+      const all = [...container.querySelectorAll('div')];
+      expect(all.length).toBe(4);
+      expect(all.map((d) => d.textContent)).toEqual(['e1', 'c2', 'e3', 'c4']);
+      expect(all[0].className).toBe('el');
+      expect(all[1].className).toBe('cmp');
+    });
+
+    it('handles a large keyed shuffle (50 items) with identity preservation', async () => {
+      const initial = Array.from({ length: 50 }, (_, i) => ({ id: i, label: `i${i}` }));
+      const items = signal(initial);
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (it) => it.id,
+            children: (it) => {
+              const div = document.createElement('div');
+              div.setAttribute('data-id', String(it.id));
+              div.textContent = it.label;
+              return div;
+            },
+          }),
+        container,
+      );
+
+      const before = new Map<number, Element>();
+      for (const el of container.querySelectorAll('[data-id]')) {
+        before.set(Number(el.getAttribute('data-id')), el);
+      }
+      expect(before.size).toBe(50);
+
+      // Deterministic shuffle: reverse the list.
+      items.value = [...initial].reverse();
+      await Promise.resolve();
+
+      const after = [...container.querySelectorAll('[data-id]')];
+      expect(after.length).toBe(50);
+      // Order should now be reversed.
+      expect(after.map((el) => Number(el.getAttribute('data-id')))).toEqual(
+        Array.from({ length: 50 }, (_, i) => 49 - i),
+      );
+      // Every element identity is preserved — no remount.
+      for (const el of after) {
+        const id = Number(el.getAttribute('data-id'));
+        expect(el).toBe(before.get(id));
+      }
+    });
+
+    it('toggles fallback ↔ items, then back, without leaking nodes', async () => {
+      const items = signal<number[]>([]);
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (n) => n,
+            fallback: () => {
+              const p = document.createElement('p');
+              p.textContent = 'empty';
+              return p;
+            },
+            children: (n) => {
+              const div = document.createElement('div');
+              div.textContent = String(n);
+              return div;
+            },
+          }),
+        container,
+      );
+
+      expect(container.textContent).toBe('empty');
+
+      items.value = [1, 2];
+      await Promise.resolve();
+      expect(container.querySelector('p')).toBeNull();
+      expect(container.querySelectorAll('div').length).toBe(2);
+
+      items.value = [];
+      await Promise.resolve();
+      expect(container.textContent).toBe('empty');
+      expect(container.querySelectorAll('div').length).toBe(0);
+
+      items.value = [3, 4, 5];
+      await Promise.resolve();
+      expect(container.querySelector('p')).toBeNull();
+      expect(container.querySelectorAll('div').length).toBe(3);
+    });
+
+    it('replaces an entry whose key matches but identity differs (re-render path)', async () => {
+      // When `key` returns the same value but the item changed by `Object.is`,
+      // the entry must be torn down and re-rendered (per the existing fast
+      // path in reconcile).
+      let mountCount = 0;
+      const items = signal([{ id: 1, v: 'a' }]);
+      scope = mount(
+        () =>
+          For({
+            each: items,
+            key: (it) => it.id,
+            children: (it) => {
+              mountCount++;
+              const div = document.createElement('div');
+              div.textContent = it.v;
+              return div;
+            },
+          }),
+        container,
+      );
+      expect(mountCount).toBe(1);
+      expect(container.textContent).toBe('a');
+
+      items.value = [{ id: 1, v: 'b' }];
+      await Promise.resolve();
+      // Same key, different identity → remount.
+      expect(mountCount).toBe(2);
+      expect(container.textContent).toBe('b');
+    });
+
+    it('throws TypeError when children is not a function (after array unwrap)', () => {
+      // The babel pipeline unwraps a 1-element function array, but anything
+      // else (a raw value, a 2-element array, an empty array) is a misuse
+      // and should fail loudly at construction rather than mid-effect.
+      expect(() =>
+        For({
+          each: [1, 2],
+          // Plain value — not a function, not an unwrappable array.
+          children: 'oops' as any,
+        }),
+      ).toThrow(TypeError);
+    });
   });
 });
