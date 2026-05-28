@@ -7,97 +7,94 @@ compatibility: essor >= 0.0.16-beta.8
 
 # Writing Essor Apps
 
-Essor is a signal-based reactive frontend framework with no virtual DOM. The critical rule is simple: `$`-prefixed local variables are transformed by the Babel plugin; unprefixed variables are plain JavaScript.
+Essor is a signal-based reactive frontend with no virtual DOM. Code transforms by Babel only when a local declaration is `$`-prefixed.
 
-## First Checks
+This skill is staged: **answer first, then route, then write, then review.** Skipping a stage is the main failure mode — do not collapse the stages into one prose pass.
 
-- Read existing app code before adding patterns; match local entry names, mount selectors, and import style.
-- Use public Essor framework imports: browser/app APIs from `essor`, SSR APIs from `@estjs/server`. Local app modules and platform APIs such as `fs` are fine where appropriate.
-- Do not invent APIs. In `0.0.16-beta.8`, `@estjs/server` exports `renderToString` and `renderToStringAsync`, not `renderToStream`.
-- For concrete implementation paths, open [recipes.md](references/recipes.md) before writing code.
+## Phase 1 — Front-Load Questions (answer before writing code)
 
-## Rendering Choice
+Read existing app code first, then commit to answers for all three. If the user prompt does not pin them, infer from the file you opened (entry name, mount selector, presence of `entry-server.tsx`) and state the inference in one line before writing.
 
-```
-Initial HTML source?
-├── Browser creates all DOM      -> createApp(App, '#app')
-└── Server/build already emitted -> hydrate(App, '#app')
+1. **Rendering mode** — `client-only` · `hydrate` (SSR/SSG output) · `server-render` (producing HTML).
+2. **Shared component** — does the same `App` run on server and client? `yes` · `no`.
+3. **Data shape** — `none` · `sync` · `async (needs Suspense or async render)`.
 
-Server HTML needs async work?
-├── No  -> renderToString(App, props, context?)
-└── Yes -> renderToStringAsync(App, props, context?)
-```
+Wrong answer here invalidates everything below. If unclear, stop and ask the user; do not guess between `createApp` and `hydrate`.
 
-For SSR/SSG, use the same root component and container selector on server and client. `createApp()` clears non-empty containers, so it is wrong for hydrating server HTML.
+## Phase 2 — Pipeline by Mode (each step is a gate, do not skip ahead)
 
-## Reactivity Rules
+### client-only
+1. Container in `index.html` is empty (`createApp` clears it).
+2. `App.tsx` holds local `$` state.
+3. Entry: `import { createApp } from 'essor'; createApp(App, '#app')`.
 
-```tsx
-let $count = 0;              // signal(0)
-const $items: Item[] = [];   // reactive([])
-const $double = () => $count * 2;  // computed — $ prefix on arrow fn
+### hydrate (consuming SSR/SSG HTML)
+1. `App.tsx` is the **single shared file**; no `window`/`document`/`localStorage`/`Date.now()`/`Math.random()` in shared render.
+2. `entry-server.tsx` exports `render()` calling `renderToString` (sync data) or `renderToStringAsync` (awaits inside).
+3. `entry-client.tsx` calls **`hydrate(App, '#app')`** — never `createApp`, which would wipe the SSR HTML.
+4. Server and client target the **same selector** and the **same root component**.
 
-<button onClick={() => $count++}>{$count}</button>
-<input bind:value={$name} />
-```
+### server-render (build/script side)
+1. `import { renderToString | renderToStringAsync, createSSRContext } from '@estjs/server'`.
+2. `createSSRContext()` only when `Portal` is used; collect `ctx.teleports` into the final HTML.
+3. `@estjs/server` does not export `renderToStream` in `0.0.16-beta.8` — do not invent it.
 
-- No `$` prefix means no reactive update.
-- Mutate reactive arrays/objects in place: `$items.push(x)`, `$items[i].done = true`, `$items.splice(i, 1)`.
-- Prefer derived functions in JSX: `const openCount = () => $items.filter(i => !i.done).length`.
-- Use `computed()` when callers need `.value` or shared caching outside JSX.
-- Create `effect()` inside component/setup scope so Essor owns disposal automatically; do not add `onDestroy(() => runner.stop())` for normal component effects.
-- Use `untrack(() => expr)` to read reactive values without creating a dependency.
-- Use `watch(() => $x, (next, prev) => {})` for explicit old/new value callbacks.
-- Use `nextTick()` / `await nextTick()` to run code after the current reactive flush.
+A failure at any gate cascades: skipping gate 3 of `hydrate` is the canonical "SSR clears on load" bug.
 
-## Hydration Rules
+## Phase 3 — Generation Rules (the actual writing)
 
-- Shared SSR/client components must produce identical initial HTML.
-- Do not read `window`, `document`, `localStorage`, `Date.now()`, or `Math.random()` during shared render.
-- Defer browser-only work to `onMount()`, or pass deterministic values from the server entry.
-- For `Portal`, create an SSR context with `createSSRContext()` and place collected `ctx.teleports` in the final document.
+Use the fixed scaffolds in [templates.md](references/templates.md) as starting points so entry files, forms, and stores stay structurally identical. Apply these rules on top:
 
-## Component Rules
+**Reactivity**
+- `$`-prefixed local declarations are the only reactive locals. Plain names are static JavaScript.
+- Mutate reactive arrays/objects in place: `$items.push(x)`, `$items[i].done = true`. Never `$items = [...$items, x]`.
+- Derived values: prefer arrow `const $x = () => ...` (compiles to `computed`) or plain `() =>` for JSX-only use. Reach for `computed()` only when callers need `.value` outside JSX.
+- `effect()` inside component scope is auto-disposed. Use `onDestroy()` only for external resources (timers, sockets, listeners).
+- `watch(() => $x, (next, prev) => ...)` for old/new callbacks. `untrack(() => $x)` to read without tracking.
 
-- Use `<For each={...} key={...}>` whenever items can reorder; no key is only safe for append/remove-at-end lists.
-- Put async resources/components under `<Suspense fallback={...}>` when loading state should coordinate with a boundary.
-- `createResource()` returns `[resource, { mutate, refetch }]`; read state through `resource.loading.value`, `resource.error.value`, and `resource.state.value`.
-- Use `provide()`/`inject()` only within the component scope chain.
-- Use `bind:value` for input/textarea/select values and `bind:checked` for checkbox/radio controls.
-- Use `<Fragment>` / `<>...</>` to return multiple root nodes without a wrapper element.
+**Components**
+- `<For each={...} key={...}>` whenever items can reorder; keyless `For` is only safe for end-only append/remove.
+- `<Suspense fallback={...}>` wraps async boundaries; resource auto-registers with the nearest one.
+- `bind:value` for text/textarea/select; `bind:checked` for checkbox/radio. Modifiers via tuple form: `bind:value={[$x, { trim: true }]}`.
+- `<Fragment>` / `<>...</>` for multiple roots — no wrapper div.
 
-## Delivery Checklist
+**Imports — public surface only**
+- Browser/app: `essor`.
+- Server: `@estjs/server`.
+- App-local modules and platform APIs (e.g. `fs` in build scripts) are fine; never import from `@estjs/*/src`.
 
-- `$` prefix is present on all local reactive state.
-- Reactive arrays/objects are mutated in place, not replaced.
-- SSR/SSG clients use `hydrate()`, client-only apps use `createApp()`.
-- Shared render has no browser globals or nondeterministic values.
-- Timers, DOM listeners, and other external resources are disposed on destroy.
-- Reorderable lists have stable keys.
-- Framework imports come only from `essor` or `@estjs/server`; local app modules and platform APIs are allowed where appropriate.
-- Public API claims are checked against package exports before adding examples.
+## Phase 4 — Reviewer Checklist (run before declaring done)
+
+Each item is independent and binary. Use this same list to self-check new code or to review existing code — it does not depend on how the code was written.
+
+- [ ] `$` prefix present on every reactive local.
+- [ ] Reactive arrays/objects mutated in place, never reassigned.
+- [ ] Mode matches Phase 1: `createApp` only for client-only; `hydrate` for SSR/SSG.
+- [ ] Shared render contains no browser globals or nondeterministic values.
+- [ ] Timers, DOM listeners, sockets disposed via `onDestroy`.
+- [ ] Reorderable `<For>` lists have a `key`.
+- [ ] Async UI sits inside `<Suspense>` with a `fallback`.
+- [ ] Framework imports come only from `essor` or `@estjs/server`; no `@estjs/*/src` paths.
+- [ ] Public APIs used exist in `0.0.16-beta.8` (e.g. no `renderToStream`).
+- [ ] `bind:value` / `bind:checked` used on the right element type; modifiers in tuple form.
+
+If any item fails, return to Phase 2 or 3 and fix before reporting completion.
 
 ## Common Traps
 
-- Writing React-style state replacement for `$` arrays.
-- Calling `createApp()` on server-rendered HTML.
-- Using browser globals during shared SSR/client render.
-- Adding `onDestroy(() => runner.stop())` for ordinary component-scoped effects.
-- Importing from internal `@estjs/*/src` paths in app code.
+- React-style state replacement on `$` arrays.
+- `createApp()` on a server-rendered page (clears the HTML).
+- `window`/`document`/`Date.now()`/`Math.random()` in shared SSR/client render.
+- `onDestroy(() => runner.stop())` on ordinary component-scoped effects.
+- Importing from `@estjs/*/src/...` in app code.
+- Inventing API names (`renderToStream`, dotted bind modifiers like `bind:value.trim`).
 
-## References
-
-Open only the file needed for the task:
+## References (open only what the current task needs)
 
 | Reference | Use When |
 |---|---|
-| [recipes.md](references/recipes.md) | Scenario playbooks for client apps, SSR/SSG, hydration fixes, forms, lists, async data, and stores |
+| [templates.md](references/templates.md) | Fixed scaffolds for client / SSR / SSG entries, forms, lists, async data, stores |
 | [reactive-system.md](references/reactive-system.md) | `$` transform, signal, reactive, computed, effect, watch, batch, untrack, EffectScope |
 | [component-patterns.md](references/component-patterns.md) | For, Suspense, Portal, Fragment, defineAsyncComponent, lifecycle, provide/inject |
-| [ssr-hydration.md](references/ssr-hydration.md) | SSR/SSG entries, hydration contract, SSR context, Portal teleports |
 | [forms-and-binding.md](references/forms-and-binding.md) | `bind:value`, modifiers, checkbox/radio/file/select, validation |
-| [state-management.md](references/state-management.md) | createStore, provide/inject state, createResource patterns |
-
-## Other Agents
-
-For Codex, Cursor, GitHub Copilot, Gemini CLI, Cline, Windsurf, Continue, Aider, Zed, Amp, Devin, and other AGENTS.md-compatible tools, see [agents/README.md](agents/README.md). Keep `SKILL.md` as the source of truth and regenerate adapters from it when Essor APIs change.
+| [state-management.md](references/state-management.md) | createStore, provide/inject, createResource patterns |

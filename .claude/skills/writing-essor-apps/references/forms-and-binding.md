@@ -25,7 +25,7 @@ throw at compile time.
 | `lazy` | Commit on `change` (typically blur) instead of `input` | Search, slug, heavy validation |
 
 `<input type="number">` and `<input type="range">` are auto-coerced to numbers
-even without `{ number: true }` (Vue parity).
+even without `{ number: true }` .
 
 ## bind:checked — Checkbox & Radio
 
@@ -46,7 +46,7 @@ let $color = 'red';
 ## bind:files
 
 ```tsx
-let $files: FileList | null = null;
+const $files: FileList | null = null;
 <input type="file" bind:files={$files} />
 // DOM→Model only (browser restriction); setting model to null clears via DataTransfer.
 ```
@@ -54,13 +54,13 @@ let $files: FileList | null = null;
 ## select
 
 ```tsx
-let $opt = 'b';
+const $opt = 'b';
 <select bind:value={$opt}>
   <option value="a">A</option>
   <option value="b">B</option>
 </select>
 
-let $sel: string[] = [];
+const $sel: string[] = [];
 <select multiple bind:value={$sel}>...</select>
 ```
 
@@ -68,9 +68,9 @@ let $sel: string[] = [];
 
 ```tsx
 function SignupForm() {
-  let $email = '';
-  let $password = '';
-  let $agree = false;
+  const $email = '';
+  const $password = '';
+  const $agree = false;
   let $submitting = false;
   let $error = '';
 
@@ -85,8 +85,8 @@ function SignupForm() {
         body: JSON.stringify({ email: $email, password: $password }),
       });
       if (!res.ok) throw new Error((await res.json()).message);
-    } catch (err) {
-      $error = (err as Error).message;
+    } catch (error) {
+      $error = (error as Error).message;
     } finally {
       $submitting = false;
     }
@@ -109,7 +109,7 @@ function SignupForm() {
 ## Validation Pattern
 
 ```tsx
-let $email = '';
+const $email = '';
 let $touched = false;
 
 const errors = () => {
