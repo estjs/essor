@@ -1,5 +1,5 @@
 import { type Signal, effect, isSignal } from '@estjs/signals';
-import { isFunction } from '@estjs/shared';
+import { isFunction, warn } from '@estjs/shared';
 import {
   type Scope,
   createScope,
@@ -39,11 +39,17 @@ import type { Component } from '../component';
  *   Component instance (the latter is mounted, its first rendered Element
  *   participates in the animations).
  *
- * `appear` and `onBeforeAppear`/`onAppear`/etc. are ignored in v1 — items
- * mounted on the initial render do NOT animate. Pass per-item state through
- * your own enter hook if you need first-frame animation.
+ * `appear` is intentionally NOT supported: items mounted on the initial
+ * render do NOT animate. The appear-related props from {@link TransitionProps}
+ * are therefore omitted from this type. If you need first-frame animation,
+ * mount the group with an empty list and push items after mount.
  */
-export interface TransitionGroupProps<T = unknown> extends Omit<TransitionProps, 'children'> {
+type GroupBaseProps = Omit<
+  TransitionProps,
+  'children' | 'appear' | 'appearFromClass' | 'appearActiveClass' | 'appearToClass'
+>;
+
+export interface TransitionGroupProps<T = unknown> extends GroupBaseProps {
   each: T[] | Signal<T[]> | (() => T[]);
   key: (item: T, index: number) => unknown;
   tag?: string;
@@ -113,8 +119,8 @@ function resolveItemElement(
       comp.mount(parent);
     }
     if (__DEV__ && comp.renderedNodes.length > 1) {
-      console.warn(
-        '[essor] <TransitionGroup> child component rendered multiple root nodes; ' +
+      warn(
+        '[TransitionGroup] child component rendered multiple root nodes; ' +
           'only the first participates in enter/leave/move animations.',
       );
     }
@@ -123,8 +129,8 @@ function resolveItemElement(
     return { el: null, comp };
   }
   if (__DEV__) {
-    console.warn(
-      '[essor] <TransitionGroup> child render returned a non-element value; ' +
+    warn(
+      '[TransitionGroup] child render returned a non-element value; ' +
         'animations require Element or Component roots.',
     );
   }
@@ -230,11 +236,27 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     };
   };
 
+  /**
+   * Detach a row's DOM nodes from the wrapper. For Component-backed rows we
+   * remove every rendered root, not just `entry.el` — multi-root Components
+   * would otherwise leak their trailing siblings into the wrapper indefinitely
+   * (FLIP only animates the first root, but cleanup must reclaim all of them).
+   */
+  const detachEntryDom = (entry: Entry): void => {
+    if (entry.comp) {
+      for (const node of entry.comp.renderedNodes) {
+        if (node.parentNode === wrapper) wrapper.removeChild(node);
+      }
+      return;
+    }
+    if (entry.el.parentNode === wrapper) wrapper.removeChild(entry.el);
+  };
+
   const disposeEntry = (entry: Entry): void => {
     entry.cancelEnter?.(true);
     entry.cancelLeave?.(true);
     if (entry.comp) entry.comp.destroy();
-    if (entry.el.parentNode === wrapper) wrapper.removeChild(entry.el);
+    detachEntryDom(entry);
     disposeScope(entry.scope);
   };
 
@@ -288,7 +310,7 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
   const runLeave = (entry: Entry, prevRect: DOMRect): void => {
     const el = entry.el;
     // Cancel any pending enter on the same element so leave-from/leave-active
-    // actually take effect (vue#10677 — reflow between phases).
+    // actually take effect.
     if (entry.cancelEnter) {
       entry.cancelEnter(true);
       forceReflow(el);
@@ -308,7 +330,7 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     if (!useCss) {
       // No-animation contract: tear down immediately.
       if (entry.savedStyles) restoreStyles(el, entry.savedStyles);
-      if (el.parentNode === wrapper) wrapper.removeChild(el);
+      detachEntryDom(entry);
       disposeScope(entry.scope);
       if (entry.comp) entry.comp.destroy();
       props.onAfterLeave?.(el);
@@ -336,9 +358,9 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
         return;
       }
 
-      if (el.parentNode === wrapper) wrapper.removeChild(el);
       if (entry.savedStyles) restoreStyles(el, entry.savedStyles);
       entry.savedStyles = undefined;
+      detachEntryDom(entry);
       disposeScope(entry.scope);
       if (entry.comp) entry.comp.destroy();
       props.onAfterLeave?.(el);
@@ -362,6 +384,9 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
    * FLIP move. Called for items that stayed but may have changed position.
    * Caller passes the rect snapshotted BEFORE the DOM mutation; we measure
    * the current rect and animate the delta away.
+   *
+   * NOTE: There is no separate `move` direction on `duration`. To keep
+   *  move animations honor the **enter** duration when `duration` is set.
    */
   const runMove = (entry: Entry, prevRect: DOMRect): void => {
     if (!useCss || entry.state !== 'present') return;
@@ -483,10 +508,19 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
       if (entry.state !== 'present') runEnter(entry);
     }
 
-    // Run leave on departing entries — use their pre-mutation rect to anchor
-    // the absolute positioning.
+    // Run leave on departing entries. By construction every entry coming
+    // out of `reconcile` as `leaving` had a non-`leaving` state during the
+    // immediately preceding `snapshotPositions`, so its `prevRect` is always
+    // set. We assert that invariant here rather than masking a future bug
+    // behind a silent fallback.
     for (const entry of leaving) {
-      const rect = entry.prevRect ?? entry.el.getBoundingClientRect();
+      const rect = entry.prevRect;
+      if (!rect) {
+        if (__DEV__) {
+          warn('[TransitionGroup] leaving entry without prevRect — skipping leave animation');
+        }
+        continue;
+      }
       runLeave(entry, rect);
     }
 

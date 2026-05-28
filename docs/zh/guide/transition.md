@@ -505,13 +505,13 @@ function TodoList() {
 </TransitionGroup>
 ```
 
-**只做移动动画:**
+**只做移动动画(enter / leave 立即完成):**
 
 ```css
 .list-move {
   transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* enter/leave 立即完成 */
+/* 关闭 enter/leave,仅 reorder 动画 */
 .list-enter-active,
 .list-leave-active {
   transition: none;

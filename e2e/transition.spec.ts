@@ -35,13 +35,6 @@ test.describe('transition example', () => {
   });
 
   test('scale scenario: duration prop overrides CSS — leave takes 400ms', async ({ page }) => {
-    // The `duration` prop follows Vue's convention: it's the time the JS
-    // side WAITS for the CSS animation to complete AFTER the leave-to class
-    // is applied (which happens on the next animation frame). So the total
-    // wall-clock budget is roughly nextFrame (~16-32ms) + duration (400ms)
-    // + Playwright polling overhead. We give 1200ms of headroom but still
-    // assert the lower bound (≥380ms) so a regression that drops the timer
-    // is caught.
     const box = page.locator('[data-test="scale-box"]');
     await page.locator('[data-test="scale-toggle"]').click();
     await expect(box).toBeVisible();
@@ -150,9 +143,7 @@ test.describe('transition example', () => {
     await expect(remaining).toHaveCount(2);
   });
 
-  test('group scenario: Shuffle applies the list-move class to staying items', async ({
-    page,
-  }) => {
+  test('group scenario: Shuffle applies the list-move class to staying items', async ({ page }) => {
     await page.locator('[data-test="group-shuffle"]').click();
     // After "shuffle" (last → first), all 3 items moved → all should have the
     // list-move class applied while the FLIP animation runs. We assert at
@@ -161,7 +152,7 @@ test.describe('transition example', () => {
     await expect(moveItems.first()).toBeVisible({ timeout: 300 });
     // Visual order in the DOM must reflect the new sequence: 3, 1, 2.
     const order = await page.$$eval('[data-test^="group-item-"]', (els) =>
-      els.map((el) => el.getAttribute('data-test')),
+      els.map((el) => el.dataset.test),
     );
     expect(order).toEqual(['group-item-3', 'group-item-1', 'group-item-2']);
     // After ~500ms the move class is gone.
@@ -176,9 +167,7 @@ test.describe('transition example', () => {
     await expect(items).toHaveCount(0, { timeout: 1000 });
   });
 
-  test('group scenario: rapid Add/Remove sequence ends in a consistent state', async ({
-    page,
-  }) => {
+  test('group scenario: rapid Add/Remove sequence ends in a consistent state', async ({ page }) => {
     // Drive the list quickly to flush several enter/leave overlaps. The end
     // state must reflect a deterministic +3 / -2 net result.
     for (let i = 0; i < 3; i++) await page.locator('[data-test="group-add"]').click();

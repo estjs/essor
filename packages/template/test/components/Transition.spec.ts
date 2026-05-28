@@ -6,6 +6,7 @@ import {
   isTransition,
   resolveTransitionClasses,
 } from '../../src/components/Transition';
+import { createComponent } from '../../src/component';
 import {
   cleanupContext,
   createContext,
@@ -859,6 +860,78 @@ describe('transition validation (T16)', () => {
     container.appendChild(anchor);
     flushMount(ctx);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/non-element/i));
+    warn.mockRestore();
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  // -------------------------------------------------------------------------
+  // Component-instance slots: <Transition>{() => <ChildComponent/>}</Transition>
+  //
+  // The slot evaluator may produce a Component instance (the babel/JSX path
+  // for `<Foo/>` returns a Component). `validateSlot` mounts it into a
+  // detached fragment and animates the component's first rendered Element.
+  // -------------------------------------------------------------------------
+
+  it('mounts a single-root Component slot and animates its rendered element', () => {
+    const Inner = () => {
+      const div = document.createElement('div');
+      div.className = 'inner-box';
+      div.textContent = 'inner';
+      return div;
+    };
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({ children: () => createComponent(Inner, {}) });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    const box = container.querySelector('.inner-box');
+    expect(box).not.toBeNull();
+    // It must live in the live tree, not the detached fragment that
+    // `validateSlot` used as a staging area.
+    expect(box?.parentNode).toBe(container);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('warns and animates only the first root when a Component slot has multiple roots', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const Multi = () => {
+      const a = document.createElement('div');
+      a.className = 'multi-a';
+      const b = document.createElement('div');
+      b.className = 'multi-b';
+      return [a, b];
+    };
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({ children: () => createComponent(Multi, {}) });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/multiple root/i));
+    // First root is in the live tree; trailing roots stay in the staging
+    // fragment (the documented "first participates" semantic).
+    expect(container.querySelector('.multi-a')).not.toBeNull();
+    expect(container.querySelector('.multi-b')).toBeNull();
+
+    warn.mockRestore();
+    popContextStack();
+    cleanupContext(ctx);
+  });
+
+  it('warns when a Component slot does not render any Element root', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const TextOnly = () => document.createTextNode('hello') as unknown as Element;
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({ children: () => createComponent(TextOnly, {}) });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/did not render an Element root/i));
     warn.mockRestore();
     popContextStack();
     cleanupContext(ctx);

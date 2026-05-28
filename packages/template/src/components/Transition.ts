@@ -1,4 +1,5 @@
 import { effect } from '@estjs/signals';
+import { warn } from '@estjs/shared';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
 import { TRANSITION_COMPONENT } from '../constants';
@@ -125,8 +126,7 @@ export function forceReflow(el: Element): void {
 
 /**
  * Wait for a transition/animation on `el` to finish, then call `resolve`.
- * If `explicit` is set, use that as a fixed timeout (Vue's `duration` prop
- * semantics); otherwise probe computed style for the longest active timing
+ * If `explicit` is set, use that as a fixed timeout ; otherwise probe computed style for the longest active timing
  * and listen for the matching end event with a +1ms safety net.
  */
 export function whenTransitionEnds(
@@ -193,8 +193,8 @@ function validateSlot(value: unknown): Element | null {
       comp.mount(fragment);
     }
     if (__DEV__ && comp.renderedNodes.length > 1) {
-      console.warn(
-        '[essor] <Transition> child component rendered multiple root nodes; ' +
+      warn(
+        '[Transition] child component rendered multiple root nodes; ' +
           'only the first is animated. Wrap the children in a single element ' +
           'or use <TransitionGroup>.',
       );
@@ -202,12 +202,12 @@ function validateSlot(value: unknown): Element | null {
     const first = comp.firstChild;
     if (first instanceof Element) return first;
     if (__DEV__) {
-      console.warn('[essor] <Transition> child component did not render an Element root.');
+      warn('[Transition] child component did not render an Element root.');
     }
     return null;
   }
   if (__DEV__) {
-    console.warn('[essor] <Transition> received a non-element child; animation will be skipped.');
+    warn('[Transition] received a non-element child; animation will be skipped.');
   }
   return null;
 }
@@ -222,7 +222,7 @@ function validateSlot(value: unknown): Element | null {
 //     out of the effect's tracking phase, eliminating dep-link corruption.
 //   - The state machine runs in `flushCommit()` after the microtask drains.
 //   - Cancellation uses Symbol-keyed callbacks on the element itself
-//     (Vue-style el[ENTER_CB] / el[LEAVE_CB]) — robust across reentrancy and
+//      robust across reentrancy and
 //     mid-flight reversals.
 //   - End-of-animation detection is centralized in `whenTransitionEnds()`:
 //     explicit `duration` wins; otherwise observe the appropriate end event
@@ -314,7 +314,7 @@ export function Transition(props: TransitionProps): Node {
 
   const leave = (el: Element, after: () => void): void => {
     // Cancel any in-flight enter on the same element, then settle a reflow so
-    // the swap to leave-from/leave-active takes effect cleanly (vue#10677).
+    // the swap to leave-from/leave-active takes effect cleanly
     const prevEnter = (el as unknown as Record<symbol, CancelCb>)[ENTER_CB];
     if (prevEnter) {
       prevEnter(true);
@@ -382,7 +382,7 @@ export function Transition(props: TransitionProps): Node {
 
   const commit = (next: Element | null, isFirst: boolean): void => {
     // Leave → Enter reversal — revive the still-leaving element rather than
-    // mounting a fresh node from the slot (Vue parity).
+    // mounting a fresh node from the slot .
     if (next && state === 'leaving' && leavingEl) {
       const reviving = leavingEl;
       const leaveCb = (reviving as unknown as Record<symbol, CancelCb>)[LEAVE_CB];

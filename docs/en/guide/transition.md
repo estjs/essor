@@ -524,13 +524,13 @@ animation, drive your own per-item enter via JS hooks on the second pass.
 </TransitionGroup>
 ```
 
-**Custom move-only animation:**
+**Move-only animation (instant enter / leave):**
 
 ```css
 .list-move {
   transition: transform 500ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* enter/leave instant */
+/* Suppress enter/leave so only reorders animate. */
 .list-enter-active,
 .list-leave-active {
   transition: none;

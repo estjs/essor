@@ -383,6 +383,79 @@ describe('TransitionGroup', () => {
     cleanupContext(ctx);
   });
 
+  // Regression: a Component child rendering multiple root nodes used to leak
+  // its trailing siblings into the wrapper on leave — only `entry.el` (the
+  // first root) was removed. Cleanup must reclaim every rendered root.
+  it('detaches ALL rendered nodes of a multi-root Component on leave', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const items = signal([1, 2]);
+    const MultiRoot = (props: { value: number }) => {
+      const a = document.createElement('span');
+      a.className = `mrow mrow-a-${props.value}`;
+      a.textContent = `a${props.value}`;
+      const b = document.createElement('span');
+      b.className = `mrow mrow-b-${props.value}`;
+      b.textContent = `b${props.value}`;
+      return [a, b];
+    };
+
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const wrapper = TransitionGroup({
+      each: items,
+      key: (v) => v,
+      css: false, // synchronous detach via the no-animation fast path
+      children: (v) => createComponent(MultiRoot, { value: v }),
+    });
+    mountGroup(wrapper);
+    flushMount(ctx);
+
+    // Both rows' two roots are mounted.
+    expect(wrapper.querySelectorAll('.mrow').length).toBe(4);
+
+    items.value = [2];
+    await Promise.resolve();
+
+    // Row 1's BOTH roots (a1 + b1) must be detached, not just the first.
+    expect(wrapper.querySelector('.mrow-a-1')).toBeNull();
+    expect(wrapper.querySelector('.mrow-b-1')).toBeNull();
+    // Row 2 still intact.
+    expect(wrapper.querySelectorAll('.mrow').length).toBe(2);
+
+    popContextStack();
+    cleanupContext(ctx);
+    warnSpy.mockRestore();
+  });
+
+  it('detaches ALL rendered nodes of a multi-root Component on full group cleanup', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const MultiRoot = () => {
+      const a = document.createElement('em');
+      a.className = 'leak-test';
+      const b = document.createElement('em');
+      b.className = 'leak-test';
+      return [a, b];
+    };
+    const wrapper = TransitionGroup({
+      each: [1],
+      key: (v) => v,
+      children: () => createComponent(MultiRoot, {}),
+    });
+    mountGroup(wrapper);
+    flushMount(ctx);
+
+    expect(wrapper.querySelectorAll('.leak-test').length).toBe(2);
+
+    popContextStack();
+    cleanupContext(ctx);
+
+    // After group teardown, both rendered roots are gone.
+    expect(wrapper.querySelectorAll('.leak-test').length).toBe(0);
+    warnSpy.mockRestore();
+  });
+
   it('disposes per-row scope when an item is removed (onCleanup fires)', async () => {
     const cleaned: number[] = [];
     const items = signal([1, 2]);
