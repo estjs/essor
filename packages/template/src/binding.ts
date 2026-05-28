@@ -34,6 +34,8 @@ interface Strategy {
   forceChange?: true;
   /** Needs IME composition guard (text inputs, textareas). */
   ime?: true;
+  /** Supports checkbox-group array semantics — model holds an array of values. */
+  checkboxArray?: true;
 }
 
 const IDENTITY = <T>(v: T): T => v;
@@ -52,6 +54,7 @@ function writeValue(el: Element, v: unknown): void {
 const CHECKBOX: Strategy = {
   event: 'change',
   forceChange: true,
+  checkboxArray: true,
   read: (el) => (el as HTMLInputElement).checked,
   write(el, v) {
     const e = el as HTMLInputElement;
@@ -109,7 +112,7 @@ const SELECT: Strategy = {
   write(el, v) {
     const s = el as HTMLSelectElement;
     if (!s.multiple) return writeValue(el, v);
-    const selected = new Set((Array.isArray(v) ? v : []).map(String));
+    const selected = new Set((isArray(v) ? v : []).map(String));
     for (const opt of Array.from(s.options)) opt.selected = selected.has(opt.value);
   },
 };
@@ -147,7 +150,7 @@ function resolve(node: Element, prop: string): Strategy {
 /**
  * Apply trim / number modifiers to a raw DOM value. No-op for non-strings.
  *
- * Number coercion (Vue parity):
+ * Number coercion behaviour:
  * - Blank / whitespace-only inputs return the original string unchanged
  *   (otherwise `Number(' ')` would silently produce `0`).
  * - Non-numeric strings (NaN) also return the original string.
@@ -172,7 +175,7 @@ function isFocused(el: Element): boolean {
 }
 
 /**
- * Vue parity: `<input type="number">` / `<input type="range">` always read as
+ * `<input type="number">` / `<input type="range">` always read as
  * numbers, even without an explicit `{ number: true }`.
  */
 function shouldAutoCoerceNumber(node: Element, prop: string): boolean {
@@ -205,7 +208,7 @@ export function bindElement(
   if (!node) return;
 
   // 1. Resolve strategy & pre-compute flags
-  const { event, read, write, forceChange, ime } = resolve(node, prop);
+  const { event, read, write, forceChange, ime, checkboxArray } = resolve(node, prop);
   const trim = modifiers.trim === true;
   const toNum = modifiers.number === true || shouldAutoCoerceNumber(node, prop);
   const lazy = modifiers.lazy === true;
@@ -217,23 +220,18 @@ export function bindElement(
     : IDENTITY;
 
   // Checkbox group: when a non-radio checkbox is bound to an array model,
-  // toggle `el.value` in the array on each change. Detected lazily because
-  // the model shape may change over time.
-  const isCheckbox =
-    node.nodeName === 'INPUT' && prop === 'checked' && (node as HTMLInputElement).type !== 'radio';
-
-  const computeNext = (raw: unknown): unknown => {
-    if (isCheckbox) {
-      const current = getModel();
-      if (isArray(current)) {
+  // toggle `el.value` in the array on each change. Decided lazily per-event
+  // because the model shape may change over time.
+  const computeNext: (raw: unknown) => unknown = checkboxArray
+    ? (raw) => {
+        const current = getModel();
+        if (!isArray(current)) return cast(raw);
         const own = (node as HTMLInputElement).value;
         const next = current.filter((item) => String(item) !== own);
         if (raw) next.push(own);
         return next;
       }
-    }
-    return cast(raw);
-  };
+    : cast;
 
   // 2. DOM → Model
   let composing = false;
@@ -254,30 +252,22 @@ export function bindElement(
     addEventListener(node, 'change', () => write(node, cast(read(node))));
   }
 
-  // 3. IME composition guard
-  //
-  // Track composition state whenever the strategy is IME-aware, even in
-  // `lazy` mode — otherwise an external model write during composition would
-  // clobber the user's pending input. The only thing `lazy` controls is the
-  // DOM→Model commit event (change vs input).
+  // 3. IME composition guard — track state whenever the strategy is IME-aware,
+  // even in `lazy` mode, otherwise an external model write during composition
+  // would clobber pending input. `lazy` only controls the commit event.
   if (ime) {
     addEventListener(node, 'compositionstart', () => {
       composing = true;
     });
     addEventListener(node, 'compositionend', () => {
       composing = false;
-      // In lazy mode we don't sync to the model here — the user still hasn't
-      // blurred. In eager mode, mirror Vue: commit the composed text now.
+      // Lazy waits for blur; eager commits the composed text now.
       if (!lazy) syncToModel();
     });
   }
 
-  // 4. Model → DOM
-  //   Skip the DOM write when:
-  //   - we're inside an IME composition (would clobber pending input), OR
-  //   - the input is focused and already shows the canonical value (avoids caret jump).
-  // The IME composition guard applies even in `lazy` mode because the model
-  // can still change from elsewhere while the user is composing.
+  // 4. Model → DOM — skip the write when (a) inside an IME composition or
+  // (b) the focused input already shows the canonical value (avoids caret jump).
   const runner = effect(() => {
     const value = getModel();
     if (ime && composing) return;

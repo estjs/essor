@@ -50,9 +50,9 @@ Supported modifiers:
 
 ```tsx
 function Demo() {
-  let $keyword = ''
-  let $age: number | string = ''
-  let $slug = ''
+  const $keyword = ''
+  const $age: number | string = ''
+  const $slug = ''
 
   return (
     <>
@@ -70,8 +70,7 @@ gives you a clear error instead of silently doing nothing.
 ### Automatic numeric coercion
 
 `<input type="number">` and `<input type="range">` always emit numbers to the
-model, even without an explicit `{ number: true }` — this matches Vue's
-`v-model.number` auto-behaviour:
+model, even without an explicit `{ number: true }`
 
 ```tsx
 let $progress = 0
@@ -218,7 +217,6 @@ function MyInput(props: {
 ## Behavior Notes
 
 `bind:` is implemented by [`bindElement`](../../packages/template/src/binding.ts)
-and behaves like Vue's `v-model`:
 
 1. **IME composition** — while the user is composing CJK input via an IME, the
    model is not updated until `compositionend` fires (no half-committed

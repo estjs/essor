@@ -48,9 +48,9 @@ function Form() {
 
 ```tsx
 function Demo() {
-  let $keyword = ''
-  let $age: number | string = ''
-  let $slug = ''
+  const $keyword = ''
+  const $age: number | string = ''
+  const $slug = ''
 
   return (
     <>
@@ -68,10 +68,10 @@ function Demo() {
 ### `<input type="number">` 自动数字化
 
 `<input type="number">` 和 `<input type="range">` 即使不写 `{ number: true }`
-也会自动把值转成数字 —— 这点对齐 Vue 的 `v-model.number` 自动行为:
+也会自动把值转成数字 
 
 ```tsx
-let $progress = 0
+const $progress = 0;
 <input type='range' min='0' max='100' bind:value={$progress} />
 // $progress 是 number,不是 string
 ```
@@ -215,7 +215,6 @@ function MyInput(props: {
 ## 行为细节
 
 `bind:` 由 [`bindElement`](../../packages/template/src/binding.ts) 实现,行为
-对齐 Vue 的 `v-model`:
 
 1. **IME 输入法**:用户用 CJK 输入法拼词时,直到 `compositionend` 触发才会写
    入 model(不会提交半成品)。同样,**输入法期间外部 model 写入也会被挂起**,

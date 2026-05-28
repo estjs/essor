@@ -348,7 +348,7 @@ describe('binding utilities', () => {
       });
     });
 
-    describe('number modifier — Vue parity', () => {
+    describe('number modifier', () => {
       it('keeps whitespace-only input as the original string (does not coerce to 0)', () => {
         const input = document.createElement('input');
         const s = signal<number | string>('initial');
