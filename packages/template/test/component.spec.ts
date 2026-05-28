@@ -240,6 +240,104 @@ describe('component', () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
+    it('overrides a JSX-bound delegated handler in the `_$<event>` slot (Solid-style)', async () => {
+      const root = createTestRoot();
+      const internal = vi.fn();
+      const parent = vi.fn();
+      // Simulate babel-plugin's emit: a button with `_$click = internal` slot,
+      // plus the module-init `delegateEvents(['click'])` registration that
+      // makes the document walker pick up the slot.
+      const { delegateEvents } = await import('../src/events');
+      delegateEvents(['click']);
+
+      const Comp = () => {
+        const btn = document.createElement('button');
+        (btn as any)._$click = internal;
+        return btn;
+      };
+      const instance = createComponent(Comp, { onClick: parent } as any) as any;
+      instance.mount(root);
+
+      (instance.firstChild as HTMLButtonElement).click();
+      expect(parent).toHaveBeenCalledTimes(1);
+      expect(internal).not.toHaveBeenCalled();
+    });
+
+    it('restores the JSX-bound slot handler on destroy', async () => {
+      const root = createTestRoot();
+      const internal = () => {};
+      const parent = () => {};
+      const { delegateEvents } = await import('../src/events');
+      delegateEvents(['click']);
+
+      const Comp = () => {
+        const btn = document.createElement('button');
+        (btn as any)._$click = internal;
+        return btn;
+      };
+      const instance = createComponent(Comp, { onClick: parent } as any) as any;
+      instance.mount(root);
+
+      const btn = instance.firstChild as HTMLButtonElement;
+      expect((btn as any)._$click).toBe(parent);
+
+      instance.destroy();
+      expect((btn as any)._$click).toBe(internal);
+    });
+
+    it('short-circuits the native-path handler when the root element is `disabled`', () => {
+      const root = createTestRoot();
+      const handler = vi.fn();
+      const Comp = () => {
+        const btn = document.createElement('button');
+        btn.disabled = true;
+        return btn;
+      };
+      const instance = createComponent(Comp, { onClick: handler } as any) as any;
+      instance.mount(root);
+
+      // Dispatch directly — jsdom suppresses `.click()` on `disabled` buttons,
+      // which would mask the wrapper. dispatchEvent bypasses that suppression.
+      (instance.firstChild as HTMLButtonElement).dispatchEvent(
+        new MouseEvent('click', { bubbles: true }),
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('re-overrides the slot across update() and restores the template handler on destroy', async () => {
+      const root = createTestRoot();
+      const internal = vi.fn();
+      const handlerA = vi.fn();
+      const handlerB = vi.fn();
+      const { delegateEvents } = await import('../src/events');
+      delegateEvents(['click']);
+
+      const Comp = () => {
+        const btn = document.createElement('button');
+        (btn as any)._$click = internal;
+        return btn;
+      };
+      const instance = createComponent(Comp, { onClick: handlerA } as any) as any;
+      instance.mount(root);
+      const btn = instance.firstChild as HTMLButtonElement;
+
+      // After mount: A overrides the template handler.
+      expect((btn as any)._$click).toBe(handlerA);
+
+      // update() releases (restores internal) then re-overrides with B.
+      instance.update({ onClick: handlerB } as any);
+      expect((btn as any)._$click).toBe(handlerB);
+
+      btn.click();
+      expect(handlerB).toHaveBeenCalledTimes(1);
+      expect(handlerA).not.toHaveBeenCalled();
+      expect(internal).not.toHaveBeenCalled();
+
+      // destroy() restores the template's slot handler — no leaked reference to B.
+      instance.destroy();
+      expect((btn as any)._$click).toBe(internal);
+    });
+
     it('binds a function ref to the root element on mount', () => {
       const root = createTestRoot();
       const ref = vi.fn();

@@ -179,8 +179,8 @@ export class Component<P extends ComponentProps = {}> {
    */
   private syncSpecialProps(props: P): void {
     if (!props) return;
-    const root = this.firstChild as Element | undefined;
-    if (!root) return;
+    const root = this.firstChild;
+    if (!root || !(root instanceof Element)) return;
 
     this.releaseSpecialProps();
 
@@ -195,7 +195,36 @@ export class Component<P extends ComponentProps = {}> {
         const value = readProp(props, key);
         if (!isFunction(value)) continue;
         const eventName = key.slice(2).toLowerCase();
-        this.rootEventCleanups.push(addEvent(root, eventName, value as EventListener));
+        const target = root as Element & Record<string, unknown> & { disabled?: boolean };
+        const slot = `_$${eventName}`;
+        const prev = target[slot];
+
+        // Slot path — the JSX template already wired a delegated handler into
+        // this element's `_$<event>` slot. babel-plugin emits the matching
+        // `delegateEvents([...])` registration at module init, so the document
+        // walker is guaranteed to be active. Override Solid-style (last write
+        // wins) and restore the template's handler on release so a subsequent
+        // update / re-mount sees a clean baseline. The delegation walk in
+        // events.ts already supplies the `!node.disabled` short-circuit.
+        if (isFunction(prev)) {
+          target[slot] = value;
+          this.rootEventCleanups.push(() => {
+            if (target[slot] === value) target[slot] = prev;
+          });
+          continue;
+        }
+
+        // Native path — no JSX-bound delegated handler exists on this slot
+        // (template didn't bind one, or babel-plugin's delegation is off).
+        // Attach a real listener and mirror the walk's `!node.disabled`
+        // short-circuit at the dispatch entry so behaviour matches the slot
+        // path. The disabled check is a no-op on non-form elements.
+        const fn = value as (this: Element, e: Event) => unknown;
+        const handler: EventListener = (event) => {
+          if (target.disabled) return;
+          fn.call(target, event);
+        };
+        this.rootEventCleanups.push(addEvent(target, eventName, handler));
       }
     }
   }
