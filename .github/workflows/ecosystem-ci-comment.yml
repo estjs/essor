@@ -36,7 +36,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Dispatch ecosystem-ci in estjs/essor-ecosystem-ci
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           ECOSYSTEM_CI_PAT: ${{ secrets.ECOSYSTEM_CI_PAT }}
         with:
