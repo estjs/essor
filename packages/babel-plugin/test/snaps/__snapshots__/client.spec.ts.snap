@@ -17,7 +17,7 @@ const element = (() => {
         const _root$2 = _t$2();
         const _n$2 = _child$(_root$2);
         _memoEffect$(_p$ => {
-          var _v$ = label;
+          let _v$ = label;
           _v$ !== _p$.a0 && _patchAttr$(_root$2, "data-test", _p$.a0, _p$.a0 = _v$);
           return _p$;
         }, {
@@ -55,7 +55,7 @@ const $value = signal('test');
 const fn = () => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = $value.value;
+    let _v$ = $value.value;
     _v$ !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$);
     return _p$;
   }, {
@@ -138,11 +138,11 @@ const NavIconLinks = __props => {
           const _root$2 = _t$2();
           const _n$2 = _child$(_root$2);
           _memoEffect$(_p$ => {
-            var _v$ = item.link;
+            let _v$ = item.link;
             _v$ !== _p$.a0 && _patchAttr$(_root$2, "href", _p$.a0, _p$.a0 = _v$);
-            var _v$2 = label;
+            let _v$2 = label;
             _v$2 !== _p$.a1 && _patchAttr$(_root$2, "aria-label", _p$.a1, _p$.a1 = _v$2);
-            var _v$3 = label;
+            let _v$3 = label;
             _v$3 !== _p$.a2 && _patchAttr$(_root$2, "title", _p$.a2, _p$.a2 = _v$3);
             return _p$;
           }, {
@@ -153,7 +153,7 @@ const NavIconLinks = __props => {
           _insert$(_root$2, () => isSvgIcon(item.icon) ? (() => {
             const _root$3 = _t$3();
             _memoEffect$(_p$ => {
-              var _v$4 = item.icon.svg;
+              let _v$4 = item.icon.svg;
               _v$4 !== _p$.a0 && _patchAttr$(_root$3, "innerHTML", _p$.a0, _p$.a0 = _v$4);
               return _p$;
             }, {
@@ -163,7 +163,7 @@ const NavIconLinks = __props => {
           })() : iconClass ? (() => {
             const _root$4 = _t$4();
             _memoEffect$(_p$ => {
-              var _v$5 = \`\${iconClass} h-5 w-5 fill-current\`;
+              let _v$5 = \`\${iconClass} h-5 w-5 fill-current\`;
               _v$5 !== _p$.c0 && _patchClass$(_root$4, _p$.c0, _p$.c0 = _v$5);
               return _p$;
             }, {
@@ -331,7 +331,7 @@ const ThemeContext = {
 const MemoComponent = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = __props.theme;
+    let _v$ = __props.theme;
     _v$ !== _p$.a0 && _patchAttr$(_root$, "data-theme", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
@@ -380,7 +380,7 @@ const Component = () => {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      var _v$ = value;
+      let _v$ = value;
       _v$ !== _p$.a0 && _patchAttr$(_root$, "data-hook", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
@@ -699,7 +699,7 @@ const Portal = __props => {
     const _root$ = _t$();
     const _n$ = _child$(_root$);
     _memoEffect$(_p$ => {
-      var _v$ = __props.target;
+      let _v$ = __props.target;
       _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
@@ -726,7 +726,7 @@ const Portal = (__props, ref) => (() => {
   const _n$ = _child$(_root$);
   (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
   _memoEffect$(_p$ => {
-    var _v$ = __props.target;
+    let _v$ = __props.target;
     _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
@@ -1030,7 +1030,7 @@ const props = {
 const element = (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = props;
+    let _v$ = props;
     _v$ !== _p$.sp0 && _patchAttr$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$);
     return _p$;
   }, {
@@ -1100,7 +1100,7 @@ const element = (() => {
     const _root$2 = _t$2();
     const _n$5 = _nthChild$(_root$2, 1);
     _memoEffect$(_p$ => {
-      var _v$ = i;
+      let _v$ = i;
       _v$ !== _p$.a0 && _patchAttr$(_root$2, "key", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {

@@ -6,7 +6,7 @@ const _t$ = _getRenderedElement$("<div data-styled>");
 const StyledComponent = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = __props.className;
+    let _v$ = __props.className;
     _v$ !== _p$.c0 && _patchClassHydrate$(_root$, _p$.c0, _p$.c0 = _v$);
     return _p$;
   }, {
@@ -237,7 +237,7 @@ const StreamingComponent = __props => (() => {
     children: (chunk, index) => (() => {
       const _root$2 = _t$();
       _memoEffect$(_p$ => {
-        var _v$ = index;
+        let _v$ = index;
         _v$ !== _p$.a0 && _patchAttrHydrate$(_root$2, "data-chunk", _p$.a0, _p$.a0 = _v$);
         return _p$;
       }, {
@@ -530,7 +530,7 @@ const _t$ = _getRenderedElement$("<div data-streaming-portal>");
 const StreamingPortal = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = __props.target;
+    let _v$ = __props.target;
     _v$ !== _p$.a0 && _patchAttrHydrate$(_root$, "data-target", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
@@ -736,7 +736,7 @@ const element = (() => {
     const _root$2 = _t$2();
     const _hk$2 = _hydrationMarker$(_root$2, 0);
     _memoEffect$(_p$ => {
-      var _v$ = i;
+      let _v$ = i;
       _v$ !== _p$.a0 && _patchAttrHydrate$(_root$2, "key", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
@@ -806,7 +806,7 @@ const props = {
 const element = (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
-    var _v$ = props;
+    let _v$ = props;
     _v$ !== _p$.sp0 && _patchAttrHydrate$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$);
     return _p$;
   }, {
