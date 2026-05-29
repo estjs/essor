@@ -298,16 +298,28 @@ importers:
       '@babel/core':
         specifier: ^7.29.7
         version: 7.29.7
+      '@babel/generator':
+        specifier: ^7.29.7
+        version: 7.29.7
       '@estjs/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
+      '@babel/traverse':
+        specifier: ^7.29.7
+        version: 7.29.7
       '@babel/types':
         specifier: ^7.29.7
         version: 7.29.7
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
+      '@types/babel__generator':
+        specifier: ^7.27.0
+        version: 7.27.0
+      '@types/babel__traverse':
+        specifier: ^7.28.0
+        version: 7.28.0
 
   packages/core:
     dependencies:
