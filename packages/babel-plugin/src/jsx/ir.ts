@@ -2,17 +2,17 @@ import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString, startsWith } fr
 import { type NodePath, types as t } from '@babel/core';
 import { TRANSFORM_PROPERTY_NAME } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
-import { createBindingSetter } from './emitters';
 import {
   type DynamicAttr,
+  isAnyFunctionPath,
+  isFunctionLikeExpressionPath,
   getTagName,
   isComponentTag,
   normalizeEventName,
   parseAttributes,
   textTrim,
-} from './utils';
-
-// ─── Constants ─────────────────────────────
+} from '../ast-utils';
+import { createBindingSetter } from './emitters';
 
 // ─── IR Types ──────────────────────────────
 
@@ -351,7 +351,6 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
     const forIR = buildForIR(expression, ctx);
     if (forIR) return forIR;
 
-    // Static string/number → text node
     if (expression.isStringLiteral() || expression.isNumericLiteral()) {
       return {
         type: IRType.TEXT,
@@ -360,22 +359,18 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
       };
     }
 
-    // Nested JSX
     if (expression.isJSXElement() || expression.isJSXFragment()) {
       return buildIR(expression as unknown as NodePath<JSXElement>, ctx);
     }
 
-    const asRawChildren = isPropsChildrenExpression(expression);
+    if (!expression.isExpression()) return null;
 
-    // Dynamic expression
-    if (expression.isExpression()) {
-      return {
-        type: IRType.EXPRESSION,
-        value: expression.node,
-        asRawChildren,
-        loc: node.loc,
-      };
-    }
+    return {
+      type: IRType.EXPRESSION,
+      value: expression.node,
+      asRawChildren: isPropsChildrenExpression(expression),
+      loc: node.loc,
+    };
   }
 
   if (t.isJSXText(node)) {
@@ -397,44 +392,48 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
 
 function isPropsChildrenExpression(expression: NodePath<t.Expression>): boolean {
   const node = expression.node;
-  // `props` transform currently uses scope.rename(name, "__props.children")`.
-  // Babel stores that intermediate value as an Identifier and prints it as a
-  // member expression later, so SSR raw-children detection must accept it here.
-  if (t.isIdentifier(node) && node.name === `${TRANSFORM_PROPERTY_NAME}.children`) return true;
+
+  // The props pass uses `scope.rename(name, '__props.children')`, so what
+  // started as an identifier gets stamped with a dotted string name and Babel
+  // prints it verbatim. Treat it as a member expression for raw-children
+  // detection purposes.
+  if (isRenamedPropsChildrenIdentifier(node)) return true;
 
   if (!t.isMemberExpression(node) || !isChildrenProperty(node)) return false;
   if (!t.isIdentifier(node.object)) return false;
   if (node.object.name === TRANSFORM_PROPERTY_NAME) return true;
 
+  // User-written `props.children` access. Confirm `props` is the first
+  // parameter of an enclosing component-like function.
   const binding = expression.scope.getBinding(node.object.name);
   const bindingPath = binding?.path;
   if (!bindingPath?.isIdentifier()) return false;
 
-  const owner = bindingPath.findParent(
-    (candidate) =>
-      candidate.isFunctionDeclaration() ||
-      candidate.isFunctionExpression() ||
-      candidate.isArrowFunctionExpression(),
-  );
-
+  const owner = bindingPath.findParent((p) => isAnyFunctionPath(p));
   if (!owner) return false;
 
-  if (owner.isFunctionDeclaration() || owner.isFunctionExpression() || owner.isArrowFunctionExpression()) {
-    const fn = owner.node;
-    const parent = owner.parentPath;
-    const componentName =
-      t.isFunctionDeclaration(fn) && fn.id
-        ? fn.id.name
-        : parent?.isVariableDeclarator() && t.isIdentifier(parent.node.id)
-          ? parent.node.id.name
-          : parent?.isAssignmentExpression() && t.isIdentifier(parent.node.left)
-            ? parent.node.left.name
-            : '';
+  const fn = owner.node as t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
+  const componentName = getEnclosingFunctionName(owner);
+  return fn.params[0] === bindingPath.node && /^[A-Z]/.test(componentName);
+}
 
-    return fn.params[0] === bindingPath.node && /^[A-Z]/.test(componentName);
+function isRenamedPropsChildrenIdentifier(node: t.Node): boolean {
+  return t.isIdentifier(node) && node.name === `${TRANSFORM_PROPERTY_NAME}.children`;
+}
+
+function getEnclosingFunctionName(owner: NodePath): string {
+  const fn = owner.node as t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
+
+  if (t.isFunctionDeclaration(fn) && fn.id) return fn.id.name;
+
+  const parent = owner.parentPath;
+  if (parent?.isVariableDeclarator() && t.isIdentifier(parent.node.id)) {
+    return parent.node.id.name;
   }
-
-  return false;
+  if (parent?.isAssignmentExpression() && t.isIdentifier(parent.node.left)) {
+    return parent.node.left.name;
+  }
+  return '';
 }
 
 function isChildrenProperty(expression: t.MemberExpression): boolean {
@@ -461,7 +460,7 @@ function buildForIR(expression: NodePath<t.Expression>, ctx: CompileContext): IR
   if (args.length !== 1) return null;
 
   const callback = args[0];
-  if (!callback.isArrowFunctionExpression() && !callback.isFunctionExpression()) {
+  if (!isFunctionLikeExpressionPath(callback)) {
     return null;
   }
 
@@ -530,10 +529,11 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
 
 /**
  * Resolves the JSX body returned by a `.map()` callback.
+ *
+ * Prelude statements are kept as live AST node references — `buildForCallbackBody`
+ * clones them at emit time, so an extra clone here would be wasted.
  */
-function getForCallbackBody(
-  callback: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>,
-): {
+function getForCallbackBody(callback: NodePath<t.ArrowFunctionExpression | t.FunctionExpression>): {
   path: NodePath<JSXElement>;
   prelude: t.Statement[];
 } | null {
@@ -554,13 +554,13 @@ function getForCallbackBody(
   const prelude: t.Statement[] = [];
   for (const statement of bodyPath.get('body')) {
     if (!statement.isReturnStatement()) {
-      prelude.push(t.cloneNode(statement.node, true));
+      prelude.push(statement.node);
       continue;
     }
 
     const argument = statement.get('argument');
     if (Array.isArray(argument) || !argument.node) {
-      prelude.push(t.cloneNode(statement.node, true));
+      prelude.push(statement.node);
       continue;
     }
 
@@ -568,7 +568,7 @@ function getForCallbackBody(
       return { path: argument as NodePath<JSXElement>, prelude };
     }
 
-    prelude.push(t.cloneNode(statement.node, true));
+    prelude.push(statement.node);
   }
 
   return null;

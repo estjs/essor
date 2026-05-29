@@ -1,10 +1,11 @@
 /**
- * JSX structure helpers.
+ * JSX structure helpers & shared AST predicates.
  *
  * These utilities convert the more fragmented shapes from Babel's JSX AST into
  * representations that are easier for the compiler pipeline to consume, such as
  * tag-name strings, runtime call expressions, and normalized event names.
  */
+import { type NodePath, types as t } from '@babel/core';
 import {
   escapeHTML,
   isArray,
@@ -17,9 +18,30 @@ import {
   propsToAttrMap,
   startsWith,
 } from '@estjs/shared';
-import { type NodePath, types as t } from '@babel/core';
-import { BUILT_IN_COMPONENTS, FRAGMENT_NAME } from '../constants';
-import { useImport } from '../context';
+import { BUILT_IN_COMPONENTS, FRAGMENT_NAME } from './constants';
+import { useImport } from './context';
+
+// ─── Shared function predicates ───────────
+
+export type AnyFunction = t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
+
+export function isAnyFunctionPath(path: NodePath): path is NodePath<AnyFunction> {
+  return (
+    path.isFunctionDeclaration() || path.isFunctionExpression() || path.isArrowFunctionExpression()
+  );
+}
+
+export function isFunctionLikeExpressionPath(
+  path: NodePath<t.Node | null | undefined>,
+): path is NodePath<t.FunctionExpression | t.ArrowFunctionExpression> {
+  return path.isFunctionExpression() || path.isArrowFunctionExpression();
+}
+
+export function isFunctionLikeExpression(
+  node: t.Node | null | undefined,
+): node is t.FunctionExpression | t.ArrowFunctionExpression {
+  return t.isFunctionExpression(node) || t.isArrowFunctionExpression(node);
+}
 
 export type AttrValueKind = 'static' | 'dynamic';
 
@@ -411,4 +433,43 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
   }
 
   return finalizeParsedAttributes(staticAttrs, dynamicAttrs, spreadAttrs);
+}
+
+/**
+ * Checks whether a function body returns JSX.
+ */
+export function checkHasJSXReturn(
+  path: NodePath<t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression>,
+): boolean {
+  if (path.isArrowFunctionExpression()) {
+    const body = path.get('body');
+    if (body.isJSXElement() || body.isJSXFragment()) {
+      return true;
+    }
+  }
+
+  let found = false;
+
+  path.traverse({
+    /**
+     * Stops once a JSX-returning branch is found.
+     */
+    ReturnStatement(returnPath) {
+      const argumentPath = returnPath.get('argument');
+      if (argumentPath.isJSXElement() || argumentPath.isJSXFragment()) {
+        found = true;
+        returnPath.stop();
+      }
+    },
+    /**
+     * Skips nested functions so only the current function body is inspected.
+     */
+    Function(functionPath) {
+      if (functionPath.node !== path.node) {
+        functionPath.skip();
+      }
+    },
+  });
+
+  return found;
 }

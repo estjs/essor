@@ -1,8 +1,8 @@
 import { types as t } from '@babel/core';
 import { useImport } from '../context';
+import { resolveComponentCallee } from '../ast-utils';
 import { type IRFor, type IRNode, IRType } from './ir';
 import { buildComponentPropsExpression } from './component-props';
-import { resolveComponentCallee } from './utils';
 
 /**
  * Builds the common For-loop props object (each getter, children callback,
@@ -33,10 +33,7 @@ export function buildForProps(node: IRFor, bodyExpr: t.Expression): t.ObjectExpr
     if (node.indexParam) keyParams.push(t.cloneNode(node.indexParam, true));
     const keyBody = buildForCallbackBody(node, t.cloneNode(node.key, true));
     props.push(
-      t.objectProperty(
-        t.identifier('key'),
-        t.arrowFunctionExpression(keyParams, keyBody),
-      ),
+      t.objectProperty(t.identifier('key'), t.arrowFunctionExpression(keyParams, keyBody)),
     );
   }
 

@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { generate } from '@babel/generator';
 import { type NodePath, types as t } from '@babel/core';
-import { checkHasJSXReturn } from './utils';
+import { type AnyFunction, isFunctionLikeExpressionPath } from '../ast-utils';
+import { checkHasJSXReturn } from '../ast-utils';
 import type { CompileContext } from '../context';
 
 const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
@@ -35,9 +36,7 @@ function generateComponentSignature(code: string): string {
 /**
  * Returns function body code.
  */
-function getFunctionBodyCode(
-  path: NodePath<t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression>,
-): string {
+function getFunctionBodyCode(path: NodePath<AnyFunction>): string {
   return generate(path.node.body).code;
 }
 
@@ -100,7 +99,7 @@ function collectFromStatement(
       continue;
     }
 
-    if (!initPath.isFunctionExpression() && !initPath.isArrowFunctionExpression()) {
+    if (!isFunctionLikeExpressionPath(initPath)) {
       continue;
     }
 
@@ -123,7 +122,7 @@ function getMetadataTargets(
   ctx: CompileContext,
 ): Array<{
   name: string;
-  functionPath: NodePath<t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression>;
+  functionPath: NodePath<AnyFunction>;
 }> {
   const declarationPath = unwrapTopLevelDeclaration(statementPath);
 
@@ -142,9 +141,7 @@ function getMetadataTargets(
 
   const targets: Array<{
     name: string;
-    functionPath: NodePath<
-      t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression
-    >;
+    functionPath: NodePath<AnyFunction>;
   }> = [];
 
   for (const variablePath of declarationPath.get('declarations')) {
@@ -159,7 +156,7 @@ function getMetadataTargets(
       continue;
     }
 
-    if (initPath.isFunctionExpression() || initPath.isArrowFunctionExpression()) {
+    if (isFunctionLikeExpressionPath(initPath)) {
       targets.push({
         name: idPath.node.name,
         functionPath: initPath,

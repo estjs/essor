@@ -18,7 +18,7 @@ import { type NodePath, types as t } from '@babel/core';
 import { isPlainObject, startsWith, warn } from '@estjs/shared';
 import { TRANSFORM_PROPERTY_NAME, importMap } from '../constants';
 import { getCompileContext, useImport } from '../context';
-import { checkHasJSXReturn } from './utils';
+import { checkHasJSXReturn } from '../ast-utils';
 import type {
   ArrowFunctionExpression,
   FunctionDeclaration,
@@ -111,39 +111,19 @@ function transformRestProperties(
   path: NodePath<FunctionDeclaration | ArrowFunctionExpression>,
   restProperties: RestElement,
   notRestNames: string[] = [],
-  nestedRestParams: RestParameterInfo[] = [],
 ): void {
   if (!t.isIdentifier(restProperties.argument)) return;
   const restName = restProperties.argument.name;
 
-  if (notRestNames.length === 0 && nestedRestParams.length === 0) {
+  if (notRestNames.length === 0) {
     path.node.params[0] = t.identifier(restName);
     return;
   }
 
-  const declarations: t.VariableDeclaration[] = [];
-
-  for (const nestedRest of nestedRestParams) {
-    declarations.push(
-      buildRestVariableDeclaration(nestedRest.name, nestedRest.parentPath, nestedRest.excludeProps),
-    );
-  }
-
-  declarations.push(buildRestVariableDeclaration(restName, TRANSFORM_PROPERTY_NAME, notRestNames));
+  const declaration = buildRestVariableDeclaration(restName, TRANSFORM_PROPERTY_NAME, notRestNames);
 
   const body = path.node.body as t.BlockStatement;
-  for (const declaration of declarations) {
-    body.body.unshift(declaration);
-  }
-}
-
-/**
- * Rest parameter information collected during transformation.
- */
-interface RestParameterInfo {
-  name: string;
-  parentPath: string;
-  excludeProps: string[];
+  body.body.unshift(declaration);
 }
 
 /**

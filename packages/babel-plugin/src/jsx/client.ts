@@ -7,7 +7,7 @@ import {
   registerTemplate,
   useImport,
 } from '../context';
-import { serializeStaticAttrs } from './utils';
+import { serializeStaticAttrs } from '../ast-utils';
 import {
   type IRBind,
   type IRComponent,
@@ -870,7 +870,7 @@ function createMemoPatchStatements(
   });
 
   return [
-    t.variableDeclaration('var', [t.variableDeclarator(valueId, t.cloneNode(patch.value, true))]),
+    t.variableDeclaration('let', [t.variableDeclarator(valueId, t.cloneNode(patch.value, true))]),
     t.expressionStatement(
       t.logicalExpression('&&', t.binaryExpression('!==', valueId, effectState), updateCall),
     ),

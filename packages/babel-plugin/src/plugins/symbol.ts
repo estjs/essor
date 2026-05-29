@@ -11,15 +11,9 @@
 import { types as t } from '@babel/core';
 import { startsWith } from '@estjs/shared';
 import { getCompileContext, useImport } from '../context';
+import { isFunctionLikeExpression } from '../ast-utils';
 import type { VariableDeclarator } from '@babel/types';
 import type { NodePath } from '@babel/core';
-
-/**
- * Base names of signal factory functions that are considered already-wrapped.
- * The check strips any leading non-alphanumeric prefix (e.g. `$`, `_`, `##`)
- * before matching, so it works regardless of the configured `signalPrefix`.
- */
-const SIGNAL_BASE_NAMES = new Set(['signal', 'computed']);
 
 /**
  * Returns true when a member expression accesses a named property,
@@ -59,9 +53,7 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>): void {
   if (isAlreadySignalCall(init)) return;
 
   const isComputed =
-    init &&
-    (t.isFunctionExpression(init) || t.isArrowFunctionExpression(init)) &&
-    (path.parent as t.VariableDeclaration).kind === 'const';
+    isFunctionLikeExpression(init) && (path.parent as t.VariableDeclaration).kind === 'const';
 
   const importName = isComputed ? 'computed' : 'signal';
   const args = init ? [init] : [];
@@ -69,15 +61,24 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>): void {
 }
 
 /**
- * Returns true when the initializer is already a `signal()` / `computed()` call.
- * Strips any leading non-alphanumeric prefix (e.g. `$`, `_`, `##`) before
- * checking, so `$signal(x)`, `_signal(x)`, `##signal(x)` are all recognised
- * regardless of the configured `signalPrefix`.
+ * Returns true when the initializer is already a `signal()` / `computed()`
+ * call — either the literal source-level name or the unique import identifier
+ * we registered for this file (e.g. `_signal$`).
+ *
+ * We deliberately do NOT match arbitrary `_signal`-like names: a user-defined
+ * `_signal` factory in their own code must not be mistaken for an essor helper
+ * and silently skipped from wrapping.
  */
 function isAlreadySignalCall(init: t.Expression | null | undefined): boolean {
   if (!init || !t.isCallExpression(init) || !t.isIdentifier(init.callee)) return false;
-  const baseName = init.callee.name.replace(/^[^a-z]+/i, '');
-  return SIGNAL_BASE_NAMES.has(baseName);
+
+  const calleeName = init.callee.name;
+  if (calleeName === 'signal' || calleeName === 'computed') return true;
+
+  const { importIdentifiers } = getCompileContext();
+  return (
+    calleeName === importIdentifiers.signal.name || calleeName === importIdentifiers.computed.name
+  );
 }
 
 /**

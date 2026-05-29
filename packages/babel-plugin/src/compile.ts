@@ -35,7 +35,7 @@ export function compile(path: NodePath<t.Program>, options: PluginOptions): void
     // emit delegateEvents([...]) call if any delegated events were collected
     if (ctx.profile !== RENDER_MODE.SERVER && ctx.delegateEvents.size > 0) {
       const delegateCallee = useImport('delegateEvents');
-      const eventNames = Array.from(ctx.delegateEvents).map((name) => t.stringLiteral(name));
+      const eventNames = [...ctx.delegateEvents].sort().map((name) => t.stringLiteral(name));
       path.node.body.push(
         t.expressionStatement(t.callExpression(delegateCallee, [t.arrayExpression(eventNames)])),
       );

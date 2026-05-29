@@ -1,6 +1,7 @@
 import { types as t } from '@babel/core';
 import { HYDRATION_ANCHOR_ATTR } from '@estjs/shared';
 import { type CompileContext, getCompileContext, registerDeclaration, useImport } from '../context';
+import { serializeStaticAttrs } from '../ast-utils';
 import {
   type IRComponent,
   type IRElement,
@@ -9,9 +10,13 @@ import {
   IRType,
   hasDynamicBoundary,
 } from './ir';
-import { serializeStaticAttrs } from './utils';
 import { buildComponentInvocation, buildForCall, renderChildExpressions } from './shared';
 
+const SERVER_TEXT_ESCAPES: Record<string, string> = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+};
 const serverTextEscapeRE = /[&<>]/g;
 
 interface SSRBindElementContext {
@@ -80,18 +85,7 @@ function markServerHtmlSubexpressions(expression: t.Expression): t.Expression {
  * Escapes server template text.
  */
 function escapeServerTemplateText(value: string): string {
-  return value.replaceAll(serverTextEscapeRE, (char) => {
-    switch (char) {
-      case '&':
-        return '&amp;';
-      case '<':
-        return '&lt;';
-      case '>':
-        return '&gt;';
-      default:
-        return char;
-    }
-  });
+  return value.replaceAll(serverTextEscapeRE, (char) => SERVER_TEXT_ESCAPES[char] ?? char);
 }
 
 function unwrapServerBindValue(value: t.Expression): ServerBindExpression {
