@@ -22,14 +22,14 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/server.esm.js",
-  "module": "./dist/server.esm.js",
+  "main": "./dist/server.js",
+  "module": "./dist/server.js",
   "types": "./dist/server.d.ts",
   "exports": {
     ".": {
       "types": "./dist/server.d.ts",
-      "require": "./dist/server.cjs.js",
-      "import": "./dist/server.esm.js"
+      "require": "./dist/server.cjs",
+      "import": "./dist/server.js"
     }
   },
   "sideEffects": false,
@@ -39,7 +39,10 @@
   },
   "dependencies": {
     "@estjs/shared": "workspace:*",
-    "@estjs/template": "workspace:*",
+    "@estjs/signals": "workspace:*",
+    "@estjs/template": "workspace:*"
+  },
+  "devDependencies": {
     "@types/node": "^25.9.1"
   }
 }

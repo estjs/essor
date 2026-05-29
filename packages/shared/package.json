@@ -16,29 +16,29 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/shared.esm.js",
-  "module": "./dist/shared.esm.js",
+  "main": "./dist/shared.js",
+  "module": "./dist/shared.js",
   "types": "./dist/shared.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
           "types": "./dist/shared.d.ts",
-          "require": "./dist/shared.dev.cjs.js",
-          "import": "./dist/shared.dev.esm.js"
+          "require": "./dist/shared.dev.cjs",
+          "import": "./dist/shared.dev.js"
         },
         "types": "./dist/shared.d.ts",
-        "require": "./dist/shared.cjs.js",
-        "import": "./dist/shared.esm.js"
+        "require": "./dist/shared.cjs",
+        "import": "./dist/shared.js"
       },
       "development": {
         "types": "./dist/shared.d.ts",
-        "require": "./dist/shared.dev.cjs.js",
-        "import": "./dist/shared.dev.esm.js"
+        "require": "./dist/shared.dev.cjs",
+        "import": "./dist/shared.dev.js"
       },
       "types": "./dist/shared.d.ts",
-      "require": "./dist/shared.cjs.js",
-      "import": "./dist/shared.esm.js"
+      "require": "./dist/shared.cjs",
+      "import": "./dist/shared.js"
     }
   },
   "typesVersions": {

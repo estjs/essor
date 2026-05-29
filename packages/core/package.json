@@ -18,45 +18,39 @@
     "jsx-runtime.d.ts",
     "types"
   ],
-  "main": "./dist/essor.cjs.js",
-  "module": "./dist/essor.esm.js",
+  "main": "./dist/essor.cjs",
+  "module": "./dist/essor.js",
   "types": "./dist/essor.d.ts",
   "exports": {
     ".": {
-      "browser": {
+      "development": {
         "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.cjs.js",
-        "import": "./dist/essor.esm.js"
+        "require": "./dist/essor.dev.cjs",
+        "import": "./dist/essor.dev.js"
       },
-      "node": {
-        "types": "./dist/server.d.ts",
-        "require": "./dist/server.cjs.js",
-        "import": "./dist/server.esm.js"
-      },
-      "/server": {
-        "types": "./dist/server.d.ts",
-        "require": "./dist/server.cjs.js",
-        "import": "./dist/server.esm.js"
-      },
-      "default": {
-        "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.cjs.js",
-        "import": "./dist/essor.esm.js"
-      }
+      "types": "./dist/essor.d.ts",
+      "require": "./dist/essor.cjs",
+      "import": "./dist/essor.js"
     },
     "./server": {
+      "development": {
+        "types": "./dist/server.d.ts",
+        "require": "./dist/server.dev.cjs",
+        "import": "./dist/server.dev.js"
+      },
       "types": "./dist/server.d.ts",
-      "require": "./dist/server.cjs.js",
-      "import": "./dist/server.esm.js"
+      "require": "./dist/server.cjs",
+      "import": "./dist/server.js"
     },
     "./jsx-runtime": {
       "types": "./jsx-runtime.d.ts",
-      "default": "./dist/essor.esm.js"
+      "default": "./dist/essor.js"
     },
     "./jsx-dev-runtime": {
       "types": "./types/jsx.d.ts",
-      "default": "./dist/essor.esm.js"
-    }
+      "default": "./dist/essor.dev.js"
+    },
+    "./package.json": "./package.json"
   },
   "typesVersions": {
     "*": {
@@ -66,16 +60,16 @@
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/essor.esm.js",
-  "jsdelivr": "dist/essor.esm.js",
+  "unpkg": "dist/essor.js",
+  "jsdelivr": "dist/essor.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch"
   },
   "dependencies": {
     "@estjs/server": "workspace:*",
-    "@estjs/shared": "workspace:*",
     "@estjs/signals": "workspace:*",
-    "@estjs/template": "workspace:*"
+    "@estjs/template": "workspace:*",
+    "csstype": "^3.2.3"
   }
 }

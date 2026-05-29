@@ -24,7 +24,7 @@ export default defineConfig({
   },
   outExtension({ format }) {
     return {
-      js: `${isDev ? '.dev' : ''}.${format}.js`,
+      js: `${isDev ? '.dev' : ''}.${format === 'cjs' ? 'cjs' : 'js'}`,
     };
   },
 });

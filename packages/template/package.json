@@ -17,39 +17,39 @@
     "dist",
     "types"
   ],
-  "main": "./dist/template.esm.js",
-  "module": "./dist/template.esm.js",
+  "main": "./dist/template.js",
+  "module": "./dist/template.js",
   "types": "./dist/template.d.ts",
   "exports": {
     "./internal": {
       "development": {
         "types": "./dist/internal.d.ts",
-        "require": "./dist/internal.dev.cjs.js",
-        "import": "./dist/internal.dev.esm.js"
+        "require": "./dist/internal.dev.cjs",
+        "import": "./dist/internal.dev.js"
       },
       "types": "./dist/internal.d.ts",
-      "require": "./dist/internal.cjs.js",
-      "import": "./dist/internal.esm.js"
+      "require": "./dist/internal.cjs",
+      "import": "./dist/internal.js"
     },
     ".": {
       "browser": {
         "development": {
           "types": "./dist/template.d.ts",
-          "require": "./dist/template.dev.cjs.js",
-          "import": "./dist/template.dev.esm.js"
+          "require": "./dist/template.dev.cjs",
+          "import": "./dist/template.dev.js"
         },
         "types": "./dist/template.d.ts",
-        "require": "./dist/template.cjs.js",
-        "import": "./dist/template.esm.js"
+        "require": "./dist/template.cjs",
+        "import": "./dist/template.js"
       },
       "development": {
         "types": "./dist/template.d.ts",
-        "require": "./dist/template.dev.cjs.js",
-        "import": "./dist/template.dev.esm.js"
+        "require": "./dist/template.dev.cjs",
+        "import": "./dist/template.dev.js"
       },
       "types": "./dist/template.d.ts",
-      "require": "./dist/template.cjs.js",
-      "import": "./dist/template.esm.js"
+      "require": "./dist/template.cjs",
+      "import": "./dist/template.js"
     }
   },
   "typesVersions": {
@@ -60,16 +60,15 @@
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/template.esm.js",
-  "jsdelivr": "dist/template.esm.js",
+  "unpkg": "dist/template.js",
+  "jsdelivr": "dist/template.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch"
   },
   "dependencies": {
     "@estjs/shared": "workspace:*",
-    "@estjs/signals": "workspace:*",
-    "csstype": "^3.2.3"
+    "@estjs/signals": "workspace:*"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",

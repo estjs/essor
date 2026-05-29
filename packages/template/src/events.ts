@@ -102,9 +102,12 @@ const $EVENTS = Symbol('_$EVENTS');
  * Set up event delegation for specified event types.
  *
  * @param eventNames - Array of event names to delegate.
- * @param document - Document to attach events to (defaults to window.document).
+ * @param document - Document to attach events to (defaults to the global document).
  */
-export function delegateEvents(eventNames: string[], document: Document = window.document): void {
+export function delegateEvents(
+  eventNames: string[],
+  document: Document = globalThis.document,
+): void {
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
   const eventSet = docWithEvents[$EVENTS] || (docWithEvents[$EVENTS] = new Set<string>());
 
@@ -119,9 +122,9 @@ export function delegateEvents(eventNames: string[], document: Document = window
 /**
  * Clear all delegated events from document.
  *
- * @param document - Document to clear events from (defaults to window.document).
+ * @param document - Document to clear events from (defaults to the global document).
  */
-export function clearDelegatedEvents(document: Document = window.document): void {
+export function clearDelegatedEvents(document: Document = globalThis.document): void {
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
   const eventSet = docWithEvents[$EVENTS];
   if (eventSet) {

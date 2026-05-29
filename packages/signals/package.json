@@ -16,29 +16,29 @@
   "files": [
     "dist"
   ],
-  "main": "./dist/signals.esm.js",
-  "module": "./dist/signals.esm.js",
+  "main": "./dist/signals.js",
+  "module": "./dist/signals.js",
   "types": "./dist/signals.d.ts",
   "exports": {
     ".": {
       "browser": {
         "development": {
           "types": "./dist/signals.d.ts",
-          "require": "./dist/signals.dev.cjs.js",
-          "import": "./dist/signals.dev.esm.js"
+          "require": "./dist/signals.dev.cjs",
+          "import": "./dist/signals.dev.js"
         },
         "types": "./dist/signals.d.ts",
-        "require": "./dist/signals.cjs.js",
-        "import": "./dist/signals.esm.js"
+        "require": "./dist/signals.cjs",
+        "import": "./dist/signals.js"
       },
       "development": {
         "types": "./dist/signals.d.ts",
-        "require": "./dist/signals.dev.cjs.js",
-        "import": "./dist/signals.dev.esm.js"
+        "require": "./dist/signals.dev.cjs",
+        "import": "./dist/signals.dev.js"
       },
       "types": "./dist/signals.d.ts",
-      "require": "./dist/signals.cjs.js",
-      "import": "./dist/signals.esm.js"
+      "require": "./dist/signals.cjs",
+      "import": "./dist/signals.js"
     }
   },
   "typesVersions": {
@@ -49,8 +49,8 @@
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/signals.esm.js",
-  "jsdelivr": "dist/signals.esm.js",
+  "unpkg": "dist/signals.js",
+  "jsdelivr": "dist/signals.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch",

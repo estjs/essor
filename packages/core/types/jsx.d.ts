@@ -1,5 +1,4 @@
 import type * as csstype from 'csstype';
-
 import type { Component } from '@estjs/template';
 
 /**
@@ -182,9 +181,7 @@ export namespace JSX {
      * Two-way bind for `<input>` (text/number/range), `<textarea>`, and
      * `<select>` (multi-select binds to a string array).
      */
-    'bind:value'?: BindValue<
-      string | number | readonly string[] | readonly number[]
-    >;
+    'bind:value'?: BindValue<string | number | readonly string[] | readonly number[]>;
     /**
      * Two-way bind for `<input type="checkbox">` (boolean, or string[] when
      * grouped by shared name) and `<input type="radio">` (string).
