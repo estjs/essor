@@ -2,7 +2,7 @@
   "name": "essor-monorepo",
   "version": "0.0.16-beta.8",
   "private": "true",
-  "packageManager": "pnpm@11.3.0",
+  "packageManager": "pnpm@11.4.0",
   "description": "Next Generation Frontend Framework",
   "type": "module",
   "keywords": [
