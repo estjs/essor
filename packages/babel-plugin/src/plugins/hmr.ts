@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { generate } from '@babel/generator';
 import { type NodePath, types as t } from '@babel/core';
 import { type AnyFunction, isFunctionLikeExpressionPath } from '../ast-utils';
@@ -7,10 +6,13 @@ import type { CompileContext } from '../context';
 
 const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
 const WHITESPACE_REGEX = /\s+/g;
+const PATH_SEPARATOR_REGEX = /[/\\]/;
 
 /** Returns the basename of the current file, used for stable cross-machine HMR hashes. */
 function getFileBasename(ctx: CompileContext): string {
-  return path.basename(ctx.options.filename!);
+  const filename = ctx.options.filename!;
+  const segments = filename.split(PATH_SEPARATOR_REGEX);
+  return segments[segments.length - 1] || filename;
 }
 
 /**
@@ -178,7 +180,8 @@ function createMetadataStatements(
   const fileName = getFileBasename(ctx);
   const fileHash = simpleHash(fileName);
   const signature =
-    ctx.hmrSignatures.get(name) ?? generateComponentSignature(functionPath.toString() + fileName);
+    ctx.hmrSignatures.get(name) ??
+    generateComponentSignature(getFunctionBodyCode(functionPath) + fileName);
 
   return [
     t.expressionStatement(
