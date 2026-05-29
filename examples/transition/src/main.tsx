@@ -144,10 +144,7 @@ function App() {
           <button
             data-test="group-add"
             onClick={() => {
-              $listItems = [
-                ...$listItems,
-                { id: $nextId, label: `Item ${$nextId}` },
-              ];
+              $listItems = [...$listItems, { id: $nextId, label: `Item ${$nextId}` }];
               $nextId = $nextId + 1;
             }}>
             Add
@@ -182,11 +179,7 @@ function App() {
             Clear
           </button>
         </div>
-        <TransitionGroup
-          name="list"
-          tag="ul"
-          each={() => $listItems}
-          key={(it) => it.id}>
+        <TransitionGroup name="list" tag="ul" each={() => $listItems} key={(it) => it.id}>
           {(it) => (
             <li class="list-item" data-test={`group-item-${it.id}`}>
               {it.label}
