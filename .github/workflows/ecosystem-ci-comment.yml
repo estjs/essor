@@ -49,7 +49,7 @@ jobs:
             const issue = context.payload.issue;
 
             const targetOwner = 'estjs';
-            const targetRepo = 'essor-ecosystem-ci';
+            const targetRepo = 'ecosystem-ci';
 
             // Fail loudly if the secret wasn't configured — otherwise the
             // user gets cryptic 401/403 errors from later API calls.
