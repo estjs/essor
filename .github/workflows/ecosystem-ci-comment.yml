@@ -10,12 +10,11 @@ name: ecosystem-ci-comment
 # ┌─ Required repo secret ─────────────────────────────────────────────────┐
 # │ ESSOR_PR_TOKEN                                                          │
 # │   A Personal Access Token authorized to call `actions: write` on        │
-# │   estjs/essor-ecosystem-ci. The default GITHUB_TOKEN cannot dispatch    │
+# │   estjs/ecosystem-ci. The default GITHUB_TOKEN cannot dispatch          │
 # │   to other repos — a PAT is mandatory.                                  │
 # │                                                                         │
 # │   Classic PAT: scopes `repo` + `workflow`.                              │
-# │   Fine-grained: Actions:Read+Write on estjs/essor-ecosystem-ci, plus    │
-# │   Issues:Write on estjs/essor (so the reactions + reply work too).      │
+# │   Fine-grained: Actions:Read+Write on estjs/ecosystem-ci.               │
 # └─────────────────────────────────────────────────────────────────────────┘
 
 on:
@@ -40,8 +39,6 @@ jobs:
         env:
           ESSOR_PR_TOKEN: ${{ secrets.ESSOR_PR_TOKEN }}
         with:
-          # Use the PAT for ALL calls so the cross-repo dispatch works AND
-          # same-repo reactions/replies are authorized identically.
           github-token: ${{ secrets.ESSOR_PR_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
@@ -98,16 +95,7 @@ jobs:
             const sha = pr.head.sha;
             const shortSha = sha.slice(0, 7);
 
-            // 4) Acknowledge with an :eyes: reaction so the user sees the
-            //    trigger landed even before the workflow run appears.
-            await github.rest.reactions.createForIssueComment({
-              owner,
-              repo,
-              comment_id: comment.id,
-              content: 'eyes',
-            });
-
-            // 5) Cross-repo dispatch. ref='main' tells GitHub to read the
+            // 4) Cross-repo dispatch. ref='main' tells GitHub to read the
             //    workflow definition from main of the target repo (trusted
             //    code), while inputs.ref is the essor sha to check out and
             //    test.
@@ -130,21 +118,14 @@ jobs:
                 issue_number: issue.number,
                 body:
                   `:x: Failed to dispatch ecosystem-ci for \`${shortSha}\`: ` +
-                  `\`${error.message}\`. Check that the ECOSYSTEM_CI_PAT ` +
+                  `\`${error.message}\`. Check that the ESSOR_PR_TOKEN ` +
                   `secret has \`actions: write\` on ${targetOwner}/${targetRepo}.`,
               });
               core.setFailed(`Dispatch failed: ${error.message}`);
               return;
             }
 
-            // 6) Swap :eyes: for :rocket: + reply with a link to the runs.
-            await github.rest.reactions.createForIssueComment({
-              owner,
-              repo,
-              comment_id: comment.id,
-              content: 'rocket',
-            });
-
+            // 5) Reply with a link to the runs.
             const runsUrl =
               `https://github.com/${targetOwner}/${targetRepo}/actions/workflows/ecosystem-ci.yml`;
             const suiteNote = suite ? ` (suite: \`${suite}\`)` : ' (all suites)';
@@ -157,3 +138,4 @@ jobs:
                 `Follow progress in [${targetOwner}/${targetRepo} Actions](${runsUrl}); ` +
                 `results will be posted as a sticky comment here when done.`,
             });
+
