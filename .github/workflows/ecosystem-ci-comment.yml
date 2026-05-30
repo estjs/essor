@@ -8,14 +8,14 @@ name: ecosystem-ci-comment
 # ignored (with a failure logged in the action run, no visible spam).
 #
 # ┌─ Required repo secret ─────────────────────────────────────────────────┐
-# │ ECOSYSTEM_CI_PAT                                                        │
+# │ ESSOR_PR_TOKEN                                                          │
 # │   A Personal Access Token authorized to call `actions: write` on        │
 # │   estjs/essor-ecosystem-ci. The default GITHUB_TOKEN cannot dispatch    │
 # │   to other repos — a PAT is mandatory.                                  │
 # │                                                                         │
 # │   Classic PAT: scopes `repo` + `workflow`.                              │
 # │   Fine-grained: Actions:Read+Write on estjs/essor-ecosystem-ci, plus    │
-# │   Issues:Write on estjs/essor (so the reactions + reply work too).     │
+# │   Issues:Write on estjs/essor (so the reactions + reply work too).      │
 # └─────────────────────────────────────────────────────────────────────────┘
 
 on:
@@ -35,14 +35,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Dispatch ecosystem-ci in estjs/essor-ecosystem-ci
+      - name: Dispatch ecosystem-ci in estjs/ecosystem-ci
         uses: actions/github-script@v9
         env:
-          ECOSYSTEM_CI_PAT: ${{ secrets.ECOSYSTEM_CI_PAT }}
+          ESSOR_PR_TOKEN: ${{ secrets.ESSOR_PR_TOKEN }}
         with:
           # Use the PAT for ALL calls so the cross-repo dispatch works AND
           # same-repo reactions/replies are authorized identically.
-          github-token: ${{ secrets.ECOSYSTEM_CI_PAT }}
+          github-token: ${{ secrets.ESSOR_PR_TOKEN }}
           script: |
             const { owner, repo } = context.repo;
             const comment = context.payload.comment;
@@ -53,9 +53,9 @@ jobs:
 
             // Fail loudly if the secret wasn't configured — otherwise the
             // user gets cryptic 401/403 errors from later API calls.
-            if (!process.env.ECOSYSTEM_CI_PAT) {
+            if (!process.env.ESSOR_PR_TOKEN) {
               core.setFailed(
-                'ECOSYSTEM_CI_PAT secret is not configured. ' +
+                'ESSOR_PR_TOKEN secret is not configured. ' +
                 'See .github/workflows/ecosystem-ci-comment.yml header for setup.'
               );
               return;
