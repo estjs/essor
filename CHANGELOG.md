@@ -5,6 +5,54 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.16-beta.9](https://github.com/estjs/essor/compare/v0.0.16-beta.8...v0.0.16-beta.9) `2026-05-29`
+
+
+* feat(template)!: parent onXxx overrides component's JSX-bound _$<event> slot ([242d1c6](https://github.com/estjs/essor/commit/242d1c648f903d2f870a750aeee7974d87044c2d))
+
+
+### Bug Fixes
+
+* **babel-plugin,server:** address code review issues ([5b05817](https://github.com/estjs/essor/commit/5b058170a64c2b37d70be549cc31311bc5d155d1))
+* **hmr:** unify signature input and drop node type dependency ([491d02f](https://github.com/estjs/essor/commit/491d02fc674c01a3559570adb013ad245606b2a1))
+
+
+### Features
+
+* **babel-plugin:** register Transition as a built-in component ([679a018](https://github.com/estjs/essor/commit/679a018efd9c2918935d141e4c17b92e41061133))
+* **shared:** add startsWith utility to string module and export from index ([6870a6b](https://github.com/estjs/essor/commit/6870a6bfa9283251aa33d4724b8c17fc0b28c5b1))
+* **template:** add TRANSITION_COMPONENT symbol and COMPONENT_TYPE.TRANSITION ([08e8387](https://github.com/estjs/essor/commit/08e838735296cdbd38a265f8027d98e8641aac77))
+* **template:** application + plugin system via createApp builder ([6455378](https://github.com/estjs/essor/commit/6455378e7c3956dfc969e616febd98b928153fc1))
+* **template:** scaffold Transition component (passthrough stub) + public export ([94c49bf](https://github.com/estjs/essor/commit/94c49bf4f1d26dd8235e5216fd849f4a0f1f6038))
+* **template:** support Component and falsy rows in <For> ([408d5df](https://github.com/estjs/essor/commit/408d5df5f0782fcf5f269e818853cbca33e2d594))
+* **template:** Transition appear prop + enter/leave cancellation handling ([49c2b49](https://github.com/estjs/essor/commit/49c2b493ef722ed9282822b348fe1d7e10a29f95))
+* **template:** Transition dev validation + cleanup contract + SSR sanity ([cc5d501](https://github.com/estjs/essor/commit/cc5d501fd3ffee825491a5744be8e1a690705bbb))
+* **template:** Transition duration prop + lock JS hook contract ([d4ae680](https://github.com/estjs/essor/commit/d4ae680b23d666740bcfbdb4538dacd7bcf73baa))
+* **template:** Transition enter/leave state machine with CSS class sequences ([520d6e3](https://github.com/estjs/essor/commit/520d6e3dbe20cc0c7d5e61a2a57281a69f8255b7))
+* **template:** Transition example app, e2e suite, and resilient commit pipeline ([5ab8d24](https://github.com/estjs/essor/commit/5ab8d2472f8894b6e319555ad9d15c3c14d8186c))
+* **template:** Transition helpers (class resolver + end-event detector + DOM utilities) ([e372a3c](https://github.com/estjs/essor/commit/e372a3c2f4a4e58df20c0983173ef14108c6ddd4))
+* **template:** TransitionGroup for animated keyed lists + docs refresh ([ebcce6d](https://github.com/estjs/essor/commit/ebcce6d88925f7605d98d4f8f748bc724d097a25))
+
+
+### Performance Improvements
+
+* **shared,signals,template:** code quality and performance improvements ([87cc0de](https://github.com/estjs/essor/commit/87cc0def611bcc923a4790b01440f3f8164a184c))
+* **template:** declarative checkbox-array strategy in bindElement ([77fe3fb](https://github.com/estjs/essor/commit/77fe3fb38aa2d628d0b9e57b37085f6ab7daa78a))
+* **template:** reduce allocations and fix memory leaks ([70fa5c1](https://github.com/estjs/essor/commit/70fa5c19a500b4db8443bc16a229f95c5cd8957a))
+
+
+### BREAKING CHANGES
+
+* a parent-supplied onClick on a component now replaces,
+rather than augments, the same-name handler bound inside the component
+template. Compose explicitly if both are needed:
+<Child onClick={(e) => { internal(e); parent(e); }} />.
+
+Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
+
+
+
+
 
 
 
