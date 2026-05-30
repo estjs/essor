@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, definePlugin, hydrate, template } from '../src/renderer';
+import { createApp, hydrate, template } from '../src/renderer';
 import { getRenderedElement, isHydrating, resetHydrationKey } from '../src/hydration';
+import { onMount } from '../src/lifecycle';
+import { onCleanup } from '../src/scope';
+import { createComponent } from '../src/component';
+import { insertNode } from '../src/dom';
+import { inject, provide } from '../src/provide';
 import { resetEnvironment } from './test-utils';
-import type { Plugin } from '../src/types';
 
 describe('renderer utilities', () => {
   beforeEach(() => {
@@ -103,23 +107,23 @@ describe('renderer utilities', () => {
     );
   });
 
-  it('returns undefined when the createApp target is missing (different prefix from hydrate)', () => {
+  it('returns undefined when the createApp target is missing', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const result = createApp(() => document.createElement('div'), '#missing');
 
     expect(result).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[essor] createApp: target element not found: #missing'),
+      expect.stringContaining('Target element not found: #missing'),
     );
   });
 });
 
 // ---------------------------------------------------------------------------
-// Plugin system (config-object form)
+// Dependency injection & lifecycle (Solid-style — no app plugin system)
 // ---------------------------------------------------------------------------
 
-describe('plugin system', () => {
+describe('dependency injection & lifecycle', () => {
   beforeEach(() => {
     resetEnvironment();
     resetHydrationKey();
@@ -132,278 +136,80 @@ describe('plugin system', () => {
     return c;
   }
 
-  const Root = () => {
-    const div = document.createElement('div');
-    div.textContent = 'root';
-    return div;
-  };
+  it('provide() in the root component is visible to a nested child via inject()', () => {
+    let seen: number | undefined;
 
-  function syncMount(opts: Parameters<typeof createApp<{}>>[1]): void {
-    // Helper: createApp(Root, opts).mount(c) — must be sync when no async setup is used.
-    const result = createApp(Root, opts as object).mount(mkContainer());
-    if (result instanceof Promise) throw new Error('Expected sync mount but got Promise');
-  }
+    const Child = () => {
+      seen = inject<number>('answer');
+      const span = document.createElement('span');
+      span.textContent = String(seen);
+      return span;
+    };
 
-  it('runs a plugin with options', () => {
-    const seen: unknown[] = [];
-    const plugin = definePlugin<{ token: string }>({
-      name: 'auth',
-      setup(_ctx, options) {
-        seen.push(options);
-      },
-    });
+    const Root = () => {
+      provide('answer', 42);
+      const div = document.createElement('div');
+      insertNode(div, createComponent(Child));
+      return div;
+    };
 
-    syncMount({ plugins: [[plugin, { token: 'abc' }]] });
-    expect(seen).toEqual([{ token: 'abc' }]);
+    createApp(Root, mkContainer());
+    expect(seen).toBe(42);
   });
 
-  it('runs a bare plugin (no options)', () => {
-    const seen: unknown[] = [];
-    const plugin = definePlugin({
-      name: 'simple',
-      setup(_ctx, options) {
-        seen.push(options);
-      },
-    });
+  it('a provider component scopes values to its subtree', () => {
+    let seen: string | undefined;
 
-    syncMount({ plugins: [plugin] });
-    expect(seen).toEqual([undefined]);
+    const Leaf = () => {
+      seen = inject<string>('theme');
+      return document.createElement('span');
+    };
+
+    // ThemeProvider provides, then renders Leaf as a descendant.
+    const ThemeProvider = () => {
+      provide('theme', 'dark');
+      const div = document.createElement('div');
+      insertNode(div, createComponent(Leaf));
+      return div;
+    };
+
+    createApp(ThemeProvider, mkContainer());
+    expect(seen).toBe('dark');
   });
 
-  it('skips duplicate plugin name with a dev warning', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const installs = vi.fn();
-    const plugin: Plugin = { name: 'dup', setup: installs };
-
-    syncMount({ plugins: [plugin, plugin] });
-
-    expect(installs).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Plugin "dup" is already registered, skipping'),
-    );
+  it('inject() returns the default value when the key is absent', () => {
+    let seen: string | undefined;
+    const Root = () => {
+      seen = inject<string>('missing', 'fallback');
+      return document.createElement('div');
+    };
+    createApp(Root, mkContainer());
+    expect(seen).toBe('fallback');
   });
 
-  it('skips two distinct plugin objects sharing a name', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const a: Plugin = { name: 'shared', setup: vi.fn() };
-    const b: Plugin = { name: 'shared', setup: vi.fn() };
-
-    syncMount({ plugins: [a, b] });
-
-    expect(a.setup).toHaveBeenCalledTimes(1);
-    expect(b.setup).not.toHaveBeenCalled();
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Plugin "shared" is already registered, skipping'),
-    );
-  });
-
-  it('different-name plugins both install', () => {
-    const installsA = vi.fn();
-    const installsB = vi.fn();
-    syncMount({
-      plugins: [
-        { name: 'a', setup: installsA },
-        { name: 'b', setup: installsB },
-      ],
-    });
-    expect(installsA).toHaveBeenCalledTimes(1);
-    expect(installsB).toHaveBeenCalledTimes(1);
-  });
-
-  it('enforce buckets: pre runs before default runs before post', () => {
+  it('onMount in the root component fires after the component mounts', () => {
     const order: string[] = [];
-    syncMount({
-      plugins: [
-        { name: 'p1', enforce: 'post', setup: () => order.push('post') },
-        { name: 'p2', setup: () => order.push('default') },
-        { name: 'p3', enforce: 'pre', setup: () => order.push('pre') },
-      ],
-    });
-    expect(order).toEqual(['pre', 'default', 'post']);
+    const Root = () => {
+      order.push('render');
+      onMount(() => {
+        order.push('mount');
+      });
+      return document.createElement('div');
+    };
+    createApp(Root, mkContainer());
+    expect(order).toEqual(['render', 'mount']);
   });
 
-  it('within a bucket, array order is preserved (stable sort)', () => {
-    const order: string[] = [];
-    syncMount({
-      plugins: [
-        { name: 'a', enforce: 'pre', setup: () => order.push('a') },
-        { name: 'b', enforce: 'pre', setup: () => order.push('b') },
-        { name: 'c', enforce: 'pre', setup: () => order.push('c') },
-      ],
-    });
-    expect(order).toEqual(['a', 'b', 'c']);
-  });
-
-  it('routes plugin install errors to config.errorHandler with structured info', () => {
-    const errorHandler = vi.fn();
-    const boom: Plugin = {
-      name: 'boom',
-      setup() {
-        throw new Error('boom!');
-      },
+  it('onCleanup in the root component runs on unmount', () => {
+    const cleaned = vi.fn();
+    const Root = () => {
+      onCleanup(cleaned);
+      return document.createElement('div');
     };
-    syncMount({ plugins: [boom], config: { errorHandler } });
+    const app = createApp(Root, mkContainer());
+    expect(cleaned).not.toHaveBeenCalled();
 
-    expect(errorHandler).toHaveBeenCalledTimes(1);
-    const [info, err] = errorHandler.mock.calls[0];
-    expect(err).toBeInstanceOf(Error);
-    expect((err as Error).message).toBe('boom!');
-    expect(info).toEqual({ phase: 'install', plugin: 'boom' });
-  });
-
-  it('re-throws install errors when no errorHandler is configured', () => {
-    const boom: Plugin = {
-      name: 'boom',
-      setup() {
-        throw new Error('boom!');
-      },
-    };
-    expect(() => syncMount({ plugins: [boom] })).toThrow('boom!');
-  });
-
-  it('ctx.error throws and aborts the plugin', () => {
-    const errorHandler = vi.fn();
-    const plugin: Plugin = {
-      name: 'fail',
-      setup(ctx) {
-        ctx.error('cannot start');
-      },
-    };
-    syncMount({ plugins: [plugin], config: { errorHandler } });
-
-    expect(errorHandler).toHaveBeenCalledTimes(1);
-    const [info, err] = errorHandler.mock.calls[0];
-    expect((err as Error).message).toBe('cannot start');
-    expect(info).toEqual({ phase: 'install', plugin: 'fail' });
-  });
-
-  it('ctx.warn routes to config.warnHandler with plugin attribution', () => {
-    const warnHandler = vi.fn();
-    const plugin: Plugin = {
-      name: 'noisy',
-      setup(ctx) {
-        ctx.warn('something off');
-      },
-    };
-    syncMount({ plugins: [plugin], config: { warnHandler } });
-
-    expect(warnHandler).toHaveBeenCalledTimes(1);
-    expect(warnHandler).toHaveBeenCalledWith({ plugin: 'noisy' }, 'something off');
-  });
-
-  it('definePlugin is the identity function at runtime', () => {
-    const plugin = { name: 'x', setup() {} };
-    expect(definePlugin(plugin)).toBe(plugin);
-  });
-
-  it('an enforce:pre plugin can ctx.provide values that later plugins read', () => {
-    let injected: number | undefined;
-    const provider: Plugin = {
-      name: 'provider',
-      enforce: 'pre',
-      setup(ctx) {
-        ctx.provide('answer', 42);
-      },
-    };
-    const reader: Plugin = {
-      name: 'reader',
-      setup(ctx) {
-        injected = ctx.inject<number>('answer');
-      },
-    };
-    syncMount({ plugins: [reader, provider] });
-    expect(injected).toBe(42);
-  });
-
-  it('async setup is awaited, mount returns a Promise', async () => {
-    const order: string[] = [];
-    const slow: Plugin = {
-      name: 'slow',
-      async setup() {
-        order.push('start');
-        await Promise.resolve();
-        order.push('end');
-      },
-    };
-    const fast: Plugin = {
-      name: 'fast',
-      setup() {
-        order.push('fast');
-      },
-    };
-
-    const result = createApp(Root, { plugins: [slow, fast] }).mount(mkContainer());
-    expect(result).toBeInstanceOf(Promise);
-    await result;
-    expect(order).toEqual(['start', 'end', 'fast']);
-  });
-
-  it('hydrate with async plugin: setups run BEFORE hydration mode opens', async () => {
-    // Regression: an earlier version called beginHydration() before any plugin
-    // setup, which made async plugin work race against hydration cursor state.
-    const seen: boolean[] = [];
-    const plugin: Plugin = {
-      name: 'observer',
-      async setup() {
-        seen.push(isHydrating());
-        await Promise.resolve();
-        seen.push(isHydrating());
-      },
-    };
-    const container = document.createElement('div');
-    container.id = 'hroot';
-    container.innerHTML = '<div data-hk="0">x</div>';
-    document.body.appendChild(container);
-    const Hydratable = () => getRenderedElement('<div>x</div>')();
-
-    const result = createApp(Hydratable, { plugins: [plugin] }).hydrate('#hroot');
-    expect(result).toBeInstanceOf(Promise);
-    await result;
-    expect(seen).toEqual([false, false]); // hydration mode never on during setup
-    expect(isHydrating()).toBe(false);    // and not stuck on afterwards
-  });
-
-  it('ctx.version reflects the build-injected __VERSION__', () => {
-    let captured: string | undefined;
-    const plugin: Plugin = {
-      name: 'inspect',
-      setup(ctx) {
-        captured = ctx.version;
-      },
-    };
-    syncMount({ plugins: [plugin] });
-    // vitest.config.ts sets __VERSION__ to '0.0.0'
-    expect(captured).toBe('0.0.0');
-  });
-
-  it('onMount callbacks run after the root component mounts', () => {
-    const order: string[] = [];
-    const plugin: Plugin = {
-      name: 'lifecycle',
-      setup(ctx) {
-        order.push('setup');
-        ctx.onMount(() => order.push('mount'));
-      },
-    };
-    syncMount({ plugins: [plugin] });
-    expect(order).toEqual(['setup', 'mount']);
-  });
-
-  it('onMount errors are routed to errorHandler with phase=mount', () => {
-    const errorHandler = vi.fn();
-    const plugin: Plugin = {
-      name: 'broken',
-      setup(ctx) {
-        ctx.onMount(() => {
-          throw new Error('mount-fail');
-        });
-      },
-    };
-    syncMount({ plugins: [plugin], config: { errorHandler } });
-
-    expect(errorHandler).toHaveBeenCalledTimes(1);
-    const [info, err] = errorHandler.mock.calls[0];
-    expect((err as Error).message).toBe('mount-fail');
-    expect(info).toEqual({ phase: 'mount' });
+    app?.unmount();
+    expect(cleaned).toHaveBeenCalledTimes(1);
   });
 });

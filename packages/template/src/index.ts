@@ -1,4 +1,4 @@
-export { template, createApp, hydrate, definePlugin } from './renderer';
+export { template, createApp, hydrate } from './renderer';
 
 export { Component, createComponent, isComponent } from './component';
 
@@ -58,15 +58,4 @@ export {
   type TransitionGroupProps,
 } from './components';
 
-export type {
-  ComponentProps,
-  ComponentFn,
-  App,
-  AppConfig,
-  AppContext,
-  AppInstance,
-  CreateAppOptions,
-  ErrorInfo,
-  Plugin,
-  PluginEntry,
-} from './types';
+export type { ComponentProps, ComponentFn, AppInstance } from './types';

@@ -4,105 +4,72 @@ This document covers the core runtime APIs provided by the `@estjs/template` pac
 
 ## createApp
 
-Mount a component to a DOM node, or build a configured app with plugins.
+Mount a component to a DOM element. Returns an object with the root component and an unmount function.
 
 ```ts
-// Form 1 — direct mount (most common)
-function createApp(component: Component, container: string | Element): AppInstance | undefined;
-
-// Form 2 — builder (no plugins yet)
-function createApp(component: Component): App;
-
-// Form 3 — builder with options
-function createApp(component: Component, options: CreateAppOptions): App;
+function createApp(component: Component, target: string | Element): AppInstance | undefined;
 ```
 
-### Direct mount
+**Parameters:**
+- `component` — The root component function to mount
+- `target` — CSS selector string or DOM element to mount to
+
+**Returns:** `AppInstance | undefined`
+- `AppInstance` has `{ root, unmount }`
+- `root` — The mounted root Component instance (or undefined if mounting produced raw nodes)
+- `unmount()` — Disposes the reactive scope and removes the root component from the DOM
+- Returns `undefined` if the target element is not found
+
+**Behavior:**
+- Creates a root scope for the component tree
+- Clears the target element if it has existing content (with a dev warning)
+- Mounts the component and its descendants
+- All `provide()` calls inside the root component are visible to descendants via `inject()`
 
 ```tsx
 import { createApp } from 'essor';
 import App from './App';
 
-const app = createApp(App, '#app');
+const app = createApp(App, '#root');
+
+// Later, tear down the app
 app?.unmount();
 ```
 
-`AppInstance` has `{ root, unmount }`. `unmount()` disposes the reactive scope and removes the root component.
+**Sharing state across the app:**
 
-### With plugins
-
-Pass an options object to register plugins, then call `mount` / `hydrate` yourself. `mount` returns a `Promise` when any plugin has an async `setup`, and the synchronous value otherwise.
-
-```ts
-interface CreateAppOptions {
-  plugins?: Array<Plugin<any> | [Plugin<any>, unknown]>;
-  config?: Partial<AppConfig>;
-}
-```
+Since Essor has no app-level plugin system, shared state (router, store, theme) is wired via:
+1. **Provider components** in the tree (scoped to a subtree)
+2. **`provide()` inside the root component** (visible to the whole tree)
+3. **Module-level singletons** (plain imports)
 
 ```tsx
-import { createApp } from 'essor';
-import App from './App';
-import { router } from './plugins/router';
-import { store } from './plugins/store';
+import { createApp, provide } from 'essor';
 
-await createApp(App, {
-  plugins: [
-    router,
-    [store, { initial: {} }],
-  ],
-  config: {
-    errorHandler(info, err) {
-      console.error(`[${info.phase}${info.plugin ? ':' + info.plugin : ''}]`, err);
-    },
-  },
-}).mount('#app');
+const App = () => {
+  // Provide values at the root — visible to all descendants
+  provide('theme', 'dark');
+  provide(RouterKey, createRouter());
+  
+  return <Layout><Routes /></Layout>;
+};
+
+createApp(App, '#app');
 ```
 
-## definePlugin
+Or use a provider component for scoped state:
 
-Type helper for authoring plugins. Identity at runtime — its job is to infer the options type.
+```tsx
+const ThemeProvider = ({ children }) => {
+  provide('theme', 'dark');
+  return children;
+};
 
-```ts
-function definePlugin<TOptions = void>(plugin: Plugin<TOptions>): Plugin<TOptions>;
-```
-
-```ts
-interface Plugin<TOptions = void> {
-  name: string;                                // required
-  enforce?: 'pre' | 'default' | 'post';        // ordering bucket
-  setup(ctx: AppContext, options: TOptions): void | Promise<void>;
-}
-```
-
-A plugin's `setup(ctx, options)` runs once at mount. Plugins are sorted into three buckets — `pre` → `default` → `post` — and within a bucket array order wins. Duplicate plugins (by reference or by name) are skipped with a dev warning.
-
-`ctx` exposes:
-
-| Member | Purpose |
-|---|---|
-| `provide(key, value)` / `inject(key, default?)` | App-level dependency injection. |
-| `onMount(fn)` | Fired after the root component mounts. |
-| `onCleanup(fn)` | Fired on `app.unmount()`. |
-| `warn(msg)` | Non-fatal report. Routed to `config.warnHandler` with `{ plugin }` attribution. |
-| `error(msg)` | Throws. Routed to `config.errorHandler` with `phase: 'install'`. |
-| `config` / `version` | App config (mutable) and framework version string. |
-
-### Example
-
-```ts
-import { definePlugin } from 'essor';
-
-export const router = definePlugin<{ routes: Route[] }>({
-  name: 'router',
-  enforce: 'pre',
-  setup(ctx, options) {
-    if (!options.routes.length) ctx.warn('No routes configured');
-    ctx.provide(RouterKey, createRouter(options.routes));
-    ctx.onMount(() => attachHistory());
-    ctx.onCleanup(() => detachHistory());
-  },
-});
+const App = () => (
+  <ThemeProvider>
+    <Layout />
+  </ThemeProvider>
+);
 ```
 
 ## hydrate
@@ -110,18 +77,19 @@ export const router = definePlugin<{ routes: Route[] }>({
 Hydrate server-rendered static HTML on the client.
 
 ```ts
-function hydrate(component: Component, container: string | Element): AppInstance | undefined | Promise<AppInstance | undefined>;
+function hydrate(component: Component, target: string | Element): AppInstance | undefined;
 ```
 
 - Reuses server-generated DOM nodes and only attaches event listeners and the reactive system
 - Significantly reduces client initialization time
-- For plugin support, use `createApp(App, { plugins }).hydrate('#app')`
+- Returns the same `AppInstance` shape as `createApp()` with `{ root, unmount }`
 
 ```tsx
 import { hydrate } from 'essor';
 import App from './App';
 
-hydrate(App, '#app');
+const app = hydrate(App, '#app');
+app?.unmount();
 ```
 
 ## template

@@ -4,105 +4,72 @@
 
 ## createApp
 
-将组件挂载到 DOM 节点；或构建带插件的应用 builder。
+将组件挂载到 DOM 元素。返回包含根组件和 unmount 函数的对象。
 
 ```ts
-// 形式 1 —— 直接挂载（最常用）
-function createApp(component: Component, container: string | Element): AppInstance | undefined;
-
-// 形式 2 —— builder（暂无插件）
-function createApp(component: Component): App;
-
-// 形式 3 —— 带配置的 builder
-function createApp(component: Component, options: CreateAppOptions): App;
+function createApp(component: Component, target: string | Element): AppInstance | undefined;
 ```
 
-### 直接挂载
+**参数:**
+- `component` — 要挂载的根组件函数
+- `target` — CSS 选择器字符串或 DOM 元素
+
+**返回:** `AppInstance | undefined`
+- `AppInstance` 形如 `{ root, unmount }`
+- `root` — 已挂载的根 Component 实例(如果挂载产生的是原始节点则为 undefined)
+- `unmount()` — 释放响应式 scope 并从 DOM 移除根组件
+- 如果目标元素未找到则返回 `undefined`
+
+**行为:**
+- 为组件树创建根 scope
+- 如果目标元素有现有内容则清空(dev 模式会警告)
+- 挂载组件及其后代
+- 根组件内的所有 `provide()` 调用对后代通过 `inject()` 可见
 
 ```tsx
 import { createApp } from 'essor';
 import App from './App';
 
-const app = createApp(App, '#app');
+const app = createApp(App, '#root');
+
+// 稍后卸载应用
 app?.unmount();
 ```
 
-`AppInstance` 形如 `{ root, unmount }`。`unmount()` 释放响应式 scope 并卸载根组件。
+**跨应用共享状态:**
 
-### 带插件
-
-传配置对象注册插件，再自行调用 `mount` / `hydrate`。当任意插件的 `setup` 为 async 时，`mount` 返回 `Promise`；否则同步返回。
-
-```ts
-interface CreateAppOptions {
-  plugins?: Array<Plugin<any> | [Plugin<any>, unknown]>;
-  config?: Partial<AppConfig>;
-}
-```
+由于 Essor 没有应用级插件系统,共享状态(路由、store、主题)通过以下方式接线:
+1. **树中的 Provider 组件**(作用域限定在子树)
+2. **根组件内的 `provide()`**(对整棵树可见)
+3. **模块级单例**(普通 import)
 
 ```tsx
-import { createApp } from 'essor';
-import App from './App';
-import { router } from './plugins/router';
-import { store } from './plugins/store';
+import { createApp, provide } from 'essor';
 
-await createApp(App, {
-  plugins: [
-    router,
-    [store, { initial: {} }],
-  ],
-  config: {
-    errorHandler(info, err) {
-      console.error(`[${info.phase}${info.plugin ? ':' + info.plugin : ''}]`, err);
-    },
-  },
-}).mount('#app');
+const App = () => {
+  // 在根组件提供值 — 对所有后代可见
+  provide('theme', 'dark');
+  provide(RouterKey, createRouter());
+  
+  return <Layout><Routes /></Layout>;
+};
+
+createApp(App, '#app');
 ```
 
-## definePlugin
+或使用 provider 组件提供作用域状态:
 
-撰写插件的类型工具。运行时是恒等函数 —— 作用只是推断 options 类型。
+```tsx
+const ThemeProvider = ({ children }) => {
+  provide('theme', 'dark');
+  return children;
+};
 
-```ts
-function definePlugin<TOptions = void>(plugin: Plugin<TOptions>): Plugin<TOptions>;
-```
-
-```ts
-interface Plugin<TOptions = void> {
-  name: string;                                // 必填
-  enforce?: 'pre' | 'default' | 'post';        // 排序桶
-  setup(ctx: AppContext, options: TOptions): void | Promise<void>;
-}
-```
-
-插件的 `setup(ctx, options)` 在 mount 时执行一次。插件先按 `enforce` 分到三档（`pre` → `default` → `post`），档内按数组顺序执行。重复插件（按引用或按 name）会被跳过并在 dev 模式打 warn。
-
-`ctx` 提供：
-
-| 成员 | 用途 |
-|---|---|
-| `provide(key, value)` / `inject(key, default?)` | 应用级依赖注入。 |
-| `onMount(fn)` | 根组件挂载后触发。 |
-| `onCleanup(fn)` | `app.unmount()` 时触发。 |
-| `warn(msg)` | 非致命报告。路由到 `config.warnHandler`，自动携带 `{ plugin }`。 |
-| `error(msg)` | 抛错。路由到 `config.errorHandler`，`phase: 'install'`。 |
-| `config` / `version` | 应用配置（可改）和框架版本字符串。 |
-
-### 示例
-
-```ts
-import { definePlugin } from 'essor';
-
-export const router = definePlugin<{ routes: Route[] }>({
-  name: 'router',
-  enforce: 'pre',
-  setup(ctx, options) {
-    if (!options.routes.length) ctx.warn('No routes configured');
-    ctx.provide(RouterKey, createRouter(options.routes));
-    ctx.onMount(() => attachHistory());
-    ctx.onCleanup(() => detachHistory());
-  },
-});
+const App = () => (
+  <ThemeProvider>
+    <Layout />
+  </ThemeProvider>
+);
 ```
 
 ## hydrate
@@ -110,18 +77,19 @@ export const router = definePlugin<{ routes: Route[] }>({
 在客户端对服务端渲染的静态 HTML 进行 hydration。
 
 ```ts
-function hydrate(component: Component, container: string | Element): AppInstance | undefined | Promise<AppInstance | undefined>;
+function hydrate(component: Component, target: string | Element): AppInstance | undefined;
 ```
 
 - 复用服务端生成的 DOM 节点，只附加事件监听器和响应式系统
 - 显著减少客户端初始化时间
-- 需要插件支持时使用 `createApp(App, { plugins }).hydrate('#app')`
+- 返回与 `createApp()` 相同的 `AppInstance` 结构,包含 `{ root, unmount }`
 
 ```tsx
 import { hydrate } from 'essor';
 import App from './App';
 
-hydrate(App, '#app');
+const app = hydrate(App, '#app');
+app?.unmount();
 ```
 
 ## template
