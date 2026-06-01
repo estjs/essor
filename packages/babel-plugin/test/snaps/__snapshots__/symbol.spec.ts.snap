@@ -54,6 +54,25 @@ const __a = _signal$(NaN);
 __a.value = 1;"
 `;
 
+exports[`transform symbol > should keep reactivity when destructuring a signal array 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $items = _signal$([1, 2, 3]);
+const $first = _computed$(() => $items.value[0]),
+  second = $items.value[1];
+console.log($first.value, second);"
+`;
+
+exports[`transform symbol > should keep reactivity when destructuring a signal object 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2
+});
+const $a = _computed$(() => $obj.value.a),
+  b = $obj.value.b;
+console.log($a.value, b);"
+`;
+
 exports[`transform symbol > should not transform signal used as arrow function parameter 1`] = `
 "import { signal as _signal$ } from "essor";
 let $a = _signal$(1);
@@ -64,6 +83,59 @@ exports[`transform symbol > should not work with add value symbol 1`] = `
 "import { signal as _signal$ } from "essor";
 const $a = _signal$([1]);
 $a.value.push(2);"
+`;
+
+exports[`transform symbol > should snapshot plain destructuring of a signal (reads .value) 1`] = `
+"import { signal as _signal$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2
+});
+const a = $obj.value.a,
+  b = $obj.value.b;
+console.log(a, b);"
+`;
+
+exports[`transform symbol > should support aliased destructuring of a signal object 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2
+});
+const $a = _computed$(() => $obj.value.a),
+  b = $obj.value.b;
+console.log($a.value, b);"
+`;
+
+exports[`transform symbol > should support default values and rest in signal destructuring 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2,
+  c: 3
+});
+const $a = _computed$(() => $obj.value.a === undefined ? 9 : $obj.value.a),
+  {
+    a: _omit$,
+    ...rest
+  } = $obj.value;
+let $items = _signal$([1, 2, 3]);
+const head = $items.value[0],
+  $tail = _computed$(() => $items.value.slice(1));"
+`;
+
+exports[`transform symbol > should support nested destructuring of a signal object 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  n: {
+    x: 1
+  },
+  m: 2
+});
+const $x = _computed$(() => $obj.value.n.x),
+  z = $obj.value.n.z,
+  m = $obj.value.m;
+console.log($x.value, z, m);"
 `;
 
 exports[`transform symbol > should transform signal in arrow function expression body 1`] = `
@@ -255,40 +327,44 @@ const $a = _signal$({
 `;
 
 exports[`transform symbol > should work with object pattern 1`] = `
-"const {
-  $a: $a.value,
-  b
-} = {
-  $a: 1,
-  b: 2
-};
-const [$c, d] = [1, 2];
-const [{
-  $d: $d.value,
-  e
-}] = [{
-  $d: 1,
-  e: 2
-}];
+"import { computed as _computed$ } from "essor";
+const $a = _computed$(() => ({
+    $a: 1,
+    b: 2
+  }).a),
+  b = {
+    $a: 1,
+    b: 2
+  }.b;
+const $c = _computed$(() => [1, 2][0]),
+  d = [1, 2][1];
+const $d = _computed$(() => [{
+    $d: 1,
+    e: 2
+  }][0].d),
+  e = [{
+    $d: 1,
+    e: 2
+  }][0].e;
 console.log($a.value, b);
 console.log($c.value, d);
 console.log($d.value, e);"
 `;
 
 exports[`transform symbol > should work with object pattern alias 1`] = `
-"const {
-  a: $a.value,
-  b
-} = {
-  a: 1,
-  b: 2
-};
-const [{
-  d: $d.value
-}] = [{
+"import { computed as _computed$ } from "essor";
+const $a = _computed$(() => ({
+    a: 1,
+    b: 2
+  }).a),
+  b = {
+    a: 1,
+    b: 2
+  }.b;
+const $d = _computed$(() => [{
   d: 1,
   e: 2
-}];
+}][0].d);
 console.log($a.value, b);
 console.log($d.value);"
 `;

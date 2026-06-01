@@ -119,6 +119,62 @@ describe('transform symbol', () => {
     `;
     expect(transformCode(input)).toMatchSnapshot();
   });
+
+  it('should keep reactivity when destructuring a signal object', () => {
+    // `$`-prefixed targets become computed (reactive); plain targets snapshot.
+    const input = `
+      let $obj = { a: 1, b: 2 };
+      const { $a, b } = $obj;
+      console.log($a, b);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should keep reactivity when destructuring a signal array', () => {
+    const input = `
+      let $items = [1, 2, 3];
+      const [$first, second] = $items;
+      console.log($first, second);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should support aliased destructuring of a signal object', () => {
+    const input = `
+      let $obj = { a: 1, b: 2 };
+      const { a: $a, b } = $obj;
+      console.log($a, b);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should support nested destructuring of a signal object', () => {
+    const input = `
+      let $obj = { n: { x: 1 }, m: 2 };
+      const { n: { $x, z }, m } = $obj;
+      console.log($x, z, m);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should snapshot plain destructuring of a signal (reads .value)', () => {
+    const input = `
+      let $obj = { a: 1, b: 2 };
+      const { a, b } = $obj;
+      console.log(a, b);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should support default values and rest in signal destructuring', () => {
+    const input = `
+      let $obj = { a: 1, b: 2, c: 3 };
+      const { $a = 9, ...rest } = $obj;
+      let $items = [1, 2, 3];
+      const [head, ...$tail] = $items;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
 });
 
 const transformCustomSignalPrefix = getTransform('symbol', { signalPrefix: '__' });
