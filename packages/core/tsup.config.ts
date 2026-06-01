@@ -24,17 +24,23 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
+  splitting: false,
   banner: {
     js: banner,
   },
   treeshake: true,
   cjsInterop: true,
   sourcemap: isDev,
-  external: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
+  noExternal: ['@estjs/shared', '@estjs/template', '@estjs/signals', '@estjs/server'],
   minify: !isDev,
   tsconfig: './tsconfig.json',
   define: {
     __DEV__: isDev ? 'true' : 'false',
+  },
+  esbuildOptions(options) {
+    if (isDev) {
+      options.conditions = ['development', ...(options.conditions ?? [])];
+    }
   },
   outExtension({ format }) {
     return {
