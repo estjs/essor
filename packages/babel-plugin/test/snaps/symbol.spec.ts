@@ -40,9 +40,12 @@ describe('transform symbol', () => {
   });
   it('should work with object pattern', () => {
     const input = `
-      const {$a,b} = {$a:1,b:2};
-      const [$c,d] = [1,2];
-      const [{$d,e}] = [{$d:1,e:2}];
+      let $obj = {a:1,b:2};
+      const {$a,b} = $obj;
+      let $arr = [1,2];
+      const [$c,d] = $arr;
+      let $nested = [{d:1,e:2}];
+      const [{$d,e}] = $nested;
       console.log($a,b);
       console.log($c,d);
       console.log($d,e);
@@ -51,8 +54,10 @@ describe('transform symbol', () => {
   });
   it('should work with object pattern alias', () => {
     const input = `
-      const {a:$a,b} = {a:1,b:2};
-      const [{d:$d}] = [{d:1,e:2}];
+      let $obj = {a:1,b:2};
+      const {a:$a,b} = $obj;
+      let $nested = [{d:1,e:2}];
+      const [{d:$d}] = $nested;
       console.log($a,b);
       console.log($d,);
   `;

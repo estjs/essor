@@ -327,44 +327,40 @@ const $a = _signal$({
 `;
 
 exports[`transform symbol > should work with object pattern 1`] = `
-"import { computed as _computed$ } from "essor";
-const $a = _computed$(() => ({
-    $a: 1,
-    b: 2
-  }).a),
-  b = {
-    $a: 1,
-    b: 2
-  }.b;
-const $c = _computed$(() => [1, 2][0]),
-  d = [1, 2][1];
-const $d = _computed$(() => [{
-    $d: 1,
-    e: 2
-  }][0].d),
-  e = [{
-    $d: 1,
-    e: 2
-  }][0].e;
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2
+});
+const $a = _computed$(() => $obj.value.a),
+  b = $obj.value.b;
+let $arr = _signal$([1, 2]);
+const $c = _computed$(() => $arr.value[0]),
+  d = $arr.value[1];
+let $nested = _signal$([{
+  d: 1,
+  e: 2
+}]);
+const $d = _computed$(() => $nested.value[0].d),
+  e = $nested.value[0].e;
 console.log($a.value, b);
 console.log($c.value, d);
 console.log($d.value, e);"
 `;
 
 exports[`transform symbol > should work with object pattern alias 1`] = `
-"import { computed as _computed$ } from "essor";
-const $a = _computed$(() => ({
-    a: 1,
-    b: 2
-  }).a),
-  b = {
-    a: 1,
-    b: 2
-  }.b;
-const $d = _computed$(() => [{
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $obj = _signal$({
+  a: 1,
+  b: 2
+});
+const $a = _computed$(() => $obj.value.a),
+  b = $obj.value.b;
+let $nested = _signal$([{
   d: 1,
   e: 2
-}][0].d);
+}]);
+const $d = _computed$(() => $nested.value[0].d);
 console.log($a.value, b);
 console.log($d.value);"
 `;
