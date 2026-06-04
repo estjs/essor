@@ -76,6 +76,49 @@ describe('renderer utilities', () => {
     expect(result).toBeUndefined();
   });
 
+  it('warns with a hydrate() hint when the target holds SSR markup ([data-hk])', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const container = document.createElement('div');
+    // Simulate server-rendered output: root carries a hydration key.
+    container.innerHTML = '<div data-hk="0"><span>ssr</span></div>';
+    document.body.appendChild(container);
+
+    const Root = () => {
+      const div = document.createElement('div');
+      div.textContent = 'csr';
+      return div;
+    };
+
+    const instance = createApp(Root, container);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('server-rendered markup'));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('hydrate()'));
+    // It still clears + renders (preserves prior behavior, just warns better).
+    expect(container.textContent).toBe('csr');
+
+    instance?.unmount();
+    warnSpy.mockRestore();
+  });
+
+  it('uses the generic empty-target warning when content is not SSR markup', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const container = document.createElement('div');
+    container.innerHTML = '<p>plain stale content</p>';
+    document.body.appendChild(container);
+
+    const instance = createApp(() => {
+      const d = document.createElement('div');
+      d.textContent = 'fresh';
+      return d;
+    }, container);
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Target element is not empty'));
+    expect(warnSpy).not.toHaveBeenCalledWith(expect.stringContaining('server-rendered markup'));
+
+    instance?.unmount();
+    warnSpy.mockRestore();
+  });
+
   it('hydrates an SSR node and leaves hydration mode afterwards', () => {
     const container = document.createElement('div');
     container.id = 'root';

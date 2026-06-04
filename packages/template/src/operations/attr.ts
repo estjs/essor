@@ -25,6 +25,41 @@ import {
 export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
 
 /**
+ * MIME types that can carry executable / markup payloads inside a `data:` URL.
+ * These are the only `data:` URLs we block — inline images, fonts, audio,
+ * video, etc. (e.g. `data:image/png;base64,...`) are legitimate and allowed.
+ */
+const DANGEROUS_DATA_MIME_RE =
+  /^data:\s*(?:text\/html|text\/xml|application\/xhtml\+xml|image\/svg\+xml|application\/xml)/;
+
+/**
+ * Returns true when a URL-bearing attribute value uses a protocol/payload that
+ * could execute script in the document.
+ *
+ * Blocked:
+ * - `javascript:` / `vbscript:` pseudo-protocols
+ * - `data:` URLs whose MIME type can carry markup or script
+ *   (`text/html`, `image/svg+xml`, `*xml`)
+ *
+ * Allowed:
+ * - All other `data:` URLs (images, fonts, audio, video, …)
+ * - Ordinary http(s)/relative/mailto/tel URLs
+ *
+ * Note: leading control characters / whitespace are stripped before matching
+ * so that `java\tscript:` style obfuscation cannot slip through.
+ */
+function isUnsafeUrl(value: string): boolean {
+  // Strip ASCII whitespace and control chars (incl. NUL, tab, newline) that
+  // browsers ignore when resolving the protocol, then lowercase for matching.
+  // eslint-disable-next-line no-control-regex
+  const v = value.replaceAll(/[\u0000-\u0020]+/g, '').toLowerCase();
+  if (startsWith(v, 'javascript:') || startsWith(v, 'vbscript:')) {
+    return true;
+  }
+  return DANGEROUS_DATA_MIME_RE.test(v);
+}
+
+/**
  * Applies a minimal attribute update to an element.
  *
  * This is the most general-purpose attribute updater in the template runtime.
@@ -145,11 +180,8 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     lowerKey === 'action' ||
     lowerKey === 'formaction' ||
     lowerKey === 'poster';
-  if (isUrlAttr && isString(attrValue)) {
-    const v = attrValue.trim().toLowerCase();
-    if (startsWith(v, 'javascript:') || startsWith(v, 'data:')) {
-      return;
-    }
+  if (isUrlAttr && isString(attrValue) && isUnsafeUrl(attrValue)) {
+    return;
   }
 
   if (isXlink) {

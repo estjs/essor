@@ -191,6 +191,77 @@ describe('attributes module', () => {
         expect(iframe.getAttribute('srcdoc')).toBeNull();
       });
 
+      it('should block dangerous data: MIME types (markup/script payloads)', () => {
+        const image = document.createElement('img');
+        const anchor = document.createElement('a');
+
+        patchAttr(image, 'src', null, 'data:text/html,<svg/onload=1>');
+        expect(image.getAttribute('src')).toBeNull();
+
+        patchAttr(anchor, 'href', null, 'data:image/svg+xml,<svg onload="alert(1)"/>');
+        expect(anchor.getAttribute('href')).toBeNull();
+
+        patchAttr(anchor, 'href', null, 'data:application/xhtml+xml,<html/>');
+        expect(anchor.getAttribute('href')).toBeNull();
+
+        patchAttr(anchor, 'href', null, 'data:text/xml,<x/>');
+        expect(anchor.getAttribute('href')).toBeNull();
+      });
+
+      it('should allow safe data: URLs (inline images, fonts, media)', () => {
+        const image = document.createElement('img');
+        const pngUrl =
+          'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+        patchAttr(image, 'src', null, pngUrl);
+        expect(image.getAttribute('src')).toBe(pngUrl);
+
+        const link = document.createElement('a');
+        const gifUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAAC4=';
+        patchAttr(link, 'href', null, gifUrl);
+        expect(link.getAttribute('href')).toBe(gifUrl);
+
+        // data:image/svg+xml is intentionally NOT here — it is treated as dangerous.
+        const fontImg = document.createElement('img');
+        const fontUrl = 'data:font/woff2;base64,d09GMgABAAAAAAA';
+        patchAttr(fontImg, 'src', null, fontUrl);
+        expect(fontImg.getAttribute('src')).toBe(fontUrl);
+      });
+
+      it('should allow ordinary http(s)/relative/mailto URLs', () => {
+        const anchor = document.createElement('a');
+
+        patchAttr(anchor, 'href', null, 'https://example.com/path?q=1');
+        expect(anchor.getAttribute('href')).toBe('https://example.com/path?q=1');
+
+        patchAttr(anchor, 'href', 'https://example.com/path?q=1', '/local/page');
+        expect(anchor.getAttribute('href')).toBe('/local/page');
+
+        patchAttr(anchor, 'href', '/local/page', 'mailto:a@b.com');
+        expect(anchor.getAttribute('href')).toBe('mailto:a@b.com');
+      });
+
+      it('should block obfuscated javascript: protocols with embedded control chars', () => {
+        const anchor = document.createElement('a');
+
+        // Tab inside the protocol — browsers ignore it, so must we.
+        patchAttr(anchor, 'href', null, 'java\tscript:alert(1)');
+        expect(anchor.getAttribute('href')).toBeNull();
+
+        // Leading newline / spaces before the protocol.
+        patchAttr(anchor, 'href', null, '\n  javascript:alert(1)');
+        expect(anchor.getAttribute('href')).toBeNull();
+
+        // Uppercase variants.
+        patchAttr(anchor, 'href', null, 'JaVaScRiPt:alert(1)');
+        expect(anchor.getAttribute('href')).toBeNull();
+      });
+
+      it('should block vbscript: protocol', () => {
+        const anchor = document.createElement('a');
+        patchAttr(anchor, 'href', null, 'vbscript:msgbox(1)');
+        expect(anchor.getAttribute('href')).toBeNull();
+      });
+
       it('should ignore event attributes because the event layer handles them', () => {
         const setSpy = vi.spyOn(element, 'setAttribute');
 
