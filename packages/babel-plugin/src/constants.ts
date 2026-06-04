@@ -50,20 +50,13 @@ export const IMPORTS_MAPS = [
 ] as const;
 
 /**
- * Name remaps applied when compiling for RENDER_MODE.SERVER.
- * Only entries whose runtime helper differs from the client name need listing.
+ * Server-mode name remaps. Only list helpers whose export name in
+ * `'essor/server'` differs from the client name; built-ins (`Fragment` etc.)
+ * keep their canonical names since client and server import from separate modules.
  */
 export const SERVER_IMPORT_REMAPS = {
   createComponent: 'createSSRComponent',
   patchAttr: 'ssrAttrDynamic',
-  // Client and server ship different implementations of these under the same
-  // canonical name. Remap the server ones to unique names so a single `essor`
-  // bundle can export BOTH (client `Fragment` + server `ssrFragment`) without a
-  // collision — which is what lets every helper import from one source `'essor'`.
-  Fragment: 'ssrFragment',
-  Portal: 'ssrPortal',
-  Suspense: 'ssrSuspense',
-  render: 'ssrRender',
 } as const;
 
 /**
@@ -80,31 +73,17 @@ export const HYDRATE_IMPORT_REMAPS = {
 export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
 
 /**
- * Canonical (pre-remap) names of helpers that live in `'essor/server'`.
- * TypeScript enforces that every entry is a valid IMPORT_MAP_NAMES.
- * SERVER_IMPORT_REMAPS is applied below so the set contains resolved names.
+ * Reactive/props primitives imported from `'essor'` in every mode — including
+ * server, where the rest of the helpers come from `'essor/server'`. Keeping
+ * these on `'essor'` resolves them to the same deduped `@estjs/signals` the SSR
  */
-const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
-  'render',
-  'escape',
-  'escapeHTML',
-  'Fragment',
-  'Portal',
-  'Suspense',
-  'getHydrationKey',
-  'ssrAttr',
-  'ssrBind',
-  'ssrClass',
-  'ssrSelected',
-  'ssrStyle',
-  'ssrSpread',
-  'ssrTextValue',
-  'createComponent',
-  'patchAttr',
-];
-
-const _remaps = SERVER_IMPORT_REMAPS as Partial<Record<IMPORT_MAP_NAMES, string>>;
-export const SERVER_EXPORTS = new Set(SERVER_ONLY_NAMES.map((name) => _remaps[name] ?? name));
+export const UNIVERSAL_IMPORTS = new Set<IMPORT_MAP_NAMES>([
+  'signal',
+  'computed',
+  'reactive',
+  'memoEffect',
+  'omitProps',
+]);
 
 export const importMap = Object.fromEntries(IMPORTS_MAPS.map((name) => [name, name])) as Record<
   IMPORT_MAP_NAMES,

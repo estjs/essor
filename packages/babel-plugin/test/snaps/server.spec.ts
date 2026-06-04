@@ -514,13 +514,13 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    // JSX branches compile to ssrRender() (safe HTML) and must NOT be escaped;
-    // escape() is distributed into the leaves, so the JSX ssrRender() calls stay
+    // JSX branches compile to render() (safe HTML) and must NOT be escaped;
+    // escape() is distributed into the leaves, so the JSX render() calls stay
     // raw while the bare `'<unsafe>'` string literal branch is escaped.
     expect(output).toContain('escape as _escape$');
-    expect(output).toContain('isVisible && _ssrRender$(');
-    expect(output).not.toContain('_escape$(isVisible && _ssrRender$');
-    expect(output).toContain('isVisible ? _ssrRender$(');
+    expect(output).toContain('isVisible && _render$(');
+    expect(output).not.toContain('_escape$(isVisible && _render$');
+    expect(output).toContain('isVisible ? _render$(');
     expect(output).toContain("_escape$('<unsafe>')");
   });
 

@@ -1,5 +1,6 @@
 import type * as csstype from 'csstype';
-import type { Component } from '@estjs/template';
+import type { Signal } from '@estjs/signals';
+import type { BindModifiers, Component } from '@estjs/template';
 
 /**
  * Based on JSX types for Surplus and Inferno
@@ -171,7 +172,7 @@ export namespace JSX {
    * target (signal / variable) directly, or a `[target, modifiers]` tuple
    * — see {@link BindModifiers} for the supported modifier keys.
    */
-  type BindValue<T = unknown> = T | readonly [T, import('@estjs/template').BindModifiers];
+  type BindValue<T = unknown> = T | readonly [T, BindModifiers];
   /**
    * `bind:*` attributes available on intrinsic DOM elements. Per-key narrowing
    * mirrors what the matching DOM element actually accepts.

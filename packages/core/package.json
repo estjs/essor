@@ -16,6 +16,7 @@
   "files": [
     "dist",
     "jsx-runtime.d.ts",
+    "server",
     "types"
   ],
   "main": "./dist/essor.cjs",
@@ -34,13 +35,21 @@
     },
     "./server": {
       "development": {
+        "types": "./server/index.d.ts",
+        "require": "./server/index.cjs",
+        "import": "./server/index.js"
+      },
+      "types": "./server/index.d.ts",
+      "require": "./server/index.cjs",
+      "import": "./server/index.js"
+    },
+    "./browser": {
+      "development": {
         "types": "./dist/essor.d.ts",
-        "require": "./dist/essor.dev.cjs",
-        "import": "./dist/essor.dev.js"
+        "default": "./dist/essor.browser.dev.js"
       },
       "types": "./dist/essor.d.ts",
-      "require": "./dist/essor.cjs",
-      "import": "./dist/essor.js"
+      "default": "./dist/essor.browser.js"
     },
     "./jsx-runtime": {
       "types": "./jsx-runtime.d.ts",
@@ -60,13 +69,13 @@
     }
   },
   "sideEffects": false,
-  "unpkg": "dist/essor.js",
-  "jsdelivr": "dist/essor.js",
+  "unpkg": "dist/essor.browser.js",
+  "jsdelivr": "dist/essor.browser.js",
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch"
   },
-  "devDependencies": {
+  "dependencies": {
     "@estjs/server": "workspace:*",
     "@estjs/signals": "workspace:*",
     "@estjs/template": "workspace:*",

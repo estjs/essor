@@ -1,9 +1,9 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx server transform > should work with CSS-in-JS in server 1`] = `
-"import { ssrClass as _ssrClass$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrClass as _ssrClass$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div", " data-styled>", "</div>"];
-const StyledComponent = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrClass$(__props.className), __props.children);
+const StyledComponent = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrClass$(__props.className), __props.children);
 const element = _createSSRComponent$(StyledComponent, {
   "className": "generated-class",
   "children": ["Styled Content"]
@@ -11,11 +11,11 @@ const element = _createSSRComponent$(StyledComponent, {
 `;
 
 exports[`jsx server transform > should work with async data in server 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div>", "</div>"];
 const AsyncComponent = async __props => {
   const result = await __props.data;
-  return _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(result));
+  return _render$(_tmpl$, _getHydrationKey$(), _escape$(result));
 };
 const element = _createSSRComponent$(AsyncComponent, {
   "data": Promise.resolve('async content')
@@ -23,33 +23,34 @@ const element = _createSSRComponent$(AsyncComponent, {
 `;
 
 exports[`jsx server transform > should work with bind api 1`] = `
-"import { ssrBind as _ssrBind$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { ssrBind as _ssrBind$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$2 = ["<div>", "<p>Paragraph 2</p></div>"];
 const _tmpl$ = ["<p", ">Paragraph 1</p>"];
 const value = 1;
-_ssrRender$(_tmpl$2, _getHydrationKey$(), _ssrRender$(_tmpl$, "", _ssrBind$("value", value)));"
+_render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _ssrBind$("value", value)));"
 `;
 
 exports[`jsx server transform > should work with comment in JSX 1`] = `
-"import { signal as _signal$, ssrBind as _ssrBind$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { signal as _signal$ } from "essor";
+import { ssrBind as _ssrBind$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$2 = ["<div>", "<p>Paragraph 2</p></div>"];
 const _tmpl$ = ["<p", ">Paragraph 1</p>"];
 const $value = _signal$(1);
-_ssrRender$(_tmpl$2, _getHydrationKey$(), _ssrRender$(_tmpl$, "", _ssrBind$("value", $value.value)));"
+_render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _ssrBind$("value", $value.value)));"
 `;
 
 exports[`jsx server transform > should work with conditional rendering in server 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$4 = ["<span>False</span>"];
 const _tmpl$3 = ["<span>True</span>"];
 const _tmpl$2 = ["<p>Visible Content</p>"];
 const _tmpl$ = ["<div>", "<!--0-->", "<!--1--></div>"];
 const isVisible = true;
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), isVisible && _ssrRender$(_tmpl$2, _getHydrationKey$()), isVisible ? _ssrRender$(_tmpl$3, _getHydrationKey$()) : _ssrRender$(_tmpl$4, _getHydrationKey$()));"
+const element = _render$(_tmpl$, _getHydrationKey$(), isVisible && _render$(_tmpl$2, _getHydrationKey$()), isVisible ? _render$(_tmpl$3, _getHydrationKey$()) : _render$(_tmpl$4, _getHydrationKey$()));"
 `;
 
 exports[`jsx server transform > should work with context in server 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div data-theme=\\"dark\\">Themed Content</div>"];
 const ThemeContext = {
   Provider: ({
@@ -59,14 +60,14 @@ const ThemeContext = {
 };
 const element = _createSSRComponent$(ThemeContext.Provider, {
   "value": "dark",
-  "children": [() => _ssrRender$(_tmpl$, _getHydrationKey$())]
+  "children": [() => _render$(_tmpl$, _getHydrationKey$())]
 });"
 `;
 
 exports[`jsx server transform > should work with data fetching in server 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div data-ssr-data>", "</div>"];
-const DataComponent = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(JSON.stringify(__props.data)));
+const DataComponent = __props => _render$(_tmpl$, _getHydrationKey$(), _escape$(JSON.stringify(__props.data)));
 const element = _createSSRComponent$(DataComponent, {
   "data": {
     key: 'value'
@@ -75,7 +76,7 @@ const element = _createSSRComponent$(DataComponent, {
 `;
 
 exports[`jsx server transform > should work with error handling in server 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$2 = ["<div>Error Page</div>"];
 const _tmpl$ = ["<div>Protected Content</div>"];
 const ErrorBoundary = ({
@@ -89,55 +90,55 @@ const ErrorBoundary = ({
   }
 };
 const element = _createSSRComponent$(ErrorBoundary, {
-  "fallback": _ssrRender$(_tmpl$2, _getHydrationKey$()),
-  "children": [() => _ssrRender$(_tmpl$, _getHydrationKey$())]
+  "fallback": _render$(_tmpl$2, _getHydrationKey$()),
+  "children": [() => _render$(_tmpl$, _getHydrationKey$())]
 });"
 `;
 
 exports[`jsx server transform > should work with event handlers in server 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<button>Click me</button>"];
 const handleClick = () => console.log('clicked');
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > should work with head management in server 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$3 = ["<meta name=\\"description\\" content=\\"Page description\\" />"];
 const _tmpl$2 = ["<title>Page Title</title>"];
 const _tmpl$ = ["<head data-ssr>", "</head>"];
-const Head = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), __props.children);
+const Head = __props => _render$(_tmpl$, _getHydrationKey$(), __props.children);
 const element = _createSSRComponent$(Head, {
-  "children": [() => _ssrRender$(_tmpl$2, _getHydrationKey$()), () => _ssrRender$(_tmpl$3, _getHydrationKey$())]
+  "children": [() => _render$(_tmpl$2, _getHydrationKey$()), () => _render$(_tmpl$3, _getHydrationKey$())]
 });"
 `;
 
 exports[`jsx server transform > should work with hydration attributes 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div data-hydrate=\\"true\\">Hydration Content</div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > should work with list rendering in server 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<ul>", "</ul>"];
 const _tmpl$ = ["<li>", "</li>"];
 const items = ['Item 1', 'Item 2', 'Item 3'];
-const element = _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const element = _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return items;
   },
-  children: (item, index) => _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(item)),
+  children: (item, index) => _render$(_tmpl$, _getHydrationKey$(), _escape$(item)),
   key: (item, index) => index
 }));"
 `;
 
 exports[`jsx server transform > should work with nested components and props in server 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$2 = ["<div>", "<!--0-->", "<!--1--></div>"];
 const _tmpl$ = ["<div>Name: ", "<!--0-->, Age: ", "<!--1--></div>"];
-const Child = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(__props.name), _escape$(__props.age));
-const Parent = () => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(Child, {
+const Child = __props => _render$(_tmpl$, _getHydrationKey$(), _escape$(__props.name), _escape$(__props.age));
+const Parent = () => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(Child, {
   "name": "John",
   "age": "25"
 }), _createSSRComponent$(Child, {
@@ -147,9 +148,9 @@ const Parent = () => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRCompone
 `;
 
 exports[`jsx server transform > should work with static API routes 1`] = `
-"import { ssrAttr as _ssrAttr$, escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrAttr as _ssrAttr$, escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div", " data-api>", "</div>"];
-const StaticApi = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-endpoint", __props.endpoint), _escape$(__props.handler));
+const StaticApi = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-endpoint", __props.endpoint), _escape$(__props.handler));
 const element = _createSSRComponent$(StaticApi, {
   "endpoint": "/api/static",
   "handler": "export default function handler(req, res) { res.json({ data: 'static' }) }"
@@ -157,9 +158,9 @@ const element = _createSSRComponent$(StaticApi, {
 `;
 
 exports[`jsx server transform > should work with static data fetching in server 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div data-static>", "</div>"];
-const StaticDataComponent = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(JSON.stringify(__props.data)));
+const StaticDataComponent = __props => _render$(_tmpl$, _getHydrationKey$(), _escape$(JSON.stringify(__props.data)));
 const element = _createSSRComponent$(StaticDataComponent, {
   "data": {
     key: 'value'
@@ -168,14 +169,14 @@ const element = _createSSRComponent$(StaticDataComponent, {
 `;
 
 exports[`jsx server transform > should work with static environment variables 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-env>", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticEnv = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticEnv = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.env);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-env-key", key), _ssrAttr$("data-env-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-env-key", key), _ssrAttr$("data-env-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticEnv, {
@@ -187,11 +188,11 @@ const element = _createSSRComponent$(StaticEnv, {
 `;
 
 exports[`jsx server transform > should work with static error pages 1`] = `
-"import { ssrAttr as _ssrAttr$, escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrAttr as _ssrAttr$, escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$3 = ["<div", " data-error>", "", "</div>"];
 const _tmpl$2 = ["<p>", "</p>"];
 const _tmpl$ = ["<h1>", "</h1>"];
-const StaticError = __props => _ssrRender$(_tmpl$3, _getHydrationKey$(), _ssrAttr$("data-code", __props.code), _ssrRender$(_tmpl$, "", _escape$(__props.code)), _ssrRender$(_tmpl$2, "", _escape$(__props.message)));
+const StaticError = __props => _render$(_tmpl$3, _getHydrationKey$(), _ssrAttr$("data-code", __props.code), _render$(_tmpl$, "", _escape$(__props.code)), _render$(_tmpl$2, "", _escape$(__props.message)));
 const element = _createSSRComponent$(StaticError, {
   "code": "404",
   "message": "Page not found"
@@ -199,14 +200,14 @@ const element = _createSSRComponent$(StaticError, {
 `;
 
 exports[`jsx server transform > should work with static headers 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-headers>", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticHeaders = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticHeaders = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.headers);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-header-key", key), _ssrAttr$("data-header-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-header-key", key), _ssrAttr$("data-header-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticHeaders, {
@@ -218,9 +219,9 @@ const element = _createSSRComponent$(StaticHeaders, {
 `;
 
 exports[`jsx server transform > should work with static image optimization 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<img", "", " data-static-image />"];
-const StaticImage = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("src", __props.src), _ssrAttr$("alt", __props.alt));
+const StaticImage = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("src", __props.src), _ssrAttr$("alt", __props.alt));
 const element = _createSSRComponent$(StaticImage, {
   "src": "/static/image.jpg",
   "alt": "Static Image"
@@ -228,14 +229,14 @@ const element = _createSSRComponent$(StaticImage, {
 `;
 
 exports[`jsx server transform > should work with static locales 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div", ">", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticLocale = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _ssrAttr$("data-locale", __props.locale), _createSSRComponent$(_For$, {
+const StaticLocale = __props => _render$(_tmpl$2, _getHydrationKey$(), _ssrAttr$("data-locale", __props.locale), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.messages);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-message-key", key), _ssrAttr$("data-message-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-message-key", key), _ssrAttr$("data-message-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticLocale, {
@@ -248,14 +249,14 @@ const element = _createSSRComponent$(StaticLocale, {
 `;
 
 exports[`jsx server transform > should work with static manifest.json 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-manifest>", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticManifest = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticManifest = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.manifest);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-manifest-key", key), _ssrAttr$("data-manifest-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-manifest-key", key), _ssrAttr$("data-manifest-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticManifest, {
@@ -271,11 +272,11 @@ const element = _createSSRComponent$(StaticManifest, {
 `;
 
 exports[`jsx server transform > should work with static metadata 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, ssrAttr as _ssrAttr$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, ssrAttr as _ssrAttr$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$3 = ["<head data-static-metadata>", "", "</head>"];
 const _tmpl$2 = ["<meta", " name=\\"description\\" />"];
 const _tmpl$ = ["<title>", "</title>"];
-const StaticMetadata = __props => _ssrRender$(_tmpl$3, _getHydrationKey$(), _ssrRender$(_tmpl$, "", _escape$(__props.metadata.title)), _ssrRender$(_tmpl$2, "", _ssrAttr$("content", __props.metadata.description)));
+const StaticMetadata = __props => _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, "", _escape$(__props.metadata.title)), _render$(_tmpl$2, "", _ssrAttr$("content", __props.metadata.description)));
 const element = _createSSRComponent$(StaticMetadata, {
   "metadata": {
     title: 'Static Page',
@@ -285,23 +286,23 @@ const element = _createSSRComponent$(StaticMetadata, {
 `;
 
 exports[`jsx server transform > should work with static middleware 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div data-middleware>", "</div>"];
-const StaticMiddleware = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(__props.middleware));
+const StaticMiddleware = __props => _render$(_tmpl$, _getHydrationKey$(), _escape$(__props.middleware));
 const element = _createSSRComponent$(StaticMiddleware, {
   "middleware": "export function middleware(request) { return NextResponse.next() }"
 });"
 `;
 
 exports[`jsx server transform > should work with static paths generation 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-paths>", "</div>"];
 const _tmpl$ = ["<div", "></div>"];
-const StaticPathsComponent = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticPathsComponent = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return __props.paths;
   },
-  children: path => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-path", path)),
+  children: path => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-path", path)),
   key: path => path
 }));
 const element = _createSSRComponent$(StaticPathsComponent, {
@@ -310,14 +311,14 @@ const element = _createSSRComponent$(StaticPathsComponent, {
 `;
 
 exports[`jsx server transform > should work with static props generation 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-props>", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticPropsComponent = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticPropsComponent = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.props);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-prop-key", key), _ssrAttr$("data-prop-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-prop-key", key), _ssrAttr$("data-prop-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticPropsComponent, {
@@ -328,9 +329,9 @@ const element = _createSSRComponent$(StaticPropsComponent, {
 `;
 
 exports[`jsx server transform > should work with static redirects 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div", "", " data-redirect></div>"];
-const StaticRedirect = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-from", __props.from), _ssrAttr$("data-to", __props.to));
+const StaticRedirect = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-from", __props.from), _ssrAttr$("data-to", __props.to));
 const element = _createSSRComponent$(StaticRedirect, {
   "from": "/old",
   "to": "/new"
@@ -338,9 +339,9 @@ const element = _createSSRComponent$(StaticRedirect, {
 `;
 
 exports[`jsx server transform > should work with static rewrites 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$ = ["<div", "", " data-rewrite></div>"];
-const StaticRewrite = __props => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-source", __props.source), _ssrAttr$("data-destination", __props.destination));
+const StaticRewrite = __props => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-source", __props.source), _ssrAttr$("data-destination", __props.destination));
 const element = _createSSRComponent$(StaticRewrite, {
   "source": "/api",
   "destination": "/api/v1"
@@ -348,14 +349,14 @@ const element = _createSSRComponent$(StaticRewrite, {
 `;
 
 exports[`jsx server transform > should work with static robots.txt 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-robots>", "</div>"];
 const _tmpl$ = ["<div", "></div>"];
-const StaticRobots = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticRobots = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return __props.rules;
   },
-  children: (rule, index) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-rule", rule)),
+  children: (rule, index) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-rule", rule)),
   key: (rule, index) => index
 }));
 const element = _createSSRComponent$(StaticRobots, {
@@ -364,14 +365,14 @@ const element = _createSSRComponent$(StaticRobots, {
 `;
 
 exports[`jsx server transform > should work with static security headers 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-security>", "</div>"];
 const _tmpl$ = ["<div", "", "></div>"];
-const StaticSecurity = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticSecurity = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return Object.entries(__props.headers);
   },
-  children: ([key, value]) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-security-key", key), _ssrAttr$("data-security-value", value)),
+  children: ([key, value]) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-security-key", key), _ssrAttr$("data-security-value", value)),
   key: ([key, value]) => key
 }));
 const element = _createSSRComponent$(StaticSecurity, {
@@ -384,14 +385,14 @@ const element = _createSSRComponent$(StaticSecurity, {
 `;
 
 exports[`jsx server transform > should work with static sitemap.xml 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div data-sitemap>", "</div>"];
 const _tmpl$ = ["<div", "></div>"];
-const StaticSitemap = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StaticSitemap = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return __props.urls;
   },
-  children: (url, index) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-url", url)),
+  children: (url, index) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-url", url)),
   key: (url, index) => index
 }));
 const element = _createSSRComponent$(StaticSitemap, {
@@ -400,14 +401,14 @@ const element = _createSSRComponent$(StaticSitemap, {
 `;
 
 exports[`jsx server transform > should work with streaming server 1`] = `
-"import { ssrAttr as _ssrAttr$, escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor";
+"import { ssrAttr as _ssrAttr$, escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$, For as _For$ } from "essor/server";
 const _tmpl$2 = ["<div>", "</div>"];
 const _tmpl$ = ["<div", ">", "</div>"];
-const StreamingComponent = __props => _ssrRender$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
+const StreamingComponent = __props => _render$(_tmpl$2, _getHydrationKey$(), _createSSRComponent$(_For$, {
   get each() {
     return __props.chunks;
   },
-  children: (chunk, index) => _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-chunk", index), _escape$(chunk)),
+  children: (chunk, index) => _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("data-chunk", index), _escape$(chunk)),
   key: (chunk, index) => index
 }));
 const element = _createSSRComponent$(StreamingComponent, {
@@ -416,77 +417,77 @@ const element = _createSSRComponent$(StreamingComponent, {
 `;
 
 exports[`jsx server transform > transforms JSX element with JSX fragment 1`] = `
-"import { ssrFragment as _ssrFragment$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { Fragment as _Fragment$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$2 = ["<p>Paragraph 2</p>"];
 const _tmpl$ = ["<p>Paragraph 1</p>"];
-const element = _createSSRComponent$(_ssrFragment$, {
-  "children": [() => _ssrRender$(_tmpl$, _getHydrationKey$()), () => _ssrRender$(_tmpl$2, _getHydrationKey$())]
+const element = _createSSRComponent$(_Fragment$, {
+  "children": [() => _render$(_tmpl$, _getHydrationKey$()), () => _render$(_tmpl$2, _getHydrationKey$())]
 });"
 `;
 
 exports[`jsx server transform > transforms JSX element with JSX fragment as children 1`] = `
-"import { ssrFragment as _ssrFragment$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor";
+"import { Fragment as _Fragment$, render as _render$, getHydrationKey as _getHydrationKey$, createSSRComponent as _createSSRComponent$ } from "essor/server";
 const _tmpl$3 = ["<div>", "</div>"];
 const _tmpl$2 = ["<p>Paragraph 2</p>"];
 const _tmpl$ = ["<p>Paragraph 1</p>"];
-const element = _ssrRender$(_tmpl$3, _getHydrationKey$(), _createSSRComponent$(_ssrFragment$, {
-  "children": [() => _ssrRender$(_tmpl$, _getHydrationKey$()), () => _ssrRender$(_tmpl$2, _getHydrationKey$())]
+const element = _render$(_tmpl$3, _getHydrationKey$(), _createSSRComponent$(_Fragment$, {
+  "children": [() => _render$(_tmpl$, _getHydrationKey$()), () => _render$(_tmpl$2, _getHydrationKey$())]
 }));"
 `;
 
 exports[`jsx server transform > transforms JSX element with SVG tags 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<svg><circle cx=\\"50\\" cy=\\"50\\" r=\\"40\\" stroke=\\"black\\" stroke-width=\\"3\\" fill=\\"red\\"></circle></svg>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with attributes 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div class=\\"myClass\\" id=\\"myId\\">Hello, World!</div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with boolean attribute 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<input disabled />"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with children 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div><p>Paragraph 1</p><p>Paragraph 2</p></div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with class and style attributes 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div class=\\"myClass\\" style=\\"color:red;font-size:16px\\">Hello, World!</div>"];
 const hasClass = true;
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with conditional attributes 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div class=\\"myClass\\">Hello, World!</div>"];
 const hasClass = true;
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with dynamic expressions 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div>Hello, ", "<!--0-->!</div>"];
 const name = 'John';
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(name));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _escape$(name));"
 `;
 
 exports[`jsx server transform > transforms JSX element with function components 1`] = `
-"import { createSSRComponent as _createSSRComponent$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { createSSRComponent as _createSSRComponent$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div>", "<!--0-->", "<!--1--></div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _createSSRComponent$(MyComponent, {
+const element = _render$(_tmpl$, _getHydrationKey$(), _createSSRComponent$(MyComponent, {
   "text": "Component 1"
 }), _createSSRComponent$(MyComponent, {
   "text": "Component 2"
@@ -494,65 +495,65 @@ const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _createSSRComponent$(My
 `;
 
 exports[`jsx server transform > transforms JSX element with null and undefined attributes 1`] = `
-"import { ssrAttr as _ssrAttr$, ssrClass as _ssrClass$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { ssrAttr as _ssrAttr$, ssrClass as _ssrClass$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div", "", ">Hello, World!</div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrAttr$("id", null), _ssrClass$(undefined));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _ssrAttr$("id", null), _ssrClass$(undefined));"
 `;
 
 exports[`jsx server transform > transforms JSX element with null and undefined children 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div>", "<p data-hk-idx=\\"0\\">Paragraph 1</p>", "<!--1-->", "<!--2--><p>Paragraph 2</p></div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _escape$(null), _escape$(undefined), _escape$(false));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _escape$(null), _escape$(undefined), _escape$(false));"
 `;
 
 exports[`jsx server transform > transforms JSX element with null and undefined in expressions 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$2 = ["<div>", "", "<p data-hk-idx=\\"0\\">Paragraph 2</p></div>"];
 const _tmpl$ = ["<p>", "<!--0-->'s Profile</p>"];
 const name = null;
-const element = _ssrRender$(_tmpl$2, _getHydrationKey$(), _ssrRender$(_tmpl$, "", _escape$(name)), _escape$(undefined));"
+const element = _render$(_tmpl$2, _getHydrationKey$(), _render$(_tmpl$, "", _escape$(name)), _escape$(undefined));"
 `;
 
 exports[`jsx server transform > transforms JSX element with self-closing tags 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div><img src=\\"image.jpg\\" alt=\\"Image 1\\" /><input type=\\"text\\" /><br /></div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms JSX element with spread attributes 1`] = `
-"import { ssrSpread as _ssrSpread$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { ssrSpread as _ssrSpread$, render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div", ">Hello, World!</div>"];
 const props = {
   id: 'myId',
   class: 'myClass'
 };
-const element = _ssrRender$(_tmpl$, _getHydrationKey$(), _ssrSpread$(props));"
+const element = _render$(_tmpl$, _getHydrationKey$(), _ssrSpread$(props));"
 `;
 
 exports[`jsx server transform > transforms JSX element with style attribute 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div style=\\"color:red;font-size:16px\\">Hello, World!</div>"];
 const style = {
   color: 'red',
   fontSize: '16px'
 };
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;
 
 exports[`jsx server transform > transforms server JSX element with nested expressions and children 1`] = `
-"import { escape as _escape$, ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$, ssrAttr as _ssrAttr$ } from "essor";
+"import { escape as _escape$, render as _render$, getHydrationKey as _getHydrationKey$, ssrAttr as _ssrAttr$ } from "essor/server";
 const _tmpl$4 = ["<li", ">Item ", "<!--0--></li>"];
 const _tmpl$3 = ["<div class=\\"root\\">", "", "</div>"];
 const _tmpl$2 = ["<ul>", "</ul>"];
 const _tmpl$ = ["<p class=\\"John\\">itis:", "<!--0-->'s Profile</p>"];
 const name = 'John';
-const element = _ssrRender$(_tmpl$3, _getHydrationKey$(), _ssrRender$(_tmpl$, "", _escape$(name)), _ssrRender$(_tmpl$2, "", _escape$(Array.from({
+const element = _render$(_tmpl$3, _getHydrationKey$(), _render$(_tmpl$, "", _escape$(name)), _render$(_tmpl$2, "", _escape$(Array.from({
   length: 3
-}, (_, i) => _ssrRender$(_tmpl$4, _getHydrationKey$(), _ssrAttr$("key", i), _escape$(i + 1))))));"
+}, (_, i) => _render$(_tmpl$4, _getHydrationKey$(), _ssrAttr$("key", i), _escape$(i + 1))))));"
 `;
 
 exports[`jsx server transform > transforms simple JSX element 1`] = `
-"import { ssrRender as _ssrRender$, getHydrationKey as _getHydrationKey$ } from "essor";
+"import { render as _render$, getHydrationKey as _getHydrationKey$ } from "essor/server";
 const _tmpl$ = ["<div>Hello, World!</div>"];
-const element = _ssrRender$(_tmpl$, _getHydrationKey$());"
+const element = _render$(_tmpl$, _getHydrationKey$());"
 `;

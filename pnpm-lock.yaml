@@ -322,7 +322,7 @@ importers:
         version: 7.28.0
 
   packages/core:
-    devDependencies:
+    dependencies:
       '@estjs/server':
         specifier: workspace:*
         version: link:../server
