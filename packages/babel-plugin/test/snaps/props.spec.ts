@@ -250,4 +250,203 @@ describe('jsx props transform', () => {
     `;
     expect(transformCode(input)).toMatchSnapshot();
   });
+
+  // ── Default values of every container type ────────────────────────────────
+
+  it('should keep a Set default value', () => {
+    const input = `
+      function testFunction({ tags = new Set([1, 2]) }) {
+        return <div tags={tags} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should keep a Map default value', () => {
+    const input = `
+      function testFunction({ cache = new Map([['a', 1]]) }) {
+        return <div cache={cache} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should keep an array default value', () => {
+    const input = `
+      function testFunction({ list = [1, 2, 3] }) {
+        return <div list={list} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should keep an object default value', () => {
+    const input = `
+      function testFunction({ config = { theme: 'dark', nested: { a: 1 } } }) {
+        return <div config={config} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  // ── Iterable destructuring (iterator protocol, not index access) ──────────
+
+  it('should array-destructure an iterable (Set/Map/generator) via spread', () => {
+    const input = `
+      function testFunction({ items: [first, second] }) {
+        return <div first={first} second={second} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should destructure Map entries via nested array pattern', () => {
+    const input = `
+      function testFunction({ entries: [[key, value]] }) {
+        return <div key={key} value={value} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should destructure a string prop by character', () => {
+    const input = `
+      function testFunction({ name: [initial, ...restChars] }) {
+        return <div initial={initial} rest={restChars} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should array-destructure with element defaults from an iterable', () => {
+    const input = `
+      function testFunction({ items: [first = 'a', second = 'b'] = [] }) {
+        return <div first={first} second={second} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should handle nested array-in-array patterns', () => {
+    const input = `
+      function testFunction({ matrix: [[a, b], [c, d]] }) {
+        return <div a={a} b={b} c={c} d={d} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should handle array of objects', () => {
+    const input = `
+      function testFunction({ list: [{ id, name }, { id: id2 }] }) {
+        return <div id={id} name={name} id2={id2} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  // ── Deep structures with defaults at every level ──────────────────────────
+
+  it('should resolve deep object structure with defaults at each level', () => {
+    const input = `
+      function testFunction({ a: { b: { c = 1 } = {} } = {} }) {
+        return <div c={c} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should resolve deep structure with a container default at depth', () => {
+    const input = `
+      function testFunction({ config: { tags = new Set(), items = [] } = {} }) {
+        return <div tags={tags} items={items} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should keep a deep object literal as a top-level default', () => {
+    const input = `
+      function testFunction({ user = { profile: { name: 'anon' } } }) {
+        return <div user={user} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  // ── Aliases, literal keys, combined ───────────────────────────────────────
+
+  it('should handle alias combined with default', () => {
+    const input = `
+      function testFunction({ a: renamed = 5 }) {
+        return <div value={renamed} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should handle numeric and string-literal keys', () => {
+    const input = `
+      function testFunction({ 0: zero, 'data-id': dataId }) {
+        return <div zero={zero} dataId={dataId} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should handle nested object rest at depth', () => {
+    const input = `
+      function testFunction({ user: { name, ...others } }) {
+        return <div name={name} others={{ ...others }} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should handle a binding used at multiple sites', () => {
+    const input = `
+      function testFunction({ value = 0 }) {
+        return <div a={value} b={value} c={value} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  // ── Defaults that reference sibling bindings ──────────────────────────────
+
+  it('should resolve a default that references a sibling prop', () => {
+    const input = `
+      function testFunction({ id, key = id }) {
+        return <div id={id} key={key} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should resolve a chain of sibling-referencing defaults', () => {
+    const input = `
+      function testFunction({ a = 1, b = a, c = b }) {
+        return <div a={a} b={b} c={c} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should resolve a sibling reference inside a default expression', () => {
+    const input = `
+      function testFunction({ count = 0, label = 'n=' + count }) {
+        return <div count={count} label={label} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('should exclude a computed key from a sibling rest at runtime', () => {
+    const input = `
+      function testFunction({ [dynamicKey]: value, ...rest }) {
+        return <div value={value} {...rest} />;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
 });

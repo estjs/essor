@@ -5,7 +5,6 @@ export const IMPORTS_MAPS = [
   'reactive',
   'memoEffect',
   'omitProps',
-  'resolveDefaultProps',
 
   // component
   'createComponent',

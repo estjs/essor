@@ -1,5 +1,349 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`jsx props transform > should array-destructure an iterable (Set/Map/generator) via spread 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...__props.items][0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = [...__props.items][1];
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should array-destructure with element defaults from an iterable 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...(__props.items === undefined ? [] : __props.items)][0] === undefined ? 'a' : [...(__props.items === undefined ? [] : __props.items)][0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = [...(__props.items === undefined ? [] : __props.items)][1] === undefined ? 'b' : [...(__props.items === undefined ? [] : __props.items)][1];
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should destructure Map entries via nested array pattern 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...[...__props.entries][0]][0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "key", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = [...[...__props.entries][0]][1];
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "value", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should destructure a string prop by character 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  const restChars = [...__props.name].slice(1);
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...__props.name][0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "initial", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = restChars;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "rest", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should exclude a computed key from a sibling rest at runtime 1`] = `
+"import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  const rest = _omitProps$(__props, [dynamicKey]);
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props[dynamicKey];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "value", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = rest;
+      _v$2 !== _p$.sp1 && _patchAttr$(_root$, "_$spread$", _p$.sp1, _p$.sp1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      sp1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle a binding used at multiple sites 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.value === undefined ? 0 : __props.value;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = __props.value === undefined ? 0 : __props.value;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      let _v$3 = __props.value === undefined ? 0 : __props.value;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle alias combined with default 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.a === undefined ? 5 : __props.a;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "value", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle array of objects 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...__props.list][0].id;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "id", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = [...__props.list][0].name;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "name", _p$.a1, _p$.a1 = _v$2);
+      let _v$3 = [...__props.list][1].id;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "id2", _p$.a2, _p$.a2 = _v$3);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle nested array-in-array patterns 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = [...[...__props.matrix][0]][0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = [...[...__props.matrix][0]][1];
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      let _v$3 = [...[...__props.matrix][1]][0];
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      let _v$4 = [...[...__props.matrix][1]][1];
+      _v$4 !== _p$.a3 && _patchAttr$(_root$, "d", _p$.a3, _p$.a3 = _v$4);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined,
+      a2: undefined,
+      a3: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle nested object rest at depth 1`] = `
+"import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  const others = _omitProps$(__props.user, ["name"]);
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.user.name;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = {
+        ...others
+      };
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "others", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should handle numeric and string-literal keys 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props[0];
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "zero", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = __props["data-id"];
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "dataId", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should keep a Map default value 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.cache === undefined ? new Map([['a', 1]]) : __props.cache;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "cache", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should keep a Set default value 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.tags === undefined ? new Set([1, 2]) : __props.tags;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "tags", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should keep a deep object literal as a top-level default 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.user === undefined ? {
+        profile: {
+          name: 'anon'
+        }
+      } : __props.user;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "user", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should keep an array default value 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.list === undefined ? [1, 2, 3] : __props.list;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "list", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should keep an object default value 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.config === undefined ? {
+        theme: 'dark',
+        nested: {
+          a: 1
+        }
+      } : __props.config;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "config", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
 exports[`jsx props transform > should not work with array props 1`] = `
 "import { template as _template$, child as _child$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div>");
@@ -88,6 +432,111 @@ function testFunction(__props, otherProps) {
 }"
 `;
 
+exports[`jsx props transform > should resolve a chain of sibling-referencing defaults 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.a === undefined ? 1 : __props.a;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = __props.b === undefined ? __props.a === undefined ? 1 : __props.a : __props.b;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      let _v$3 = __props.c === undefined ? __props.b === undefined ? __props.a === undefined ? 1 : __props.a : __props.b : __props.c;
+      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined,
+      a2: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should resolve a default that references a sibling prop 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.id;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "id", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = __props.key === undefined ? __props.id : __props.key;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "key", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should resolve a sibling reference inside a default expression 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = __props.count === undefined ? 0 : __props.count;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "count", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = __props.label === undefined ? 'n=' + (__props.count === undefined ? 0 : __props.count) : __props.label;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "label", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should resolve deep object structure with defaults at each level 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = ((__props.a === undefined ? {} : __props.a).b === undefined ? {} : (__props.a === undefined ? {} : __props.a).b).c === undefined ? 1 : ((__props.a === undefined ? {} : __props.a).b === undefined ? {} : (__props.a === undefined ? {} : __props.a).b).c;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "c", _p$.a0, _p$.a0 = _v$);
+      return _p$;
+    }, {
+      a0: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
+exports[`jsx props transform > should resolve deep structure with a container default at depth 1`] = `
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+const _t$ = _template$("<div>");
+function testFunction(__props) {
+  return (() => {
+    const _root$ = _t$();
+    _memoEffect$(_p$ => {
+      let _v$ = (__props.config === undefined ? {} : __props.config).tags === undefined ? new Set() : (__props.config === undefined ? {} : __props.config).tags;
+      _v$ !== _p$.a0 && _patchAttr$(_root$, "tags", _p$.a0, _p$.a0 = _v$);
+      let _v$2 = (__props.config === undefined ? {} : __props.config).items === undefined ? [] : (__props.config === undefined ? {} : __props.config).items;
+      _v$2 !== _p$.a1 && _patchAttr$(_root$, "items", _p$.a1, _p$.a1 = _v$2);
+      return _p$;
+    }, {
+      a0: undefined,
+      a1: undefined
+    });
+    return _root$;
+  })();
+}"
+`;
+
 exports[`jsx props transform > should work just rest props 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _t$ = _template$("<div>");
@@ -121,9 +570,9 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      let _v$ = first;
+      let _v$ = [...__props.items][0];
       _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
-      let _v$2 = second;
+      let _v$2 = [...__props.items][1];
       _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
@@ -228,25 +677,21 @@ class TestClass {
 `;
 
 exports[`jsx props transform > should work with complex nested patterns 1`] = `
-"import { resolveDefaultProps as _resolveDefaultProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _t$ = _template$("<div>");
 function testFunction(__props) {
-  __props = _resolveDefaultProps$(__props, {
-    user: {
-      theme: 'light',
-      settings: {}
-    }
-  });
+  const others = [...__props.user.contacts].slice(1);
+  const otherSettings = _omitProps$(__props.user.settings === undefined ? {} : __props.user.settings, ["theme"]);
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.user.name;
       _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
-      let _v$2 = primary;
+      let _v$2 = [...__props.user.contacts][0] === undefined ? {} : [...__props.user.contacts][0];
       _v$2 !== _p$.a1 && _patchAttr$(_root$, "primary", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = others;
       _v$3 !== _p$.a2 && _patchAttr$(_root$, "others", _p$.a2, _p$.a2 = _v$3);
-      let _v$4 = __props.user.settings.theme;
+      let _v$4 = (__props.user.settings === undefined ? {} : __props.user.settings).theme === undefined ? 'light' : (__props.user.settings === undefined ? {} : __props.user.settings).theme;
       _v$4 !== _p$.a3 && _patchAttr$(_root$, "theme", _p$.a3, _p$.a3 = _v$4);
       let _v$5 = otherSettings;
       _v$5 !== _p$.a4 && _patchAttr$(_root$, "settings", _p$.a4, _p$.a4 = _v$5);
@@ -270,7 +715,7 @@ function testFunction(__props) {
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      let _v$ = __props.computedProp;
+      let _v$ = __props[computedProp];
       _v$ !== _p$.a0 && _patchAttr$(_root$, "prop", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
@@ -303,19 +748,15 @@ function testFunction(__props) {
 `;
 
 exports[`jsx props transform > should work with default values 1`] = `
-"import { resolveDefaultProps as _resolveDefaultProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _t$ = _template$("<div>");
 function testFunction(__props) {
-  __props = _resolveDefaultProps$(__props, {
-    prop1: 'default1',
-    prop2: 42
-  });
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      let _v$ = __props.prop1;
+      let _v$ = __props.prop1 === undefined ? 'default1' : __props.prop1;
       _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
-      let _v$2 = __props.prop2;
+      let _v$2 = __props.prop2 === undefined ? 42 : __props.prop2;
       _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
@@ -328,15 +769,12 @@ function testFunction(__props) {
 `;
 
 exports[`jsx props transform > should work with function parameters 1`] = `
-"import { resolveDefaultProps as _resolveDefaultProps$, template as _template$, delegateEvents as _delegateEvents$ } from "essor";
+"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = _template$("<button>Click me");
 function testFunction(__props) {
-  __props = _resolveDefaultProps$(__props, {
-    callback: () => {}
-  });
   return (() => {
     const _root$ = _t$();
-    _root$["_$click"] = __props.callback;
+    _root$["_$click"] = __props.callback === undefined ? () => {} : __props.callback;
     return _root$;
   })();
 }
@@ -406,20 +844,15 @@ function testFunction(first, {
 `;
 
 exports[`jsx props transform > should work with nested destructuring and defaults 1`] = `
-"import { resolveDefaultProps as _resolveDefaultProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
+"import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
 const _t$ = _template$("<div>");
 function testFunction(__props) {
-  __props = _resolveDefaultProps$(__props, {
-    name: 'John',
-    age: 25,
-    user: {}
-  });
   return (() => {
     const _root$ = _t$();
     _memoEffect$(_p$ => {
-      let _v$ = __props.user.name;
+      let _v$ = (__props.user === undefined ? {} : __props.user).name === undefined ? 'John' : (__props.user === undefined ? {} : __props.user).name;
       _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
-      let _v$2 = __props.user.age;
+      let _v$2 = (__props.user === undefined ? {} : __props.user).age === undefined ? 25 : (__props.user === undefined ? {} : __props.user).age;
       _v$2 !== _p$.a1 && _patchAttr$(_root$, "age", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
