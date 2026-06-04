@@ -182,6 +182,140 @@ describe('transform symbol', () => {
   });
 });
 
+describe('transform symbol — member access', () => {
+  it('rewrites a signal used as a computed member key', () => {
+    // `obj[$key]` reads the signal, so the key must become `$key.value`.
+    const input = `
+      let $key = 'a';
+      const obj = { a: 1 };
+      console.log(obj[$key]);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('does not rewrite a signal used as a static member key', () => {
+    // `obj.$key` is a property name, not a read — must stay untouched.
+    const input = `
+      let $key = 1;
+      const obj = { $key: 5 };
+      console.log(obj.$key);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('rewrites both object and computed-key positions when nested', () => {
+    const input = `
+      let $arr = [10, 20];
+      let $i = 0;
+      console.log($arr[$i]);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('rewrites a signal used as a computed object-literal key', () => {
+    const input = `
+      let $k = 'x';
+      const o = { [$k]: 1 };
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('rewrites the object of a member assignment, not the assignment itself', () => {
+    const input = `
+      let $obj = { a: 1 };
+      $obj.a = 2;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('does not double-wrap an explicit .value read', () => {
+    const input = `
+      let $count = 0;
+      console.log($count.value);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('does not double-wrap an explicit optional .value read', () => {
+    const input = `
+      let $maybe = null;
+      console.log($maybe?.value);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+});
+
+describe('transform symbol — assignments & updates', () => {
+  it('rewrites compound assignment operators', () => {
+    const input = `
+      let $x = 0;
+      $x += 1;
+      $x *= 2;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('rewrites prefix and postfix update expressions', () => {
+    const input = `
+      let $x = 0;
+      $x++;
+      ++$x;
+      $x--;
+      --$x;
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+});
+
+describe('transform symbol — binding contexts left untouched', () => {
+  it('does not mangle a rest parameter into invalid syntax', () => {
+    // `...$args` is a binding; only body reads should gain `.value`.
+    const input = `
+      function f(...$args) {
+        return $args;
+      }
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('does not rewrite an export specifier local name', () => {
+    const input = `
+      let $a = 1;
+      export { $a };
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('does not re-wrap an already-wrapped signal/computed call', () => {
+    const input = `
+      import { signal, computed } from 'essor';
+      const $a = signal(1);
+      const $b = computed(() => $a);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+});
+
+describe('transform symbol — array destructuring edge cases', () => {
+  it('skips holes in array patterns', () => {
+    const input = `
+      let $arr = [1, 2, 3];
+      const [, $b, ] = $arr;
+      console.log($b);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+
+  it('supports default values in array destructuring targets', () => {
+    const input = `
+      let $arr = [1];
+      const [$first = 9, $second = 8] = $arr;
+      console.log($first, $second);
+    `;
+    expect(transformCode(input)).toMatchSnapshot();
+  });
+});
+
 const transformCustomSignalPrefix = getTransform('symbol', { signalPrefix: '__' });
 describe('transform custom signalPrefix', () => {
   it('should work with basic types', () => {

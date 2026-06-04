@@ -364,3 +364,105 @@ const $d = _computed$(() => $nested.value[0].d);
 console.log($a.value, b);
 console.log($d.value);"
 `;
+
+exports[`transform symbol — array destructuring edge cases > skips holes in array patterns 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $arr = _signal$([1, 2, 3]);
+const $b = _computed$(() => $arr.value[1]);
+console.log($b.value);"
+`;
+
+exports[`transform symbol — array destructuring edge cases > supports default values in array destructuring targets 1`] = `
+"import { signal as _signal$, computed as _computed$ } from "essor";
+let $arr = _signal$([1]);
+const $first = _computed$(() => $arr.value[0] === undefined ? 9 : $arr.value[0]),
+  $second = _computed$(() => $arr.value[1] === undefined ? 8 : $arr.value[1]);
+console.log($first.value, $second.value);"
+`;
+
+exports[`transform symbol — assignments & updates > rewrites compound assignment operators 1`] = `
+"import { signal as _signal$ } from "essor";
+let $x = _signal$(0);
+$x.value += 1;
+$x.value *= 2;"
+`;
+
+exports[`transform symbol — assignments & updates > rewrites prefix and postfix update expressions 1`] = `
+"import { signal as _signal$ } from "essor";
+let $x = _signal$(0);
+$x.value++;
+++$x.value;
+$x.value--;
+--$x.value;"
+`;
+
+exports[`transform symbol — binding contexts left untouched > does not mangle a rest parameter into invalid syntax 1`] = `
+"function f(...$args) {
+  return $args.value;
+}"
+`;
+
+exports[`transform symbol — binding contexts left untouched > does not re-wrap an already-wrapped signal/computed call 1`] = `
+"import { signal, computed } from 'essor';
+const $a = signal(1);
+const $b = computed(() => $a.value);"
+`;
+
+exports[`transform symbol — binding contexts left untouched > does not rewrite an export specifier local name 1`] = `
+"import { signal as _signal$ } from "essor";
+let $a = _signal$(1);
+export { $a };"
+`;
+
+exports[`transform symbol — member access > does not double-wrap an explicit .value read 1`] = `
+"import { signal as _signal$ } from "essor";
+let $count = _signal$(0);
+console.log($count.value);"
+`;
+
+exports[`transform symbol — member access > does not double-wrap an explicit optional .value read 1`] = `
+"import { signal as _signal$ } from "essor";
+let $maybe = _signal$(null);
+console.log($maybe?.value);"
+`;
+
+exports[`transform symbol — member access > does not rewrite a signal used as a static member key 1`] = `
+"import { signal as _signal$ } from "essor";
+let $key = _signal$(1);
+const obj = {
+  $key: 5
+};
+console.log(obj.$key);"
+`;
+
+exports[`transform symbol — member access > rewrites a signal used as a computed member key 1`] = `
+"import { signal as _signal$ } from "essor";
+let $key = _signal$('a');
+const obj = {
+  a: 1
+};
+console.log(obj[$key.value]);"
+`;
+
+exports[`transform symbol — member access > rewrites a signal used as a computed object-literal key 1`] = `
+"import { signal as _signal$ } from "essor";
+let $k = _signal$('x');
+const o = {
+  [$k.value]: 1
+};"
+`;
+
+exports[`transform symbol — member access > rewrites both object and computed-key positions when nested 1`] = `
+"import { signal as _signal$ } from "essor";
+let $arr = _signal$([10, 20]);
+let $i = _signal$(0);
+console.log($arr.value[$i.value]);"
+`;
+
+exports[`transform symbol — member access > rewrites the object of a member assignment, not the assignment itself 1`] = `
+"import { signal as _signal$ } from "essor";
+let $obj = _signal$({
+  a: 1
+});
+$obj.value.a = 2;"
+`;

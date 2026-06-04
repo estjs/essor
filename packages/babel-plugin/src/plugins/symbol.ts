@@ -6,27 +6,33 @@
  *   - wraps initializers in `signal()` / `computed()`
  *   - rewrites reads as `.value`
  *   - rewrites assignments / update expressions to target `.value`
+ *   - expands signal destructuring so reactivity is preserved
  */
 
 import { types as t } from '@babel/core';
 import { startsWith } from '@estjs/shared';
-import { genUid, getCompileContext, useImport } from '../context';
+import { type CompileContext, genUid, getCompileContext, useImport } from '../context';
 import { isFunctionLikeExpression } from '../ast-utils';
 import type { VariableDeclarator } from '@babel/types';
 import type { NodePath } from '@babel/core';
 
-/**
- * Returns true when a member expression accesses a named property,
- * covering both `.prop` and `['prop']` forms.
- */
-export function isMemberAccessingProperty(node: t.MemberExpression, propertyName: string): boolean {
-  if (!node.computed && t.isIdentifier(node.property) && node.property.name === propertyName) {
-    return true;
+// ── Prefix resolution ───────────────────────────────────────────────────────
+
+const DEFAULT_PREFIX = '$';
+
+// The prefix never changes within a single compile pass, so resolve it once per
+// context instead of re-reading options on every identifier visit (this runs
+// for every identifier in the program).
+let cachedContext: CompileContext | null = null;
+let cachedPrefix: string = DEFAULT_PREFIX;
+
+function getSignalPrefix(): string {
+  const ctx = getCompileContext();
+  if (ctx !== cachedContext) {
+    cachedContext = ctx;
+    cachedPrefix = ctx.options.signalPrefix ?? DEFAULT_PREFIX;
   }
-  if (node.computed && t.isStringLiteral(node.property) && node.property.value === propertyName) {
-    return true;
-  }
-  return false;
+  return cachedPrefix;
 }
 
 /**
@@ -34,8 +40,7 @@ export function isMemberAccessingProperty(node: t.MemberExpression, propertyName
  * configured prefix (default `$`).
  */
 export function isSignal(name: string): boolean {
-  const prefix = getCompileContext().options.signalPrefix ?? '$';
-  return !!name && startsWith(name, prefix);
+  return !!name && startsWith(name, getSignalPrefix());
 }
 
 /**
@@ -44,17 +49,55 @@ export function isSignal(name: string): boolean {
  * `const { $a } = $obj` reads `$obj.value.a` and binds `$a`.
  */
 function stripSignalPrefix(name: string): string {
-  const prefix = getCompileContext().options.signalPrefix ?? '$';
+  const prefix = getSignalPrefix();
   return startsWith(name, prefix) ? name.slice(prefix.length) : name;
 }
+
+// ── Shared predicates ───────────────────────────────────────────────────────
+
+type MemberLike = t.MemberExpression | t.OptionalMemberExpression;
+
+/** True for both `a.b` and `a?.b` member forms. */
+function isMemberLike(node: t.Node | null | undefined): node is MemberLike {
+  return t.isMemberExpression(node) || t.isOptionalMemberExpression(node);
+}
+
+/**
+ * Returns true when a member expression accesses a named property,
+ * covering both `.prop` and `['prop']` forms (and their optional variants).
+ */
+export function isMemberAccessingProperty(node: MemberLike, propertyName: string): boolean {
+  if (node.computed) {
+    return t.isStringLiteral(node.property) && node.property.value === propertyName;
+  }
+  return t.isIdentifier(node.property) && node.property.name === propertyName;
+}
+
+/** Deep-clones a node so generated AST never shares references. */
+function clone<N extends t.Node>(node: N): N {
+  return t.cloneNode(node, true);
+}
+
+/** Builds a `<object>.value` member expression. */
+function valueAccess(object: t.Expression): t.MemberExpression {
+  return t.memberExpression(object, t.identifier('value'));
+}
+
+/** Wraps an accessor (or getter body) in `computed(() => <access>)`. */
+function makeComputed(access: t.Expression | t.BlockStatement): t.CallExpression {
+  return t.callExpression(useImport('computed'), [t.arrowFunctionExpression([], access)]);
+}
+
+// ── VariableDeclarator: signal() / computed() wrapping ──────────────────────
 
 /**
  * Rewrites signal variable declarations to `signal()` or `computed()` calls.
  *
  * - plain value           → `signal(value)`
- * - const function init   → `computed(fn)`
- * - already wrapped       → unchanged
- * - uninitialized         → `signal()`
+ * - const function init    → `computed(fn)`
+ * - already wrapped        → unchanged
+ * - uninitialized          → `signal()`
+ * - destructuring source   → reactivity-preserving bindings (see below)
  */
 export function replaceSymbol(path: NodePath<VariableDeclarator>): void {
   const { init, id } = path.node;
@@ -66,16 +109,15 @@ export function replaceSymbol(path: NodePath<VariableDeclarator>): void {
     return;
   }
 
-  if (!t.isIdentifier(id)) return;
-  if (!isSignal(id.name)) return;
-  if (isAlreadySignalCall(init)) return;
+  if (!t.isIdentifier(id) || !isSignal(id.name) || isAlreadySignalCall(init)) return;
 
   const isComputed =
     isFunctionLikeExpression(init) && (path.parent as t.VariableDeclaration).kind === 'const';
 
-  const importName = isComputed ? 'computed' : 'signal';
-  const args = init ? [init] : [];
-  path.node.init = t.callExpression(useImport(importName), args);
+  path.node.init = t.callExpression(
+    useImport(isComputed ? 'computed' : 'signal'),
+    init ? [init] : [],
+  );
 }
 
 /**
@@ -99,10 +141,11 @@ function isAlreadySignalCall(init: t.Expression | null | undefined): boolean {
   );
 }
 
+// ── Destructuring ───────────────────────────────────────────────────────────
+
 /**
  * Rewrites a destructuring declaration whose source is a signal so reactivity
- * is preserved according to the `$` convention (mirrors the manual workaround
- * documented in `docs/zh/api/reactive.md`):
+ * is preserved according to the `$` convention:
  *
  *   const { $a, b } = $obj   →   const $a = computed(() => $obj.value.a);
  *                                const b  = $obj.value.b;
@@ -111,8 +154,7 @@ function isAlreadySignalCall(init: t.Expression | null | undefined): boolean {
  *
  * - `$`-prefixed targets become `computed` getters and stay reactive.
  * - plain targets read once from `.value` (a snapshot — matching ordinary
- *   destructuring semantics, and fixing the previous bug where the signal
- *   wrapper itself was destructured).
+ *   destructuring semantics).
  */
 function transformDestructuring(path: NodePath<VariableDeclarator>): void {
   const { init, id } = path.node;
@@ -132,8 +174,7 @@ function transformDestructuring(path: NodePath<VariableDeclarator>): void {
   if (!isSignalSource(init) && !patternHasSignalBinding(pattern)) return;
 
   // A C-style for-loop head (`for (let {$a} = src; …)`) cannot expand to
-  // multiple declarators; skip to keep the output valid. (for-in/for-of heads
-  // have no initializer and were already handled above.)
+  // multiple declarators; skip to keep the output valid.
   const declPath = path.parentPath;
   if (!declPath || !declPath.isVariableDeclaration()) return;
   if (declPath.parentPath?.isForStatement()) {
@@ -141,8 +182,7 @@ function transformDestructuring(path: NodePath<VariableDeclarator>): void {
     return;
   }
 
-  const base = signalSourceBase(init);
-  const declarators = bindPattern(pattern, base);
+  const declarators = bindPattern(pattern, signalSourceBase(init));
 
   const declaration = declPath.node;
   const index = declaration.declarations.indexOf(path.node);
@@ -152,15 +192,10 @@ function transformDestructuring(path: NodePath<VariableDeclarator>): void {
   path.skip();
 }
 
-/** Deep-clones a node so generated AST never shares references. */
-function clone<N extends t.Node>(node: N): N {
-  return t.cloneNode(node, true);
-}
-
 /** True when the initializer is a signal identifier or a `$obj.value` read. */
 function isSignalSource(init: t.Expression): boolean {
   if (t.isIdentifier(init)) return isSignal(init.name);
-  if (t.isMemberExpression(init) && t.isIdentifier(init.object) && isSignal(init.object.name)) {
+  if (isMemberLike(init) && t.isIdentifier(init.object) && isSignal(init.object.name)) {
     return isMemberAccessingProperty(init, 'value');
   }
   return false;
@@ -169,7 +204,7 @@ function isSignalSource(init: t.Expression): boolean {
 /** Builds the base accessor to read destructured properties from. */
 function signalSourceBase(init: t.Expression): t.Expression {
   if (t.isIdentifier(init) && isSignal(init.name)) {
-    return t.memberExpression(t.identifier(init.name), t.identifier('value'));
+    return valueAccess(t.identifier(init.name));
   }
   return clone(init);
 }
@@ -212,8 +247,7 @@ function bindObjectPattern(pattern: t.ObjectPattern, base: t.Expression): t.Vari
     const { keyExpr, computed, target } = resolveObjectProp(prop);
     // Stash a clone for a possible rest residual; the original feeds `access`.
     handledKeys.push({ key: clone(keyExpr), computed });
-    const access = t.memberExpression(clone(base), keyExpr, computed);
-    out.push(...bindTarget(target, access));
+    out.push(...bindTarget(target, t.memberExpression(clone(base), keyExpr, computed)));
   }
   return out;
 }
@@ -253,8 +287,7 @@ function bindArrayPattern(pattern: t.ArrayPattern, base: t.Expression): t.Variab
       out.push(...bindTarget(el.argument, slice));
       return;
     }
-    const access = t.memberExpression(clone(base), t.numericLiteral(i), true);
-    out.push(...bindTarget(el as t.LVal, access));
+    out.push(...bindTarget(el as t.LVal, t.memberExpression(clone(base), t.numericLiteral(i), true)));
   });
   return out;
 }
@@ -274,11 +307,6 @@ function bindTarget(target: t.LVal, access: t.Expression): t.VariableDeclarator[
   return [t.variableDeclarator(target, access)];
 }
 
-/** Wraps an accessor (or getter body) in `computed(() => <access>)`. */
-function makeComputed(access: t.Expression | t.BlockStatement): t.CallExpression {
-  return t.callExpression(useImport('computed'), [t.arrowFunctionExpression([], access)]);
-}
-
 /** Builds `<access> === undefined ? <def> : <access>` for default values. */
 function applyDefault(access: t.Expression, def: t.Expression): t.Expression {
   return t.conditionalExpression(
@@ -294,15 +322,14 @@ function applyDefault(access: t.Expression, def: t.Expression): t.Expression {
  *
  * - plain target: `const { a: _omit$, ...rest } = base` (snapshot).
  * - `$`-prefixed target: a `computed` that re-derives the rest object on each
- *   read, so `$rest.value` resolves and stays reactive:
- *   `const $rest = computed(() => { const { a: _omit$, ..._rest$ } = base; return _rest$; })`.
+ *   read, so `$rest.value` resolves and stays reactive.
  */
 function buildObjectRest(
   rest: t.RestElement,
   base: t.Expression,
   handledKeys: Array<{ key: t.Expression; computed: boolean }>,
 ): t.VariableDeclarator {
-  const omits = (target: t.RestElement['argument']) =>
+  const omits = (target: t.RestElement['argument']): t.ObjectPattern =>
     t.objectPattern([
       ...handledKeys.map(({ key, computed }) => t.objectProperty(key, genUid('_omit$'), computed)),
       t.restElement(target),
@@ -320,23 +347,26 @@ function buildObjectRest(
   return t.variableDeclarator(omits(arg), clone(base));
 }
 
+// ── Identifier reads → .value ───────────────────────────────────────────────
+
 /**
  * Rewrites signal identifier reads to `.value` access.
  *
  * Declaration, import, member-key, and labeled-statement contexts are skipped.
  */
 export function symbolIdentifier(path: NodePath<t.Identifier>): void {
-  const name = path.node.name;
+  const { name } = path.node;
   if (!isSignal(name)) return;
-  if (!shouldProcessIdentifier(path, path.parentPath)) return;
+  if (!shouldProcessIdentifier(path)) return;
   if (isAlreadyValueAccess(path)) return;
 
-  // Skip when this identifier is a property key of a member expression
-  // (e.g. `obj.$foo`) — only the object position should be rewritten.
+  // Skip when this identifier is a *static* property key (`obj.$foo`) — only the
+  // object position is a read. A computed key (`obj[$foo]`) IS a read and must
+  // be rewritten to `obj[$foo.value]`.
   const parent = path.parent;
-  if (t.isMemberExpression(parent) && parent.property === path.node) return;
+  if (isMemberLike(parent) && parent.property === path.node && !parent.computed) return;
 
-  path.replaceWith(t.memberExpression(t.identifier(name), t.identifier('value')));
+  path.replaceWith(valueAccess(t.identifier(name)));
   // The replacement contains a fresh `$name` identifier; skip it to avoid
   // re-entering and to cut visitor cost on large files.
   path.skip();
@@ -348,25 +378,29 @@ export function symbolIdentifier(path: NodePath<t.Identifier>): void {
  * Declarations, import specifiers, function parameter/id slots, class id,
  * object property keys, and label contexts are all skipped.
  */
-function shouldProcessIdentifier(
-  path: NodePath<t.Identifier>,
-  parentPath: NodePath<t.Node> | null,
-): boolean {
+function shouldProcessIdentifier(path: NodePath<t.Identifier>): boolean {
+  const parentPath = path.parentPath;
   if (!parentPath) return false;
 
   const parent = parentPath.node;
   const node = path.node;
 
-  // Declaration contexts
-  if (t.isVariableDeclarator(parent) || t.isArrayPattern(parent) || t.isObjectPattern(parent)) {
+  // Declaration / binding-pattern contexts
+  if (
+    t.isVariableDeclarator(parent) ||
+    t.isArrayPattern(parent) ||
+    t.isObjectPattern(parent) ||
+    t.isRestElement(parent)
+  ) {
     return false;
   }
 
-  // Import / export contexts
+  // Import / export specifier contexts
   if (
     t.isImportSpecifier(parent) ||
     t.isImportDefaultSpecifier(parent) ||
-    t.isImportNamespaceSpecifier(parent)
+    t.isImportNamespaceSpecifier(parent) ||
+    t.isExportSpecifier(parent)
   ) {
     return false;
   }
@@ -384,7 +418,7 @@ function shouldProcessIdentifier(
   if (t.isObjectMethod(parent) || t.isClassMethod(parent)) return false;
 
   // Object property keys
-  if (t.isObjectProperty(parent) && parent.key === node) return false;
+  if (t.isObjectProperty(parent) && parent.key === node && !parent.computed) return false;
 
   // Label contexts
   if (t.isLabeledStatement(parent) && parent.label === node) return false;
@@ -397,12 +431,13 @@ function shouldProcessIdentifier(
 
 /**
  * Returns true when the identifier is already accessing `.value`.
- * Handles `.value`, `['value']`, and parenthesized / typed wrappers.
+ * Handles `.value`, `['value']`, optional chaining, and parenthesized /
+ * typed wrappers.
  */
 function isAlreadyValueAccess(path: NodePath<t.Identifier>): boolean {
   const parent = path.parent;
 
-  if (t.isMemberExpression(parent) && parent.object === path.node) {
+  if (isMemberLike(parent) && parent.object === path.node) {
     return isMemberAccessingProperty(parent, 'value');
   }
 
@@ -414,27 +449,23 @@ function isAlreadyValueAccess(path: NodePath<t.Identifier>): boolean {
     return false;
   }
 
+  // `($x as T).value` / `($x!).value` — walk up through the wrapper(s).
   const ancestor = path.findParent((p) => {
-    if (!p.isMemberExpression()) return false;
-    const m = p.node as t.MemberExpression;
-    return m.object === path.node && isMemberAccessingProperty(m, 'value');
+    if (!isMemberLike(p.node)) return false;
+    return isMemberAccessingProperty(p.node as MemberLike, 'value');
   });
   return !!ancestor;
 }
 
+// ── Assignment / Update → .value ────────────────────────────────────────────
+
 /**
- * Rewrites signal assignments so they target `.value`.
+ * Rewrites signal assignments so they target `.value` (`$x = 1` → `$x.value = 1`).
  */
 export function symbolAssignment(path: NodePath<t.AssignmentExpression>): void {
   const { left } = path.node;
-  if (!t.isIdentifier(left)) return;
-  if (!isSignal(left.name)) return;
-  if (isAlreadyValueAssignment(left)) return;
-  path.node.left = t.memberExpression(t.identifier(left.name), t.identifier('value'));
-}
-
-function isAlreadyValueAssignment(left: t.LVal): boolean {
-  return t.isMemberExpression(left) && isMemberAccessingProperty(left, 'value');
+  if (!t.isIdentifier(left) || !isSignal(left.name)) return;
+  path.node.left = valueAccess(t.identifier(left.name));
 }
 
 /**
@@ -442,19 +473,14 @@ function isAlreadyValueAssignment(left: t.LVal): boolean {
  */
 export function symbolUpdate(path: NodePath<t.UpdateExpression>): void {
   const { argument } = path.node;
-  if (!t.isIdentifier(argument)) return;
-  if (!isSignal(argument.name)) return;
-  if (isAlreadyValueUpdate(argument)) return;
-  path.node.argument = t.memberExpression(t.identifier(argument.name), t.identifier('value'));
+  if (!t.isIdentifier(argument) || !isSignal(argument.name)) return;
+  path.node.argument = valueAccess(t.identifier(argument.name));
 }
 
-function isAlreadyValueUpdate(argument: t.Expression): boolean {
-  return t.isMemberExpression(argument) && isMemberAccessingProperty(argument, 'value');
-}
+// ── Visitor map ─────────────────────────────────────────────────────────────
 
 /**
- * The visitor map for signal transforms. Use inside `withSignalPrefix` to
- * ensure the prefix cache is active for the duration of the traversal.
+ * The visitor map for signal transforms.
  */
 export const symbolVisitors = {
   VariableDeclarator: replaceSymbol,

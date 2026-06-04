@@ -209,6 +209,70 @@ describe('babel plugin direct helpers', () => {
       expect(isSignal('$count')).toBe(false);
     });
 
+    it('detects .value across optional member expressions and rejects non-value keys', () => {
+      const optionalDot = t.optionalMemberExpression(
+        t.identifier('count'),
+        t.identifier('value'),
+        false,
+        true,
+      );
+      const optionalComputed = t.optionalMemberExpression(
+        t.identifier('count'),
+        t.stringLiteral('value'),
+        true,
+        true,
+      );
+      const otherKey = t.memberExpression(t.identifier('count'), t.identifier('peek'));
+      const numericKey = t.memberExpression(t.identifier('count'), t.numericLiteral(0), true);
+
+      const path = getProgramPath('const value = 1;');
+      createCompileContext(resolveOptions({ mode: 'client' }, 'symbol-opt.tsx'), path);
+
+      expect(isMemberAccessingProperty(optionalDot, 'value')).toBe(true);
+      expect(isMemberAccessingProperty(optionalComputed, 'value')).toBe(true);
+      expect(isMemberAccessingProperty(otherKey, 'value')).toBe(false);
+      expect(isMemberAccessingProperty(numericKey, 'value')).toBe(false);
+    });
+
+    it('rewrites a signal used in a computed member key but leaves static keys alone', () => {
+      const path = getProgramPath(`
+        const sigKey = 'a';
+        const obj = { sigKey: 1 };
+        obj[sigKey];
+        obj.sigKey;
+      `);
+
+      createCompileContext(
+        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-key.tsx'),
+        path,
+      );
+      transformSymbol(path);
+
+      const code = generate(path.node).code;
+      // Computed key is a read → `.value`; static key is a name → untouched.
+      expect(code).toContain('obj[sigKey.value]');
+      expect(code).toContain('obj.sigKey;');
+      expect(code).toContain('sigKey: 1');
+    });
+
+    it('does not double-wrap an explicit optional .value read', () => {
+      const path = getProgramPath(`
+        const sigMaybe = null;
+        sigMaybe?.value;
+      `);
+
+      createCompileContext(
+        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-opt-read.tsx'),
+        path,
+      );
+      transformSymbol(path);
+
+      const code = generate(path.node).code;
+      expect(code).toContain('sigMaybe?.value;');
+      expect(code).not.toContain('value?.value');
+      expect(code).not.toContain('value.value');
+    });
+
     it('rewrites signal reads and declarations without touching object keys or existing .value access', () => {
       const path = getProgramPath(`
         const sigCount = 1;
