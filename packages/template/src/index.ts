@@ -6,7 +6,7 @@ export { onMount, onDestroy, onUpdate } from './lifecycle';
 
 export { provide, inject, type InjectionKey } from './provide';
 
-export { bindElement } from './binding';
+export { bindElement, type BindModifiers } from './binding';
 
 export { delegateEvents, clearDelegatedEvents, addEventListener } from './events';
 
