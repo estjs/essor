@@ -233,13 +233,15 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('toRawHtmlString as _toRawHtmlString$');
-    expect(output).toContain('_toRawHtmlString$(ctx.children)');
-    expect(output).toContain('_toRawHtmlString$(ctx["children"])');
-    expect(output).toContain('_toRawHtmlString$(__props.children)');
-    expect(output).not.toContain('_toEscapedHtmlString$(ctx.children)');
-    expect(output).not.toContain('_toEscapedHtmlString$(ctx["children"])');
-    expect(output).not.toContain('_toEscapedHtmlString$(__props.children)');
+    // `props.children` is the component-passthrough channel: the value is
+    // already-safe HTML from a child render(), so it flows in verbatim (no
+    // escape() wrapper).
+    expect(output).toContain('ctx.children');
+    expect(output).toContain('ctx["children"]');
+    expect(output).toContain('__props.children');
+    expect(output).not.toContain('_escape$(ctx.children)');
+    expect(output).not.toContain('_escape$(ctx["children"])');
+    expect(output).not.toContain('_escape$(__props.children)');
   });
 
   it('keeps local children variables escaped in SSR text nodes', () => {
@@ -249,8 +251,8 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_toEscapedHtmlString$(children)');
-    expect(output).not.toContain('_toRawHtmlString$(children)');
+    // A plain `{expr}` child is the untrusted-text channel → wrapped in escape().
+    expect(output).toContain('_escape$(children)');
   });
 
   it('keeps arbitrary children properties escaped in SSR text nodes', () => {
@@ -259,8 +261,9 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_toEscapedHtmlString$(state.children)');
-    expect(output).not.toContain('_toRawHtmlString$(state.children)');
+    // `state.children` is NOT the component children passthrough — it's an
+    // ordinary member expression → escaped as untrusted child text.
+    expect(output).toContain('_escape$(state.children)');
   });
 
   it('does not trust user calls named like generated SSR helpers', () => {
@@ -270,8 +273,8 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('_toEscapedHtmlString$(_render$2(userText))');
-    expect(output).not.toContain('_markAsRawHtml$(_render$2(userText))');
+    // A user call shaped like a generated helper is still untrusted text.
+    expect(output).toContain('_escape$(_render$2(userText))');
   });
 
   it('omits dynamic comment markers when a stable static sibling can anchor hydration', () => {
@@ -287,7 +290,9 @@ describe('jsx server transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('"<div>", "<form data-hk-idx=\\"0\\"><button>Save</button></form></div>"');
+    expect(output).toContain(
+      '"<div>", "<form data-hk-idx=\\"0\\"><button>Save</button></form></div>"',
+    );
     expect(output).not.toContain('<!--0--><form>');
   });
 
@@ -509,10 +514,14 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('markAsRawHtml as _markAsRawHtml$');
-    expect(output).toContain('_toEscapedHtmlString$(isVisible && _markAsRawHtml$(_render$');
-    expect(output).toContain('isVisible ? _markAsRawHtml$(_render$');
-    expect(output).toContain(': \'<unsafe>\'');
+    // JSX branches compile to ssrRender() (safe HTML) and must NOT be escaped;
+    // escape() is distributed into the leaves, so the JSX ssrRender() calls stay
+    // raw while the bare `'<unsafe>'` string literal branch is escaped.
+    expect(output).toContain('escape as _escape$');
+    expect(output).toContain('isVisible && _ssrRender$(');
+    expect(output).not.toContain('_escape$(isVisible && _ssrRender$');
+    expect(output).toContain('isVisible ? _ssrRender$(');
+    expect(output).toContain("_escape$('<unsafe>')");
   });
 
   it('should work with list rendering in server', () => {
@@ -948,7 +957,7 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('Transition: SSR output contains the child markup with no animation classes', () => {
+  it('transition: SSR output contains the child markup with no animation classes', () => {
     const inputCode = `
     const r = <Transition name="fade"><div class="box">hi</div></Transition>
     `;

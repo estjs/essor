@@ -4,10 +4,10 @@ import { TRANSFORM_PROPERTY_NAME } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
 import {
   type DynamicAttr,
-  isAnyFunctionPath,
-  isFunctionLikeExpressionPath,
   getTagName,
+  isAnyFunctionPath,
   isComponentTag,
+  isFunctionLikeExpressionPath,
   normalizeEventName,
   parseAttributes,
   textTrim,

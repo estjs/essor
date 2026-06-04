@@ -1,75 +1,78 @@
-import {
-  HYDRATION_ANCHOR_ATTR,
-  escapeHTML,
-  isArray,
-  isFunction,
-  isNil,
-  isObject,
-  isString,
-} from '@estjs/shared';
+import { HYDRATION_ANCHOR_ATTR, escapeHTML, isArray, isFunction, isNil } from '@estjs/shared';
 
-const safeHtmlMarker = Symbol('safeHtml');
-interface SafeHtml {
-  readonly html: string;
-}
+// ---------------------------------------------------------------------------
+// SSR serialization
+//
+// There is no `{ t }` trusted-node wrapper. The whole SSR pipeline works on
+// plain strings, and the Babel compiler decides escape-vs-raw at compile time
+// by choosing a different helper per slot position :
+//
+//   - dynamic attribute slot  → ssrAttr / ssrClass / ssrStyle / ...   (returns
+//                               an already-escaped attribute string)
+//   - child-text slot `{expr}` → escape(expr)                          (escapes)
+//   - nested element/component → render(...) / createSSRComponent(...) (already
+//                               a final HTML string)
+//
+// `render()` then just concatenates the template fragments with the slot
+// strings — it never inspects a value's type to decide trust.
+//
+// Two serializers, distinguished by *channel* (provenance), not by a runtime
+// marker on the value:
+//   - escape()  — child-text channel: strings are UNTRUSTED → HTML-escaped.
+//   - resolve() — component-boundary channel (component return values): strings
+//                 are TRUSTED raw HTML → emitted verbatim. A hand-written
+//                 component returning `'<div>…</div>'` therefore "just works".
+//
+// Both share one recursive walker; they differ only in how a leaf string is
+// finalized (escaped vs verbatim).
+// ---------------------------------------------------------------------------
 
-function isSafeHtml(content: unknown): content is SafeHtml {
-  return isObject(content) && (content as Record<PropertyKey, unknown>)[safeHtmlMarker] === true;
-}
-
-function stringify(content: unknown, escape: boolean, omitFalse: boolean): string {
-  if (isSafeHtml(content)) {
-    return content.html;
-  }
-  if (isNil(content) || (omitFalse && content === false)) {
+/**
+ * Recursive SSR walker shared by {@link escape} and {@link resolve}. Recurses
+ * arrays and thunks, drops `null` / `undefined` / `false`, and runs every leaf
+ * string through `leaf`.
+ */
+function serialize(value: unknown, leaf: (s: string) => string): string {
+  if (isNil(value) || value === false) {
     return '';
   }
-  if (isArray(content)) {
-    return (content as unknown[]).map((item) => stringify(item, escape, omitFalse)).join('');
+  if (isArray(value)) {
+    let out = '';
+    for (const item of value as unknown[]) out += serialize(item, leaf);
+    return out;
   }
-  if (isFunction(content)) {
-    return stringify((content as () => unknown)(), escape, omitFalse);
+  if (isFunction(value)) {
+    return serialize((value as () => unknown)(), leaf);
   }
-
-  if (isString(content)) {
-    return escape ? escapeHTML(content) : content;
-  }
-
-  const text = String(content);
-  return escape ? escapeHTML(text) : text;
-}
-
-export function markAsRawHtml(content: unknown): SafeHtml {
-  if (isSafeHtml(content)) {
-    return content;
-  }
-
-  return {
-    [safeHtmlMarker]: true,
-    html: stringify(content, false, true),
-  } as SafeHtml;
+  return leaf(typeof value === 'string' ? value : String(value));
 }
 
 /**
- * Convert content to string for SSR output.
+ * Serialize a child-text value to an HTML string, HTML-escaping bare strings.
  *
- * @param content - The content to convert.
- * @returns {string} The content as a string.
+ * This is the `{expr}` child-slot serializer
  */
-export function toRawHtmlString(content: unknown): string {
-  return stringify(content, false, false);
+export function escape(value: unknown): string {
+  return serialize(value, escapeHTML);
 }
 
 /**
- * Convert child-expression content to escaped text for SSR output.
+ * Serialize a *component-boundary* value to an HTML string, treating bare
+ * strings as already-trusted raw HTML (NOT escaped).
  *
- * JSX expression children have text semantics, so primitives must be escaped
- * before interpolation into the surrounding HTML template.
+ * Used for values returned by component functions (`renderToString` /
+ * `createSSRComponent` / Fragment / Suspense / For / Portal children): a
+ * hand-written component that returns `'<div>…</div>'` means that markup
+ * literally. Compiled JSX components return a final HTML string from
+ * `render()`, which also passes through verbatim.
  */
-export function toEscapedHtmlString(content: unknown): string {
-  return stringify(content, true, true);
+export function resolve(value: unknown): string {
+  return serialize(value, identity);
 }
 
+function identity(s: string): string {
+  return s;
+}
 /**
  * Combined regex that matches either an internal hydration anchor attribute or
  * a hydration comment marker (numeric body only) in a single scan. Capture groups:

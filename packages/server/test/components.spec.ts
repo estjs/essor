@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Fragment, Portal, Suspense } from '../src/components';
 
+// Built-in SSR components return a plain HTML string
 describe('server/components', () => {
   it('fragment renders children as a string', () => {
     expect(Fragment({ children: ['a', () => 'b', 1] })).toBe('ab1');

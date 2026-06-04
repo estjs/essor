@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { signal } from '@estjs/signals';
 import { For } from '../src/components';
 
+// For() returns a plain HTML string
 describe('server/components/For', () => {
   it('renders an array of items', () => {
     expect(

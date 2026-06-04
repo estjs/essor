@@ -33,54 +33,6 @@ interface ServerElementOptions {
   prependAttrExprs?: t.Expression[];
 }
 
-function markSafeHtmlCall(expression: t.Expression): t.Expression {
-  return t.callExpression(useImport('markAsRawHtml'), [expression]);
-}
-
-function isGeneratedServerHtmlCall(expression: t.CallExpression): boolean {
-  const { importIdentifiers } = getCompileContext();
-  const renderId = importIdentifiers.render;
-  const componentId = importIdentifiers.createComponent;
-  return (
-    t.isIdentifier(expression.callee) &&
-    (expression.callee.name === renderId.name || expression.callee.name === componentId.name)
-  );
-}
-
-function visitServerHtmlSubexpressions<T extends t.Node | null | undefined>(node: T): T {
-  if (!node) return node;
-
-  if (t.isJSXElement(node) || t.isJSXFragment(node)) {
-    return markSafeHtmlCall(node as unknown as t.Expression) as T;
-  }
-
-  if (t.isCallExpression(node) && isGeneratedServerHtmlCall(node)) {
-    return markSafeHtmlCall(node) as T;
-  }
-
-  const keys = t.VISITOR_KEYS[node.type] ?? [];
-  for (const key of keys) {
-    const record = node as unknown as Record<string, unknown>;
-    const value = record[key];
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        const child = value[i];
-        if (child && typeof child === 'object' && 'type' in child) {
-          value[i] = visitServerHtmlSubexpressions(child as t.Node) as never;
-        }
-      }
-    } else if (value && typeof value === 'object' && 'type' in value) {
-      record[key] = visitServerHtmlSubexpressions(value as t.Node);
-    }
-  }
-
-  return node;
-}
-
-function markServerHtmlSubexpressions(expression: t.Expression): t.Expression {
-  return visitServerHtmlSubexpressions(expression);
-}
-
 /**
  * Escapes server template text.
  */
@@ -195,6 +147,86 @@ function createSSRSelectedExpression(
   ]);
 }
 
+// ─── Child-expression escaping ─────────────
+
+/**
+ * True when `expr` evaluates to trusted, already-serialized HTML and must NOT
+ * be escaped again. That is either:
+ *  - a raw JSX element/fragment that the program traversal will subsequently
+ *    compile into a render()/component call, or
+ *  - an already-compiled render() / createSSRComponent() call.
+ *
+ * Both forms yield a final HTML string at runtime.
+ */
+function isSafeServerHtml(expr: t.Expression): boolean {
+  if (t.isJSXElement(expr) || t.isJSXFragment(expr)) return true;
+  if (!t.isCallExpression(expr) || !t.isIdentifier(expr.callee)) return false;
+  const { importIdentifiers } = getCompileContext();
+  return (
+    expr.callee.name === importIdentifiers.render.name ||
+    expr.callee.name === importIdentifiers.createComponent.name
+  );
+}
+
+/**
+ * Wrap an untrusted child expression so its dynamic text is HTML-escaped,
+ * while leaving embedded JSX output (already compiled to render()/component
+ * calls) un-escaped.
+ *
+ * escape() is distributed into the leaves of `&&` / `||` / `??` / `?:` /
+ * sequence / parenthesized expressions so that, e.g.:
+ *   `cond && <p/>`        → `cond && render(...)`            (safe, not escaped)
+ *   `cond ? <a/> : 'x'`   → `cond ? render(...) : escape('x')`
+ *   `someText`            → `escape(someText)`
+ * A subexpression that is already a render()/component call is returned as-is;
+ * everything else (including plain values) is wrapped in escape().
+ */
+function escapeChildExpression(expr: t.Expression): t.Expression {
+  // Already-safe HTML (raw JSX or compiled render call) — leave untouched.
+  if (isSafeServerHtml(expr)) {
+    return expr;
+  }
+
+  if (t.isParenthesizedExpression(expr)) {
+    expr.expression = escapeChildExpression(expr.expression);
+    return expr;
+  }
+
+  // Logical operators:
+  //  - `a && b`: when `a` is falsy the result is `a` (a falsy value → escape's
+  //    nil/false handling renders it harmlessly), so the left is effectively a
+  //    condition and is NOT escaped; only the right is a rendered branch.
+  //  - `a || b` / `a ?? b`: either side can be the surviving output, so escape
+  //    both. JSX on either side stays raw via the isSafeServerHtml short-circuit.
+  if (t.isLogicalExpression(expr)) {
+    if (expr.operator === '&&') {
+      expr.right = escapeChildExpression(expr.right);
+    } else {
+      expr.left = escapeChildExpression(expr.left);
+      expr.right = escapeChildExpression(expr.right);
+    }
+    return expr;
+  }
+
+  // Conditional: the TEST is a boolean (never rendered) — leave it alone.
+  // Only the two branches are output; escape() each independently.
+  if (t.isConditionalExpression(expr)) {
+    expr.consequent = escapeChildExpression(expr.consequent);
+    expr.alternate = escapeChildExpression(expr.alternate);
+    return expr;
+  }
+
+  // Sequence: only the final value is rendered; escape that one.
+  if (t.isSequenceExpression(expr) && expr.expressions.length > 0) {
+    const last = expr.expressions.length - 1;
+    expr.expressions[last] = escapeChildExpression(expr.expressions[last]);
+    return expr;
+  }
+
+  // Leaf (identifier, member, call, literal, …) → untrusted text, escape it.
+  return t.callExpression(useImport('escape'), [expr]);
+}
+
 // ─── Server Node Generation ────────────────
 
 /**
@@ -209,11 +241,19 @@ function generateServerNode(
     case IRType.TEXT:
       return t.stringLiteral(node.value);
     case IRType.EXPRESSION: {
-      const expression = node.asRawChildren
-        ? t.cloneNode(node.value, true)
-        : markServerHtmlSubexpressions(t.cloneNode(node.value, true));
-      const converter = node.asRawChildren ? 'toRawHtmlString' : 'toEscapedHtmlString';
-      return t.callExpression(useImport(converter), [expression]);
+      // `props.children` passthrough: already-safe HTML from a child render(),
+      // so it flows in verbatim (no escape).
+      if (node.asRawChildren) {
+        return t.cloneNode(node.value, true);
+      }
+      // Untrusted child text → escape(). But nested JSX inside the expression
+      // has already been compiled to render()/createSSRComponent() calls, which
+      // return already-safe HTML strings; escaping those would double-escape
+      // valid markup. So we push escape() down into the leaves of logical /
+      // conditional / sequence expressions, wrapping only the non-safe operands
+      // Pure expressions with no embedded render() call are
+      // simply wrapped whole.
+      return escapeChildExpression(t.cloneNode(node.value, true));
     }
     case IRType.COMPONENT:
       return generateServerComponent(node, ctx);

@@ -9,7 +9,7 @@ import {
   setActiveScope,
 } from '@estjs/template/internal';
 import { type SSRContext, runWithSSRContext } from './context';
-import { injectHydrationKeys, toRawHtmlString } from './utils';
+import { injectHydrationKeys, resolve } from './utils';
 
 /**
  * Runs `fn` inside a freshly created scope whose parent is the currently
@@ -81,19 +81,31 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
     error('renderToString received a Promise — use renderToStringAsync for async components.');
   }
 
-  // Convert the result to string
-  return toRawHtmlString(result);
+  // Serialize to the final HTML string at the component boundary. `resolve`
+  // emits the already-final HTML string from render()/createSSRComponent()
+  // verbatim and treats a bare string component result as trusted raw HTML.
+  return resolve(result);
 }
 
 /**
  * Render template with components (used by babel plugin in SSG mode).
  *
- * @param templates - The template fragments.
- * @param hydrationKey - The hydration key.
- * @param components - The rendered component strings.
+ * Interleaves the static template fragments with the dynamic slot values.
+ *
+ * Each slot has ALREADY been converted to its final HTML string by the
+ * compile-time-chosen helper:
+ *   - attribute slots → `ssrAttr` / `ssrClass` / ... (escaped attribute string)
+ *   - child-text slots → `escape(expr)` (escaped text)
+ *   - nested element/component → `render(...)` / `createSSRComponent(...)`
+ * so `render()` does NOT escape here — it just concatenates strings. Returns a
+ * plain HTML string, which can be nested directly as another render() slot.
+ *
+ * @param templates - The static template fragments.
+ * @param hydrationKey - The hydration key (empty string to skip injection).
+ * @param slots - The pre-serialized HTML strings interleaved between fragments.
  * @returns {string} The rendered HTML string.
  */
-export function render(templates: string[], hydrationKey: string, ...components: string[]): string {
+export function render(templates: string[], hydrationKey: string, ...slots: unknown[]): string {
   /**
    * JSX source code:
    * <div>
@@ -124,31 +136,31 @@ export function render(templates: string[], hydrationKey: string, ...components:
   // Direct string concatenation — avoids array allocation + join overhead
   // for typical 2-4 template fragments.
   const templateLen = templates.length;
-  const componentLen = components.length;
+  const slotLen = slots.length;
   let content = '';
 
   for (let i = 0; i < templateLen; i++) {
     content += templates[i];
-    if (i < componentLen && components[i]) {
-      content += toRawHtmlString(components[i]);
+    if (i < slotLen) {
+      const slot = slots[i];
+      // Slots are pre-serialized strings from compile-time helpers; coerce
+      // defensively for the rare runtime that passes a non-string (number,
+      // etc.), but do NOT escape — escaping already happened per slot.
+      content += typeof slot === 'string' ? slot : resolve(slot);
     }
   }
 
-  if (!hydrationKey) {
-    return content;
-  }
-
-  // Inject hydration key attribute (data-hk) into the root element
-  return injectHydrationKeys(content, hydrationKey);
+  // Inject the hydration key attribute (data-hk) into the root element.
+  return hydrationKey ? injectHydrationKeys(content, hydrationKey) : content;
 }
 
 /**
  * Async variant of {@link renderToString}. Awaits component results so that
  * `async` components and promise-returning expressions can participate in SSR.
  *
- * The awaited value is passed through the same toRawHtmlString pipeline as the
- * synchronous path, which itself transparently awaits any
- * nested promises (arrays of promises, promise-returning thunks, etc.).
+ * The awaited value is passed through the same resolve() component-boundary
+ * pipeline as the synchronous path, which transparently awaits nested promises
+ * (arrays of promises, promise-returning thunks, etc.).
  */
 export async function renderToStringAsync<P extends ComponentProps = ComponentProps>(
   component: ComponentFn<P>,
@@ -177,25 +189,26 @@ export async function renderToStringAsync<P extends ComponentProps = ComponentPr
     null,
   );
 
-  return toRawHtmlStringAsync(result);
+  return resolveAsync(result);
 }
 
 /**
- * Promise-aware variant of `toRawHtmlString` used by {@link renderToStringAsync}.
- * Recursively unwraps promises and arrays of promises.
+ * Promise-aware variant of {@link resolve} used by {@link renderToStringAsync}.
+ * Recursively unwraps promises and arrays of promises, then defers to the
+ * synchronous `resolve` (component-boundary semantics: bare strings are raw).
  */
-async function toRawHtmlStringAsync(content: unknown): Promise<string> {
+async function resolveAsync(content: unknown): Promise<string> {
   if (isPromise(content)) {
-    return toRawHtmlStringAsync(await content);
+    return resolveAsync(await content);
   }
   if (Array.isArray(content)) {
-    const parts = await Promise.all(content.map((c) => toRawHtmlStringAsync(c)));
+    const parts = await Promise.all(content.map((c) => resolveAsync(c)));
     return parts.join('');
   }
   if (isFunction(content)) {
-    return toRawHtmlStringAsync((content as () => unknown)());
+    return resolveAsync((content as () => unknown)());
   }
-  return toRawHtmlString(content);
+  return resolve(content);
 }
 
 /**
@@ -205,9 +218,12 @@ async function toRawHtmlStringAsync(content: unknown): Promise<string> {
  * active scope, so `inject()` calls can resolve values from ancestor
  * `provide()` calls, and `provide()` inside the component is scoped to it.
  *
+ * Returns a plain HTML string so the component's output is interpolated
+ * verbatim when nested as a slot in a parent render().
+ *
  * @param component - The component to create.
  * @param props - The props to pass to the component.
- * @returns {string} The rendered component as a string.
+ * @returns {string} The rendered component HTML string.
  */
 export function createSSRComponent<P extends ComponentProps = ComponentProps>(
   component: ComponentFn<P>,
@@ -223,5 +239,7 @@ export function createSSRComponent<P extends ComponentProps = ComponentProps>(
   // tree hierarchy.
   const result = runInFreshScope(() => component(props as P));
 
-  return toRawHtmlString(result);
+  // Component boundary: `resolve` treats a bare string return as trusted raw
+  // HTML and coerces other final values to their HTML string.
+  return resolve(result);
 }

@@ -10,7 +10,7 @@ import {
   nthChild,
   resetHydrationKey,
 } from '../../template/src';
-import { toEscapedHtmlString } from '../src/utils';
+import { escape } from '../src/utils';
 import { render } from '../src/render';
 
 describe('server/client hydration contract', () => {
@@ -27,11 +27,7 @@ describe('server/client hydration contract', () => {
 
   it('claims browser-merged SSR text before a hydration marker', () => {
     const root = document.createElement('div');
-    root.innerHTML = render(
-      ['<p>', '<!--0-->!</p>'],
-      '0',
-      toEscapedHtmlString(['Hello, ', 'John']),
-    );
+    root.innerHTML = render(['<p>', '<!--0-->!</p>'], '0', escape(['Hello, ', 'John']));
     document.body.appendChild(root);
 
     beginHydration(root);

@@ -3,14 +3,19 @@ import { escapeHTML, isArray, isNil, isObject, isString, startsWith } from '@est
 // ---------------------------------------------------------------------------
 // SSR attribute helpers
 // Used by babel-plugin server-mode generated code.
+//
+// Each returns a plain, already-escaped attribute fragment string (e.g.
+// ` name="v"`). The Babel compiler places these at attribute slot positions in
+// render(...), which concatenates slot strings verbatim — so the value here is
+// final and must not be escaped again
 // ---------------------------------------------------------------------------
 
 /**
- * Render a single attribute as an HTML attribute string.
+ * Render a single attribute as an escaped attribute fragment (e.g. ` name="v"`).
  *
  * @param name - The name of the attribute.
  * @param value - The value of the attribute.
- * @returns {string} The rendered attribute string (e.g., ` name="value"`).
+ * @returns {string} The rendered attribute fragment.
  */
 export function ssrAttr(name: string, value: unknown): string {
   if (isNil(value) || value === false) return '';
@@ -19,10 +24,10 @@ export function ssrAttr(name: string, value: unknown): string {
 }
 
 /**
- * Render a `class` attribute as an HTML attribute string.
+ * Render a `class` attribute as an escaped attribute fragment.
  *
  * @param value - The class value (string, object, or array).
- * @returns {string} The rendered class attribute string.
+ * @returns {string} The rendered class attribute fragment.
  */
 export function ssrClass(value: unknown): string {
   const normalized = normalizeClassSSR(value);
@@ -31,10 +36,10 @@ export function ssrClass(value: unknown): string {
 }
 
 /**
- * Render a `style` attribute as an HTML attribute string.
+ * Render a `style` attribute as an escaped attribute fragment.
  *
  * @param value - The style value (string or object).
- * @returns {string} The rendered style attribute string.
+ * @returns {string} The rendered style attribute fragment.
  */
 export function ssrStyle(value: unknown): string {
   if (isNil(value)) return '';
@@ -56,11 +61,11 @@ export function ssrStyle(value: unknown): string {
 }
 
 /**
- * Render a spread of props as HTML attribute strings.
+ * Render a spread of props as an escaped attribute fragment.
  * Skips event handlers and special keys.
  *
  * @param props - The props object to spread.
- * @returns {string} The rendered attribute strings.
+ * @returns {string} The rendered attribute fragment.
  */
 export function ssrSpread(props: Record<string, unknown>): string {
   if (!props || !isObject(props)) return '';
@@ -178,7 +183,7 @@ function hasStringMatch(values: unknown[], value: string): boolean {
  *                    against the element's own value.
  * @param element   - Optional element context for controls whose SSR shape
  *                    depends on tag/type.
- * @returns The serialized attribute string, including the leading space.
+ * @returns {string} The serialized attribute fragment, including the leading space.
  */
 export function ssrBind(
   bindName: string,
@@ -222,6 +227,8 @@ export function ssrBind(
 
 /**
  * Render an `<option selected>` attribute for a bound `<select>`.
+ *
+ * @returns {string} The attribute fragment.
  */
 export function ssrSelected(value: unknown, ownValue?: unknown): string {
   if (ownValue == null) return '';
@@ -234,6 +241,11 @@ export function ssrSelected(value: unknown, ownValue?: unknown): string {
 
 /**
  * Render escaped initial text for `<textarea bind:value>`.
+ *
+ * The text is HTML-escaped and returned as a plain string; render() emits it
+ * verbatim (it is already escaped and must not be double-escaped).
+ *
+ * @returns {string} The pre-escaped text fragment.
  */
 export function ssrTextValue(value: unknown, modifiers?: SSRBindModifiers): string {
   const next = modifiers ? applyBindModifiers(value, modifiers) : value;

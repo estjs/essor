@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getHydrationKey } from '@estjs/template';
-import { render, createSSRComponent, renderToString } from '../src/render';
-import { toEscapedHtmlString } from '../src/utils';
+import { createSSRComponent, render, renderToString } from '../src/render';
+import { escape } from '../src/utils';
 
 describe('server/render', () => {
   describe('renderToString', () => {
@@ -76,9 +76,20 @@ describe('server/render', () => {
       expect(result).toBe('<div data-hk="0"></div>');
     });
 
-    it('escapes text child expressions before interpolation', () => {
+    it('concatenates pre-serialized slot strings verbatim (no re-escaping)', () => {
+      // render() does NOT escape — the compiler wraps child-text slots in
+      // escape() and attribute slots in ssrAttr(), so slot strings are already
+      // final. A nested render()/component result is likewise already-safe HTML.
       const templates = ['<div>', '</div>'];
-      const result = render(templates, '0', toEscapedHtmlString('<img src=x onerror=1>'));
+      const result = render(templates, '0', '<span>safe</span>');
+      expect(result).toBe('<div data-hk="0"><span>safe</span></div>');
+    });
+
+    it('escapes untrusted child text via escape() at the slot position', () => {
+      // This mirrors what the babel server codegen emits for `<div>{expr}</div>`:
+      // the slot is `escape(expr)`, not the bare expression.
+      const templates = ['<div>', '</div>'];
+      const result = render(templates, '0', escape('<img src=x onerror=1>'));
       expect(result).toBe('<div data-hk="0">&lt;img src=x onerror=1&gt;</div>');
     });
   });

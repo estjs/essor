@@ -30,9 +30,7 @@ export const IMPORTS_MAPS = [
   'addEventListener',
   // rendering related
   'render',
-  'toRawHtmlString',
-  'toEscapedHtmlString',
-  'markAsRawHtml',
+  'escape',
   'escapeHTML',
   'getHydrationKey',
   'hydrationAnchor',
@@ -58,6 +56,14 @@ export const IMPORTS_MAPS = [
 export const SERVER_IMPORT_REMAPS = {
   createComponent: 'createSSRComponent',
   patchAttr: 'ssrAttrDynamic',
+  // Client and server ship different implementations of these under the same
+  // canonical name. Remap the server ones to unique names so a single `essor`
+  // bundle can export BOTH (client `Fragment` + server `ssrFragment`) without a
+  // collision — which is what lets every helper import from one source `'essor'`.
+  Fragment: 'ssrFragment',
+  Portal: 'ssrPortal',
+  Suspense: 'ssrSuspense',
+  render: 'ssrRender',
 } as const;
 
 /**
@@ -80,9 +86,7 @@ export type IMPORT_MAP_NAMES = (typeof IMPORTS_MAPS)[number];
  */
 const SERVER_ONLY_NAMES: IMPORT_MAP_NAMES[] = [
   'render',
-  'toRawHtmlString',
-  'toEscapedHtmlString',
-  'markAsRawHtml',
+  'escape',
   'escapeHTML',
   'Fragment',
   'Portal',

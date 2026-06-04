@@ -1,70 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  injectHydrationKeys,
-  toEscapedHtmlString,
-  toRawHtmlString,
-  markAsRawHtml,
-} from '../src/utils';
+import { injectHydrationKeys } from '../src/utils';
 
 describe('server/ssr-utils', () => {
-  describe('toRawHtmlString', () => {
-    it('converts string', () => {
-      expect(toRawHtmlString('hello')).toBe('hello');
-    });
-
-    it('converts number', () => {
-      expect(toRawHtmlString(123)).toBe('123');
-    });
-
-    it('converts array', () => {
-      expect(toRawHtmlString(['a', 'b'])).toBe('ab');
-    });
-
-    it('converts nested array', () => {
-      expect(toRawHtmlString(['a', ['b', 'c']])).toBe('abc');
-    });
-
-    it('converts function result', () => {
-      expect(toRawHtmlString(() => 'hello')).toBe('hello');
-    });
-
-    it('returns empty string for null/undefined', () => {
-      expect(toRawHtmlString(null)).toBe('');
-      expect(toRawHtmlString(undefined)).toBe('');
-    });
-
-    it('preserves marked safe HTML', () => {
-      const html = markAsRawHtml('<span>safe</span>');
-
-      expect(toRawHtmlString(html)).toBe('<span>safe</span>');
-      expect(toRawHtmlString(markAsRawHtml(html))).toBe('<span>safe</span>');
-    });
-  });
-
-  describe('toEscapedHtmlString', () => {
-    it('escapes strings used as text children', () => {
-      expect(toEscapedHtmlString('<div>hello</div>')).toBe('&lt;div&gt;hello&lt;/div&gt;');
-    });
-
-    it('escapes nested arrays and function results used as text children', () => {
-      expect(toEscapedHtmlString(['a', () => '<b>', ['&']])).toBe('a&lt;b&gt;&amp;');
-    });
-
-    it('returns empty string for falsey non-text child values', () => {
-      expect(toEscapedHtmlString(false)).toBe('');
-      expect(toEscapedHtmlString(null)).toBe('');
-      expect(toEscapedHtmlString(undefined)).toBe('');
-    });
-
-    it('preserves marked safe HTML while still escaping normal text', () => {
-      expect(toEscapedHtmlString(markAsRawHtml('<span>safe</span>'))).toBe('<span>safe</span>');
-      expect(toEscapedHtmlString(['before ', markAsRawHtml('<b>bold</b>'), ' <after>'])).toBe(
-        'before <b>bold</b> &lt;after&gt;',
-      );
-      expect(toEscapedHtmlString(markAsRawHtml(false))).toBe('');
-    });
-  });
-
   describe('injectHydrationKeys', () => {
     it('adds hydration id to root element', () => {
       const html = '<div>content</div>';

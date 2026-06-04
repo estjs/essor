@@ -14,9 +14,12 @@ const banner = `/**
 const isDev = env !== 'production';
 
 export default defineConfig({
+  // Single entry → single self-contained runtime file. Client runtime + SSR
+  // renderer live in ONE module (`src/index.ts`), so there is exactly one
+  // `activeScope` / reactive scheduler instance — `provide` and
+  // `renderToStringAsync` can never touch different copies.
   entryPoints: {
     essor: './src/index.ts',
-    server: './src/server.ts',
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
@@ -24,6 +27,10 @@ export default defineConfig({
   dts: true,
   shims: true,
   clean: true,
+  // One file, no shared chunks. Browser safety comes from the runtime itself
+  // (SSR's `async_hooks` is loaded lazily via `process.getBuiltinModule`, never a
+  // top-level import); `sideEffects:false` lets client builds tree-shake the SSR
+  // half away.
   splitting: false,
   banner: {
     js: banner,
