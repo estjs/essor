@@ -82,7 +82,16 @@ export function createApp<P extends ComponentProps = {}>(
   const existingContent = container.innerHTML;
   if (existingContent) {
     if (__DEV__) {
-      warn(`Target element is not empty, it will be cleared: ${target}`);
+      // `[data-hk]` markers mean SSR markup — the user likely wants hydrate().
+      if (container.querySelector('[data-hk]')) {
+        warn(
+          `Target element contains server-rendered markup ([data-hk]); ` +
+            `createApp() will discard it and render from scratch. ` +
+            `Did you mean to call hydrate()?`,
+        );
+      } else {
+        warn(`Target element is not empty, it will be cleared: ${target}`);
+      }
     }
     container.innerHTML = '';
   }
