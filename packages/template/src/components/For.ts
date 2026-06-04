@@ -106,8 +106,16 @@ export function For<T>(props: ForProps<T>): Node {
     fallbackNodes = [];
   };
 
+  // Capture the scope that is active when <For> is first evaluated. The list
+  // effect below re-runs through the scheduler, where the template-level
+  // `activeScope` is no longer set (it's a module-global restored only inside
+  // runWithScope). Without re-establishing it, `renderItem` → getActiveScope()
+  // returns null on updates, so rows added later become detached scopes and
+  // `inject()` inside them fails. Mirrors the parentScope capture in insert().
+  const ownerScope = getActiveScope();
+
   /**
-   * Render item with detached scope.
+   * Render item with a child scope under the captured owner scope.
    */
   const renderItem = (
     item: T,
@@ -116,7 +124,10 @@ export function For<T>(props: ForProps<T>): Node {
     before: Node | null,
     key = getKey(item, index),
   ): ItemEntry => {
-    const parentScope = getActiveScope();
+    // Prefer the live active scope (correct on initial synchronous mount), but
+    // fall back to the captured owner scope on reactive re-runs when the
+    // template scope context has not been re-established.
+    const parentScope = getActiveScope() ?? ownerScope;
     const scope = createScope(parentScope);
     let mountedNodes: Node[] = [];
     runWithScope(scope, () => {

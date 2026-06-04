@@ -1,17 +1,17 @@
-import { isArray, isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
+import { isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
 import { isComputed, isSignal } from '@estjs/signals';
-import { insertNode, normalizeNode } from '../dom';
 import { provide } from '../provide';
-import { onDestroy } from '../lifecycle';
+import { createScope, disposeScope, getActiveScope, onCleanup, runWithScope } from '../scope';
+import { insert } from '../dom';
 import { SUSPENSE_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
 
-/** Clear all children from an element */
-function clearContainer(el: HTMLElement): void {
-  while (el.firstChild) {
-    el.removeChild(el.firstChild);
-  }
-}
+/**
+ * Deeply resolve a node-ish value for insertion: unwrap thunks and
+ * signals/computed at every level, and recurse into arrays so nested
+ * `() => signal` / signal entries become concrete nodes/values. `insert()`
+ * then normalizes the result into DOM nodes.
+ */
 export function resolveNodeValue(value: unknown): unknown {
   let current = value;
 
@@ -23,8 +23,13 @@ export function resolveNodeValue(value: unknown): unknown {
     return resolveNodeValue((current as any).value);
   }
 
+  if (Array.isArray(current)) {
+    return current.map((item) => resolveNodeValue(item));
+  }
+
   return current;
 }
+
 export interface SuspenseProps {
   /** The content to render. Can be a Promise for async loading. */
   children?: Node | Node[] | Promise<Node | Node[]>;
@@ -43,214 +48,195 @@ export interface SuspenseContextType {
 }
 
 /**
- * Suspense component - handles async content with a fallback UI.
+ * Suspense — handles async content with a fallback UI.
  *
- * @param props - Component props with children, fallback, and optional key.
- * @returns {AnyNode} Placeholder node or fallback content.
+ * Rendering model: content is built offscreen into the Suspense fragment
+ * first. If async resources register during
+ * that mount, the content nodes are parked in an offscreen fragment while
+ * fallback is shown. When all resources settle, content is moved back in one
+ * step. No "insert → remove → re-insert" dance — content is moved at most once.
+ *
+ * Wrapper-free: the boundary is a `<!--suspense-->…<!--/suspense-->` comment
+ * pair, not a `display:contents` div.
  *
  * @example
  * ```tsx
- * <Suspense fallback={<div>Loading...</div>}>
- *   {asyncContent}
- * </Suspense>
+ * <Suspense fallback={<div>Loading...</div>}>{asyncContent}</Suspense>
  * ```
  */
 export function Suspense(props: SuspenseProps): Node {
-  // Check if we're in SSR mode (no DOM globals)
+  // SSR: render the fallback, deterministic, never touch DOM.
   if (!isBrowser()) {
-    // In SSR, keep structure deterministic and never touch DOM APIs.
-    // Suspense boundary renders fallback while async resources are unresolved.
     return props.fallback ?? ('' as unknown as Node);
   }
-  // Create a container to manage content swapping
-  const container = document.createElement('div');
-  container.style.display = 'contents'; // Invisible wrapper
 
-  // Track if component is still mounted (for async cleanup)
-  let isMounted = true;
-  let pendingCount = 0;
-  let isShowingFallback = false;
+  const owner = getActiveScope();
+  const start = document.createComment('suspense');
+  const end = document.createComment('/suspense');
+  const frag = document.createDocumentFragment();
+  frag.append(start, end);
 
-  let resolvedChildren: AnyNode | AnyNode[] | null = null;
+  let mounted = true;
+  let pending = 0;
+  let mounting = false;
 
-  /**
-   * Materializes child.
-   */
-  const materializeChild = (value: AnyNode): AnyNode => {
-    const current = resolveNodeValue(value);
+  // Content: a child scope + its nodes live between `start` and `end` in the
+  // fragment. When fallback is shown, the nodes move to `parked`.
+  let contentScope: ReturnType<typeof createScope> | null = null;
+  let parked: DocumentFragment | null = null;
 
-    if (isArray(current)) {
-      const nodes: AnyNode[] = [];
-      for (const item of current as AnyNode[]) {
-        const materialized = materializeChild(item);
-        if (isArray(materialized)) {
-          nodes.push(...(materialized as AnyNode[]));
-        } else {
-          nodes.push(materialized);
-        }
-      }
-      return nodes as AnyNode;
+  // Fallback: transient, destroyed when content is restored.
+  let fallbackScope: ReturnType<typeof createScope> | null = null;
+
+  let resolved: AnyNode | AnyNode[] | null = null;
+
+  // ── DOM helpers ──────────────────────────────────────────────────────────
+
+  /** Move every node between `start` and `end` into an offscreen fragment. */
+  const parkContent = (): void => {
+    const off = document.createDocumentFragment();
+    while (end.previousSibling && end.previousSibling !== start) {
+      off.prepend(end.previousSibling);
     }
-
-    return normalizeNode(current);
+    parked = off;
   };
 
-  /**
-   * Inserts a materialized child or child list into the container.
-   */
-  const insertMaterializedChild = (value: AnyNode) => {
-    const normalized = materializeChild(value);
-    const nodes = isArray(normalized) ? normalized : [normalized];
-
-    for (const node of nodes) {
-      if (node != null) {
-        insertNode(container, node);
-      }
+  /** Move parked nodes back before `end`, then clear the parked fragment. */
+  const restoreContent = (): void => {
+    if (!parked) return;
+    // `end` may now live in the host (framework moved frag children). Always
+    // target its current parent, falling back to the original fragment.
+    const parent = end.parentNode ?? frag;
+    while (parked.firstChild) {
+      parent.insertBefore(parked.firstChild, end);
     }
+    parked = null;
   };
 
-  /**
-   * Renders fallback content.
-   */
-  const renderFallbackContent = () => {
-    clearContainer(container);
-
-    if (props.fallback != null) {
-      insertMaterializedChild(props.fallback);
-    }
+  const mountFallback = (): void => {
+    if (props.fallback == null || fallbackScope) return;
+    fallbackScope = createScope(owner);
+    runWithScope(fallbackScope, () => {
+      // Lazy-parent: same pattern as For/Portal. Before flush `end.parentNode`
+      // is the fragment; after flush it's the real host.
+      insert(end.parentNode ?? frag, () => resolveNodeValue(props.fallback) as AnyNode, end);
+    });
   };
 
-  /**
-   * Switches the boundary into its fallback view.
-   */
-  const showFallback = () => {
-    if (isShowingFallback) return;
-    isShowingFallback = true;
-    renderFallbackContent();
+  const disposeFallback = (): void => {
+    if (!fallbackScope) return;
+    disposeScope(fallbackScope);
+    fallbackScope = null;
   };
 
-  /**
-   * Restores the resolved children when the boundary can leave fallback mode.
-   */
-  const showChildren = () => {
-    if (!isShowingFallback) return;
-
-    // Check if we have something to show
-    const hasContent = resolvedChildren || (props.children != null && !isPromise(props.children));
-
-    if (!hasContent) {
-      return;
-    }
-
-    isShowingFallback = false;
-
-    clearContainer(container);
-
-    if (resolvedChildren) {
-      renderChildren(resolvedChildren);
-    } else if (props.children != null && !isPromise(props.children)) {
-      renderChildren(props.children);
+  const mountContent = (children: AnyNode | AnyNode[]): void => {
+    mounting = true;
+    contentScope = createScope(owner);
+    runWithScope(contentScope, () => {
+      insert(end.parentNode ?? frag, () => resolveNodeValue(children) as AnyNode, end);
+    });
+    mounting = false;
+    // A resource registered synchronously during mount — park content.
+    if (pending && !parked) {
+      parkContent();
+      mountFallback();
     }
   };
 
-  /**
-   * Render children into the container.
-   *
-   * @param children - The children to render.
-   * @returns {void}
-   */
-  const renderChildren = (children: AnyNode | AnyNode[]): void => {
-    // Guard: don't render children if we should be showing fallback
-    if (isShowingFallback) return;
+  // ── State transitions ────────────────────────────────────────────────────
 
-    clearContainer(container);
+  const showFallback = (): void => {
+    if (parked) return; // already showing fallback
+    if (mounting) return; // mountContent will reconcile
+    parkContent();
+    mountFallback();
+  };
 
-    if (children == null) return;
+  const showContent = (): void => {
+    if (!parked) return;
 
-    const childArray = isArray(children) ? children : [children];
-    for (const child of childArray) {
-      if (child != null) {
-        insertMaterializedChild(child);
+    const hasSyncChildren = props.children != null && !isPromise(props.children);
+    if (contentScope == null && resolved == null && !hasSyncChildren) return;
+
+    disposeFallback();
+    restoreContent();
+
+    // First time: mount the resolved value (Promise path)
+    // On the Promise path contentScope was never created — we must mount now.
+    // On the sync-resource path (register during mount), contentScope exists but
+    // its nodes were parked; restoring covers it (the `contentScope != null`
+    // check above would be true, so we don't enter here).
+    if (!contentScope) {
+      if (resolved) {
+        mountContent(resolved);
+      } else if (hasSyncChildren) {
+        mountContent(props.children as AnyNode);
       }
     }
-
-    // Resource registration may flip to fallback while children are mounting.
-    if (isShowingFallback) {
-      renderFallbackContent();
-    }
   };
 
-  // Context for resources to register themselves
-  const suspenseContext: SuspenseContextType = {
+  // ── Context (created before children handling so register() is available) ─
+
+  const settle = () => {
+    if (!mounted) return;
+    if (--pending === 0) showContent();
+  };
+
+  const ctx: SuspenseContextType = {
     register: (promise: Promise<any>) => {
-      pendingCount++;
+      pending++;
       showFallback();
-
-      promise
-        .then(() => {
-          if (!isMounted) return;
-          pendingCount--;
-          if (pendingCount === 0) {
-            showChildren();
-          }
-        })
-        .catch((error) => {
-          if (__DEV__) {
-            warn('[Suspense] Resource failed:', error);
-          }
-          if (!isMounted) return;
-          pendingCount--;
-          // For now, if error happens, we still try to show children (or maybe error boundary later)
-          if (pendingCount === 0) {
-            showChildren();
-          }
-        });
+      promise.then(settle).catch((error) => {
+        if (__DEV__) warn('[Suspense] Resource failed:', error);
+        settle();
+      });
     },
     increment: () => {
-      pendingCount++;
+      pending++;
       showFallback();
     },
     decrement: () => {
-      pendingCount = Math.max(0, pendingCount - 1);
-      if (pendingCount === 0) {
-        showChildren();
-      }
+      pending = Math.max(0, pending - 1);
+      if (pending === 0) showContent();
     },
   };
 
-  provide(SuspenseContext, suspenseContext);
+  provide(SuspenseContext, ctx);
+
+  // ── Initial render ───────────────────────────────────────────────────────
 
   const children = props.children;
 
-  // Initial render logic
   if (isPromise(children)) {
-    // Async children - show fallback immediately, then resolve
     children
-      .then((resolved) => {
-        resolvedChildren = resolved;
+      .then((value) => {
+        resolved = value as AnyNode | AnyNode[];
       })
       .catch(() => {
-        // Ignore error, handled by register
+        /* handled by register() */
       });
-    suspenseContext.register(children);
+    ctx.register(children);
   } else if (children != null) {
-    // Sync children - render immediately
-    // If any child is a resource read, it will call register() synchronously during this render
-    renderChildren(children);
-  } else {
-    // No children - show fallback if available
+    mountContent(children as AnyNode);
+  } else if (props.fallback != null) {
     showFallback();
   }
 
-  onDestroy(() => {
-    isMounted = false;
-    pendingCount = 0;
-    resolvedChildren = null;
-    clearContainer(container);
-    container.remove();
+  // ── Cleanup ──────────────────────────────────────────────────────────────
+
+  onCleanup(() => {
+    mounted = false;
+    pending = 0;
+    resolved = null;
+    if (contentScope) disposeScope(contentScope);
+    if (fallbackScope) disposeScope(fallbackScope);
+    contentScope = fallbackScope = null;
+    parked = null;
+    start.remove();
+    end.remove();
   });
 
-  return container;
+  return frag;
 }
 
 Suspense[SUSPENSE_COMPONENT] = true;

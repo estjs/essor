@@ -2,6 +2,7 @@ import { effect, signal } from '@estjs/signals';
 import { For } from '../../src/components/For';
 import { createComponent } from '../../src/component';
 import { onCleanup as onCleanupFromTestScope } from '../../src/scope';
+import { inject, provide } from '../../src/provide';
 import { mount, resetEnvironment, unmount } from '../test-utils';
 import type { Scope } from '../../src/scope';
 
@@ -760,6 +761,76 @@ describe('for component', () => {
           children: 'oops' as any,
         }),
       ).toThrow(TypeError);
+    });
+  });
+
+  describe('scope inheritance on reactive updates', () => {
+    it('lets rows added during a reactive update inject from an ancestor scope', async () => {
+      const KEY = Symbol('theme');
+      const $items = signal<number[]>([1]);
+      const injected: Array<string | undefined> = [];
+
+      scope = mount(() => {
+        // provide() in the owner scope, above <For>.
+        provide(KEY, 'dark');
+        return For({
+          each: $items,
+          children: (item) => {
+            // inject() must resolve through the row scope → owner scope chain,
+            // even for rows created during a later reactive flush.
+            injected.push(inject<string>(KEY));
+            const div = document.createElement('div');
+            div.textContent = `${item}:${inject<string>(KEY)}`;
+            return div;
+          },
+        });
+      }, container);
+
+      // Initial synchronous mount.
+      expect(container.textContent).toBe('1:dark');
+      expect(injected).toEqual(['dark']);
+
+      // Reactive update adds new rows — these are created inside the scheduler
+      // flush, where the template active scope is not set. Before the fix they
+      // would inject `undefined`.
+      $items.value = [1, 2, 3];
+      await Promise.resolve();
+
+      expect(container.textContent).toBe('1:dark2:dark3:dark');
+      expect(injected).toEqual(['dark', 'dark', 'dark']);
+    });
+
+    it('disposes row scopes as children of the owner scope (no leak on update)', async () => {
+      const $items = signal<number[]>([1, 2]);
+      const cleaned: number[] = [];
+
+      scope = mount(
+        () =>
+          For({
+            each: $items,
+            key: (item) => item,
+            children: (item) => {
+              onCleanupFromTestScope(() => cleaned.push(item));
+              const div = document.createElement('div');
+              div.textContent = String(item);
+              return div;
+            },
+          }),
+        container,
+      );
+
+      expect(container.textContent).toBe('12');
+
+      // Remove item 1; its row scope must dispose and fire onCleanup.
+      $items.value = [2];
+      await Promise.resolve();
+      expect(container.textContent).toBe('2');
+      expect(cleaned).toContain(1);
+
+      // Remaining row 2 disposed when the whole For is torn down.
+      unmount(scope);
+      scope = null;
+      expect(cleaned).toContain(2);
     });
   });
 });

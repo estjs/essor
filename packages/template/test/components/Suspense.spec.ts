@@ -85,8 +85,10 @@ describe('suspense component', () => {
         }),
       );
 
-      // Should just have the container wrapper
-      expect(container.firstElementChild).not.toBeNull();
+      // Wrapper-free: no element wrapper, just the boundary comment anchors.
+      expect(container.firstElementChild).toBeNull();
+      const comments = [...container.childNodes].filter((n) => n.nodeType === Node.COMMENT_NODE);
+      expect(comments.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -223,10 +225,8 @@ describe('suspense component', () => {
       // Wait for rejection
       await Promise.resolve().then(() => Promise.resolve());
 
-      // Container wrapper should exist but be empty
-      const wrapper = container.firstElementChild as HTMLElement;
-      expect(wrapper).not.toBeNull();
-      expect(wrapper.childElementCount).toBe(0);
+      // Wrapper-free: no element nodes rendered (no fallback, content rejected).
+      expect(container.querySelector('*')).toBeNull();
 
       warnSpy.mockRestore();
     });
@@ -323,17 +323,22 @@ describe('suspense component', () => {
     });
   });
 
-  describe('container wrapper', () => {
-    it('should use display:contents for invisible wrapper', () => {
+  describe('wrapper-free boundary', () => {
+    it('renders content directly without an element wrapper', () => {
+      const span = document.createElement('span');
+      span.textContent = 'content';
       render(() =>
         Suspense({
-          children: document.createElement('span'),
+          children: span,
         }),
       );
 
-      const wrapper = container.firstElementChild as HTMLElement;
-      expect(wrapper).not.toBeNull();
-      expect(wrapper.style.display).toBe('contents');
+      // No `display:contents` div — the content element is a direct child of
+      // the container, bounded by comment anchors.
+      expect(container.querySelector('div')).toBeNull();
+      expect(container.querySelector('span')?.textContent).toBe('content');
+      const comments = [...container.childNodes].filter((n) => n.nodeType === Node.COMMENT_NODE);
+      expect(comments.length).toBeGreaterThanOrEqual(2);
     });
   });
 
@@ -415,7 +420,10 @@ describe('suspense component', () => {
         }),
       );
 
-      expect(container.firstElementChild).not.toBeNull();
+      // Wrapper-free: only the boundary comment anchors, no element wrapper.
+      expect(container.firstElementChild).toBeNull();
+      const comments = [...container.childNodes].filter((n) => n.nodeType === Node.COMMENT_NODE);
+      expect(comments.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should handle text node children', () => {
