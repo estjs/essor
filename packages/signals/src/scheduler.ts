@@ -34,6 +34,15 @@ const p = Promise.resolve();
 let isFlushPending = false;
 
 /**
+ * Maximum number of times the job queue may be drained within a single
+ * {@link flushJobs} call before we assume a job is synchronously re-queuing
+ * itself in an unbounded loop (e.g. an effect that writes a signal it also
+ * reads).  When exceeded we bail out and warn
+ * instead of freezing the page.
+ */
+const RECURSION_LIMIT = 100;
+
+/**
  * Schedules a function to be executed in the next microtask.
  *
  * @param fn - Optional function to execute.
@@ -87,11 +96,32 @@ export function flushJobs(): void {
   flushPreFlushCbs();
 
   // Process jobs until queue is empty.
-  // Iterate the Set directly (before clearing) rather than Array.from() to avoid
-  // a full copy allocation each tick. Jobs added during execution are picked up
-  // in the next while-iteration.
+  //
+  // Each drain snapshots the currently-queued jobs into an array and clears the
+  // live Set *before* running them. This is deliberate: iterating a Set with
+  // `for…of` would also visit entries appended during iteration, so a job that
+  // re-queues itself would spin inside a single pass and never hit the
+  // recursion guard below. Snapshotting means jobs queued during a drain are
+  // deferred to the next while-iteration, where `drainCount` can catch a
+  // runaway loop.
+  let drainCount = 0;
   while (queue.size > 0) {
-    for (const job of queue) {
+    if (++drainCount > RECURSION_LIMIT) {
+      queue.clear();
+      if (__DEV__) {
+        warn(
+          `[Scheduler] Maximum recursive flush count (${RECURSION_LIMIT}) exceeded. ` +
+            'This usually means an effect or watch callback is mutating a reactive ' +
+            'dependency it also reads, causing an infinite update loop. ' +
+            'The remaining queued jobs have been dropped to keep the app responsive.',
+        );
+      }
+      return;
+    }
+
+    const jobs = [...queue];
+    queue.clear();
+    for (const job of jobs) {
       try {
         job();
       } catch (_error) {
@@ -100,7 +130,6 @@ export function flushJobs(): void {
         }
       }
     }
-    queue.clear();
   }
 }
 

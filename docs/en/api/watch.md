@@ -131,12 +131,38 @@ import { reactive, watch } from '@estjs/signals';
 const user = reactive({ name: 'John', age: 30 });
 
 watch(user, (newUser, oldUser) => {
-  console.log('User changed:', newUser, oldUser);
+  // ⚠️ For object / reactive sources, newUser and oldUser are the SAME
+  // reference — see the "oldValue caveat" note below.
+  console.log('User changed:', newUser.age); // 31
+  console.log(oldUser === newUser); // true
 });
 
 user.age = 31;
-// Output: User changed: { name: 'John', age: 31 } { name: 'John', age: 30 }
 ```
+
+> #### ⚠️ `oldValue` caveat for object / reactive sources
+>
+> For performance, `watch` does **not** deep-clone the watched value between
+> runs. When the source is a **reactive object, array, Map/Set, or a getter that
+> returns one**, the `newValue` and `oldValue` passed to your callback are the
+> **same reference** (`newValue === oldValue`), and reading `oldValue.foo`
+> returns the already-mutated value — there is no previous snapshot. (Vue
+> behaves the same way for deep/reactive sources.)
+>
+> To get a real previous value, watch a **derived primitive** instead:
+>
+> ```ts
+> // ❌ old === new (both point at the mutated object)
+> watch(user, (n, o) => {});
+>
+> // ✅ watch a derived primitive — oldAge is the prior value
+> watch(() => user.age, (newAge, oldAge) => {
+>   console.log(`age: ${oldAge} → ${newAge}`); // age: 30 → 31
+> });
+> ```
+>
+> For primitive sources (signals/computed/getters returning primitives),
+> `oldValue` behaves exactly as expected.
 
 ### Using Getter Functions
 

@@ -293,5 +293,75 @@ describe('scheduler Test Suite', () => {
     it('edge cases - empty queue should not trigger processing', () => {
       expect(() => flushJobs()).not.toThrow();
     });
+
+    describe('recursion guard', () => {
+      it('bails out and warns when jobs re-queue unboundedly', () => {
+        // @ts-expect-error setting __DEV__ for testing
+        globalThis.__DEV__ = true;
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        let runs = 0;
+        // Each drain enqueues a *fresh* closure, so the Set never dedups it and
+        // the while-loop would spin forever without the recursion guard.
+        const makeJob = (): (() => void) => () => {
+          runs++;
+          queueJob(makeJob());
+        };
+
+        queueJob(makeJob());
+        // Drive the flush synchronously to keep the test deterministic.
+        flushJobs();
+
+        // RECURSION_LIMIT is 100 — the loop must stop near there, not spin forever.
+        expect(runs).toBeLessThanOrEqual(101);
+        expect(runs).toBeGreaterThan(1);
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Maximum recursive flush count'),
+        );
+
+        warnSpy.mockRestore();
+      });
+
+      it('does not warn for normal cascading jobs that terminate', () => {
+        // @ts-expect-error setting __DEV__ for testing
+        globalThis.__DEV__ = true;
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        let remaining = 5;
+        const cascade = (): void => {
+          if (remaining-- > 0) {
+            queueJob(() => cascade());
+          }
+        };
+
+        queueJob(() => cascade());
+        flushJobs();
+
+        expect(warnSpy).not.toHaveBeenCalled();
+        warnSpy.mockRestore();
+      });
+
+      it('drops remaining jobs after exceeding the limit so the queue is left clean', () => {
+        // @ts-expect-error setting __DEV__ for testing
+        globalThis.__DEV__ = false; // silence warn for this assertion
+        const sibling = vi.fn();
+
+        const makeJob = (): (() => void) => () => {
+          queueJob(makeJob());
+          queueJob(sibling);
+        };
+
+        queueJob(makeJob());
+        flushJobs();
+
+        // After bail-out the queue is cleared; a fresh flush runs nothing.
+        sibling.mockClear();
+        flushJobs();
+        expect(sibling).not.toHaveBeenCalled();
+
+        // @ts-expect-error restore
+        globalThis.__DEV__ = true;
+      });
+    });
   });
 });

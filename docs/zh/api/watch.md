@@ -131,12 +131,35 @@ import { reactive, watch } from '@estjs/signals';
 const user = reactive({ name: '张三', age: 30 });
 
 watch(user, (newUser, oldUser) => {
-  console.log('用户变化:', newUser, oldUser);
+  // ⚠️ 对于对象/响应式源,newUser 与 oldUser 是同一个引用 —— 详见下方提示。
+  console.log('用户变化:', newUser.age); // 31
+  console.log(oldUser === newUser); // true
 });
 
 user.age = 31;
-// 输出: 用户变化: { name: '张三', age: 31 } { name: '张三', age: 30 }
 ```
+
+> #### ⚠️ 对象/响应式源的 `oldValue` 注意事项
+>
+> 出于性能考虑,`watch` **不会**在每次运行之间对被监听值做深拷贝。当监听源是
+> **响应式对象、数组、Map/Set,或返回它们的 getter** 时,回调收到的
+> `newValue` 与 `oldValue` 是**同一个引用**(`newValue === oldValue`),读取
+> `oldValue.foo` 得到的是已被修改后的值 —— 没有"上一次的快照"。(Vue 对深层/
+> 响应式源也是同样行为。)
+>
+> 若需要真正的旧值,请改为监听一个**派生出的原始值**:
+>
+> ```ts
+> // ❌ old === new(都指向被修改后的对象)
+> watch(user, (n, o) => {});
+>
+> // ✅ 监听派生的原始值 —— oldAge 是上一次的值
+> watch(() => user.age, (newAge, oldAge) => {
+>   console.log(`age: ${oldAge} → ${newAge}`); // age: 30 → 31
+> });
+> ```
+>
+> 对于原始值源(signal/computed/返回原始值的 getter),`oldValue` 行为完全符合预期。
 
 ### 使用getter函数
 
