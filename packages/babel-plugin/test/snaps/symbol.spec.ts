@@ -325,3 +325,38 @@ describe('transform custom signalPrefix', () => {
     }
   });
 });
+
+describe('transform symbol — $-prefixed store methods are not signals', () => {
+  // The store exposes built-in methods as $-prefixed members ($patch, $reset,
+  // $subscribe, $onAction, ...). These are MEMBER property keys, not bare
+  // signal identifiers, so the signal transform must leave them untouched
+  // (no `.value` rewrite). This guards against the symbol pass ever treating
+  // `store.$patch` as a signal access.
+  it('leaves store.$method() member calls intact', () => {
+    const input = `
+      const store = useStore();
+      store.$patch({ count: 1 });
+      store.$reset();
+      store.$subscribe(cb);
+      store.$onAction(cb);
+      store.$unsubscribe(cb);
+      store.$offAction(cb);
+    `;
+    const out = transformCode(input);
+    expect(out).toContain('store.$patch(');
+    expect(out).toContain('store.$reset(');
+    expect(out).toContain('store.$subscribe(');
+    expect(out).not.toContain('.value');
+  });
+
+  it('leaves optional-chained and computed store member access intact', () => {
+    expect(transformCode(`store?.$patch({ a: 1 });`)).not.toContain('.value');
+    expect(transformCode(`store["$patch"]({ a: 1 });`)).not.toContain('.value');
+  });
+
+  it('preserves the $subscribe return value capture', () => {
+    const out = transformCode(`const stop = store.$subscribe(cb); stop();`);
+    expect(out).toContain('store.$subscribe(');
+    expect(out).not.toContain('.value');
+  });
+});

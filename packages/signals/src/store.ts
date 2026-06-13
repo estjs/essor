@@ -58,42 +58,44 @@ export interface StoreActions<S extends State> {
    *
    * @param payload - Object containing state updates
    */
-  patch$: (payload: PatchPayload<S>) => void;
+  $patch: (payload: PatchPayload<S>) => void;
 
   /**
    * Subscribes to state changes.
    * The callback is called whenever the state changes.
    *
    * @param callback - Function to call on state changes
+   * @returns Cleanup function that unsubscribes the callback
    */
-  subscribe$: (callback: StoreCallback<S>) => void;
+  $subscribe: (callback: StoreCallback<S>) => () => void;
 
   /**
    * Unsubscribes from state changes.
    *
    * @param callback - The callback to remove
    */
-  unsubscribe$: (callback: StoreCallback<S>) => void;
+  $unsubscribe: (callback: StoreCallback<S>) => void;
 
   /**
    * Subscribes to action executions.
    * The callback is called whenever an action is executed.
    *
    * @param callback - Function to call on action execution
+   * @returns Cleanup function that removes the callback
    */
-  onAction$: (callback: StoreCallback<S>) => void;
+  $onAction: (callback: StoreCallback<S>) => () => void;
 
   /**
    * Removes a previously registered action callback.
    *
    * @param callback - The callback to remove.
    */
-  offAction$: (callback: StoreCallback<S>) => void;
+  $offAction: (callback: StoreCallback<S>) => void;
 
   /**
    * Resets the store state to its initial values.
    */
-  reset$: () => void;
+  $reset: () => void;
 }
 
 /**
@@ -129,81 +131,62 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
   const subscriptions = new Set<StoreCallback<S>>();
   const actionCallbacks = new Set<StoreCallback<S>>();
 
-  /**
-   * Helper function to notify all subscribers and action callbacks.
-   * This reduces code duplication in patch$ and reset$ methods.
-   */
-  const notifySubscribers = (state: S): void => {
+  /** Notify every state subscriber and action callback with the current state. */
+  const notify = (state: S): void => {
     subscriptions.forEach((callback) => callback(state));
     actionCallbacks.forEach((callback) => callback(state));
   };
 
+  /**
+   * Registers a callback into the given set and returns a cleanup function
+   * that unsubscribes it. Shared by `$subscribe` and `$onAction`.
+   */
+  const addCallback = (
+    set: Set<StoreCallback<S>>,
+    callback: StoreCallback<S>,
+    label: string,
+  ): (() => void) => {
+    if (__DEV__ && !callback) {
+      warn(`${label} is required`);
+      return () => {};
+    }
+    set.add(callback);
+    return () => set.delete(callback);
+  };
+
+  /** Apply a mutation inside a batch, then notify subscribers once. */
+  const commit = (mutate: () => void): void => {
+    batch(mutate);
+    notify(reactiveState);
+  };
+
   const defaultActions: StoreActions<S> = {
-    /**
-     * Applies a partial patch to the reactive store state.
-     */
-    patch$(payload: PatchPayload<S>) {
+    $patch(payload: PatchPayload<S>) {
       if (__DEV__ && !payload) {
         warn('Patch payload is required');
         return;
       }
-
-      // Use batch for better performance
-      batch(() => {
-        Object.assign(reactiveState, payload);
-      });
-
-      // Notify all subscribers
-      notifySubscribers(reactiveState);
+      commit(() => Object.assign(reactiveState, payload));
     },
 
-    /**
-     * Registers a store subscriber callback.
-     */
-    subscribe$(callback: StoreCallback<S>) {
-      if (__DEV__ && !callback) {
-        warn('Subscribe callback is required');
-        return;
-      }
-      subscriptions.add(callback);
+    $subscribe(callback: StoreCallback<S>) {
+      return addCallback(subscriptions, callback, 'Subscribe callback');
     },
 
-    /**
-     * Removes a previously registered store subscriber.
-     */
-    unsubscribe$(callback: StoreCallback<S>) {
+    $unsubscribe(callback: StoreCallback<S>) {
       subscriptions.delete(callback);
     },
 
-    /**
-     * Registers a callback for store action notifications.
-     */
-    onAction$(callback: StoreCallback<S>) {
-      if (__DEV__ && !callback) {
-        warn('Action callback is required');
-        return;
-      }
-      actionCallbacks.add(callback);
+    $onAction(callback: StoreCallback<S>) {
+      return addCallback(actionCallbacks, callback, 'Action callback');
     },
 
-    /**
-     * Removes a previously registered action callback.
-     */
-    offAction$(callback: StoreCallback<S>) {
+    $offAction(callback: StoreCallback<S>) {
       actionCallbacks.delete(callback);
     },
 
-    /**
-     * Resets the reactive state back to its initial snapshot.
-     */
-    reset$() {
-      // Use batch for better performance
-      batch(() => {
-        Object.assign(reactiveState, initState);
-      });
-
-      // Notify all subscribers
-      notifySubscribers(reactiveState);
+    $reset() {
+      commit(() => Object.assign(reactiveState, initState));
     },
   };
 

@@ -5,7 +5,7 @@ import { computed, createStore, effect, signal } from '../src';
  *
  * Test Organization:
  * 1. Basic Functionality - Creation and basic operations
- * 2. Built-in Methods - patch$, subscribe$, reset$, etc.
+ * 2. Built-in Methods - $patch, $subscribe, $reset, etc.
  * 3. Reactivity Integration - Integration with effect, computed, signal
  * 4. Edge Cases - Special values and error handling
  * 5. Performance & Optimization - Batch updates and caching
@@ -258,14 +258,14 @@ describe('store - Basic Functionality', () => {
 });
 
 describe('store - Built-in Methods', () => {
-  describe('patch$', () => {
+  describe('$patch', () => {
     it('should correctly update state', () => {
       const useStore = createStore({
         state: { value: 0 },
       });
       const store = useStore();
 
-      store.patch$({ value: 42 });
+      store.$patch({ value: 42 });
       expect(store.state.value).toBe(42);
     });
 
@@ -275,7 +275,7 @@ describe('store - Built-in Methods', () => {
       });
       const store = useStore();
 
-      store.patch$({ count: 10, name: 'new', active: true });
+      store.$patch({ count: 10, name: 'new', active: true });
       expect(store.state.count).toBe(10);
       expect(store.state.name).toBe('new');
       expect(store.state.active).toBe(true);
@@ -287,7 +287,7 @@ describe('store - Built-in Methods', () => {
       });
       const store = useStore();
 
-      store.patch$({ count: 5 });
+      store.$patch({ count: 5 });
       expect(store.state.count).toBe(5);
       expect(store.state.name).toBe('test');
     });
@@ -300,7 +300,7 @@ describe('store - Built-in Methods', () => {
       });
       const store = useStore();
 
-      store.patch$({ user: { name: 'Jane', age: 25 } });
+      store.$patch({ user: { name: 'Jane', age: 25 } });
       expect(store.state.user.name).toBe('Jane');
       expect(store.state.user.age).toBe(25);
     });
@@ -312,15 +312,15 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.patch$({ count: 5 });
+      store.$subscribe(callback);
+      store.$patch({ count: 5 });
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 5 }));
     });
   });
 
-  describe('subscribe$ / unsubscribe$', () => {
+  describe('$subscribe / $unsubscribe', () => {
     it('should subscribe and trigger callback', () => {
       const useStore = createStore({
         state: { value: 0 },
@@ -328,8 +328,8 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.patch$({ value: 42 });
+      store.$subscribe(callback);
+      store.$patch({ value: 42 });
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
     });
@@ -341,12 +341,12 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.patch$({ value: 42 });
+      store.$subscribe(callback);
+      store.$patch({ value: 42 });
       expect(callback).toHaveBeenCalledTimes(1);
 
-      store.unsubscribe$(callback);
-      store.patch$({ value: 43 });
+      store.$unsubscribe(callback);
+      store.$patch({ value: 43 });
       expect(callback).toHaveBeenCalledTimes(1);
     });
 
@@ -358,9 +358,9 @@ describe('store - Built-in Methods', () => {
       const callback1 = vitest.fn();
       const callback2 = vitest.fn();
 
-      store.subscribe$(callback1);
-      store.subscribe$(callback2);
-      store.patch$({ value: 42 });
+      store.$subscribe(callback1);
+      store.$subscribe(callback2);
+      store.$patch({ value: 42 });
 
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).toHaveBeenCalledTimes(1);
@@ -373,11 +373,11 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      expect(() => store.unsubscribe$(callback)).not.toThrow();
+      expect(() => store.$unsubscribe(callback)).not.toThrow();
     });
   });
 
-  describe('onAction$', () => {
+  describe('$onAction', () => {
     it('should execute onAction callback', () => {
       const useStore = createStore({
         state: { value: 0 },
@@ -385,8 +385,8 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.onAction$(callback);
-      store.patch$({ value: 42 });
+      store.$onAction(callback);
+      store.$patch({ value: 42 });
 
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
     });
@@ -403,7 +403,7 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.onAction$(callback);
+      store.$onAction(callback);
       store.increment();
 
       expect(callback).toHaveBeenCalledTimes(1);
@@ -417,9 +417,9 @@ describe('store - Built-in Methods', () => {
       const subscribeCallback = vitest.fn();
       const actionCallback = vitest.fn();
 
-      store.subscribe$(subscribeCallback);
-      store.onAction$(actionCallback);
-      store.patch$({ value: 42 });
+      store.$subscribe(subscribeCallback);
+      store.$onAction(actionCallback);
+      store.$patch({ value: 42 });
 
       expect(subscribeCallback).toHaveBeenCalledTimes(1);
       expect(actionCallback).toHaveBeenCalledTimes(1);
@@ -437,23 +437,23 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.onAction$(callback);
-      store.offAction$(callback);
+      store.$onAction(callback);
+      store.$offAction(callback);
       store.increment();
 
       expect(callback).not.toHaveBeenCalled();
     });
   });
 
-  describe('reset$', () => {
+  describe('$reset', () => {
     it('should reset state', () => {
       const useStore = createStore({
         state: { value: 0 },
       });
       const store = useStore();
 
-      store.patch$({ value: 42 });
-      store.reset$();
+      store.$patch({ value: 42 });
+      store.$reset();
 
       expect(store.state.value).toBe(0);
     });
@@ -464,8 +464,8 @@ describe('store - Built-in Methods', () => {
       });
       const store = useStore();
 
-      store.patch$({ count: 10, name: 'changed', active: true });
-      store.reset$();
+      store.$patch({ count: 10, name: 'changed', active: true });
+      store.$reset();
 
       expect(store.state.count).toBe(0);
       expect(store.state.name).toBe('initial');
@@ -479,11 +479,11 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.patch$({ value: 42 });
+      store.$subscribe(callback);
+      store.$patch({ value: 42 });
       callback.mockClear();
 
-      store.reset$();
+      store.$reset();
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 0 }));
     });
@@ -495,11 +495,11 @@ describe('store - Built-in Methods', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.onAction$(callback);
-      store.patch$({ count: 5 });
+      store.$onAction(callback);
+      store.$patch({ count: 5 });
       callback.mockClear();
 
-      store.reset$();
+      store.$reset();
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
@@ -525,7 +525,7 @@ describe('store - Reactivity Integration', () => {
       expect(effectCount).toBe(10);
     });
 
-    it('should trigger effects when using patch$', () => {
+    it('should trigger effects when using $patch', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
@@ -537,11 +537,11 @@ describe('store - Reactivity Integration', () => {
       });
 
       expect(effectCount).toBe(0);
-      store.patch$({ count: 5 });
+      store.$patch({ count: 5 });
       expect(effectCount).toBe(5);
     });
 
-    it('should trigger effects when using reset$', () => {
+    it('should trigger effects when using $reset', () => {
       const useStore = createStore({
         state: { count: 0 },
       });
@@ -552,10 +552,10 @@ describe('store - Reactivity Integration', () => {
         effectCount = store.state.count;
       });
 
-      store.patch$({ count: 10 });
+      store.$patch({ count: 10 });
       expect(effectCount).toBe(10);
 
-      store.reset$();
+      store.$reset();
       expect(effectCount).toBe(0);
     });
   });
@@ -798,9 +798,9 @@ describe('store - Edge Cases', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.subscribe$(callback);
-      store.patch$({ value: 42 });
+      store.$subscribe(callback);
+      store.$subscribe(callback);
+      store.$patch({ value: 42 });
 
       // Set only stores unique callbacks
       expect(callback).toHaveBeenCalledTimes(1);
@@ -815,8 +815,8 @@ describe('store - Edge Cases', () => {
         throw new Error('Callback error');
       };
 
-      store.subscribe$(errorCallback);
-      expect(() => store.patch$({ value: 42 })).toThrow('Callback error');
+      store.$subscribe(errorCallback);
+      expect(() => store.$patch({ value: 42 })).toThrow('Callback error');
     });
 
     it('should handle empty patch payload', () => {
@@ -826,8 +826,8 @@ describe('store - Edge Cases', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
-      store.patch$({});
+      store.$subscribe(callback);
+      store.$patch({});
 
       expect(callback).toHaveBeenCalledTimes(1);
     });
@@ -858,9 +858,9 @@ describe('store - Edge Cases', () => {
       const callback1 = vitest.fn();
       const callback2 = vitest.fn();
 
-      store1.subscribe$(callback1);
-      store2.subscribe$(callback2);
-      store1.patch$({ count: 5 });
+      store1.$subscribe(callback1);
+      store2.$subscribe(callback2);
+      store1.$patch({ count: 5 });
 
       expect(callback1).toHaveBeenCalledTimes(1);
       expect(callback2).not.toHaveBeenCalled();
@@ -877,12 +877,12 @@ describe('store - Performance & Optimization', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
+      store.$subscribe(callback);
 
       // Multiple patches should each trigger callback
-      store.patch$({ count: 1 });
-      store.patch$({ count: 2 });
-      store.patch$({ name: 'updated' });
+      store.$patch({ count: 1 });
+      store.$patch({ count: 2 });
+      store.$patch({ name: 'updated' });
 
       expect(callback).toHaveBeenCalledTimes(3);
     });
@@ -894,10 +894,10 @@ describe('store - Performance & Optimization', () => {
       const store = useStore();
       const callback = vitest.fn();
 
-      store.subscribe$(callback);
+      store.$subscribe(callback);
 
       for (let i = 0; i < 100; i++) {
-        store.patch$({ count: i });
+        store.$patch({ count: i });
       }
 
       expect(callback).toHaveBeenCalledTimes(100);
@@ -981,7 +981,7 @@ describe('store - Complex Scenarios', () => {
       });
       const store = useStore();
 
-      store.patch$({
+      store.$patch({
         user: { ...store.state.user, age: 31 },
       });
 
@@ -1077,11 +1077,11 @@ describe('store - Complex Scenarios', () => {
       });
       const store = useStore();
 
-      store.subscribe$((state) => {
+      store.$subscribe((state) => {
         state.doubled = state.count * 2;
       });
 
-      store.patch$({ count: 5 });
+      store.$patch({ count: 5 });
       expect(store.state.doubled).toBe(10);
     });
 
@@ -1092,10 +1092,10 @@ describe('store - Complex Scenarios', () => {
       const store = useStore();
 
       const results: number[] = [];
-      store.subscribe$((state) => results.push(state.value * 2));
-      store.subscribe$((state) => results.push(state.value * 3));
+      store.$subscribe((state) => results.push(state.value * 2));
+      store.$subscribe((state) => results.push(state.value * 3));
 
-      store.patch$({ value: 5 });
+      store.$patch({ value: 5 });
       expect(results).toEqual([10, 15]);
     });
   });
