@@ -10,7 +10,7 @@ import {
 } from '../scope';
 import { FOR_COMPONENT } from '../constants';
 import { isComponent } from '../component';
-import { insertNode, normalizeNode } from '../dom';
+import { insertNode, normalizeNode, removeNode } from '../dom';
 import { getSequence } from '../reconcile';
 import type { AnyNode } from '../types';
 import type { Component } from '../component';
@@ -99,9 +99,9 @@ export function For<T>(props: ForProps<T>): Node {
 
   const clearFallback = () => {
     for (const node of fallbackNodes) {
-      if (node.parentNode) {
-        node.parentNode.removeChild(node);
-      }
+      // Use removeNode() instead of raw removeChild so Component instances
+      // in the fallback have their destroy() called, preventing scope/effect leaks.
+      removeNode(node as AnyNode);
     }
     fallbackNodes = [];
   };

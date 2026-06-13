@@ -136,8 +136,18 @@ export function disposeScope(scope: Scope): void {
   // (e.g. an onDestroy hook that accidentally disposes the same scope again).
   scope.isDestroyed = true;
 
-  // Dispose children first (depth-first)
-  // Iterate directly safely by unlinking parent reference to prevent mutation during iteration
+  // Detach from parent BEFORE running destroy hooks so the scope hierarchy
+  // is consistent if a destroy hook walks the scope tree or disposes the parent.
+  if (scope.parent?.children) {
+    scope.parent.children.delete(scope);
+  }
+  // Break parent reference early to prevent any hook from accidentally
+  // re-traversing up to an already-disposing ancestor.
+  scope.parent = null;
+
+  // Dispose children first (depth-first). Null each child's parent before
+  // recursing so the child's own detach step is a no-op — otherwise it would
+  // delete itself from this Set while we're iterating it.
   if (scope.children && scope.children.size > 0) {
     for (const child of scope.children) {
       if (child) {
@@ -175,11 +185,6 @@ export function disposeScope(scope: Scope): void {
 
   scope.effectScope.stop();
 
-  // Remove from parent's children
-  if (scope.parent?.children) {
-    scope.parent.children.delete(scope);
-  }
-
   // Clear all internal collections to prevent memory leaks
   if (scope.provides) {
     scope.provides.clear();
@@ -188,9 +193,6 @@ export function disposeScope(scope: Scope): void {
   scope.onMount = null;
   scope.onUpdate = null;
   scope.children = null;
-
-  // Break parent reference to prevent memory leaks
-  scope.parent = null;
 }
 
 /**

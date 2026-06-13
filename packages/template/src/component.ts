@@ -169,6 +169,8 @@ export class Component<P extends ComponentProps = {}> {
     for (const key of Object.getOwnPropertyNames(this.reactiveProps)) {
       delete (this.reactiveProps as Record<string, unknown>)[key];
     }
+    // Reset state so external code can detect the component is no longer mounted
+    this.state = COMPONENT_STATE.INITIAL;
   }
 
   /**

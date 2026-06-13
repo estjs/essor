@@ -141,7 +141,14 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     /** Dispose old view, mount `fn` as the new one before `end`. */
     const render = (fn: ComponentFn<any> | null, fnProps?: any): void => {
       if (!alive) return;
-      if (viewScope) { disposeScope(viewScope); viewScope = null; }
+      // Guard: if the owner scope was destroyed while we were awaiting (e.g.
+      // the component unmounted before the Promise resolved), bail out to
+      // prevent creating an orphan child scope attached to a dead parent.
+      if (owner && owner.isDestroyed) return;
+      if (viewScope) {
+        disposeScope(viewScope);
+        viewScope = null;
+      }
       if (!fn) return;
       viewScope = createScope(owner);
       runWithScope(viewScope, () => {
@@ -153,7 +160,10 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     onDestroy(() => {
       alive = false;
       clearTimers();
-      if (viewScope) { disposeScope(viewScope); viewScope = null; }
+      if (viewScope) {
+        disposeScope(viewScope);
+        viewScope = null;
+      }
       end.remove();
     });
 

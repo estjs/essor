@@ -114,8 +114,10 @@ export function createApp<P extends ComponentProps = {}>(
   return {
     root: rootNode,
     unmount: () => {
-      disposeScope(scope);
+      // destroy() removes DOM nodes and disposes the component's own scope first;
+      // then disposeScope cleans up the root application scope (provide context, etc.)
       rootNode?.destroy();
+      disposeScope(scope);
     },
   };
 }
@@ -154,8 +156,9 @@ export function hydrate<P extends ComponentProps = {}>(
   return {
     root: rootNode,
     unmount: () => {
-      disposeScope(scope);
+      // Same ordering as createApp: component teardown first, then root scope cleanup.
       rootNode?.destroy();
+      disposeScope(scope);
     },
   };
 }
