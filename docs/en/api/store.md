@@ -73,13 +73,15 @@ type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
       actions?: A;
     };
 
-// Built-in store actions
+// Built-in store actions (all prefixed with `$` to avoid clashing with your
+// own state / getters / actions)
 interface StoreActions<S extends State> {
-  patch$(payload: Partial<S>): void;
-  subscribe$(callback: (state: S) => void): void;
-  unsubscribe$(callback: (state: S) => void): void;
-  onAction$(callback: (state: S) => void): void;
-  reset$(): void;
+  $patch(payload: Partial<S>): void;
+  $subscribe(callback: (state: S) => void): () => void; // returns unsubscribe
+  $unsubscribe(callback: (state: S) => void): void;
+  $onAction(callback: (state: S) => void): () => void;  // returns unsubscribe
+  $offAction(callback: (state: S) => void): void;
+  $reset(): void;
 }
 ```
 
@@ -192,7 +194,7 @@ console.log(user.lastName); // 'Doe'
 console.log(user.fullName); // 'John Doe'
 ```
 
-### Using the Built-in patch$ Method
+### Using the Built-in $patch Method
 
 ```ts
 import { createStore } from '@estjs/signals';
@@ -210,8 +212,8 @@ const useUser = createStore({
 
 const user = useUser();
 
-// Use the patch$ method to update multiple properties at once
-user.patch$({
+// Use the $patch method to update multiple properties at once
+user.$patch({
   name: 'Jane',
   age: 25,
   address: {
@@ -242,14 +244,14 @@ const useCounter = createStore({
 const counter = useCounter();
 
 // Subscribe to state changes
-const unsubscribe = counter.subscribe$(state => {
+const unsubscribe = counter.$subscribe(state => {
   console.log(`Count changed to: ${state.count}`);
 });
 
 counter.increment();
 // Output: Count changed to: 1
 
-counter.patch$({ count: 5 });
+counter.$patch({ count: 5 });
 // Output: Count changed to: 5
 
 // Unsubscribe
@@ -279,7 +281,7 @@ const useCounter = createStore({
 const counter = useCounter();
 
 // Subscribe to action execution
-counter.onAction$(state => {
+counter.$onAction(state => {
   console.log(`Action executed, count is now: ${state.count}`);
 });
 
@@ -306,7 +308,7 @@ counter.count = 10;
 console.log(counter.count); // 10
 
 // Reset to initial state
-counter.reset$();
+counter.$reset();
 console.log(counter.count); // 0
 ```
 
@@ -314,20 +316,20 @@ console.log(counter.count); // 0
 
 All stores created with `createStore` include the following built-in methods:
 
-### patch$
+### $patch
 
 Updates multiple state properties and triggers a single update.
 
 ```ts
-store.patch$({ key1: value1, key2: value2 });
+store.$patch({ key1: value1, key2: value2 });
 ```
 
-### subscribe$
+### $subscribe
 
 Subscribe to state changes.
 
 ```ts
-const unsubscribe = store.subscribe$(state => {
+const unsubscribe = store.$subscribe(state => {
   console.log('State changed:', state);
 });
 
@@ -335,39 +337,61 @@ const unsubscribe = store.subscribe$(state => {
 unsubscribe();
 ```
 
-### unsubscribe$
+### $unsubscribe
 
 Unsubscribe from state changes.
 
 ```ts
 const callback = state => console.log('State changed:', state);
-store.subscribe$(callback);
-store.unsubscribe$(callback);
+store.$subscribe(callback);
+store.$unsubscribe(callback);
 ```
 
-### onAction$
+### $onAction
 
 Subscribe to action execution.
 
 ```ts
-store.onAction$(state => {
+store.$onAction(state => {
   console.log('Action executed:', state);
 });
 ```
 
-### reset$
+### $reset
 
 Reset state to initial values.
 
 ```ts
-store.reset$();
+store.$reset();
 ```
+
+## Why the `$` prefix?
+
+Built-in methods (`$patch`, `$subscribe`, `$reset`, …) are prefixed with `$` for two reasons:
+
+1. **No name clash with your own state.** Top-level state, getters, and actions are exposed directly on the store (`store.count`, `store.increment()`). The `$` prefix keeps the built-ins in a separate namespace, so you can freely name an action `reset` or a state field `patch` without shadowing anything.
+2. **Compatible with the signal transform.** The essor compiler only treats **bare `$`-prefixed identifiers** (e.g. `let $x`) as signals. A `$`-prefixed *member access* like `store.$patch()` is a property key, not an identifier, so it is left untouched.
+
+### ⚠️ Caveat: do not destructure built-in methods
+
+Because the signal transform rewrites `$`-prefixed *binding* targets, destructuring a built-in method out of the store breaks it:
+
+```ts
+// ❌ WRONG — the compiler rewrites `$patch` into `computed(() => store.patch)`
+const { $patch, $reset } = store;
+$patch({ count: 1 }); // throws / no-op at runtime
+
+// ✅ CORRECT — always call built-ins as members
+store.$patch({ count: 1 });
+store.$reset();
+```
+
 
 ## Performance Considerations
 
 1. **Avoid overly large state objects**: Split into multiple focused stores
 2. **Use getters to cache computed values**: Avoid recalculating during renders
-3. **Use patch$ for batch updates**: Reduce the number of state updates
+3. **Use $patch for batch updates**: Reduce the number of state updates
 
 ## Notes
 
@@ -378,7 +402,7 @@ store.reset$();
 user.address.city = 'San Francisco';
 
 // Correct
-user.patch$({
+user.$patch({
   address: {
     ...user.address,
     city: 'San Francisco',

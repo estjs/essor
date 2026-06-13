@@ -73,13 +73,14 @@ type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
       actions?: A;
     };
 
-// 内置的存储操作
+// 内置的存储操作（均以 `$` 前缀，避免与你自己的 state / getters / actions 冲突）
 interface StoreActions<S extends State> {
-  patch$(payload: Partial<S>): void;
-  subscribe$(callback: (state: S) => void): void;
-  unsubscribe$(callback: (state: S) => void): void;
-  onAction$(callback: (state: S) => void): void;
-  reset$(): void;
+  $patch(payload: Partial<S>): void;
+  $subscribe(callback: (state: S) => void): () => void; // 返回取消订阅函数
+  $unsubscribe(callback: (state: S) => void): void;
+  $onAction(callback: (state: S) => void): () => void;  // 返回取消订阅函数
+  $offAction(callback: (state: S) => void): void;
+  $reset(): void;
 }
 ```
 
@@ -192,7 +193,7 @@ console.log(user.lastName); // '三'
 console.log(user.fullName); // '张三'
 ```
 
-### 使用内置的patch$方法
+### 使用内置的$patch方法
 
 ```ts
 import { createStore } from '@estjs/signals';
@@ -210,8 +211,8 @@ const useUser = createStore({
 
 const user = useUser();
 
-// 使用patch$方法批量更新多个属性
-user.patch$({
+// 使用$patch方法批量更新多个属性
+user.$patch({
   name: '李四',
   age: 25,
   address: {
@@ -242,14 +243,14 @@ const useCounter = createStore({
 const counter = useCounter();
 
 // 订阅状态变化
-const unsubscribe = counter.subscribe$(state => {
+const unsubscribe = counter.$subscribe(state => {
   console.log(`计数变为: ${state.count}`);
 });
 
 counter.increment();
 // 输出: 计数变为: 1
 
-counter.patch$({ count: 5 });
+counter.$patch({ count: 5 });
 // 输出: 计数变为: 5
 
 // 取消订阅
@@ -279,7 +280,7 @@ const useCounter = createStore({
 const counter = useCounter();
 
 // 订阅操作执行
-counter.onAction$(state => {
+counter.$onAction(state => {
   console.log(`操作执行后的计数: ${state.count}`);
 });
 
@@ -306,7 +307,7 @@ counter.count = 10;
 console.log(counter.count); // 10
 
 // 重置为初始状态
-counter.reset$();
+counter.$reset();
 console.log(counter.count); // 0
 ```
 
@@ -314,20 +315,20 @@ console.log(counter.count); // 0
 
 所有由`createStore`创建的存储都包含以下内置方法：
 
-### patch$
+### $patch
 
 更新多个状态属性并触发一次更新。
 
 ```ts
-store.patch$({ key1: value1, key2: value2 });
+store.$patch({ key1: value1, key2: value2 });
 ```
 
-### subscribe$
+### $subscribe
 
 订阅状态变化。
 
 ```ts
-const unsubscribe = store.subscribe$(state => {
+const unsubscribe = store.$subscribe(state => {
   console.log('状态变化:', state);
 });
 
@@ -335,32 +336,53 @@ const unsubscribe = store.subscribe$(state => {
 unsubscribe();
 ```
 
-### unsubscribe$
+### $unsubscribe
 
 取消状态变化的订阅。
 
 ```ts
 const callback = state => console.log('状态变化:', state);
-store.subscribe$(callback);
-store.unsubscribe$(callback);
+store.$subscribe(callback);
+store.$unsubscribe(callback);
 ```
 
-### onAction$
+### $onAction
 
 订阅操作执行。
 
 ```ts
-store.onAction$(state => {
+store.$onAction(state => {
   console.log('操作执行:', state);
 });
 ```
 
-### reset$
+### $reset
 
 重置状态到初始值。
 
 ```ts
-store.reset$();
+store.$reset();
+```
+
+## 为什么使用 `$` 前缀？
+
+内置方法（`$patch`、`$subscribe`、`$reset` 等）统一以 `$` 前缀命名，原因有二：
+
+1. **避免与你自己的状态命名冲突。** 顶层 state、getters、actions 会直接挂在 store 上（`store.count`、`store.increment()`）。`$` 前缀把内置方法隔离到独立命名空间，因此你可以放心地把 action 命名为 `reset`、把状态字段命名为 `patch`，不会覆盖任何内置方法。
+2. **兼容 signal 编译转换。** essor 编译器只把**裸 `$` 前缀标识符**（如 `let $x`）视为 signal。像 `store.$patch()` 这样的 `$` 前缀**成员访问**是属性 key 而非标识符，不会被改写。
+
+### ⚠️ 注意：不要解构内置方法
+
+由于 signal 转换会改写 `$` 前缀的**绑定目标**，从 store 中解构内置方法会破坏它：
+
+```ts
+// ❌ 错误 —— 编译器会把 `$patch` 改写成 `computed(() => store.patch)`
+const { $patch, $reset } = store;
+$patch({ count: 1 }); // 运行时报错 / 失效
+
+// ✅ 正确 —— 始终以成员方式调用内置方法
+store.$patch({ count: 1 });
+store.$reset();
 ```
 
 
@@ -368,7 +390,7 @@ store.reset$();
 
 1. **避免过大的状态对象**：拆分为多个专注的存储
 2. **使用getter缓存计算值**：避免在渲染期间重复计算
-3. **使用patch$批量更新**：减少状态更新次数
+3. **使用$patch批量更新**：减少状态更新次数
 
 ## 注意事项
 
@@ -379,7 +401,7 @@ store.reset$();
 user.address.city = '上海';
 
 // 正确
-user.patch$({
+user.$patch({
   address: {
     ...user.address,
     city: '上海',

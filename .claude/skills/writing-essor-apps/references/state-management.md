@@ -43,13 +43,29 @@ Rules: instance properties → state, `get` accessors → computed getters, meth
 
 ## Built-in Store Methods
 
+All built-ins are `$`-prefixed so they never clash with your own state/getters/actions
+(you can still name an action `reset` or a field `patch` — no shadowing).
+
 ```tsx
 const s = useCounter();
 
-s.patch$({ count: 10, history: [] });          // batch update
-s.subscribe$((state) => {}); s.unsubscribe$(); // watch state
-s.onAction$((state) => {}); s.offAction$();    // watch actions
-s.reset$();                                     // restore initial
+s.$patch({ count: 10, history: [] });           // batch update
+const stop = s.$subscribe((state) => {});       // watch state → returns unsubscribe
+s.$unsubscribe(cb);                             // or remove explicitly
+const off = s.$onAction((state) => {});         // watch actions → returns unsubscribe
+s.$offAction(cb);
+s.$reset();                                     // restore initial
+```
+
+### ⚠️ Never destructure built-in methods
+
+The signal compiler treats bare `$`-prefixed binding targets as signals, so destructuring
+a built-in rewrites it into `computed(() => store.patch)` and breaks it. Member access
+(`store.$patch()`) is safe and is the only supported form.
+
+```tsx
+const { $patch } = s;   // ❌ compiler rewrites $patch → computed(() => s.patch)
+s.$patch({ count: 1 }); // ✅ always call as a member
 ```
 
 ## provide / inject
