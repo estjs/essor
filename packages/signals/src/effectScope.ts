@@ -11,8 +11,9 @@ export let activeEffectScope: EffectScope | undefined;
 
 export class EffectScope {
   private _active = true;
-  private effects: ScopedReactiveEffect[] = [];
-  private scopes: EffectScope[] = [];
+  // Use Sets instead of arrays for O(1) add/delete instead of O(n) indexOf+splice
+  private effects = new Set<ScopedReactiveEffect>();
+  private scopes = new Set<EffectScope>();
   private cleanups: Array<() => void> = [];
 
   constructor(
@@ -21,7 +22,7 @@ export class EffectScope {
   ) {
     if (!detached && activeEffectScope) {
       this.parent = activeEffectScope;
-      activeEffectScope.scopes.push(this);
+      activeEffectScope.scopes.add(this);
     }
   }
 
@@ -34,12 +35,12 @@ export class EffectScope {
       return;
     }
 
-    for (let i = 0; i < this.scopes.length; i++) {
-      this.scopes[i].pause();
+    for (const scope of this.scopes) {
+      scope.pause();
     }
 
-    for (let i = 0; i < this.effects.length; i++) {
-      this.effects[i].pause?.();
+    for (const effect of this.effects) {
+      effect.pause?.();
     }
   }
 
@@ -48,12 +49,12 @@ export class EffectScope {
       return;
     }
 
-    for (let i = 0; i < this.scopes.length; i++) {
-      this.scopes[i].resume();
+    for (const scope of this.scopes) {
+      scope.resume();
     }
 
-    for (let i = 0; i < this.effects.length; i++) {
-      this.effects[i].resume?.();
+    for (const effect of this.effects) {
+      effect.resume?.();
     }
   }
 
@@ -82,14 +83,16 @@ export class EffectScope {
 
     this._active = false;
 
-    for (let i = 0; i < this.scopes.length; i++) {
-      this.scopes[i].stop(true);
+    // Snapshot before clearing to avoid mutation during iteration
+    for (const scope of this.scopes) {
+      scope.stop(true);
     }
-    this.scopes.length = 0;
+    this.scopes.clear();
 
-    const effects = this.effects.slice();
-    this.effects.length = 0;
-
+    // Snapshot effects before clearing — some stop() implementations may
+    // call _remove() which would otherwise mutate the Set mid-iteration.
+    const effects = Array.from(this.effects);
+    this.effects.clear();
     for (const effect of effects) {
       effect.stop();
     }
@@ -100,25 +103,21 @@ export class EffectScope {
     this.cleanups.length = 0;
 
     if (!fromParent && this.parent) {
-      const index = this.parent.scopes.indexOf(this);
-      if (index >= 0) {
-        this.parent.scopes.splice(index, 1);
-      }
+      // O(1) Set.delete instead of O(n) indexOf+splice
+      this.parent.scopes.delete(this);
     }
 
     this.parent = undefined;
   }
 
   _record(effect: ScopedReactiveEffect): void {
-    this.effects.push(effect);
+    this.effects.add(effect);
     effect.scope = this;
   }
 
   _remove(effect: ScopedReactiveEffect): void {
-    const index = this.effects.indexOf(effect);
-    if (index >= 0) {
-      this.effects.splice(index, 1);
-    }
+    // O(1) Set.delete instead of O(n) indexOf+splice
+    this.effects.delete(effect);
   }
 
   _pushCleanup(fn: () => void): void {

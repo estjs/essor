@@ -126,15 +126,11 @@ function createArrayInstrumentations() {
       const arr = toRaw(this);
       const isShallowMode = isShallow(this);
 
-      // Track iteration access to the entire array
+      // Track iteration access to the entire array.
+      // Note: for toSpliced we previously tracked every individual index here
+      // (O(n)) but ARRAY_ITERATE_KEY already establishes a full-array dependency,
+      // so per-index tracking was redundant and expensive on large arrays.
       track(arr, ARRAY_ITERATE_KEY);
-
-      // For toSpliced, track all individual elements since they're being accessed
-      if (key === 'toSpliced') {
-        for (let i = 0, l = arr.length; i < l; i++) {
-          track(arr, `${i}`);
-        }
-      }
 
       // Call the native method
       const res = Array.prototype[key].apply(arr, args);
