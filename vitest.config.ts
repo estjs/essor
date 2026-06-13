@@ -10,7 +10,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      include: ['**/src/**', '**/e2e/**'],
+      // Only include actual source files; e2e and scripts are excluded explicitly.
+      include: ['packages/*/src/**'],
       exclude: [
         '**/scripts/**',
         '**/unplugin/**',
@@ -18,9 +19,6 @@ export default defineConfig({
         '**/playground/**',
         '**/examples/**',
         '**/*.d.ts',
-        '**/index.ts',
-        '**/test/**',
-        '**/warning.ts',
         '**/node_modules/**',
         '**/e2e/**',
         '**/dist/**',

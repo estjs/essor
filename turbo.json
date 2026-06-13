@@ -10,7 +10,9 @@
       "outputs": ["dist/**"]
     },
     "dev": {
-      "dependsOn": ["^dev"]
+      "dependsOn": ["^build"],
+      "persistent": true,
+      "cache": false
     },
     "lint": {
       "cache": true
