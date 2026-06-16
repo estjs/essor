@@ -4,11 +4,10 @@
 
 ![Essor Logo](logo.svg)
 
-**It's just JavaScript & JSX — fine-grained reactivity, no virtual DOM, ultimate performance**
+**just JavaScript & JSX — fine-grained reactivity, no virtual DOM, ultimate performance**
 
 [![npm version](https://img.shields.io/npm/v/essor.svg)](https://www.npmjs.com/package/essor)
 [![npm downloads](https://img.shields.io/npm/dm/essor.svg)](https://www.npmjs.com/package/essor)
-[![GitHub license](https://img.shields.io/github/license/estjs/essor.svg)](https://github.com/estjs/essor/blob/main/LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/estjs/essor.svg)](https://github.com/estjs/essor/issues)
 ![codecov](https://img.shields.io/codecov/c/github/estjs/essor)
 ![ci](https://img.shields.io/github/actions/workflow/status/estjs/essor/ci.yml?label=CI&logo=GitHub)
