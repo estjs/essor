@@ -1,6 +1,8 @@
 import { type Signal, signal } from '@estjs/signals';
 import { inject } from '../provide';
+import { onCleanup } from '../scope';
 import { SuspenseContext } from './Suspense';
+import type { SuspenseContextType } from './Suspense';
 
 export type ResourceState = 'pending' | 'ready' | 'errored';
 
@@ -22,14 +24,22 @@ export interface ResourceOptions<T> {
 
 /**
  * Create a resource for async data fetching.
- * Inspired by SolidJS createResource.
+ * Inspired by SolidJS createResource + Vue VueUse useFetch.
  *
- * @param fetcher - Function that returns a Promise with the data.
+ * The fetcher receives an {@link AbortSignal} that is aborted when:
+ * - A new fetch is triggered (refetch / concurrent call) — cancels the stale request.
+ * - The owning scope is disposed (component unmount) — cancels the in-flight request.
+ *
+ * Pass the signal to `fetch(url, { signal })` or any cancellable API to enable
+ * real request cancellation. Ignoring it is safe — stale results are still
+ * discarded via the internal `fetchId` guard.
+ *
+ * @param fetcher - Function that receives an AbortSignal and returns a Promise.
  * @param options - Optional configuration.
  * @returns {[Resource<T>, ResourceActions<T>]} Tuple of [resource, actions].
  */
 export function createResource<T>(
-  fetcher: () => Promise<T>,
+  fetcher: (signal: AbortSignal) => Promise<T>,
   options?: ResourceOptions<T>,
 ): [Resource<T>, ResourceActions<T>] {
   // Internal state
@@ -39,64 +49,77 @@ export function createResource<T>(
   const state = signal<ResourceState>('pending');
 
   let fetchId = 0;
-
-  let currentPromise: Promise<void> | null = null;
-  let suspenseRegistered = false;
-  const suspenseContext = inject<any>(SuspenseContext, null);
+  let controller: AbortController | null = null;
+  const suspenseContext = inject<SuspenseContextType | null>(SuspenseContext, null);
 
   /**
-   * Fetch function.
+   * Core fetch logic.
+   * Aborts any previous in-flight request, creates a fresh AbortController,
+   * and registers with Suspense (if available) via a single `register(promise)` call.
    */
-  const fetch = async (): Promise<void> => {
-    const currentFetchId = ++fetchId;
+  const doFetch = async (): Promise<void> => {
+    const id = ++fetchId;
+
+    // Abort the previous in-flight request
+    controller?.abort();
+    controller = new AbortController();
+
     loading.value = true;
     state.value = 'pending';
     error.value = null;
-    suspenseRegistered = false;
-    if (suspenseContext) {
-      // Track pending fetches even when callers branch on loading/state before reading the resource.
-      suspenseContext.increment();
+
+    let promise: Promise<T>;
+    try {
+      promise = Promise.resolve(fetcher(controller.signal));
+    } catch (error_) {
+      error.value = error_ instanceof Error ? error_ : new Error(String(error_));
+      state.value = 'errored';
+      loading.value = false;
+      return;
     }
 
+    // Single Suspense registration per fetch cycle.
+    // The promise settling naturally drives Suspense back to content.
+    suspenseContext?.register(promise);
+
     try {
-      const promise = fetcher();
-      currentPromise = promise as any; // Track original promise for Suspense
-      promise.catch(() => {}); // Prevent unhandled rejection
       const result = await promise;
 
       // Only update if this is still the latest fetch
-      if (currentFetchId === fetchId) {
+      if (id === fetchId) {
         value.value = result;
         state.value = 'ready';
         loading.value = false;
       }
     } catch (error_) {
-      // Only update if this is still the latest fetch
-      if (currentFetchId === fetchId) {
-        error.value = error_ instanceof Error ? error_ : new Error(String(error_));
-        state.value = 'errored';
+      // Stale fetch — ignore entirely
+      if (id !== fetchId) return;
+
+      // AbortError is expected during cleanup / refetch, not a real error
+      if (error_ instanceof DOMException && error_.name === 'AbortError') {
+        // If still the active fetch, just reset loading state
         loading.value = false;
+        return;
       }
-    } finally {
-      if (suspenseContext) {
-        suspenseContext.decrement();
-      }
+
+      error.value = error_ instanceof Error ? error_ : new Error(String(error_));
+      state.value = 'errored';
+      loading.value = false;
     }
   };
 
   // Start initial fetch
-  fetch();
+  doFetch();
 
-  // Resource accessor function
-  const resource = (() => {
-    // Register with Suspense only once per fetch cycle
-    if (!suspenseRegistered && loading.value && currentPromise && suspenseContext) {
-      suspenseRegistered = true;
-      // @ts-ignore
-      suspenseContext.register(currentPromise);
-    }
-    return value.value;
-  }) as Resource<T>;
+  // Abort in-flight request when the owning scope is disposed (component unmount)
+  onCleanup(() => {
+    fetchId++;
+    controller?.abort();
+    controller = null;
+  });
+
+  // Resource accessor — pure getter, no side effects
+  const resource = (() => value.value) as Resource<T>;
   resource.loading = loading;
   resource.error = error;
   resource.state = state;
@@ -109,9 +132,7 @@ export function createResource<T>(
       loading.value = false;
       error.value = null;
     },
-    refetch: async () => {
-      await fetch();
-    },
+    refetch: () => doFetch(),
   };
 
   return [resource, actions];

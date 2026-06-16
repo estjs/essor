@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createResource } from '../../src/components/createResource';
 import { SuspenseContext } from '../../src/components/Suspense';
 import { provide } from '../../src/provide';
-import { createScope, runWithScope } from '../../src/scope';
+import { createScope, disposeScope, runWithScope } from '../../src/scope';
 
 // Feature: code-quality-improvement, Property 13: Template createResource.ts 覆蓋率目標
 describe('createResource', () => {
@@ -108,6 +108,24 @@ describe('createResource', () => {
 
         expect(resource.error.value?.message).toBe('string error');
         expect(resource.state.value).toBe('errored');
+      });
+    });
+
+    it('should capture synchronous fetcher errors', async () => {
+      await runWithScope(scope, async () => {
+        const thrown = new Error('sync failure');
+        const fetcher = () => {
+          throw thrown;
+        };
+        const [resource] = createResource(fetcher);
+
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
+
+        expect(resource.error.value).toBe(thrown);
+        expect(resource.state.value).toBe('errored');
+        expect(resource()).toBeUndefined();
       });
     });
 
@@ -248,72 +266,103 @@ describe('createResource', () => {
     });
   });
 
-  describe('suspense integration', () => {
-    it('tracks each fetch cycle for Suspense before the resource accessor is read', async () => {
-      await runWithScope(scope, async () => {
-        let resolveInitial!: (value: string) => void;
-        let resolveRefetch!: (value: string) => void;
-        let fetchCount = 0;
-        const register = vi.fn();
-        const increment = vi.fn();
-        const decrement = vi.fn();
+  describe('abort controller', () => {
+    it('should pass AbortSignal to fetcher', () => {
+      runWithScope(scope, () => {
+        let receivedSignal: AbortSignal | null = null;
+        const fetcher = (signal: AbortSignal) => {
+          receivedSignal = signal;
+          return Promise.resolve('data');
+        };
 
-        provide(SuspenseContext as any, {
-          register,
-          increment,
-          decrement,
-        });
+        createResource(fetcher);
 
-        const fetcher = () =>
-          new Promise<string>((resolve) => {
-            fetchCount++;
-            if (fetchCount === 1) {
-              resolveInitial = resolve;
-            } else {
-              resolveRefetch = resolve;
-            }
-          });
-
-        const [resource, { refetch }] = createResource(fetcher);
-
-        expect(increment).toHaveBeenCalledTimes(1);
-        expect(register).toHaveBeenCalledTimes(0);
-        expect(resource.loading.value).toBe(true);
-        expect(resource.state.value).toBe('pending');
-
-        resolveInitial('first');
-        await vi.waitFor(() => {
-          expect(resource.loading.value).toBe(false);
-        });
-        expect(decrement).toHaveBeenCalledTimes(1);
-
-        const refetchPromise = refetch();
-
-        expect(increment).toHaveBeenCalledTimes(2);
-        expect(register).toHaveBeenCalledTimes(0);
-        expect(resource.loading.value).toBe(true);
-        expect(resource.state.value).toBe('pending');
-
-        resolveRefetch('second');
-        await refetchPromise;
-
-        expect(decrement).toHaveBeenCalledTimes(2);
+        expect(receivedSignal).toBeInstanceOf(AbortSignal);
+        expect(receivedSignal!.aborted).toBe(false);
       });
     });
 
-    it('tracks fetch cycles and registers the accessor once per cycle', async () => {
+    it('should abort previous request on refetch', async () => {
+      await runWithScope(scope, async () => {
+        const signals: AbortSignal[] = [];
+        const fetcher = (signal: AbortSignal) => {
+          signals.push(signal);
+          return new Promise<string>((resolve) => {
+            setTimeout(() => resolve(`data-${signals.length}`), 50);
+          });
+        };
+
+        const [, { refetch }] = createResource(fetcher);
+
+        // Wait for first fetch to start
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        expect(signals.length).toBe(1);
+        expect(signals[0].aborted).toBe(false);
+
+        // Start refetch — should abort the first
+        refetch();
+        await new Promise((resolve) => setTimeout(resolve, 5));
+
+        expect(signals.length).toBe(2);
+        expect(signals[0].aborted).toBe(true); // First request aborted
+        expect(signals[1].aborted).toBe(false); // Second still active
+      });
+    });
+
+    it('should abort on scope dispose', () => {
+      let capturedSignal: AbortSignal | null = null;
+      const childScope = createScope(null);
+
+      runWithScope(childScope, () => {
+        const fetcher = (signal: AbortSignal) => {
+          capturedSignal = signal;
+          return new Promise<string>(() => {}); // Never resolves
+        };
+        createResource(fetcher);
+      });
+
+      expect(capturedSignal).toBeInstanceOf(AbortSignal);
+      expect(capturedSignal!.aborted).toBe(false);
+
+      // Dispose the scope — should abort
+      disposeScope(childScope);
+      expect(capturedSignal!.aborted).toBe(true);
+    });
+
+    it('should ignore late results after scope dispose when fetcher ignores abort', async () => {
+      let resolveFetch!: (value: string) => void;
+      let resource: ReturnType<typeof createResource<string>>[0];
+      const childScope = createScope(null);
+
+      runWithScope(childScope, () => {
+        const fetcher = () =>
+          new Promise<string>((resolve) => {
+            resolveFetch = resolve;
+          });
+        [resource] = createResource(fetcher);
+      });
+
+      disposeScope(childScope);
+      resolveFetch('late data');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(resource!()).toBeUndefined();
+      expect(resource!.state.value).toBe('pending');
+    });
+  });
+
+  describe('suspense integration', () => {
+    it('registers promise with Suspense on each fetch cycle', async () => {
       await runWithScope(scope, async () => {
         let resolveInitial!: (value: string) => void;
         let resolveRefetch!: (value: string) => void;
         let fetchCount = 0;
         const register = vi.fn();
-        const increment = vi.fn();
-        const decrement = vi.fn();
 
         provide(SuspenseContext as any, {
           register,
-          increment,
-          decrement,
+          increment: vi.fn(),
+          decrement: vi.fn(),
         });
 
         const fetcher = () =>
@@ -328,11 +377,7 @@ describe('createResource', () => {
 
         const [resource, { refetch }] = createResource(fetcher);
 
-        expect(increment).toHaveBeenCalledTimes(1);
-        expect(decrement).toHaveBeenCalledTimes(0);
-        expect(register).toHaveBeenCalledTimes(0);
-        expect(resource()).toBeUndefined();
-        expect(resource()).toBeUndefined();
+        // Initial fetch registers once
         expect(register).toHaveBeenCalledTimes(1);
         expect(register.mock.calls[0]?.[0]).toBeInstanceOf(Promise);
 
@@ -340,24 +385,40 @@ describe('createResource', () => {
         await vi.waitFor(() => {
           expect(resource.loading.value).toBe(false);
         });
-
         expect(resource()).toBe('first');
-        expect(decrement).toHaveBeenCalledTimes(1);
 
+        // Refetch registers again
         const refetchPromise = refetch();
-        expect(increment).toHaveBeenCalledTimes(2);
-        expect(register).toHaveBeenCalledTimes(1);
-
-        resource();
-        resource();
         expect(register).toHaveBeenCalledTimes(2);
         expect(register.mock.calls[1]?.[0]).toBeInstanceOf(Promise);
 
         resolveRefetch('second');
         await refetchPromise;
-
         expect(resource()).toBe('second');
-        expect(decrement).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('resource accessor is a pure getter (no Suspense side effects)', () => {
+      runWithScope(scope, () => {
+        const register = vi.fn();
+
+        provide(SuspenseContext as any, {
+          register,
+          increment: vi.fn(),
+          decrement: vi.fn(),
+        });
+
+        const fetcher = () => Promise.resolve('data');
+        const [resource] = createResource(fetcher);
+
+        // register is called once during doFetch, not from accessor
+        expect(register).toHaveBeenCalledTimes(1);
+
+        // Reading the accessor multiple times does NOT trigger additional registrations
+        resource();
+        resource();
+        resource();
+        expect(register).toHaveBeenCalledTimes(1);
       });
     });
   });
