@@ -189,10 +189,10 @@ export function normalizeNode(node: unknown): Node {
  */
 export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   if (!parent) return;
-  // Capture the active scope at call time - this is critical for correct context inheritance
-  // When dynamic components are created inside effects, they need to inherit from
-  // the scope that was active when insert() was called, not when the effect runs
-  const parentScope: Scope | null = getActiveScope();
+  // Use a mutable reference so cleanup can release it for GC.
+  // The scope is only needed while the effect is active — after cleanup,
+  // holding it would prevent the entire ancestor scope chain from being collected.
+  let parentScope: Scope | null = getActiveScope();
 
   let renderedNodes: Node[] = [];
   let isFirstRun = true;
@@ -263,6 +263,8 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
     effectRunner.stop();
     for (const node of renderedNodes) removeNode(node);
     renderedNodes = [];
+    // Release scope reference so GC can reclaim the ancestor scope chain
+    parentScope = null;
   });
 
   return renderedNodes;

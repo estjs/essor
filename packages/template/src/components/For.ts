@@ -130,9 +130,15 @@ export function For<T>(props: ForProps<T>): Node {
     const parentScope = getActiveScope() ?? ownerScope;
     const scope = createScope(parentScope);
     let mountedNodes: Node[] = [];
-    runWithScope(scope, () => {
-      mountedNodes = mountValue(renderFn(item, index), parent, before);
-    });
+    try {
+      runWithScope(scope, () => {
+        mountedNodes = mountValue(renderFn(item, index), parent, before);
+      });
+    } catch (error) {
+      // Dispose the scope immediately to prevent leaks when renderFn throws
+      disposeScope(scope);
+      throw error;
+    }
 
     return { key, item, nodes: mountedNodes, scope };
   };

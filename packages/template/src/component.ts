@@ -25,9 +25,9 @@ function syncDescriptors(target: object, source: object, pruneMissing = false): 
     Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)!);
   }
   if (pruneMissing) {
-    const sourceKeys = Object.getOwnPropertyNames(source);
+    const sourceKeySet = new Set(Object.getOwnPropertyNames(source));
     for (const key of Object.getOwnPropertyNames(target)) {
-      if (!sourceKeys.includes(key)) delete (target as Record<string, unknown>)[key];
+      if (!sourceKeySet.has(key)) delete (target as Record<string, unknown>)[key];
     }
   }
 }

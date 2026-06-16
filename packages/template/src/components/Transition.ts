@@ -148,12 +148,13 @@ export function whenTransitionEnds(
   const finish = (): void => {
     if (done) return;
     done = true;
+    clearTimeout(timer);
     el.removeEventListener(info.event, onEnd);
     resolve();
   };
   const onEnd = (): void => finish();
   el.addEventListener(info.event, onEnd);
-  setTimeout(finish, info.timeout + 1);
+  const timer = setTimeout(finish, info.timeout + 1);
 }
 
 export function resolveDuration(

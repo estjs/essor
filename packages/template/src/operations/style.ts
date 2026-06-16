@@ -1,4 +1,12 @@
-import { camelCase, capitalize, isArray, isObject, isString, kebabCase, startsWith } from '@estjs/shared';
+import {
+  camelCase,
+  capitalize,
+  isArray,
+  isObject,
+  isString,
+  kebabCase,
+  startsWith,
+} from '@estjs/shared';
 
 /**
  * Internal symbol used to mark raw CSS variable text in style objects.
@@ -8,6 +16,10 @@ export const CSS_VAR_TEXT: unique symbol = Symbol('CSS_VAR_TEXT');
 
 // Precompile the `!important` detector to avoid recreating it on every write.
 const importantRE = /\s*!important$/;
+
+// Module-level regex for parsing CSS declaration property names from string styles.
+// Uses the `g` flag; callers must reset `lastIndex` before each use.
+const styleDeclRE = /(?:^|;)\s*([a-z][a-z\d-]*)\s*:/gi;
 
 // Candidate vendor prefixes and their lookup cache.
 const prefixes = ['Webkit', 'Moz', 'ms'];
@@ -59,9 +71,9 @@ export function patchStyle(el: HTMLElement, prev: unknown, next?: unknown) {
     // Match only CSS property-name tokens (letters/digits/hyphens before a colon).
     // This is linear and ignores semicolons inside url() or quoted values because
     // those fragments never match /letter+:/.
-    const declRE = /(?:^|;)\s*([a-z][a-z\d-]*)\s*:/gi;
+    styleDeclRE.lastIndex = 0;
     let match: RegExpExecArray | null;
-    while ((match = declRE.exec(prev)) !== null) {
+    while ((match = styleDeclRE.exec(prev)) !== null) {
       const key = match[1].trim();
       if (key && next && isObject(next) && (next as Record<string, unknown>)[key] == null) {
         setStyle(style, key, '');

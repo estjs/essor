@@ -218,9 +218,15 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     const parentScope = getActiveScope();
     const scope = createScope(parentScope);
     let raw: unknown;
-    runWithScope(scope, () => {
-      raw = childrenFn(item, index);
-    });
+    try {
+      runWithScope(scope, () => {
+        raw = childrenFn(item, index);
+      });
+    } catch (error) {
+      // Dispose the scope immediately to prevent leaks when childrenFn throws
+      disposeScope(scope);
+      throw error;
+    }
     const { el, comp } = resolveItemElement(raw, wrapper);
     if (!el) {
       disposeScope(scope);
