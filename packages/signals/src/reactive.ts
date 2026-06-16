@@ -14,6 +14,7 @@ import {
   ARRAY_ITERATE_KEY,
   ARRAY_KEY,
   COLLECTION_KEY,
+  ITERATE_KEY,
   SignalFlags,
   TriggerOpTypes,
   WEAK_COLLECTION_KEY,
@@ -798,12 +799,16 @@ const objectHandlers = (shallow: boolean) => ({
     return valueUnwrapped;
   },
   set: (target: object, key: string | symbol, value: unknown, receiver: object) => {
+    const hadKey = hasOwn(target, key);
     const oldValue = Reflect.get(target, key, receiver);
     // When setting value, ensure the raw value is set.
     const rawValue = toRaw(value);
     const result = Reflect.set(target, key, rawValue, receiver);
     if (hasStoredValueChanged(rawValue, oldValue)) {
-      trigger(target, TriggerOpTypes.SET, key, rawValue);
+      // Distinguish ADD (new property) from SET (existing property) so that
+      // iteration-dependent effects (Object.keys(), for…in, etc.) are notified
+      // when the key set changes.
+      trigger(target, hadKey ? TriggerOpTypes.SET : TriggerOpTypes.ADD, key, rawValue);
     }
     return result;
   },
@@ -814,6 +819,12 @@ const objectHandlers = (shallow: boolean) => ({
       trigger(target, TriggerOpTypes.DELETE, key, undefined);
     }
     return result;
+  },
+  ownKeys: (target: object) => {
+    // Track ITERATE_KEY so that Object.keys(), for…in, JSON.stringify(),
+    // etc. re-run when properties are added or deleted.
+    track(target, ITERATE_KEY);
+    return Reflect.ownKeys(target);
   },
 });
 

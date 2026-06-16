@@ -136,7 +136,6 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
     this.setter = setter;
     this.onTrack = onTrack;
     this.onTrigger = onTrigger;
-    this.flag |= ReactiveFlags.DIRTY;
     recordDisposable(this);
   }
 
