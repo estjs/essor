@@ -212,16 +212,26 @@ function resolveHydrationKey(parent: Element): string | null {
   return el.dataset.hk ?? (parent.closest('[data-hk]') as HTMLElement | null)?.dataset.hk ?? null;
 }
 
-export function hydrationMarker(parent: Node | null, index: number): Comment | null {
-  if (!_isHydrating || !parent || index < 0) return null;
+function expectedHydrationSlot(parent: Element | null, index: number): string {
+  if (_isHydrating && parent) {
+    const key = resolveHydrationKey(parent);
+    if (key) return `${key}-${index}`;
+  }
+  return String(index);
+}
 
-  const key = parent instanceof Element ? resolveHydrationKey(parent) : null;
-  const expected = key ? `${key}-${index}` : String(index);
+export function hydrationMarker(parent: Node | null, index: number): Comment | null {
+  if (!parent || index < 0) return null;
+
+  const expected = expectedHydrationSlot(parent instanceof Element ? parent : null, index);
+  let fallbackIndex = 0;
 
   let cursor = parent.firstChild;
   while (cursor) {
-    if (cursor.nodeType === Node.COMMENT_NODE && (cursor as Comment).data === expected) {
-      return cursor as Comment;
+    if (cursor.nodeType === Node.COMMENT_NODE) {
+      const comment = cursor as Comment;
+      if (comment.data === expected) return comment;
+      if (!_isHydrating && comment.data === '' && fallbackIndex++ === index) return comment;
     }
     cursor = cursor.nextSibling;
   }
@@ -230,10 +240,9 @@ export function hydrationMarker(parent: Node | null, index: number): Comment | n
 }
 
 export function hydrationAnchor(parent: Node | null, index: number): Node | null {
-  if (!_isHydrating || !(parent instanceof Element) || index < 0) return null;
+  if (!(parent instanceof Element) || index < 0) return null;
 
-  const key = resolveHydrationKey(parent);
-  const expected = key ? `${key}-${index}` : String(index);
+  const expected = expectedHydrationSlot(parent, index);
   let cursor = parent.firstChild;
   while (cursor) {
     if (cursor instanceof Element && cursor.getAttribute(HYDRATION_ANCHOR_ATTR) === expected) {
