@@ -1,3 +1,5 @@
+import { isFunction } from '@estjs/shared';
+
 /**
  * Read a slot value, unwrapping the common compilation shapes.
  *
@@ -8,7 +10,7 @@
 function unwrapSlotValue(raw: unknown): unknown {
   let v: unknown = raw;
   if (Array.isArray(v) && v.length === 1) v = v[0];
-  return typeof v === 'function' ? (v as () => unknown)() : v;
+  return isFunction(v) ? v() : v;
 }
 
 /**

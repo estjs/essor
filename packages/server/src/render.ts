@@ -1,4 +1,4 @@
-import { error, isFunction, isPromise } from '@estjs/shared';
+import { error, isFunction, isPromise, isString } from '@estjs/shared';
 import { type ComponentFn, type ComponentProps, resetHydrationKey } from '@estjs/template';
 import {
   type Scope,
@@ -146,7 +146,7 @@ export function render(templates: string[], hydrationKey: string, ...slots: unkn
       // Slots are pre-serialized strings from compile-time helpers; coerce
       // defensively for the rare runtime that passes a non-string (number,
       // etc.), but do NOT escape — escaping already happened per slot.
-      content += typeof slot === 'string' ? slot : resolve(slot);
+      content += isString(slot) ? slot : resolve(slot);
     }
   }
 

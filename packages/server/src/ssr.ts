@@ -141,7 +141,7 @@ interface SSRBindElementContext {
  * `applyModifiers` in the client binding runtime).
  */
 function applyBindModifiers(value: unknown, modifiers: SSRBindModifiers): unknown {
-  if (typeof value !== 'string') return value;
+  if (!isString(value)) return value;
   const s = modifiers.trim ? value.trim() : value;
   if (modifiers.number) {
     const probe = modifiers.trim ? s : s.trim();
@@ -154,11 +154,11 @@ function applyBindModifiers(value: unknown, modifiers: SSRBindModifiers): unknow
 }
 
 function normalizeTagName(tag: unknown): string {
-  return typeof tag === 'string' ? tag.toLowerCase() : '';
+  return isString(tag) ? tag.toLowerCase() : '';
 }
 
 function normalizeInputType(type: unknown): string {
-  return typeof type === 'string' ? type.toLowerCase() : '';
+  return isString(type) ? type.toLowerCase() : '';
 }
 
 function normalizeOwnValue(value: unknown, fallback: string): string {

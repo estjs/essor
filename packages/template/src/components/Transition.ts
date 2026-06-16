@@ -1,5 +1,5 @@
 import { effect } from '@estjs/signals';
-import { warn } from '@estjs/shared';
+import { isNumber, warn } from '@estjs/shared';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
 import { TRANSITION_COMPONENT } from '../constants';
@@ -162,7 +162,7 @@ export function resolveDuration(
   dir: 'enter' | 'leave',
 ): number | null {
   if (d == null) return null;
-  if (typeof d === 'number') return d;
+  if (isNumber(d)) return d;
   return d[dir];
 }
 

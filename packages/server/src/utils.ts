@@ -1,4 +1,11 @@
-import { HYDRATION_ANCHOR_ATTR, escapeHTML, isArray, isFunction, isNil } from '@estjs/shared';
+import {
+  HYDRATION_ANCHOR_ATTR,
+  escapeHTML,
+  isArray,
+  isFunction,
+  isNil,
+  isString,
+} from '@estjs/shared';
 
 // ---------------------------------------------------------------------------
 // SSR serialization
@@ -44,7 +51,7 @@ function serialize(value: unknown, leaf: (s: string) => string): string {
   if (isFunction(value)) {
     return serialize((value as () => unknown)(), leaf);
   }
-  return leaf(typeof value === 'string' ? value : String(value));
+  return leaf(isString(value) ? value : String(value));
 }
 
 /**

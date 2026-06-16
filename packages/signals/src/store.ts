@@ -1,4 +1,4 @@
-import { isFunction, warn } from '@estjs/shared';
+import { isFunction, isObject, warn } from '@estjs/shared';
 import { batch, computed, reactive } from '.';
 
 /**
@@ -108,7 +108,7 @@ type GetterValues<G extends Getters<any>> = {
 };
 
 function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): T {
-  if (typeof value !== 'object' || value === null) {
+  if (!isObject(value)) {
     return value;
   }
 
