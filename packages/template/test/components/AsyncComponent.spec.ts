@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { isString } from '@estjs/shared';
 import { defineAsyncComponent, isAsyncComponent } from '../../src/components/AsyncComponent';
 import { Suspense } from '../../src/components/Suspense';
 import { createComponent } from '../../src/component';
@@ -11,14 +12,13 @@ import { mount, unmount } from '../test-utils';
 
 /** Create a loader that resolves to a simple ComponentFn after `ms` ms. */
 function makeLoader(content: string | (() => Node), ms = 0): () => Promise<() => Node> {
-  const fn =
-    typeof content === 'string'
-      ? () => {
-          const el = document.createElement('div');
-          el.textContent = content;
-          return el;
-        }
-      : content;
+  const fn = isString(content)
+    ? () => {
+        const el = document.createElement('div');
+        el.textContent = content;
+        return el;
+      }
+    : content;
 
   return () =>
     new Promise<() => Node>((resolve) => {

@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { HYDRATION_ANCHOR_ATTR } from '@estjs/shared';
+import { HYDRATION_ANCHOR_ATTR, isString } from '@estjs/shared';
 import { type CompileContext, getCompileContext, registerDeclaration, useImport } from '../context';
 import { serializeStaticAttrs } from '../ast-utils';
 import {
@@ -62,7 +62,7 @@ function findBind(node: IRElement, name: string): ServerBindExpression | null {
 
 function getStaticStringAttr(node: IRElement, name: string): string | null {
   const attr = node.staticAttrs.find((entry) => entry.name === name);
-  return attr && typeof attr.value === 'string' ? attr.value : null;
+  return attr && isString(attr.value) ? attr.value : null;
 }
 
 function getDynamicAttrExpression(node: IRElement, name: string): t.Expression | null {
