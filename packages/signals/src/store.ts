@@ -107,6 +107,63 @@ type GetterValues<G extends Getters<any>> = {
   [K in keyof G]: ReturnType<G[K]>;
 };
 
+function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): T {
+  if (typeof value !== 'object' || value === null) {
+    return value;
+  }
+
+  if (seen.has(value)) {
+    return seen.get(value) as T;
+  }
+
+  if (value instanceof Date) {
+    return new Date(value.getTime()) as T;
+  }
+
+  if (value instanceof RegExp) {
+    return new RegExp(value.source, value.flags) as T;
+  }
+
+  if (value instanceof Map) {
+    const clone = new Map();
+    seen.set(value, clone);
+    value.forEach((mapValue, mapKey) => {
+      clone.set(cloneInitialState(mapKey, seen), cloneInitialState(mapValue, seen));
+    });
+    return clone as T;
+  }
+
+  if (value instanceof Set) {
+    const clone = new Set();
+    seen.set(value, clone);
+    value.forEach((setValue) => {
+      clone.add(cloneInitialState(setValue, seen));
+    });
+    return clone as T;
+  }
+
+  if (Array.isArray(value)) {
+    const clone: unknown[] = [];
+    seen.set(value, clone);
+    value.forEach((item, index) => {
+      clone[index] = cloneInitialState(item, seen);
+    });
+    return clone as T;
+  }
+
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) {
+    return value;
+  }
+
+  const clone = Object.create(prototype) as Record<PropertyKey, unknown>;
+  seen.set(value, clone);
+  for (const key of Reflect.ownKeys(value)) {
+    clone[key] = cloneInitialState((value as Record<PropertyKey, unknown>)[key], seen);
+  }
+  return clone as T;
+}
+
 /**
  * Creates a store from options (state, getters, and actions).
  *
@@ -125,7 +182,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
   }
 
   const { state, getters, actions } = options;
-  const initState = { ...state };
+  const initState = cloneInitialState(state);
   const reactiveState = reactive(state);
 
   const subscriptions = new Set<StoreCallback<S>>();

@@ -668,6 +668,19 @@ describe('store - Edge Cases', () => {
       expect(store.state.items.has(2)).toBe(true);
       expect(store.state.items.size).toBe(3);
     });
+
+    it('should allow non-cloneable state values', () => {
+      const handler = () => 'ok';
+      const token = Symbol('token');
+      const useStore = createStore({
+        state: { handler, token },
+      });
+
+      const store = useStore();
+
+      expect(store.state.handler).toBe(handler);
+      expect(store.state.token).toBe(token);
+    });
   });
 
   describe('getter Edge Cases', () => {
