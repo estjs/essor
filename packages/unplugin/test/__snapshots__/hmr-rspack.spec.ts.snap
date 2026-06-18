@@ -30,16 +30,18 @@ function App() {
 }
 App.__signature = "uvdrlt";
 App.__hmrId = "me1pwu:App";
-createApp(__$createHMRComponent$__(App), "#root");
-var __$registry$__ = [
+var _app = createApp(__$createHMRComponent$__(App), "#root");
+export var __$registry$__ = [
     Foo,
     Bar,
     App
 ];
 if (import.meta.hot) {
-    var _hot;
+    import.meta.hot.dispose(function() {
+        var _app_unmount;
+        return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
+    });
     __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
-    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
 }
 "
 `;
@@ -74,16 +76,18 @@ export default function App() {
 }
 App.__signature = "1q4priw";
 App.__hmrId = "ydmpkz:App";
-createApp(__$createHMRComponent$__(App), '#root');
-var __$registry$__ = [
+var _app = createApp(__$createHMRComponent$__(App), '#root');
+export var __$registry$__ = [
     ComponentA,
     ComponentB,
     App
 ];
 if (import.meta.hot) {
-    var _hot;
+    import.meta.hot.dispose(function() {
+        var _app_unmount;
+        return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
+    });
     __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
-    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
 }
 "
 `;
@@ -106,18 +110,20 @@ function PropsComponent(props) {
 }
 PropsComponent.__signature = "kth069";
 PropsComponent.__hmrId = "1dblsze:PropsComponent";
-createApp(__$createHMRComponent$__(function() {
+var _app = createApp(__$createHMRComponent$__(function() {
     return __$createHMRComponent$__(PropsComponent, {
         name: "World"
     });
 }), '#root');
-var __$registry$__ = [
+export var __$registry$__ = [
     PropsComponent
 ];
 if (import.meta.hot) {
-    var _hot;
+    import.meta.hot.dispose(function() {
+        var _app_unmount;
+        return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
+    });
     __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
-    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
 }
 "
 `;
@@ -144,17 +150,19 @@ function SignalComponent() {
 }
 SignalComponent.__signature = "182rwo7";
 SignalComponent.__hmrId = "1xegm1l:SignalComponent";
-createApp(__$createHMRComponent$__(SignalComponent), '#root');
-var __$registry$__ = [
+var _app = createApp(__$createHMRComponent$__(SignalComponent), '#root');
+export var __$registry$__ = [
     SignalComponent
 ];
 _delegateEvents$([
     "click"
 ]);
 if (import.meta.hot) {
-    var _hot;
+    import.meta.hot.dispose(function() {
+        var _app_unmount;
+        return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
+    });
     __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
-    (_hot = import.meta.hot) === null || _hot === void 0 ? void 0 : _hot.accept();
 }
 "
 `;

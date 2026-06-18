@@ -12,6 +12,7 @@
 import { createComponent, effect, signal } from 'essor';
 
 const isFunction = (value) => typeof value === 'function';
+const ESSOR_HMR = 'essor-hmr';
 /**
  * Global component registry for HMR tracking
  *
@@ -91,6 +92,9 @@ export function createHMRComponent(componentFn, props) {
       cleanups: new Map(), // Store cleanup for each instance
     };
     componentRegistry.set(hmrId, info);
+  } else if (info.instances.size === 0) {
+    info.signature = signature;
+    info.componentSignal.value = componentFn;
   }
 
   // Create Component instance from the current registry entry. This matters
@@ -279,9 +283,9 @@ function handleHMRUpdate(hot, newModule) {
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
 function setupViteHMR(hot, registry) {
-  const isUpdate = hot.data.__initialized__;
-  hot.data.__initialized__ = true;
-  hot.data.__$registry$__ = registry;
+  hot.data ??= {};
+  const isUpdate = !!hot.data[ESSOR_HMR];
+  hot.data[ESSOR_HMR] = registry;
 
   if (isUpdate) {
     const needsReload = applyUpdate(registry);
@@ -302,7 +306,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Apply update if previous data exists from last hot reload
-  if (hot.data?.__$registry$__) {
+  if (hot.data?.[ESSOR_HMR]) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
       invalidateOrReload(hot);
@@ -312,7 +316,7 @@ function setupWebpackHMR(hot, registry) {
   // Save current registry for next update
   if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
-      data.__$registry$__ = registry;
+      data[ESSOR_HMR] = registry;
     });
   }
 }
@@ -394,7 +398,7 @@ function extractHMRComponents(module) {
  * @returns true if HMR setup succeeded, false otherwise
  */
 export function hmrAccept(bundlerType, hot, registry) {
-  if (!hot || !registry || registry.length === 0) {
+  if (!hot || !registry) {
     return false;
   }
 
@@ -403,6 +407,7 @@ export function hmrAccept(bundlerType, hot, registry) {
       setupViteHMR(hot, registry);
       break;
     case 'webpack':
+    case 'webpack5':
     case 'rspack':
       setupWebpackHMR(hot, registry);
       break;

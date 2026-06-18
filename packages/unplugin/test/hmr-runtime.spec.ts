@@ -101,6 +101,25 @@ describe('hMR Runtime', () => {
       expect(wrapped).toBeDefined();
       expect(wrapped.forceUpdate).toBeDefined();
     });
+
+    it('uses the incoming implementation immediately when all old instances were disposed', () => {
+      const hmrId = 'disposed-root-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const first = createHMRComponent(Comp1, {});
+      first.destroy();
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      const second = createHMRComponent(Comp2, {});
+
+      expect(second.component).toBe(Comp2);
+      expect(forceUpdateMock(second)).not.toHaveBeenCalled();
+    });
   });
 
   describe('applyUpdate', () => {
@@ -247,26 +266,30 @@ describe('hMR Runtime', () => {
       const hot = {
         accept: vi.fn(),
         invalidate: vi.fn(),
+        data: {},
       };
 
-      const registry = [() => {}];
-      const res = hmrAccept('vite', hot, registry);
+      const first = () => 'v1';
+      (first as HMRComponent).__hmrId = 'vite:App';
+      (first as HMRComponent).__signature = 'sig-1';
+      const firstRegistry = [first];
+      const instance = createHMRComponent(first, {});
+      (forceUpdateMock(instance) as Mock).mockClear();
 
-      expect(res).toBe(true);
-      expect(hot.accept).toHaveBeenCalled();
-
-      // Test the accept callback
-      const callback = (hot.accept as Mock).mock.calls[0][0];
-
-      // Case 1: invalid module (error)
-      callback(null);
-      expect(hot.invalidate).toHaveBeenCalled();
-
-      // Case 2: valid module with no changes
-      (hot.invalidate as Mock).mockClear();
-      const mockModule = { __$registry$__: [] };
-      callback(mockModule);
+      const firstResult = hmrAccept('vite', hot, firstRegistry);
+      expect(firstResult).toBe(true);
+      expect(hot.data['essor-hmr']).toBe(firstRegistry);
       expect(hot.invalidate).not.toHaveBeenCalled();
+
+      const next = () => 'v2';
+      (next as HMRComponent).__hmrId = 'vite:App';
+      (next as HMRComponent).__signature = 'sig-2';
+      const nextRegistry = [next];
+
+      const res = hmrAccept('vite', hot, nextRegistry);
+      expect(res).toBe(true);
+      expect(hot.invalidate).not.toHaveBeenCalled();
+      expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
 
     it('should handle webpack HMR', () => {

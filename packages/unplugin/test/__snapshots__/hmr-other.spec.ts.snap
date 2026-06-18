@@ -16,6 +16,7 @@ exports[`hMR - Rollup Platform > should work with rollup 1`] = `
  */
 
 const isFunction = (value) => typeof value === 'function';
+const ESSOR_HMR = 'essor-hmr';
 /**
  * Global component registry for HMR tracking
  *
@@ -95,6 +96,9 @@ function createHMRComponent(componentFn, props) {
       cleanups: new Map(), // Store cleanup for each instance
     };
     componentRegistry.set(hmrId, info);
+  } else if (info.instances.size === 0) {
+    info.signature = signature;
+    info.componentSignal.value = componentFn;
   }
 
   // Create Component instance from the current registry entry. This matters
@@ -282,8 +286,17 @@ function handleHMRUpdate(hot, newModule) {
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
-function setupViteHMR(hot) {
-  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
+function setupViteHMR(hot, registry) {
+  hot.data ??= {};
+  const isUpdate = !!hot.data[ESSOR_HMR];
+  hot.data[ESSOR_HMR] = registry;
+
+  if (isUpdate) {
+    const needsReload = applyUpdate(registry);
+    if (needsReload) {
+      invalidateOrReload(hot);
+    }
+  }
 }
 
 /**
@@ -297,7 +310,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Apply update if previous data exists from last hot reload
-  if (hot.data?.__$registry$__) {
+  if (hot.data?.[ESSOR_HMR]) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
       invalidateOrReload(hot);
@@ -307,7 +320,7 @@ function setupWebpackHMR(hot, registry) {
   // Save current registry for next update
   if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
-      data.__$registry$__ = registry;
+      data[ESSOR_HMR] = registry;
     });
   }
 }
@@ -389,15 +402,16 @@ function extractHMRComponents(module) {
  * @returns true if HMR setup succeeded, false otherwise
  */
 function hmrAccept(bundlerType, hot, registry) {
-  if (!hot || !registry || registry.length === 0) {
+  if (!hot || !registry) {
     return false;
   }
 
   switch (bundlerType) {
     case 'vite':
-      setupViteHMR(hot);
+      setupViteHMR(hot, registry);
       break;
     case 'webpack':
+    case 'webpack5':
     case 'rspack':
       setupWebpackHMR(hot, registry);
       break;
@@ -435,12 +449,14 @@ function App() {
 }
 App.__signature = "uvdrlt";
 App.__hmrId = "me1pwu:App";
-createApp(createHMRComponent(App), "#root");
+const _app = createApp(createHMRComponent(App), "#root");
 const __$registry$__ = [Foo, Bar, App];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept();
 }
+
+export { __$registry$__ };
 "
 `;
 
@@ -460,6 +476,7 @@ exports[`hMR - Rollup Platform > should work with rollup 2`] = `
  */
 
 const isFunction = (value) => typeof value === 'function';
+const ESSOR_HMR = 'essor-hmr';
 /**
  * Global component registry for HMR tracking
  *
@@ -539,6 +556,9 @@ function createHMRComponent(componentFn, props) {
       cleanups: new Map(), // Store cleanup for each instance
     };
     componentRegistry.set(hmrId, info);
+  } else if (info.instances.size === 0) {
+    info.signature = signature;
+    info.componentSignal.value = componentFn;
   }
 
   // Create Component instance from the current registry entry. This matters
@@ -726,8 +746,17 @@ function handleHMRUpdate(hot, newModule) {
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
-function setupViteHMR(hot) {
-  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
+function setupViteHMR(hot, registry) {
+  hot.data ??= {};
+  const isUpdate = !!hot.data[ESSOR_HMR];
+  hot.data[ESSOR_HMR] = registry;
+
+  if (isUpdate) {
+    const needsReload = applyUpdate(registry);
+    if (needsReload) {
+      invalidateOrReload(hot);
+    }
+  }
 }
 
 /**
@@ -741,7 +770,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Apply update if previous data exists from last hot reload
-  if (hot.data?.__$registry$__) {
+  if (hot.data?.[ESSOR_HMR]) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
       invalidateOrReload(hot);
@@ -751,7 +780,7 @@ function setupWebpackHMR(hot, registry) {
   // Save current registry for next update
   if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
-      data.__$registry$__ = registry;
+      data[ESSOR_HMR] = registry;
     });
   }
 }
@@ -833,15 +862,16 @@ function extractHMRComponents(module) {
  * @returns true if HMR setup succeeded, false otherwise
  */
 function hmrAccept(bundlerType, hot, registry) {
-  if (!hot || !registry || registry.length === 0) {
+  if (!hot || !registry) {
     return false;
   }
 
   switch (bundlerType) {
     case 'vite':
-      setupViteHMR(hot);
+      setupViteHMR(hot, registry);
       break;
     case 'webpack':
+    case 'webpack5':
     case 'rspack':
       setupWebpackHMR(hot, registry);
       break;
@@ -877,14 +907,14 @@ function App() {
 }
 App.__signature = "1q4priw";
 App.__hmrId = "ydmpkz:App";
-createApp(createHMRComponent(App), "#root");
+const _app = createApp(createHMRComponent(App), "#root");
 const __$registry$__ = [ComponentA, ComponentB, App];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept();
 }
 
-export { ComponentA, ComponentB, App as default };
+export { ComponentA, ComponentB, __$registry$__, App as default };
 "
 `;
 
@@ -904,6 +934,7 @@ exports[`hMR - Rollup Platform > should work with rollup 3`] = `
  */
 
 const isFunction = (value) => typeof value === 'function';
+const ESSOR_HMR = 'essor-hmr';
 /**
  * Global component registry for HMR tracking
  *
@@ -983,6 +1014,9 @@ function createHMRComponent(componentFn, props) {
       cleanups: new Map(), // Store cleanup for each instance
     };
     componentRegistry.set(hmrId, info);
+  } else if (info.instances.size === 0) {
+    info.signature = signature;
+    info.componentSignal.value = componentFn;
   }
 
   // Create Component instance from the current registry entry. This matters
@@ -1170,8 +1204,17 @@ function handleHMRUpdate(hot, newModule) {
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
-function setupViteHMR(hot) {
-  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
+function setupViteHMR(hot, registry) {
+  hot.data ??= {};
+  const isUpdate = !!hot.data[ESSOR_HMR];
+  hot.data[ESSOR_HMR] = registry;
+
+  if (isUpdate) {
+    const needsReload = applyUpdate(registry);
+    if (needsReload) {
+      invalidateOrReload(hot);
+    }
+  }
 }
 
 /**
@@ -1185,7 +1228,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Apply update if previous data exists from last hot reload
-  if (hot.data?.__$registry$__) {
+  if (hot.data?.[ESSOR_HMR]) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
       invalidateOrReload(hot);
@@ -1195,7 +1238,7 @@ function setupWebpackHMR(hot, registry) {
   // Save current registry for next update
   if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
-      data.__$registry$__ = registry;
+      data[ESSOR_HMR] = registry;
     });
   }
 }
@@ -1277,15 +1320,16 @@ function extractHMRComponents(module) {
  * @returns true if HMR setup succeeded, false otherwise
  */
 function hmrAccept(bundlerType, hot, registry) {
-  if (!hot || !registry || registry.length === 0) {
+  if (!hot || !registry) {
     return false;
   }
 
   switch (bundlerType) {
     case 'vite':
-      setupViteHMR(hot);
+      setupViteHMR(hot, registry);
       break;
     case 'webpack':
+    case 'webpack5':
     case 'rspack':
       setupWebpackHMR(hot, registry);
       break;
@@ -1309,14 +1353,16 @@ function PropsComponent(props) {
 }
 PropsComponent.__signature = "kth069";
 PropsComponent.__hmrId = "1dblsze:PropsComponent";
-createApp(createHMRComponent(() => createHMRComponent(PropsComponent, {
+const _app = createApp(createHMRComponent(() => createHMRComponent(PropsComponent, {
   name: "World"
 })), "#root");
 const __$registry$__ = [PropsComponent];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept();
 }
+
+export { __$registry$__ };
 "
 `;
 
@@ -1336,6 +1382,7 @@ exports[`hMR - Rollup Platform > should work with rollup 4`] = `
  */
 
 const isFunction = (value) => typeof value === 'function';
+const ESSOR_HMR = 'essor-hmr';
 /**
  * Global component registry for HMR tracking
  *
@@ -1415,6 +1462,9 @@ function createHMRComponent(componentFn, props) {
       cleanups: new Map(), // Store cleanup for each instance
     };
     componentRegistry.set(hmrId, info);
+  } else if (info.instances.size === 0) {
+    info.signature = signature;
+    info.componentSignal.value = componentFn;
   }
 
   // Create Component instance from the current registry entry. This matters
@@ -1602,8 +1652,17 @@ function handleHMRUpdate(hot, newModule) {
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
-function setupViteHMR(hot) {
-  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
+function setupViteHMR(hot, registry) {
+  hot.data ??= {};
+  const isUpdate = !!hot.data[ESSOR_HMR];
+  hot.data[ESSOR_HMR] = registry;
+
+  if (isUpdate) {
+    const needsReload = applyUpdate(registry);
+    if (needsReload) {
+      invalidateOrReload(hot);
+    }
+  }
 }
 
 /**
@@ -1617,7 +1676,7 @@ function setupWebpackHMR(hot, registry) {
   }
 
   // Apply update if previous data exists from last hot reload
-  if (hot.data?.__$registry$__) {
+  if (hot.data?.[ESSOR_HMR]) {
     const needsReload = applyUpdate(registry);
     if (needsReload) {
       invalidateOrReload(hot);
@@ -1627,7 +1686,7 @@ function setupWebpackHMR(hot, registry) {
   // Save current registry for next update
   if (isFunction(hot.dispose)) {
     hot.dispose((data) => {
-      data.__$registry$__ = registry;
+      data[ESSOR_HMR] = registry;
     });
   }
 }
@@ -1709,15 +1768,16 @@ function extractHMRComponents(module) {
  * @returns true if HMR setup succeeded, false otherwise
  */
 function hmrAccept(bundlerType, hot, registry) {
-  if (!hot || !registry || registry.length === 0) {
+  if (!hot || !registry) {
     return false;
   }
 
   switch (bundlerType) {
     case 'vite':
-      setupViteHMR(hot);
+      setupViteHMR(hot, registry);
       break;
     case 'webpack':
+    case 'webpack5':
     case 'rspack':
       setupWebpackHMR(hot, registry);
       break;
@@ -1743,12 +1803,14 @@ function SignalComponent() {
 }
 SignalComponent.__signature = "182rwo7";
 SignalComponent.__hmrId = "1xegm1l:SignalComponent";
-createApp(createHMRComponent(SignalComponent), "#root");
+const _app = createApp(createHMRComponent(SignalComponent), "#root");
 const __$registry$__ = [SignalComponent];
 delegateEvents(["click"]);
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept();
 }
+
+export { __$registry$__ };
 "
 `;

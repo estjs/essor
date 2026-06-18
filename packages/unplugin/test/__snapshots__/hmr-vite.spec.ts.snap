@@ -2,9 +2,7 @@
 
 exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 1`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
-
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$3 = _template$("<div><!><!>");
 const _t$2 = _template$("<div>Bar");
@@ -32,19 +30,18 @@ function App() {
 }
 App.__signature = "uvdrlt";
 App.__hmrId = "me1pwu:App";
-createApp(__$createHMRComponent$__(App), "#root");
+const _app = createApp(__$createHMRComponent$__(App), "#root");
 const __$registry$__ = [Foo, Bar, App];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
+  import.meta.hot.accept();
   __$hmrAccept$__("vite", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept()
 }"
 `;
 
 exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 2`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
-
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$3 = _template$("<div><!><!>");
 const _t$2 = _template$("<div>B");
@@ -70,19 +67,18 @@ export default function App() {
 }
 App.__signature = "1q4priw";
 App.__hmrId = "ydmpkz:App";
-createApp(__$createHMRComponent$__(App), '#root');
+const _app = createApp(__$createHMRComponent$__(App), '#root');
 const __$registry$__ = [ComponentA, ComponentB, App];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
+  import.meta.hot.accept();
   __$hmrAccept$__("vite", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept()
 }"
 `;
 
 exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 3`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
-
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div>Hello <!>");
 import { createApp } from 'essor';
@@ -98,21 +94,20 @@ function PropsComponent(props: {
 }
 PropsComponent.__signature = "kth069";
 PropsComponent.__hmrId = "1dblsze:PropsComponent";
-createApp(__$createHMRComponent$__(() => __$createHMRComponent$__(PropsComponent, {
+const _app = createApp(__$createHMRComponent$__(() => __$createHMRComponent$__(PropsComponent, {
   name: "World"
 })), '#root');
 const __$registry$__ = [PropsComponent];
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
+  import.meta.hot.accept();
   __$hmrAccept$__("vite", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept()
 }"
 `;
 
 exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
-
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = _template$("<div>Count: <!>");
 import { createApp, signal } from 'essor';
@@ -128,11 +123,12 @@ function SignalComponent() {
 }
 SignalComponent.__signature = "182rwo7";
 SignalComponent.__hmrId = "1xegm1l:SignalComponent";
-createApp(__$createHMRComponent$__(SignalComponent), '#root');
+const _app = createApp(__$createHMRComponent$__(SignalComponent), '#root');
 const __$registry$__ = [SignalComponent];
 _delegateEvents$(["click"]);
 if (import.meta.hot) {
+  import.meta.hot.dispose(() => _app?.unmount?.());
+  import.meta.hot.accept();
   __$hmrAccept$__("vite", import.meta.hot, __$registry$__);
-  import.meta.hot?.accept()
 }"
 `;

@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { expect, test } from './test-utils';
+import type { ConsoleMessage } from '@playwright/test';
 import type { Page } from './test-utils';
 
 const repoRoot = process.cwd();
@@ -35,6 +36,28 @@ type ConfigPatch = {
 
 function quoteString(value: string) {
   return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
+}
+
+function createSingleFileMainSource(version: string) {
+  return [
+    "import { createApp, signal } from 'essor';",
+    '',
+    `const SINGLE_FILE_VERSION = ${quoteString(version)};`,
+    '',
+    'function App() {',
+    '  const count = signal(0);',
+    '  return (',
+    '    <main data-test="example-root">',
+    '      <h1 data-test="single-file-version">{SINGLE_FILE_VERSION}</h1>',
+    '      <button type="button" onClick={() => count.value++}>Increment</button>',
+    '      <p data-test="single-file-count">{count.value}</p>',
+    '    </main>',
+    '  );',
+    '}',
+    '',
+    "createApp(App, '#app');",
+    '',
+  ].join('\n');
 }
 
 function replaceRequired(source: string, pattern: RegExp, replacement: string) {
@@ -329,6 +352,49 @@ test.describe('hmr example', () => {
 });
 
 test.describe('hmr example real Vite updates', () => {
+  test('cleans up a self-accepting single-file app before remounting', async ({
+    page,
+    assertNoConsoleErrors,
+  }, testInfo) => {
+    const fixture = await startHmrFixture(testInfo.testId, (paths) =>
+      writeFile(paths.main, createSingleFileMainSource('single-a')),
+    );
+    const targetWarnings: string[] = [];
+    const onConsole = (message: ConsoleMessage) => {
+      if (
+        message.type() === 'warning' &&
+        message.text().includes('Target element is not empty')
+      ) {
+        targetWarnings.push(message.text());
+      }
+    };
+
+    page.on('console', onConsole);
+
+    try {
+      await gotoHmrFixture(page, fixture);
+      const token = await setPageToken(page);
+
+      await expect(page.locator('[data-test="single-file-version"]')).toHaveText('single-a');
+      await expect(page.locator('#app > [data-test="example-root"]')).toHaveCount(1);
+
+      await page.getByRole('button', { name: 'Increment' }).click();
+      await expect(page.locator('[data-test="single-file-count"]')).toHaveText('1');
+
+      await writeFile(fixture.paths.main, createSingleFileMainSource('single-b'));
+
+      await expect(page.locator('[data-test="single-file-version"]')).toHaveText('single-b');
+      await expect(page.locator('[data-test="example-root"]')).toHaveCount(1);
+      await expect(page.locator('#app > [data-test="example-root"]')).toHaveCount(1);
+      await expectNoReloadedDuplicateRoot(page, token);
+      expect(targetWarnings).toEqual([]);
+      await assertNoConsoleErrors();
+    } finally {
+      page.off('console', onConsole);
+      await stopHmrFixture(fixture);
+    }
+  });
+
   test('hot-swaps module text and constants without a full page reload', async ({
     page,
     assertNoConsoleErrors,
@@ -484,7 +550,7 @@ test.describe('hmr example real Vite updates', () => {
     }
   });
 
-  test('accepts an unmounted component module update without rendering it', async ({
+  test('bubbles a mixed export component module update to its rendered importer', async ({
     page,
     assertNoConsoleErrors,
   }, testInfo) => {
@@ -496,11 +562,8 @@ test.describe('hmr example real Vite updates', () => {
 
       await patchUnmountedSentinel(fixture.paths, 'module-only');
 
-      await expect
-        .poll(() => page.evaluate(() => (window as any).__essorHmrSentinelVersion))
-        .toBe('module-only');
       await expect(page.locator('[data-test="hmr-module-summary"]')).toHaveText(
-        'Summary: Component module · interactive · idle',
+        'Summary: Component module · interactive · module-only',
       );
       await expect(page.locator('[data-test="hmr-unmounted-sentinel"]')).toHaveCount(0);
       await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 0');

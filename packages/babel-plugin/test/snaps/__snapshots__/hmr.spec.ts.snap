@@ -38,7 +38,8 @@ function App() {
 }
 App.__signature = "jtt6lc";
 App.__hmrId = "1q9dts2:App";
-createApp(__$createHMRComponent$__(App), 'root');
+const _app = createApp(__$createHMRComponent$__(App), 'root');
+import.meta.hot?.dispose(() => _app?.unmount?.());
 const __$registry$__ = [Counter, App];"
 `;
 
@@ -74,6 +75,7 @@ function App() {
 }
 App.__signature = "1b4tsqg";
 App.__hmrId = "1q9dts2:App";
-createApp(__$createHMRComponent$__(App), 'root');
+const _app = createApp(__$createHMRComponent$__(App), 'root');
+import.meta.hot?.dispose(() => _app?.unmount?.());
 const __$registry$__ = [App];"
 `;

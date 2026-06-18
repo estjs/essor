@@ -152,8 +152,7 @@ describe('babel plugin direct helpers', () => {
     it('keeps omitClosingTags enabled by default and allows opting out', () => {
       expect(resolveOptions({ mode: 'server' }, 'options.tsx').omitClosingTags).toBe(true);
       expect(
-        resolveOptions({ mode: 'server', omitClosingTags: false }, 'options.tsx')
-          .omitClosingTags,
+        resolveOptions({ mode: 'server', omitClosingTags: false }, 'options.tsx').omitClosingTags,
       ).toBe(false);
     });
 
@@ -401,7 +400,7 @@ describe('babel plugin direct helpers', () => {
   });
 
   describe('hmr helpers', () => {
-    it('collects top-level JSX components and injects metadata/registry code', () => {
+    it('adds top-level component HMR metadata and disposes top-level apps', () => {
       const path = getProgramPath(`
         export function Counter() {
           return <div />;
@@ -440,10 +439,74 @@ describe('babel plugin direct helpers', () => {
 
       const code = generate(path.node).code;
       expect(code).toContain('Counter.__signature');
+      expect(code).toContain('Counter.__hmrId');
+      expect(code).toContain('Widget.__signature');
       expect(code).toContain('Widget.__hmrId');
-      expect(code).toContain('const __$registry$__ = [Counter, Widget];');
-      expect(code).toContain('createApp(__$createHMRComponent$__(Counter));');
+      expect(code).toContain('const _app');
+      expect(code).toContain('createApp(__$createHMRComponent$__(Counter))');
+      expect(code).toContain('import.meta.hot?.dispose(() => _app?.unmount?.());');
       expect(code).not.toContain('Nested.__hmrId');
+      expect(code).toContain('const __$registry$__ = [Counter, Widget];');
+    });
+
+    it('does not create a self-accepting boundary for mixed non-component exports', () => {
+      const path = getProgramPath(`
+        export const LABEL = 'visible';
+
+        export function Sentinel() {
+          return <span>{LABEL}</span>;
+        }
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'Sentinel.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).not.toContain('__signature');
+      expect(code).not.toContain('__hmrId');
+      expect(code).not.toContain('__$registry$__');
+    });
+
+    it('keeps HMR enabled for type-only exports', () => {
+      const path = getProgramPath(`
+        export type WidgetProps = {
+          label: string;
+        };
+
+        export function Widget(props: WidgetProps) {
+          return <span>{props.label}</span>;
+        }
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'Widget.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).toContain('Widget.__signature');
+      expect(code).toContain('Widget.__hmrId');
+      expect(code).toContain('const __$registry$__ = [Widget];');
     });
   });
 });

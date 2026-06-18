@@ -31,6 +31,8 @@ const DEFAULT_OPTIONS = {
  */
 const FILE_EXTENSION_REGEX = /\.[cm]?[jt]sx?$/i;
 const SKIP_DIRECTORIES = ['node_modules', 'dist', 'public'];
+const HMR_DISPOSE_PREFIX = 'import.meta.hot?.dispose(';
+const HMR_DISPOSE_SUFFIX = ');';
 
 type BundlerType = 'vite' | 'webpack5' | 'rspack' | 'rollup' | 'esbuild' | 'standard';
 
@@ -74,30 +76,51 @@ function detectBundler(meta: UnpluginContextMeta): BundlerType {
  * @param bundlerType - The bundler type detected
  * @returns Object with imports and registration code
  */
-function generateHMRCode(bundlerType: BundlerType) {
+function extractHMRDisposeHandlers(code: string) {
+  const lines = code.split('\n');
+  const disposeHandlers: string[] = [];
+  const cleanedLines = lines.filter((line) => {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith(HMR_DISPOSE_PREFIX) || !trimmed.endsWith(HMR_DISPOSE_SUFFIX)) {
+      return true;
+    }
+
+    disposeHandlers.push(trimmed.slice(HMR_DISPOSE_PREFIX.length, -HMR_DISPOSE_SUFFIX.length));
+    return false;
+  });
+
+  return {
+    code: cleanedLines.join('\n'),
+    disposeHandlers,
+  };
+}
+
+function generateHMRCode(bundlerType: BundlerType, disposeHandlers: string[] = []) {
   // Import HMR utilities from virtual module
-  const imports = [
-    `import { createHMRComponent as __$createHMRComponent$__ } from "${VIRTUAL_MODULE_ID}";`,
-    `import { hmrAccept as __$hmrAccept$__ } from "${VIRTUAL_MODULE_ID}";`,
-  ];
+  const imports = {
+    createHMRComponent: `import { createHMRComponent as __$createHMRComponent$__ } from "${VIRTUAL_MODULE_ID}";`,
+    hmrAccept: `import { hmrAccept as __$hmrAccept$__ } from "${VIRTUAL_MODULE_ID}";`,
+  };
+  const disposeLines = disposeHandlers.map((handler) => `  import.meta.hot.dispose(${handler});`);
 
   const register =
     bundlerType === 'vite'
       ? [
           'if (import.meta.hot) {',
+          ...disposeLines,
           '  import.meta.hot.accept();',
           '  __$hmrAccept$__("vite", import.meta.hot, __$registry$__);',
           '}',
         ].join('\n')
       : [
           'if (import.meta.hot) {',
+          ...disposeLines,
           `  __$hmrAccept$__("${bundlerType}", import.meta.hot, __$registry$__);`,
           '}',
         ].join('\n');
 
   return {
-    importsCreateHMRComponent: `${imports[0]}\n`,
-    importHmrAccept: `${imports[1]}\n`,
+    imports,
     register,
   };
 }
@@ -213,14 +236,16 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
 
       // Inject HMR code if enabled and components are present
       if (babelOptions.hmr) {
-        const hmrCode = generateHMRCode(bundlerType);
+        const hmrResult = extractHMRDisposeHandlers(result.code);
+        const hmrCode = generateHMRCode(bundlerType, hmrResult.disposeHandlers);
+        const transformedCode = hmrResult.code;
 
-        if (result.code.includes('__$createHMRComponent$__')) {
-          finalCode = `${hmrCode.importsCreateHMRComponent}\n${finalCode}`;
+        if (transformedCode.includes('__$createHMRComponent$__')) {
+          finalCode = `${hmrCode.imports.createHMRComponent}\n${finalCode}`;
         }
-        finalCode += result.code;
-        if (result.code.includes('__$registry$__')) {
-          finalCode = `${hmrCode.importHmrAccept}\n${finalCode}\n${hmrCode.register}`;
+        finalCode += transformedCode;
+        if (transformedCode.includes('__$registry$__')) {
+          finalCode = `${hmrCode.imports.hmrAccept}\n${finalCode}\n${hmrCode.register}`;
         }
       } else {
         finalCode += result.code;
