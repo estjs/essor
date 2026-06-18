@@ -1,3 +1,20 @@
-import { createEssorExampleConfig } from '../vite.shared';
+import { defineConfig } from 'vite';
+import essor from 'unplugin-essor/vite';
 
-export default createEssorExampleConfig({ hmr: true });
+export default defineConfig({
+  base: './',
+  plugins: [
+    essor({
+      hmr: true,
+      mode: 'client',
+    }),
+  ],
+  server: process.env.E2E
+    ? {
+        hmr: false,
+        watch: {
+          ignored: ['**/*'],
+        },
+      }
+    : undefined,
+});
