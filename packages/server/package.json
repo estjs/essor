@@ -28,8 +28,6 @@
   "exports": {
     ".": {
       "types": "./dist/server.d.ts",
-      "require": "./dist/server.cjs",
-      "import": "./dist/server.js",
       "development": {
         "types": "./dist/server.d.ts",
         "require": "./dist/server.dev.cjs",
@@ -39,7 +37,9 @@
         "types": "./dist/server.d.ts",
         "require": "./dist/server.cjs",
         "import": "./dist/server.js"
-      }
+      },
+      "require": "./dist/server.cjs",
+      "import": "./dist/server.js"
     }
   },
   "sideEffects": false,
