@@ -455,8 +455,6 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
 }
-
-export { __$registry$__ };
 "
 `;
 
@@ -914,7 +912,7 @@ if (import.meta.hot) {
   hmrAccept("rollup", import.meta.hot, __$registry$__);
 }
 
-export { ComponentA, ComponentB, __$registry$__, App as default };
+export { ComponentA, ComponentB, App as default };
 "
 `;
 
@@ -1361,8 +1359,6 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
 }
-
-export { __$registry$__ };
 "
 `;
 
@@ -1810,7 +1806,5 @@ if (import.meta.hot) {
   import.meta.hot.dispose(() => _app?.unmount?.());
   hmrAccept("rollup", import.meta.hot, __$registry$__);
 }
-
-export { __$registry$__ };
 "
 `;

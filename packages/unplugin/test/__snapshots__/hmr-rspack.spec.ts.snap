@@ -31,7 +31,7 @@ function App() {
 App.__signature = "uvdrlt";
 App.__hmrId = "me1pwu:App";
 var _app = createApp(__$createHMRComponent$__(App), "#root");
-export var __$registry$__ = [
+var __$registry$__ = [
     Foo,
     Bar,
     App
@@ -77,7 +77,7 @@ export default function App() {
 App.__signature = "1q4priw";
 App.__hmrId = "ydmpkz:App";
 var _app = createApp(__$createHMRComponent$__(App), '#root');
-export var __$registry$__ = [
+var __$registry$__ = [
     ComponentA,
     ComponentB,
     App
@@ -115,7 +115,7 @@ var _app = createApp(__$createHMRComponent$__(function() {
         name: "World"
     });
 }), '#root');
-export var __$registry$__ = [
+var __$registry$__ = [
     PropsComponent
 ];
 if (import.meta.hot) {
@@ -151,7 +151,7 @@ function SignalComponent() {
 SignalComponent.__signature = "182rwo7";
 SignalComponent.__hmrId = "1xegm1l:SignalComponent";
 var _app = createApp(__$createHMRComponent$__(SignalComponent), '#root');
-export var __$registry$__ = [
+var __$registry$__ = [
     SignalComponent
 ];
 _delegateEvents$([
