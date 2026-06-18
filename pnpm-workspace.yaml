@@ -17,3 +17,7 @@ minimumReleaseAgeExclude:
   - '@babel/template@7.29.7'
   - '@babel/traverse@7.29.7'
   - '@babel/types@7.29.7'
+  - '@estjs/athen-plugin-analytics@0.0.9-beta.1'
+  - '@estjs/athen-plugin-mdx@0.0.9-beta.1'
+  - '@estjs/athen-plugin-search@0.0.9-beta.1'
+  - athen@0.0.9-beta.1
