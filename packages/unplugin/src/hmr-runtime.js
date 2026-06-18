@@ -278,8 +278,17 @@ function handleHMRUpdate(hot, newModule) {
  *
  * Vite provides import.meta.hot.accept() callback that receives the new module
  */
-function setupViteHMR(hot) {
-  hot.accept((newModule) => handleHMRUpdate(hot, newModule));
+function setupViteHMR(hot, registry) {
+  const isUpdate = hot.data.__initialized__;
+  hot.data.__initialized__ = true;
+  hot.data.__$registry$__ = registry;
+
+  if (isUpdate) {
+    const needsReload = applyUpdate(registry);
+    if (needsReload) {
+      invalidateOrReload(hot);
+    }
+  }
 }
 
 /**

@@ -313,11 +313,13 @@ export function applyHmr(programPath: NodePath<t.Program>, ctx: CompileContext):
   }
 
   programPath.node.body.push(
-    t.variableDeclaration('const', [
-      t.variableDeclarator(
-        t.identifier('__$registry$__'),
-        t.arrayExpression([...ctx.hmrComponents].map((name) => t.identifier(name))),
-      ),
-    ]),
+    t.exportNamedDeclaration(
+      t.variableDeclaration('const', [
+        t.variableDeclarator(
+          t.identifier('__$registry$__'),
+          t.arrayExpression([...ctx.hmrComponents].map((name) => t.identifier(name))),
+        ),
+      ]),
+    ),
   );
 }
