@@ -2,11 +2,19 @@ import { generate } from '@babel/generator';
 import { type NodePath, types as t } from '@babel/core';
 import { type AnyFunction, isFunctionLikeExpressionPath } from '../ast-utils';
 import { checkHasJSXReturn } from '../ast-utils';
+import type { Binding } from '@babel/traverse';
 import type { CompileContext } from '../context';
 
 const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
 const WHITESPACE_REGEX = /\s+/g;
 const PATH_SEPARATOR_REGEX = /[/\\]/;
+const ESSOR_IMPORT = 'essor';
+const HMR_IMPORTS = new Set(['createApp', 'hydrate', 'createComponent']);
+
+type HmrBindings = {
+  createComponent: Map<string, Binding>;
+  mount: Map<string, Binding>;
+};
 
 /** Returns the basename of the current file, used for stable cross-machine HMR hashes. */
 function getFileBasename(ctx: CompileContext): string {
@@ -116,7 +124,9 @@ function collectFromStatement(
   }
 }
 
-function isComponentExport(statementPath: NodePath<t.Statement | t.ModuleDeclaration>): boolean {
+function isComponentDeclarationExport(
+  statementPath: NodePath<t.Statement | t.ModuleDeclaration>,
+): boolean {
   const declarationPath = unwrapTopLevelDeclaration(statementPath);
 
   if (!declarationPath) {
@@ -143,7 +153,29 @@ function isComponentExport(statementPath: NodePath<t.Statement | t.ModuleDeclara
   });
 }
 
-function hasNonComponentExport(programPath: NodePath<t.Program>): boolean {
+function hasOnlyComponentSpecifiers(
+  statementPath: NodePath<t.ExportNamedDeclaration>,
+  componentNames: Set<string>,
+): boolean {
+  const { node } = statementPath;
+
+  if (node.declaration || node.source || node.specifiers.length === 0) {
+    return false;
+  }
+
+  return node.specifiers.every((specifier) => {
+    return (
+      t.isExportSpecifier(specifier) &&
+      t.isIdentifier(specifier.local) &&
+      componentNames.has(specifier.local.name)
+    );
+  });
+}
+
+function hasNonComponentExport(
+  programPath: NodePath<t.Program>,
+  componentNames: Set<string>,
+): boolean {
   for (const statementPath of programPath.get('body')) {
     if (!statementPath.isExportNamedDeclaration() && !statementPath.isExportDefaultDeclaration()) {
       continue;
@@ -153,7 +185,16 @@ function hasNonComponentExport(programPath: NodePath<t.Program>): boolean {
       continue;
     }
 
-    if (!isComponentExport(statementPath as NodePath<t.Statement | t.ModuleDeclaration>)) {
+    if (
+      statementPath.isExportNamedDeclaration() &&
+      hasOnlyComponentSpecifiers(statementPath, componentNames)
+    ) {
+      continue;
+    }
+
+    if (
+      !isComponentDeclarationExport(statementPath as NodePath<t.Statement | t.ModuleDeclaration>)
+    ) {
       return true;
     }
   }
@@ -301,8 +342,52 @@ function canWrapArgument(value: t.CallExpression['arguments'][number] | undefine
   return !!value && !t.isSpreadElement(value) && !t.isArgumentPlaceholder(value);
 }
 
-function isMountCallee(callee: t.Expression | t.V8IntrinsicIdentifier): callee is t.Identifier {
-  return t.isIdentifier(callee) && (callee.name === 'createApp' || callee.name === 'hydrate');
+function getEssorHmrBindings(programPath: NodePath<t.Program>): HmrBindings {
+  const bindings: HmrBindings = {
+    createComponent: new Map(),
+    mount: new Map(),
+  };
+
+  for (const statementPath of programPath.get('body')) {
+    if (!statementPath.isImportDeclaration() || statementPath.node.source.value !== ESSOR_IMPORT) {
+      continue;
+    }
+
+    for (const specifier of statementPath.node.specifiers) {
+      if (!t.isImportSpecifier(specifier)) {
+        continue;
+      }
+
+      const imported = specifier.imported;
+      const name = t.isIdentifier(imported) ? imported.name : imported.value;
+      if (!HMR_IMPORTS.has(name)) {
+        continue;
+      }
+
+      if (name === 'createComponent') {
+        const binding = statementPath.scope.getBinding(specifier.local.name);
+        if (binding) {
+          bindings.createComponent.set(specifier.local.name, binding);
+        }
+      } else {
+        const binding = statementPath.scope.getBinding(specifier.local.name);
+        if (binding) {
+          bindings.mount.set(specifier.local.name, binding);
+        }
+      }
+    }
+  }
+
+  return bindings;
+}
+
+function hasImportBinding(path: NodePath, name: string, bindings: Map<string, Binding>): boolean {
+  return bindings.has(name) && path.scope.getBinding(name) === bindings.get(name);
+}
+
+function isMountCallee(callPath: NodePath<t.CallExpression>, bindings: HmrBindings): boolean {
+  const { callee } = callPath.node;
+  return t.isIdentifier(callee) && hasImportBinding(callPath, callee.name, bindings.mount);
 }
 
 function createImportMetaHot(): t.MemberExpression {
@@ -330,18 +415,18 @@ function createDisposeStatement(appId: t.Identifier): t.ExpressionStatement {
   );
 }
 
-function wrapTopLevelMountDisposals(programPath: NodePath<t.Program>): void {
+function wrapTopLevelMountDisposals(programPath: NodePath<t.Program>, bindings: HmrBindings): void {
   const nextBody: t.Statement[] = [];
 
-  for (const statement of programPath.node.body) {
-    if (
-      t.isExpressionStatement(statement) &&
-      t.isCallExpression(statement.expression) &&
-      isMountCallee(statement.expression.callee)
-    ) {
+  for (const statementPath of programPath.get('body')) {
+    const statement = statementPath.node;
+    const expressionPath = statementPath.isExpressionStatement()
+      ? statementPath.get('expression')
+      : null;
+    if (expressionPath?.isCallExpression() && isMountCallee(expressionPath, bindings)) {
       const appId = programPath.scope.generateUidIdentifier('app');
       nextBody.push(
-        t.variableDeclaration('const', [t.variableDeclarator(appId, statement.expression)]),
+        t.variableDeclaration('const', [t.variableDeclarator(appId, expressionPath.node)]),
       );
       nextBody.push(createDisposeStatement(appId));
       continue;
@@ -360,7 +445,11 @@ function wrapTopLevelMountDisposals(programPath: NodePath<t.Program>): void {
  * emitted for top-level components in the current file, but imported component
  * functions already carry their own metadata after their module is transformed.
  */
-function wrapComponentCreationCalls(programPath: NodePath<t.Program>, ctx: CompileContext): void {
+function wrapComponentCreationCalls(
+  programPath: NodePath<t.Program>,
+  ctx: CompileContext,
+  bindings: HmrBindings,
+): void {
   programPath.traverse({
     /**
      * Rewrites `createComponent`, `createApp`, and `hydrate` calls for HMR tracking.
@@ -370,7 +459,10 @@ function wrapComponentCreationCalls(programPath: NodePath<t.Program>, ctx: Compi
 
       if (!t.isIdentifier(callee)) return;
 
-      if (callee.name === ctx.importIdentifiers.createComponent.name) {
+      if (
+        callee.name === ctx.importIdentifiers.createComponent.name ||
+        hasImportBinding(callPath, callee.name, bindings.createComponent)
+      ) {
         const firstArg = callPath.node.arguments[0];
         if (canWrapArgument(firstArg)) {
           callPath.node.callee = t.identifier(HMR_COMPONENT_NAME);
@@ -379,7 +471,7 @@ function wrapComponentCreationCalls(programPath: NodePath<t.Program>, ctx: Compi
       }
 
       // Transform: createApp(App, 'root') -> createApp(__$createHMRComponent$__(App), 'root')
-      if (isMountCallee(callee)) {
+      if (isMountCallee(callPath, bindings)) {
         const args = callPath.node.arguments;
         if (args.length === 0) return;
 
@@ -408,12 +500,13 @@ export function collectTopLevelHmrComponents(
     return;
   }
 
-  if (hasNonComponentExport(programPath)) {
-    return;
-  }
-
   for (const statementPath of programPath.get('body')) {
     collectFromStatement(statementPath as NodePath<t.Statement | t.ModuleDeclaration>, ctx);
+  }
+
+  if (hasNonComponentExport(programPath, ctx.hmrComponents)) {
+    ctx.hmrComponents.clear();
+    ctx.hmrSignatures.clear();
   }
 }
 
@@ -429,13 +522,15 @@ export function applyHmr(programPath: NodePath<t.Program>, ctx: CompileContext):
     injectComponentMetadata(programPath, ctx);
   }
 
-  wrapComponentCreationCalls(programPath, ctx);
+  const bindings = getEssorHmrBindings(programPath);
+
+  wrapComponentCreationCalls(programPath, ctx, bindings);
 
   if (ctx.hmrComponents.size === 0) {
     return;
   }
 
-  wrapTopLevelMountDisposals(programPath);
+  wrapTopLevelMountDisposals(programPath, bindings);
 
   programPath.node.body.push(
     t.variableDeclaration('const', [

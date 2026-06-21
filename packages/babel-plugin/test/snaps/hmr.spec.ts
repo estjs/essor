@@ -30,6 +30,8 @@ describe('hMR transformation', () => {
 
     const output = await transform(input);
 
+    expect(output).toContain('__$createHMRComponent$__(App);');
+    expect(output).not.toContain('cc(App);');
     expect(output).toMatchSnapshot();
   });
 

@@ -402,6 +402,8 @@ describe('babel plugin direct helpers', () => {
   describe('hmr helpers', () => {
     it('adds top-level component HMR metadata and disposes top-level apps', () => {
       const path = getProgramPath(`
+        import { createApp } from 'essor';
+
         export function Counter() {
           return <div />;
         }
@@ -507,6 +509,136 @@ describe('babel plugin direct helpers', () => {
       expect(code).toContain('Widget.__signature');
       expect(code).toContain('Widget.__hmrId');
       expect(code).toContain('const __$registry$__ = [Widget];');
+    });
+
+    it('keeps HMR enabled for component-only export specifiers', () => {
+      const path = getProgramPath(`
+        function Widget() {
+          return <span />;
+        }
+
+        const Panel = () => <section />;
+
+        export { Widget, Panel as RootPanel };
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'Widget.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).toContain('Widget.__hmrId');
+      expect(code).toContain('Panel.__hmrId');
+      expect(code).toContain('const __$registry$__ = [Widget, Panel];');
+    });
+
+    it('does not treat local createApp functions as Essor mount calls', () => {
+      const path = getProgramPath(`
+        function createApp(component: unknown) {
+          return component;
+        }
+
+        function App() {
+          return <main />;
+        }
+
+        createApp(App);
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'LocalCreateApp.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).toContain('createApp(App);');
+      expect(code).not.toContain('createApp(__$createHMRComponent$__(App))');
+      expect(code).not.toContain('import.meta.hot?.dispose');
+    });
+
+    it('recognizes aliased Essor mount imports', () => {
+      const path = getProgramPath(`
+        import { createApp as mount } from 'essor';
+
+        function App() {
+          return <main />;
+        }
+
+        mount(App, '#root');
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'AliasedMount.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).toContain("const _app = mount(__$createHMRComponent$__(App), '#root');");
+      expect(code).toContain('import.meta.hot?.dispose(() => _app?.unmount?.());');
+    });
+
+    it('does not wrap Essor helpers shadowed by local bindings', () => {
+      const path = getProgramPath(`
+        import { createApp, createComponent } from 'essor';
+
+        function App() {
+          return <main />;
+        }
+
+        function render(createApp: (value: unknown) => unknown) {
+          const createComponent = (value: unknown) => value;
+          createApp(App);
+          createComponent(App);
+        }
+      `);
+      const ctx = createCompileContext(
+        resolveOptions(
+          {
+            mode: 'client',
+            hmr: true,
+            bundler: 'vite',
+          },
+          'ShadowedHelpers.tsx',
+        ),
+        path,
+      );
+
+      collectTopLevelHmrComponents(path, ctx);
+      applyHmr(path, ctx);
+
+      const code = generate(path.node).code;
+      expect(code).toContain('createApp(App);');
+      expect(code).toContain('createComponent(App);');
+      expect(code).not.toContain('createApp(__$createHMRComponent$__(App))');
+      expect(code).not.toContain('__$createHMRComponent$__(App);');
     });
   });
 });
