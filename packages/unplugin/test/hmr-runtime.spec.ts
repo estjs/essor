@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   applyUpdate,
   createHMRComponent,
+  getRegistryInfo,
   hmrAccept,
   unregisterAllInstances,
 } from '../src/hmr-runtime';
@@ -16,54 +17,29 @@ interface HMRComponent {
 type Mock = any;
 
 const forceUpdateMock = (instance: any) => instance.__forceUpdateMock ?? instance.forceUpdate;
+const runScopeCleanups = (instance: any) => {
+  for (const cleanup of [...(instance.scope?.cleanup ?? [])]) cleanup();
+  if (instance.scope) instance.scope.cleanup.length = 0;
+};
 
 vi.mock('essor', () => {
-  let activeEffect: any = null;
-  const signal = (initial: any) => {
-    let value = initial;
-    const subs = new Set<any>();
-    return {
-      get value() {
-        if (activeEffect) {
-          subs.add(activeEffect);
-          activeEffect.deps.add(subs);
-        }
-        return value;
-      },
-      set value(newValue: any) {
-        value = newValue;
-        [...subs].forEach((fn) => fn());
-      },
-    };
-  };
-
-  const effect = (fn: () => void) => {
-    const run: any = () => {
-      const prev = activeEffect;
-      activeEffect = run;
-      try {
-        fn();
-      } finally {
-        activeEffect = prev;
-      }
-    };
-    run.deps = new Set<Set<any>>();
-    run.stop = vi.fn(() => {
-      for (const dep of run.deps) {
-        dep.delete(run);
-      }
-      run.deps.clear();
-    });
-    run();
-    return run;
-  };
-
   const createComponent = (fn: any) => {
     const instance: any = {
       component: fn,
       destroy: vi.fn(),
+      lastRender: undefined,
       mount: vi.fn(),
+      scope: null,
     };
+    instance.mount = vi.fn(() => {
+      instance.scope = { cleanup: [] };
+      (globalThis as any).__essorMockMountingInstance = instance;
+      try {
+        instance.lastRender = fn();
+      } finally {
+        (globalThis as any).__essorMockMountingInstance = undefined;
+      }
+    });
     const forceUpdate = vi.fn(() => {
       instance.destroy();
       instance.mount();
@@ -76,7 +52,12 @@ vi.mock('essor', () => {
     return instance;
   };
 
-  return { signal, effect, createComponent };
+  const onDestroy = (fn: () => void) => {
+    const instance = (globalThis as any).__essorMockMountingInstance;
+    instance?.scope?.cleanup.push(fn);
+  };
+
+  return { createComponent, onDestroy };
 });
 
 describe('hMR Runtime', () => {
@@ -102,6 +83,29 @@ describe('hMR Runtime', () => {
       expect(wrapped.forceUpdate).toBeDefined();
     });
 
+    it('registers destroy cleanup after mount so root wrappers do not need an active scope', () => {
+      const hmrId = 'root-cleanup-after-mount-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      expect(instance.scope).toBeNull();
+
+      instance.mount();
+      expect(instance.scope.cleanup).toHaveLength(1);
+
+      (forceUpdateMock(instance) as Mock).mockClear();
+      runScopeCleanups(instance);
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      applyUpdate([Comp2]);
+      expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
+    });
+
     it('uses the incoming implementation immediately when all old instances were disposed', () => {
       const hmrId = 'disposed-root-test-id';
       const Comp1 = () => 'v1';
@@ -117,7 +121,8 @@ describe('hMR Runtime', () => {
 
       const second = createHMRComponent(Comp2, {});
 
-      expect(second.component).toBe(Comp2);
+      second.mount();
+      expect(second.lastRender).toBe('v2');
       expect(forceUpdateMock(second)).not.toHaveBeenCalled();
     });
   });
@@ -129,24 +134,18 @@ describe('hMR Runtime', () => {
       (Comp1 as HMRComponent).__hmrId = hmrId;
       (Comp1 as HMRComponent).__signature = 'sig-1';
 
-      // 1. Initial render - this registers the component and sets up effect
       const instance = createHMRComponent(Comp1, {});
 
-      // Clear initial call from creation
       (forceUpdateMock(instance) as Mock).mockClear();
 
-      // 2. Create new component version
       const Comp2 = () => 'v2';
       (Comp2 as HMRComponent).__hmrId = hmrId;
-      (Comp2 as HMRComponent).__signature = 'sig-2'; // Changed signature
+      (Comp2 as HMRComponent).__signature = 'sig-2';
 
-      // 3. Apply update
       const registry = [Comp2];
       const needsReload = applyUpdate(registry);
 
       expect(needsReload).toBe(false);
-
-      // Verify forceUpdate was called because signal changed
       expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
 
@@ -190,8 +189,86 @@ describe('hMR Runtime', () => {
       applyUpdate([Comp2]);
 
       const instance = createHMRComponent(Comp1, {});
+      instance.mount();
 
-      expect(instance.component).toBe(Comp2);
+      expect(instance.lastRender).toBe('v2');
+    });
+
+    it('does not downgrade child registry while a parent hot update remounts stale closures', () => {
+      const childHmrId = 'stale-child-remount-test-id';
+      const Child1 = () => 'child-v1';
+      (Child1 as HMRComponent).__hmrId = childHmrId;
+      (Child1 as HMRComponent).__signature = 'child-sig';
+
+      const childInstance = createHMRComponent(Child1, {});
+
+      const Child2 = () => 'child-v2';
+      (Child2 as HMRComponent).__hmrId = childHmrId;
+      (Child2 as HMRComponent).__signature = 'child-sig';
+      applyUpdate([Child2]);
+
+      const parentHmrId = 'stale-parent-remount-test-id';
+      const Parent1 = () => 'parent-v1';
+      (Parent1 as HMRComponent).__hmrId = parentHmrId;
+      (Parent1 as HMRComponent).__signature = 'parent-sig-1';
+
+      const parentInstance = createHMRComponent(Parent1, {});
+      let remountedChild: any;
+      parentInstance.forceUpdate = vi.fn(() => {
+        childInstance.destroy();
+        remountedChild = createHMRComponent(Child1, {});
+      });
+
+      const Parent2 = () => 'parent-v2';
+      (Parent2 as HMRComponent).__hmrId = parentHmrId;
+      (Parent2 as HMRComponent).__signature = 'parent-sig-2';
+
+      applyUpdate([Parent2]);
+      remountedChild.mount();
+
+      expect(remountedChild.lastRender).toBe('child-v2');
+    });
+
+    it('keeps the latest implementation for stale closures after a child is toggled off and on', () => {
+      const hmrId = 'stale-toggle-remount-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const first = createHMRComponent(Comp1, {});
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      applyUpdate([Comp2]);
+      first.destroy();
+
+      const second = createHMRComponent(Comp1, {});
+      second.mount();
+
+      expect(second.lastRender).toBe('v2');
+    });
+
+    it('keeps module updates for unmounted components so stale closures remount the latest implementation', () => {
+      const hmrId = 'unmounted-module-update-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const first = createHMRComponent(Comp1, {});
+      first.destroy();
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      expect(applyUpdate([Comp2])).toBe(false);
+
+      const second = createHMRComponent(Comp1, {});
+      second.mount();
+
+      expect(second.lastRender).toBe('v2');
     });
 
     it('should not trigger update if signature matches', () => {
@@ -219,7 +296,7 @@ describe('hMR Runtime', () => {
       const instance = createHMRComponent(Comp1, {});
       (forceUpdateMock(instance) as Mock).mockClear();
 
-      const Comp2 = () => 'v1'; // Different function, same code/signature
+      const Comp2 = () => 'v1';
       (Comp2 as HMRComponent).__hmrId = hmrId;
       (Comp2 as HMRComponent).__signature = 'sig-1';
 
@@ -227,8 +304,6 @@ describe('hMR Runtime', () => {
       const needsReload = applyUpdate(registry);
 
       expect(needsReload).toBe(false);
-      // Even if signature is same, different function reference triggers update
-      // This is because we check `oldFn !== newComponentFn` in shouldUpdate
       expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
 
@@ -258,6 +333,36 @@ describe('hMR Runtime', () => {
 
       expect(needsReload).toBe(false);
       expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
+    });
+
+    it('requests a reload and unregisters the instance when forceUpdate fails', () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const hmrId = 'failed-force-update-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      const failingForceUpdate = vi.fn(() => {
+        throw new Error('force update failed');
+      });
+      instance.forceUpdate = failingForceUpdate;
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      expect(applyUpdate([Comp2])).toBe(true);
+      expect(failingForceUpdate).toHaveBeenCalledTimes(1);
+
+      const Comp3 = () => 'v3';
+      (Comp3 as HMRComponent).__hmrId = hmrId;
+      (Comp3 as HMRComponent).__signature = 'sig-3';
+
+      applyUpdate([Comp3]);
+      expect(failingForceUpdate).toHaveBeenCalledTimes(1);
+
+      errorSpy.mockRestore();
     });
   });
 
@@ -336,7 +441,7 @@ describe('hMR Runtime', () => {
       expect(forceUpdateMock(second)).not.toHaveBeenCalled();
     });
 
-    it('stops the HMR effect when a component instance is unmounted', () => {
+    it('unregisters an instance when it is unmounted', () => {
       const hmrId = 'unmounted-cleanup-id';
       const Comp1 = () => 'v1';
       (Comp1 as HMRComponent).__hmrId = hmrId;
@@ -354,6 +459,66 @@ describe('hMR Runtime', () => {
       applyUpdate([Comp2]);
 
       expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
+    });
+
+    it('unregisters an instance when its owner scope is disposed', () => {
+      const hmrId = 'scope-cleanup-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp1, {});
+      instance.mount();
+      (forceUpdateMock(instance) as Mock).mockClear();
+
+      runScopeCleanups(instance);
+
+      const Comp2 = () => 'v2';
+      (Comp2 as HMRComponent).__hmrId = hmrId;
+      (Comp2 as HMRComponent).__signature = 'sig-2';
+
+      applyUpdate([Comp2]);
+
+      expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
+    });
+
+    it('releases registry entries after the last live instance is destroyed', async () => {
+      const hmrId = 'release-empty-registry-id';
+      const Comp = () => 'v1';
+      (Comp as HMRComponent).__hmrId = hmrId;
+      (Comp as HMRComponent).__signature = 'sig-1';
+
+      const instance = createHMRComponent(Comp, {});
+      expect(getRegistryInfo()[hmrId]).toEqual({
+        signature: 'sig-1',
+        instanceCount: 1,
+      });
+
+      instance.destroy();
+      await Promise.resolve();
+
+      expect(getRegistryInfo()[hmrId]).toBeUndefined();
+    });
+
+    it('does not let a stale cleanup remove a newer registry entry', () => {
+      const hmrId = 'stale-cleanup-registry-id';
+      const Comp = () => 'v1';
+      (Comp as HMRComponent).__hmrId = hmrId;
+      (Comp as HMRComponent).__signature = 'sig-1';
+
+      const oldInstance = createHMRComponent(Comp, {});
+      unregisterAllInstances(hmrId);
+
+      const newInstance = createHMRComponent(Comp, {});
+      oldInstance.destroy();
+
+      expect(getRegistryInfo()[hmrId]).toEqual({
+        signature: 'sig-1',
+        instanceCount: 1,
+      });
+
+      newInstance.destroy();
+      expect(getRegistryInfo()[hmrId]).toBeUndefined();
     });
   });
 });

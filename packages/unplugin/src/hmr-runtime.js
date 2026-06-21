@@ -1,15 +1,15 @@
 /**
- * Essor HMR Runtime - Signal-based Hot Module Replacement
+ * Essor HMR Runtime - Registry-based Hot Module Replacement
  *
  * This runtime enables precise component-level HMR updates without full page reloads:
  *
- * 1. **Signal Wrapping**: Each component is wrapped in a reactive signal
+ * 1. **Registry Tracking**: Each component id points to its latest implementation
  * 2. **Signature Tracking**: Components are tracked by code signatures (from babel plugin)
  * 3. **Precise Updates**: Only components with changed signatures are updated
- * 4. **Effect Subscription**: Component instances subscribe to signal changes via effects
+ * 4. **Instance Reloading**: Live component instances remount when their implementation changes
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
-import { createComponent, effect, signal } from 'essor';
+import { createComponent, onDestroy } from 'essor';
 
 const isFunction = (value) => typeof value === 'function';
 const ESSOR_HMR = 'essor-hmr';
@@ -18,33 +18,18 @@ const ESSOR_HMR = 'essor-hmr';
  *
  * Maps hmrId -> ComponentInfo where:
  * - hmrId: Unique identifier for component (fileHash:componentName)
- * - componentSignal: Reactive signal holding the current component function
+ * - component: Current component function
  * - signature: Hash of component code (changes when code changes)
  * - instances: Set of active component instances
- * - cleanups: Map of cleanup functions for each instance's effect
+ * - updated: True after HMR applies a newer implementation
  */
 const componentRegistry = new Map();
 
-function stopRunner(runner) {
-  if (!runner) return;
-  if (isFunction(runner.stop)) {
-    runner.stop();
-    return;
-  }
-  if (isFunction(runner)) {
-    runner();
-  }
-}
+function cleanupInstance(hmrId, info, component) {
+  info.instances.delete(component);
 
-function cleanupInstance(info, component) {
-  const runner = info.cleanups.get(component);
-  try {
-    if (runner) {
-      stopRunner(runner);
-    }
-  } finally {
-    info.cleanups.delete(component);
-    info.instances.delete(component);
+  if (info.instances.size === 0 && !info.updated && componentRegistry.get(hmrId) === info) {
+    componentRegistry.delete(hmrId);
   }
 }
 
@@ -65,9 +50,9 @@ function invalidateOrReload(hot) {
  *
  * This function wraps a component to enable HMR:
  * 1. Creates or retrieves component registry entry
- * 2. Wraps component function to always read from latest signal value
- * 3. Sets up reactive effect to auto-update component when signal changes
- * 4. Returns regular component instance that auto-updates on HMR
+ * 2. Creates the component from the latest registered implementation
+ * 3. Tracks the instance until destroy()
+ * 4. applyUpdate() remounts tracked instances when the implementation changes
  *
  * @param componentFn - Component function with __hmrId and __signature
  * @param props - Component props
@@ -84,61 +69,40 @@ export function createHMRComponent(componentFn, props) {
   let info = componentRegistry.get(hmrId);
 
   if (!info) {
-    // First registration: create signal wrapped component
     info = {
-      componentSignal: signal(componentFn),
+      component: componentFn,
       signature,
-      instances: new Set(), // Track all instances
-      cleanups: new Map(), // Store cleanup for each instance
+      instances: new Set(),
+      updated: false,
     };
     componentRegistry.set(hmrId, info);
-  } else if (info.instances.size === 0) {
+  } else if (info.instances.size === 0 && !info.updated) {
     info.signature = signature;
-    info.componentSignal.value = componentFn;
+    info.component = componentFn;
   }
 
-  // Create Component instance from the current registry entry. This matters
-  // when an old closure creates a new instance after the module was updated.
-  const currentComponentFn = info.componentSignal.value;
-  const component = createComponent(currentComponentFn, props);
-  // Track this instance
-  info.instances.add(component);
-
-  // Create effect for this Component instance
-  // The effect subscribes to componentSignal and updates the component
-  // We read the signal value immediately to establish the dependency,
-  // but only trigger updates on subsequent changes
-  let initialized = false;
-  const runner = effect(() => {
-    // Read signal value to establish dependency
-    const currentComponentFn = info.componentSignal.value;
-    // Skip the initialization run - only update on actual changes
-    if (!initialized) {
-      initialized = true;
-      return;
-    }
-
-    // Update this specific instance when signal changes
-    try {
-      component.component = currentComponentFn;
-      component.forceUpdate();
-    } catch (error) {
-      console.error(`[Essor HMR] Failed to update component instance:`, error);
-    }
-  });
-
-  // Store cleanup function for this instance
-  info.cleanups.set(component, runner);
-
+  let component;
   let disposed = false;
+  let isForceUpdating = false;
   const cleanupHMR = () => {
+    if (isForceUpdating) return;
     if (disposed) return;
     disposed = true;
-    cleanupInstance(info, component);
+    cleanupInstance(hmrId, info, component);
   };
 
+  // Use a stable boundary function so destroy cleanup is registered only
+  // after the component is mounted inside a real Essor scope. This also lets
+  // stale closures render the latest implementation after a hot update.
+  function HMRBoundary(nextProps) {
+    onDestroy(cleanupHMR);
+    return info.component.call(this, nextProps);
+  }
+
+  component = createComponent(HMRBoundary, props);
+  info.instances.add(component);
+
   const originalForceUpdate = component.forceUpdate;
-  let isForceUpdating = false;
   if (isFunction(originalForceUpdate)) {
     component.forceUpdate = function (...args) {
       isForceUpdating = true;
@@ -184,8 +148,7 @@ function shouldUpdate(oldInfo, newComponentFn, newSignature) {
   if (!oldInfo) return true;
 
   // Check function instance (handles constant updates via module re-execution)
-  const oldFn = oldInfo.componentSignal.value;
-  if (oldFn !== newComponentFn) {
+  if (oldInfo.component !== newComponentFn) {
     return true;
   }
 
@@ -206,9 +169,8 @@ function isHMRComponent(value) {
 /**
  * Apply HMR updates to components
  *
- * Iterates through the new component registry and updates signals
- * for components whose signatures have changed. This triggers
- * reactive effects in component instances, causing them to re-render.
+ * Iterates through the new component registry and force-updates live
+ * component instances whose implementation changed.
  *
  * @param registry - Array of components from updated module
  * @returns true if reload needed (errors occurred), false otherwise
@@ -230,7 +192,12 @@ export function applyUpdate(registry) {
     const info = componentRegistry.get(hmrId);
 
     if (!info) {
-      // New component, skip (will be registered on first render)
+      componentRegistry.set(hmrId, {
+        component: entry,
+        signature,
+        instances: new Set(),
+        updated: true,
+      });
       continue;
     }
 
@@ -239,13 +206,18 @@ export function applyUpdate(registry) {
       continue;
     }
 
-    // Component changed, apply update
-    try {
-      info.signature = signature;
-      info.componentSignal.value = entry;
-    } catch (error) {
-      console.error(`[Essor HMR] Failed to update ${id}:`, error);
-      needsReload = true;
+    info.signature = signature;
+    info.component = entry;
+    info.updated = true;
+
+    for (const component of [...info.instances]) {
+      try {
+        component.forceUpdate();
+      } catch (error) {
+        console.error(`[Essor HMR] Failed to update ${id}:`, error);
+        cleanupInstance(hmrId, info, component);
+        needsReload = true;
+      }
     }
   }
 
@@ -433,9 +405,9 @@ export function unregisterAllInstances(hmrId) {
   let count = 0;
   for (const item of [...info.instances]) {
     try {
-      cleanupInstance(info, item);
+      cleanupInstance(hmrId, info, item);
     } catch (error) {
-      console.error(`[Essor HMR] Failed to cleanup effect:`, error);
+      console.error(`[Essor HMR] Failed to unregister component instance:`, error);
     }
     count++;
   }

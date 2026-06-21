@@ -71,10 +71,10 @@ function detectBundler(meta: UnpluginContextMeta): BundlerType {
 }
 
 /**
- * Generate HMR boilerplate code for a specific bundler
+ * Extract mount cleanup handlers emitted by the Babel HMR pass.
  *
- * @param bundlerType - The bundler type detected
- * @returns Object with imports and registration code
+ * @param code - Transformed module code.
+ * @returns Module code without inline disposal calls and the extracted handlers.
  */
 function extractHMRDisposeHandlers(code: string) {
   const lines = code.split('\n');
