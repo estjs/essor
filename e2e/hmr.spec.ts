@@ -1,5 +1,5 @@
 import { type ChildProcess, spawn } from 'node:child_process';
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createServer } from 'node:net';
 import path from 'node:path';
 import { expect, test } from './test-utils';
@@ -33,6 +33,8 @@ type ConfigPatch = {
   moduleLabel?: string;
   moduleBadge?: string;
 };
+
+let patchCounter = 0;
 
 function quoteString(value: string) {
   return `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
@@ -85,7 +87,9 @@ function replaceExportedNumberConstant(source: string, name: string, value: numb
 
 async function patchFile(filePath: string, transform: (source: string) => string) {
   const source = await readFile(filePath, 'utf8');
-  await writeFile(filePath, transform(source));
+  const tempPath = `${filePath}.${process.pid}.${++patchCounter}.tmp`;
+  await writeFile(tempPath, transform(source));
+  await rename(tempPath, filePath);
 }
 
 async function patchConfig(paths: HmrFixturePaths, patch: ConfigPatch) {
@@ -289,6 +293,11 @@ async function expectPageToken(page: Page, token: string) {
 }
 
 async function gotoHmrFixture(page: Page, fixture: HmrFixture) {
+  await page.addInitScript(() => {
+    (window as any).__essorHmrUpdateCount = 0;
+    (window as any).__essorViteAfterUpdateCount = 0;
+    (window as any).__essorViteAfterUpdateAt = 0;
+  });
   await page.goto(fixture.url);
   await expect(page.locator('[data-test="example-root"]')).toBeVisible();
   await expect(page.locator('[data-test="example-root"]')).toHaveCount(1);
@@ -297,6 +306,30 @@ async function gotoHmrFixture(page: Page, fixture: HmrFixture) {
 async function expectNoReloadedDuplicateRoot(page: Page, token: string) {
   await expectPageToken(page, token);
   await expect(page.locator('[data-test="example-root"]')).toHaveCount(1);
+}
+
+async function expectHmrUpdateCount(page: Page, count: number) {
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__essorHmrUpdateCount ?? 0))
+    .toBe(count);
+}
+
+async function getViteAfterUpdateCount(page: Page) {
+  return page.evaluate(() => (window as any).__essorViteAfterUpdateCount ?? 0);
+}
+
+async function waitForNextViteAfterUpdate(page: Page, previousCount: number) {
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__essorViteAfterUpdateCount ?? 0))
+    .toBeGreaterThan(previousCount);
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const updatedAt = (window as any).__essorViteAfterUpdateAt ?? 0;
+        return updatedAt > 0 ? performance.now() - updatedAt : 0;
+      }),
+    )
+    .toBeGreaterThan(300);
 }
 
 test.describe('hmr example', () => {
@@ -492,6 +525,7 @@ test.describe('hmr example real Vite updates', () => {
       await gotoHmrFixture(page, fixture);
       const token = await setPageToken(page);
 
+      const beforeFirstUpdate = await getViteAfterUpdateCount(page);
       await patchConfig(fixture.paths, {
         version: 'chain-b',
         note: 'First hot update rendered.',
@@ -500,6 +534,8 @@ test.describe('hmr example real Vite updates', () => {
       await expect(page.locator('[data-test="hmr-note"]')).toHaveText('First hot update rendered.');
       await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 1');
       await expectNoReloadedDuplicateRoot(page, token);
+      await expectHmrUpdateCount(page, 1);
+      await waitForNextViteAfterUpdate(page, beforeFirstUpdate);
 
       await patchConfig(fixture.paths, {
         version: 'chain-c',
