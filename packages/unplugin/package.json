@@ -117,7 +117,7 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^7.29.7",
     "babel-plugin-essor": "workspace:*",
     "unplugin": "2.3.11"
   },

@@ -388,8 +388,8 @@ importers:
   packages/unplugin:
     dependencies:
       '@babel/core':
-        specifier: ^8.0.1
-        version: 8.0.1
+        specifier: ^7.29.7
+        version: 7.29.7
       babel-plugin-essor:
         specifier: workspace:*
         version: link:../babel-plugin
