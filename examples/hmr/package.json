@@ -13,12 +13,12 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
-    "@rspack/cli": "^2.0.4",
-    "@rspack/core": "^2.0.4",
-    "@rspack/dev-server": "^2.0.0",
-    "@types/node": "^25.9.1",
+    "@rspack/cli": "^2.0.8",
+    "@rspack/core": "^2.0.8",
+    "@rspack/dev-server": "^2.1.0",
+    "@types/node": "^26.0.0",
     "typescript": "^6.0.3",
     "unplugin-essor": "workspace:*",
-    "vite": "^8.0.14"
+    "vite": "^8.0.16"
   }
 }
