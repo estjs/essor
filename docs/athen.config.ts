@@ -1,9 +1,10 @@
 import { defineConfig } from 'athen';
+import pkg from '../package.json';
 
 export default defineConfig({
   lang: 'en-US',
   title: 'Essor',
-  icon: '/logo.png',
+  favicon: '/logo.png',
 
   themeConfig: {
     locales: {
@@ -33,7 +34,7 @@ export default defineConfig({
             activeMatch: '/server/',
           },
           {
-            text: 'v0.0.15',
+            text: `v${pkg.version}`,
             items: [
               {
                 text: '更新日志',
@@ -182,7 +183,7 @@ export default defineConfig({
             activeMatch: '/server/',
           },
           {
-            text: 'v0.0.15',
+            text: `v${pkg.version}`,
             items: [
               {
                 text: 'Changelog',

@@ -1,5 +1,5 @@
 import { type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
-import { isFunction, isOn } from '@estjs/shared';
+import { isFunction, isOn, isString } from '@estjs/shared';
 
 import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
 import { insert, insertNode, removeNode } from './dom';
@@ -9,25 +9,22 @@ import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
 import type { Scope } from './scope';
 
+type RootEventTarget = Element & Record<string, unknown> & { disabled?: boolean };
+
 /**
- * Install every own-key descriptor from `source` onto `target` verbatim
- * (getters stay getters), optionally deleting any target key not present
- * in the incoming source.
- *
- * Preserving getter descriptors is the whole reason the component body can
- * read `props.foo` and transparently get the latest reactive value — the
- * compiler emits dynamic props as `{ get foo() { return signal.value } }`.
- * `{ ...props }` would snapshot each getter once and kill reactivity;
- * `defineProperty` keeps it alive.
+ * Copy prop descriptors verbatim. Dynamic JSX props are emitted as getters, so
+ * spreading would snapshot them and break reactivity.
  */
 function syncDescriptors(target: object, source: object, pruneMissing = false): void {
-  for (const key of Object.getOwnPropertyNames(source)) {
+  const sourceKeys = Reflect.ownKeys(source);
+  for (const key of sourceKeys) {
     Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)!);
   }
+
   if (pruneMissing) {
-    const sourceKeySet = new Set(Object.getOwnPropertyNames(source));
-    for (const key of Object.getOwnPropertyNames(target)) {
-      if (!sourceKeySet.has(key)) delete (target as Record<string, unknown>)[key];
+    const sourceKeySet = new Set(sourceKeys);
+    for (const key of Reflect.ownKeys(target)) {
+      if (!sourceKeySet.has(key)) delete (target as Record<PropertyKey, unknown>)[key];
     }
   }
 }
@@ -36,7 +33,7 @@ function syncDescriptors(target: object, source: object, pruneMissing = false): 
  * Read a prop value through its descriptor so dynamic getters (ref/event
  * handlers emitted as `get onClick() { ... }`) resolve to the latest value.
  */
-function readProp(source: object, key: string): unknown {
+function readDescriptorValue(source: object, key: PropertyKey): unknown {
   const descriptor = Object.getOwnPropertyDescriptor(source, key)!;
   return descriptor.get ? descriptor.get.call(source) : descriptor.value;
 }
@@ -62,12 +59,9 @@ export class Component<P extends ComponentProps = {}> {
     public props: P = {} as P,
   ) {
     this.parentScope = getActiveScope();
-    // Shallow-reactive container that inherits the raw props' descriptors.
-    // The component body reads from this container; `update()` re-installs
-    // new descriptors in-place so existing closures keep working.
-    const container = {} as P;
-    syncDescriptors(container, props);
-    this.reactiveProps = shallowReactive(container) as P;
+    const reactiveProps = Object.create(null) as P;
+    syncDescriptors(reactiveProps, props);
+    this.reactiveProps = shallowReactive(reactiveProps) as P;
   }
 
   /**
@@ -130,10 +124,11 @@ export class Component<P extends ComponentProps = {}> {
    */
   update(props: P): void {
     this.props = props;
+    syncDescriptors(this.reactiveProps as object, props ?? {}, /* pruneMissing */ true);
+
     const scope = this.scope;
     if (!scope || scope.isDestroyed) return;
 
-    syncDescriptors(this.reactiveProps as object, props ?? {}, /* pruneMissing */ true);
     this.syncSpecialProps(props);
 
     triggerUpdateHooks(scope);
@@ -149,15 +144,10 @@ export class Component<P extends ComponentProps = {}> {
     const before = this.beforeNode;
     // Preserve props across destroy/mount cycle — the parent hasn't
     // re-rendered, so the existing descriptors are still valid.
-    const savedProps = {} as Record<string, PropertyDescriptor>;
-    for (const key of Object.getOwnPropertyNames(this.reactiveProps)) {
-      savedProps[key] = Object.getOwnPropertyDescriptor(this.reactiveProps, key)!;
-    }
+    const savedProps = Object.create(null) as P;
+    syncDescriptors(savedProps, this.reactiveProps);
     this.destroy();
-    // Restore preserved props before remounting
-    for (const [key, desc] of Object.entries(savedProps)) {
-      Object.defineProperty(this.reactiveProps, key, desc);
-    }
+    syncDescriptors(this.reactiveProps as object, savedProps);
     this.mount(parent, before);
   }
 
@@ -176,10 +166,9 @@ export class Component<P extends ComponentProps = {}> {
     this.firstChild = undefined;
     this.parentNode = undefined;
     // Clear all descriptors to release signal getter references
-    for (const key of Object.getOwnPropertyNames(this.reactiveProps)) {
-      delete (this.reactiveProps as Record<string, unknown>)[key];
+    for (const key of Reflect.ownKeys(this.reactiveProps)) {
+      delete (this.reactiveProps as Record<PropertyKey, unknown>)[key];
     }
-    // Reset state so external code can detect the component is no longer mounted
     this.state = COMPONENT_STATE.INITIAL;
   }
 
@@ -196,49 +185,56 @@ export class Component<P extends ComponentProps = {}> {
 
     this.releaseSpecialProps();
 
-    for (const key of Object.getOwnPropertyNames(props)) {
+    for (const key of Reflect.ownKeys(props)) {
+      if (!isString(key)) continue;
+
       if (key === REF_KEY) {
-        const value = readProp(props, key);
+        const value = readDescriptorValue(props, key);
         this.rootRefCleanup = this.bindRootRef(value, root);
         continue;
       }
 
       if (isOn(key)) {
-        const value = readProp(props, key);
+        const value = readDescriptorValue(props, key);
         if (!isFunction(value)) continue;
         const eventName = key.slice(2).toLowerCase();
-        const target = root as Element & Record<string, unknown> & { disabled?: boolean };
-        const slot = `_$${eventName}`;
-        const prev = target[slot];
-
-        // Slot path — the JSX template already wired a delegated handler into
-        // this element's `_$<event>` slot. babel-plugin emits the matching
-        // `delegateEvents([...])` registration at module init, so the document
-        // walker is guaranteed to be active. Override Solid-style (last write
-        // wins) and restore the template's handler on release so a subsequent
-        // update / re-mount sees a clean baseline. The delegation walk in
-        // events.ts already supplies the `!node.disabled` short-circuit.
-        if (isFunction(prev)) {
-          target[slot] = value;
-          this.rootEventCleanups.push(() => {
-            if (target[slot] === value) target[slot] = prev;
-          });
-          continue;
-        }
-
-        // Native path — no JSX-bound delegated handler exists on this slot
-        // (template didn't bind one, or babel-plugin's delegation is off).
-        // Attach a real listener and mirror the walk's `!node.disabled`
-        // short-circuit at the dispatch entry so behaviour matches the slot
-        // path. The disabled check is a no-op on non-form elements.
-        const fn = value as (this: Element, e: Event) => unknown;
-        const handler: EventListener = (event) => {
-          if (target.disabled) return;
-          fn.call(target, event);
-        };
-        this.rootEventCleanups.push(addEvent(target, eventName, handler));
+        this.bindRootEvent(
+          root as RootEventTarget,
+          eventName,
+          value as (this: Element, event: Event) => unknown,
+        );
       }
     }
+  }
+
+  private bindRootEvent(
+    target: RootEventTarget,
+    eventName: string,
+    handler: (this: Element, event: Event) => unknown,
+  ): void {
+    // Slot path: babel-plugin wires a delegated `_$<event>` handler onto the
+    // element at compile time. Override it in-place (last write wins) and
+    // restore the original on cleanup so re-mount sees a clean baseline.
+    const slot = `_$${eventName}`;
+    const prev = target[slot];
+
+    if (isFunction(prev)) {
+      target[slot] = handler;
+      this.rootEventCleanups.push(() => {
+        if (target[slot] === handler) target[slot] = prev;
+      });
+      return;
+    }
+
+    // Native path: no delegated handler present — attach a real listener.
+    // Mirror the delegation walk's `!node.disabled` short-circuit so behaviour
+    // is consistent between the two paths.
+    this.rootEventCleanups.push(
+      addEvent(target, eventName, (event) => {
+        if (target.disabled) return;
+        handler.call(target, event);
+      }),
+    );
   }
 
   /**

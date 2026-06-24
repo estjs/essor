@@ -410,6 +410,36 @@ describe('component', () => {
       expect(captured.item.label).toBe('second');
     });
 
+    it('preserves symbol-keyed getter descriptors', () => {
+      const root = createTestRoot();
+      const token = Symbol('token');
+      let value = 'first';
+
+      const rawProps = {} as any;
+      Object.defineProperty(rawProps, token, {
+        enumerable: true,
+        configurable: true,
+        get: () => value,
+      });
+
+      const instance = createComponent((props: any) => {
+        const div = document.createElement('div');
+        div.textContent = props[token];
+        return div;
+      }, rawProps) as any;
+
+      instance.mount(root);
+      expect(root.textContent).toBe('first');
+
+      value = 'second';
+      instance.forceUpdate();
+
+      expect(root.textContent).toBe('second');
+      expect(Object.getOwnPropertyDescriptor(instance.reactiveProps, token)?.get).toBeTypeOf(
+        'function',
+      );
+    });
+
     it('wraps plain-object props so nested mutations trigger reactivity', () => {
       const root = createTestRoot();
       let captured: any;
@@ -501,6 +531,23 @@ describe('component', () => {
       expect(captured).toBe(firstRef);
       expect(captured.a).toBe(2);
       expect(captured.b).toBe(3);
+    });
+
+    it('keeps props current when update runs before mount', () => {
+      const root = createTestRoot();
+      const instance = createComponent(
+        (props: any) => {
+          const div = document.createElement('div');
+          div.textContent = props.text || '';
+          return div;
+        },
+        { text: 'initial' } as any,
+      ) as any;
+
+      instance.update({ text: 'updated' } as any);
+      instance.mount(root);
+
+      expect(root.textContent).toBe('updated');
     });
 
     it('triggers onUpdate hooks in the mounted scope', () => {
@@ -619,9 +666,10 @@ describe('component', () => {
       expect(root.childNodes.length).toBe(1);
     });
 
-    it('preserves reactiveProps descriptors across forceUpdate', () => {
+    it('preserves getter props across forceUpdate', () => {
       const root = createTestRoot();
       let capturedProps: any = null;
+      let name = 'initial';
 
       const TestComp = (props: any) => {
         capturedProps = props;
@@ -630,17 +678,53 @@ describe('component', () => {
         return span;
       };
 
-      const instance = createComponent(TestComp, { name: 'initial' }) as any;
+      const instance = createComponent(TestComp, {
+        get name() {
+          return name;
+        },
+      }) as any;
       instance.mount(root);
 
       expect(capturedProps.name).toBe('initial');
+      expect(Object.getOwnPropertyDescriptor(instance.reactiveProps, 'name')?.get).toBeTypeOf(
+        'function',
+      );
 
-      // Now forceUpdate
+      name = 'updated';
       instance.forceUpdate();
 
-      // The props should still be preserved
       expect(capturedProps).toBe(instance.reactiveProps);
-      expect(capturedProps.name).toBe('initial');
+      expect(capturedProps.name).toBe('updated');
+      expect(root.textContent).toBe('updated');
+      expect(Object.getOwnPropertyDescriptor(instance.reactiveProps, 'name')?.get).toBeTypeOf(
+        'function',
+      );
+    });
+
+    it('preserves special prop names across forceUpdate', () => {
+      const root = createTestRoot();
+      const props = {};
+      Object.defineProperty(props, '__proto__', {
+        configurable: true,
+        enumerable: true,
+        get() {
+          return 'safe-prop';
+        },
+      });
+
+      const instance = createComponent((componentProps: any) => {
+        const span = document.createElement('span');
+        span.textContent = componentProps.__proto__;
+        return span;
+      }, props as any) as any;
+
+      instance.mount(root);
+      instance.forceUpdate();
+
+      expect(root.textContent).toBe('safe-prop');
+      expect(Object.getOwnPropertyDescriptor(instance.reactiveProps, '__proto__')?.get).toBeTypeOf(
+        'function',
+      );
     });
 
     it('does nothing when never mounted', () => {
