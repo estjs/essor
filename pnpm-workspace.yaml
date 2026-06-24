@@ -8,6 +8,7 @@ allowBuilds:
   simple-git-hooks: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
+  - '@playwright/test@1.61.1'
   - '@babel/core@7.29.7'
   - '@babel/generator@7.29.7'
   - '@babel/helper-module-imports@7.29.7'
@@ -21,3 +22,8 @@ minimumReleaseAgeExclude:
   - '@estjs/athen-plugin-mdx@0.0.9-beta.1'
   - '@estjs/athen-plugin-search@0.0.9-beta.1'
   - athen@0.0.9-beta.1
+  - playwright-core@1.61.1
+  - playwright@1.61.1
+  - pnpm@11.9.0
+  - unplugin@3.2.0
+  - vite@8.1.0
