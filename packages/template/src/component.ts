@@ -147,7 +147,17 @@ export class Component<P extends ComponentProps = {}> {
     if (!this.parentNode) return;
     const parent = this.parentNode;
     const before = this.beforeNode;
+    // Preserve props across destroy/mount cycle — the parent hasn't
+    // re-rendered, so the existing descriptors are still valid.
+    const savedProps = {} as Record<string, PropertyDescriptor>;
+    for (const key of Object.getOwnPropertyNames(this.reactiveProps)) {
+      savedProps[key] = Object.getOwnPropertyDescriptor(this.reactiveProps, key)!;
+    }
     this.destroy();
+    // Restore preserved props before remounting
+    for (const [key, desc] of Object.entries(savedProps)) {
+      Object.defineProperty(this.reactiveProps, key, desc);
+    }
     this.mount(parent, before);
   }
 

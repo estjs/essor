@@ -59,14 +59,14 @@ function detectBundler(meta: UnpluginContextMeta): BundlerType {
     }
   }
 
-  // Fallback: detect from environment variables
+  // Defensive fallback: unplugin always provides meta.framework, but in edge
+  // cases (custom wrappers, test harnesses) these env vars act as a safety net.
   if (typeof process !== 'undefined' && process.env) {
     if (process.env.VITE || process.env.VITEST) return 'vite';
     if (process.env.WEBPACK_VERSION) return 'webpack5';
     if (process.env.RSPACK) return 'rspack';
   }
 
-  // Default to standard if detection fails
   return 'standard';
 }
 
@@ -95,34 +95,38 @@ function extractHMRDisposeHandlers(code: string) {
   };
 }
 
+/**
+ * Returns the correct hot-module-replacement global expression for a bundler.
+ *
+ * - Vite:             `import.meta.hot`
+ * - webpack / rspack: `import.meta.webpackHot`  (webpack-compatible HMR protocol)
+ * - others:           `import.meta.hot`          (no real HMR; guard is always falsy — safe)
+ */
+function getHotExpression(bundlerType: BundlerType): string {
+  if (bundlerType === 'webpack5' || bundlerType === 'rspack') {
+    return 'import.meta.webpackHot';
+  }
+  return 'import.meta.hot';
+}
+
 function generateHMRCode(bundlerType: BundlerType, disposeHandlers: string[] = []) {
-  // Import HMR utilities from virtual module
   const imports = {
     createHMRComponent: `import { createHMRComponent as __$createHMRComponent$__ } from "${VIRTUAL_MODULE_ID}";`,
     hmrAccept: `import { hmrAccept as __$hmrAccept$__ } from "${VIRTUAL_MODULE_ID}";`,
   };
-  const disposeLines = disposeHandlers.map((handler) => `  import.meta.hot.dispose(${handler});`);
 
-  const register =
-    bundlerType === 'vite'
-      ? [
-          'if (import.meta.hot) {',
-          ...disposeLines,
-          '  import.meta.hot.accept();',
-          '  __$hmrAccept$__("vite", import.meta.hot, __$registry$__);',
-          '}',
-        ].join('\n')
-      : [
-          'if (import.meta.hot) {',
-          ...disposeLines,
-          `  __$hmrAccept$__("${bundlerType}", import.meta.hot, __$registry$__);`,
-          '}',
-        ].join('\n');
+  const hot = getHotExpression(bundlerType);
+  const disposeLines = disposeHandlers.map((handler) => `  ${hot}.dispose(${handler});`);
 
-  return {
-    imports,
-    register,
-  };
+  // Build the HMR registration block. Vite needs an explicit `accept()` call;
+  // webpack/rspack handle acceptance inside `__$hmrAccept$__`.
+  const lines = [`if (${hot}) {`, ...disposeLines];
+  if (bundlerType === 'vite') {
+    lines.push(`  ${hot}.accept();`);
+  }
+  lines.push(`  __$hmrAccept$__("${bundlerType}", ${hot}, __$registry$__);`, '}');
+
+  return { imports, register: lines.join('\n') };
 }
 
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (
@@ -232,23 +236,23 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
         return code;
       }
 
-      let finalCode = '';
+      let finalCode: string;
 
-      // Inject HMR code if enabled and components are present
       if (babelOptions.hmr) {
-        const hmrResult = extractHMRDisposeHandlers(result.code);
-        const hmrCode = generateHMRCode(bundlerType, hmrResult.disposeHandlers);
-        const transformedCode = hmrResult.code;
+        const { code: strippedCode, disposeHandlers } = extractHMRDisposeHandlers(result.code);
+        const hmrCode = generateHMRCode(bundlerType, disposeHandlers);
+        const hasComponents = strippedCode.includes('__$createHMRComponent$__');
+        const hasRegistry = strippedCode.includes('__$registry$__');
 
-        if (transformedCode.includes('__$createHMRComponent$__')) {
-          finalCode = `${hmrCode.imports.createHMRComponent}\n${finalCode}`;
-        }
-        finalCode += transformedCode;
-        if (transformedCode.includes('__$registry$__')) {
-          finalCode = `${hmrCode.imports.hmrAccept}\n${finalCode}\n${hmrCode.register}`;
-        }
+        const parts: string[] = [];
+        if (hasRegistry) parts.push(hmrCode.imports.hmrAccept);
+        if (hasComponents) parts.push(hmrCode.imports.createHMRComponent);
+        parts.push(strippedCode);
+        if (hasRegistry) parts.push(hmrCode.register);
+
+        finalCode = parts.join('\n');
       } else {
-        finalCode += result.code;
+        finalCode = result.code;
       }
 
       return {

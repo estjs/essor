@@ -5,6 +5,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "dev:rspack": "rspack serve --config rspack.config.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
@@ -12,6 +13,9 @@
     "essor": "workspace:*"
   },
   "devDependencies": {
+    "@rspack/cli": "^2.0.4",
+    "@rspack/core": "^2.0.4",
+    "@rspack/dev-server": "^2.0.0",
     "@types/node": "^25.9.1",
     "typescript": "^6.0.3",
     "unplugin-essor": "workspace:*",

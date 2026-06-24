@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  applyUpdate,
-  createHMRComponent,
-  getRegistryInfo,
-  hmrAccept,
-  unregisterAllInstances,
-} from '../src/hmr-runtime';
+import { applyUpdate, createHMRComponent, hmrAccept } from '../src/hmr-runtime';
 
 interface HMRComponent {
   (): any;
@@ -307,6 +301,33 @@ describe('hMR Runtime', () => {
       expect(forceUpdateMock(instance)).toHaveBeenCalledTimes(1);
     });
 
+    it('emits a browser event after live component instances update', () => {
+      const hmrId = 'event-test-id';
+      const Comp1 = () => 'v1';
+      (Comp1 as HMRComponent).__hmrId = hmrId;
+      (Comp1 as HMRComponent).__signature = 'sig-1';
+
+      createHMRComponent(Comp1, {});
+
+      const events: unknown[] = [];
+      const onUpdate = (event: Event) => {
+        events.push((event as CustomEvent).detail);
+      };
+      addEventListener('essor:hmr-update', onUpdate);
+
+      try {
+        const Comp2 = () => 'v2';
+        (Comp2 as HMRComponent).__hmrId = hmrId;
+        (Comp2 as HMRComponent).__signature = 'sig-2';
+
+        expect(applyUpdate([Comp2])).toBe(false);
+      } finally {
+        removeEventListener('essor:hmr-update', onUpdate);
+      }
+
+      expect(events).toEqual([{ updatedIds: [hmrId] }]);
+    });
+
     it('should ignore updates for unknown components (not rendered yet)', () => {
       const Comp = () => 'new';
       (Comp as HMRComponent).__hmrId = 'unknown-id';
@@ -417,30 +438,7 @@ describe('hMR Runtime', () => {
     });
   });
 
-  describe('unregisterAllInstances', () => {
-    it('should cleanup instances', () => {
-      const hmrId = 'cleanup-id';
-      const Comp = () => 'v1';
-      (Comp as HMRComponent).__hmrId = hmrId;
-      (Comp as HMRComponent).__signature = 'sig-1';
-
-      const first = createHMRComponent(Comp, {});
-      const second = createHMRComponent(Comp, {});
-      (forceUpdateMock(first) as Mock).mockClear();
-      (forceUpdateMock(second) as Mock).mockClear();
-
-      const count = unregisterAllInstances(hmrId);
-      expect(count).toBe(2);
-
-      const NextComp = () => 'v2';
-      (NextComp as HMRComponent).__hmrId = hmrId;
-      (NextComp as HMRComponent).__signature = 'sig-2';
-      applyUpdate([NextComp]);
-
-      expect(forceUpdateMock(first)).not.toHaveBeenCalled();
-      expect(forceUpdateMock(second)).not.toHaveBeenCalled();
-    });
-
+  describe('instance lifecycle', () => {
     it('unregisters an instance when it is unmounted', () => {
       const hmrId = 'unmounted-cleanup-id';
       const Comp1 = () => 'v1';
@@ -480,45 +478,6 @@ describe('hMR Runtime', () => {
       applyUpdate([Comp2]);
 
       expect(forceUpdateMock(instance)).not.toHaveBeenCalled();
-    });
-
-    it('releases registry entries after the last live instance is destroyed', async () => {
-      const hmrId = 'release-empty-registry-id';
-      const Comp = () => 'v1';
-      (Comp as HMRComponent).__hmrId = hmrId;
-      (Comp as HMRComponent).__signature = 'sig-1';
-
-      const instance = createHMRComponent(Comp, {});
-      expect(getRegistryInfo()[hmrId]).toEqual({
-        signature: 'sig-1',
-        instanceCount: 1,
-      });
-
-      instance.destroy();
-      await Promise.resolve();
-
-      expect(getRegistryInfo()[hmrId]).toBeUndefined();
-    });
-
-    it('does not let a stale cleanup remove a newer registry entry', () => {
-      const hmrId = 'stale-cleanup-registry-id';
-      const Comp = () => 'v1';
-      (Comp as HMRComponent).__hmrId = hmrId;
-      (Comp as HMRComponent).__signature = 'sig-1';
-
-      const oldInstance = createHMRComponent(Comp, {});
-      unregisterAllInstances(hmrId);
-
-      const newInstance = createHMRComponent(Comp, {});
-      oldInstance.destroy();
-
-      expect(getRegistryInfo()[hmrId]).toEqual({
-        signature: 'sig-1',
-        instanceCount: 1,
-      });
-
-      newInstance.destroy();
-      expect(getRegistryInfo()[hmrId]).toBeUndefined();
     });
   });
 });

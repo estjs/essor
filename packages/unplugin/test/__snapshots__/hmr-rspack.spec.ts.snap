@@ -36,12 +36,12 @@ var __$registry$__ = [
     Bar,
     App
 ];
-if (import.meta.hot) {
-    import.meta.hot.dispose(function() {
+if (import.meta.webpackHot) {
+    import.meta.webpackHot.dispose(function() {
         var _app_unmount;
         return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
     });
-    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    __$hmrAccept$__("rspack", import.meta.webpackHot, __$registry$__);
 }
 "
 `;
@@ -82,12 +82,12 @@ var __$registry$__ = [
     ComponentB,
     App
 ];
-if (import.meta.hot) {
-    import.meta.hot.dispose(function() {
+if (import.meta.webpackHot) {
+    import.meta.webpackHot.dispose(function() {
         var _app_unmount;
         return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
     });
-    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    __$hmrAccept$__("rspack", import.meta.webpackHot, __$registry$__);
 }
 "
 `;
@@ -118,12 +118,12 @@ var _app = createApp(__$createHMRComponent$__(function() {
 var __$registry$__ = [
     PropsComponent
 ];
-if (import.meta.hot) {
-    import.meta.hot.dispose(function() {
+if (import.meta.webpackHot) {
+    import.meta.webpackHot.dispose(function() {
         var _app_unmount;
         return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
     });
-    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    __$hmrAccept$__("rspack", import.meta.webpackHot, __$registry$__);
 }
 "
 `;
@@ -157,12 +157,12 @@ var __$registry$__ = [
 _delegateEvents$([
     "click"
 ]);
-if (import.meta.hot) {
-    import.meta.hot.dispose(function() {
+if (import.meta.webpackHot) {
+    import.meta.webpackHot.dispose(function() {
         var _app_unmount;
         return _app === null || _app === void 0 ? void 0 : (_app_unmount = _app.unmount) === null || _app_unmount === void 0 ? void 0 : _app_unmount.call(_app);
     });
-    __$hmrAccept$__("rspack", import.meta.hot, __$registry$__);
+    __$hmrAccept$__("rspack", import.meta.webpackHot, __$registry$__);
 }
 "
 `;

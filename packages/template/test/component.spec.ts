@@ -619,6 +619,30 @@ describe('component', () => {
       expect(root.childNodes.length).toBe(1);
     });
 
+    it('preserves reactiveProps descriptors across forceUpdate', () => {
+      const root = createTestRoot();
+      let capturedProps: any = null;
+
+      const TestComp = (props: any) => {
+        capturedProps = props;
+        const span = document.createElement('span');
+        span.textContent = props.name || '';
+        return span;
+      };
+
+      const instance = createComponent(TestComp, { name: 'initial' }) as any;
+      instance.mount(root);
+
+      expect(capturedProps.name).toBe('initial');
+
+      // Now forceUpdate
+      instance.forceUpdate();
+
+      // The props should still be preserved
+      expect(capturedProps).toBe(instance.reactiveProps);
+      expect(capturedProps.name).toBe('initial');
+    });
+
     it('does nothing when never mounted', () => {
       const factory = vi.fn(() => document.createElement('div'));
       const instance = createComponent(factory) as any;

@@ -1,20 +1,17 @@
-import { NOTE_COPY } from './config';
-import { CounterPanel } from './components/CounterPanel';
-import { ModuleInspector } from './components/ModuleInspector';
-import { recordAppHotUpdate } from './hmr-lifecycle';
-
-recordAppHotUpdate(import.meta.hot);
+import { WORKBENCH_NOTE, WORKBENCH_VERSION } from './demo-content';
+import { CounterWorkbench, ModuleBoundaryPanel } from './components/CounterWorkbench';
 
 export function App() {
   return (
     <main data-test="example-root" class="page">
-      <h1>HMR Example</h1>
+      <h1>HMR Workbench</h1>
       <p class="note" data-test="hmr-note">
-        {NOTE_COPY}
+        {WORKBENCH_NOTE}
       </p>
+      <p data-test="hmr-version">Version: {WORKBENCH_VERSION}</p>
 
-      <CounterPanel />
-      <ModuleInspector />
+      <CounterWorkbench />
+      <ModuleBoundaryPanel />
     </main>
   );
 }

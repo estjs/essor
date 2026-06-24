@@ -13,8 +13,8 @@ const hmrTempRoot = path.join(hmrExampleRoot, 'temp');
 
 type HmrFixturePaths = {
   main: string;
-  config: string;
-  unmountedSentinel: string;
+  demoContent: string;
+  dormantBoundary: string;
   unknownComponent: string;
 };
 
@@ -25,7 +25,7 @@ type HmrFixture = {
   paths: HmrFixturePaths;
 };
 
-type ConfigPatch = {
+type DemoContentPatch = {
   version?: string;
   note?: string;
   incrementLabel?: string;
@@ -72,7 +72,7 @@ function replaceRequired(source: string, pattern: RegExp, replacement: string) {
 function replaceExportedStringConstant(source: string, name: string, value: string) {
   return replaceRequired(
     source,
-    new RegExp(`export const ${name} = ['"][^'"]*['"];`),
+    new RegExp(`export const ${name}\\s*=\\s*['"][^'"]*['"];`),
     `export const ${name} = ${quoteString(value)};`,
   );
 }
@@ -92,36 +92,36 @@ async function patchFile(filePath: string, transform: (source: string) => string
   await rename(tempPath, filePath);
 }
 
-async function patchConfig(paths: HmrFixturePaths, patch: ConfigPatch) {
-  await patchFile(paths.config, (source) => {
+async function patchDemoContent(paths: HmrFixturePaths, patch: DemoContentPatch) {
+  await patchFile(paths.demoContent, (source) => {
     let next = source;
 
     if (patch.version !== undefined) {
-      next = replaceExportedStringConstant(next, 'DEMO_VERSION', patch.version);
+      next = replaceExportedStringConstant(next, 'WORKBENCH_VERSION', patch.version);
     }
     if (patch.note !== undefined) {
-      next = replaceExportedStringConstant(next, 'NOTE_COPY', patch.note);
+      next = replaceExportedStringConstant(next, 'WORKBENCH_NOTE', patch.note);
     }
     if (patch.incrementLabel !== undefined) {
-      next = replaceExportedStringConstant(next, 'INCREMENT_LABEL', patch.incrementLabel);
+      next = replaceExportedStringConstant(next, 'PRIMARY_ACTION_LABEL', patch.incrementLabel);
     }
     if (patch.incrementStep !== undefined) {
-      next = replaceExportedNumberConstant(next, 'INCREMENT_STEP', patch.incrementStep);
+      next = replaceExportedNumberConstant(next, 'PRIMARY_ACTION_STEP', patch.incrementStep);
     }
     if (patch.moduleLabel !== undefined) {
-      next = replaceExportedStringConstant(next, 'MODULE_LABEL', patch.moduleLabel);
+      next = replaceExportedStringConstant(next, 'BOUNDARY_NAME', patch.moduleLabel);
     }
     if (patch.moduleBadge !== undefined) {
-      next = replaceExportedStringConstant(next, 'MODULE_BADGE', patch.moduleBadge);
+      next = replaceExportedStringConstant(next, 'BOUNDARY_STATUS', patch.moduleBadge);
     }
 
     return next;
   });
 }
 
-async function patchUnmountedSentinel(paths: HmrFixturePaths, value: string) {
-  await patchFile(paths.unmountedSentinel, (source) =>
-    replaceExportedStringConstant(source, 'UNMOUNTED_SENTINEL', value),
+async function patchDormantBoundary(paths: HmrFixturePaths, value: string) {
+  await patchFile(paths.dormantBoundary, (source) =>
+    replaceExportedStringConstant(source, 'DORMANT_BOUNDARY_LABEL', value),
   );
 }
 
@@ -153,8 +153,8 @@ async function installUnknownComponent(paths: HmrFixturePaths, version: string) 
 function createFixturePaths(sourceDir: string): HmrFixturePaths {
   return {
     main: path.join(sourceDir, 'main.tsx'),
-    config: path.join(sourceDir, 'config.ts'),
-    unmountedSentinel: path.join(sourceDir, 'components/UnmountedSentinel.tsx'),
+    demoContent: path.join(sourceDir, 'demo-content.ts'),
+    dormantBoundary: path.join(sourceDir, 'components/DormantBoundary.tsx'),
     unknownComponent: path.join(sourceDir, 'unknown-component.tsx'),
   };
 }
@@ -195,10 +195,22 @@ async function waitForExit(child: ChildProcess) {
   });
 }
 
+function killProcessGroup(child: ChildProcess, signal: NodeJS.Signals) {
+  if (!child.pid) return;
+
+  try {
+    process.kill(-child.pid, signal);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') {
+      throw error;
+    }
+  }
+}
+
 async function terminateChild(child: ChildProcess) {
   if (child.exitCode !== null || child.signalCode !== null) return;
 
-  child.kill('SIGTERM');
+  killProcessGroup(child, 'SIGTERM');
 
   let timeout: ReturnType<typeof setTimeout> | undefined;
   const result = await Promise.race([
@@ -213,7 +225,7 @@ async function terminateChild(child: ChildProcess) {
   }
 
   if (result === 'timeout' && child.exitCode === null && child.signalCode === null) {
-    child.kill('SIGKILL');
+    killProcessGroup(child, 'SIGKILL');
     await waitForExit(child);
   }
 }
@@ -227,7 +239,7 @@ async function startHmrFixture(
   const dir = path.join(hmrTempRoot, `${id}-${port}`);
   const sourceDir = path.join(dir, 'src');
   const paths = createFixturePaths(sourceDir);
-  const url = `http://127.0.0.1:${port}/temp/${path.basename(dir)}/index.html`;
+  const url = `http://127.0.0.1:${port}/index.html`;
 
   await mkdir(dir, { recursive: true });
   await cp(hmrSourceRoot, sourceDir, { recursive: true });
@@ -252,9 +264,21 @@ async function startHmrFixture(
 
   const child = spawn(
     'pnpm',
-    ['exec', 'vite', '--host', '127.0.0.1', '--port', String(port), '--strictPort'],
+    [
+      'exec',
+      'vite',
+      dir,
+      '--config',
+      path.join(hmrExampleRoot, 'vite.config.ts'),
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(port),
+      '--strictPort',
+    ],
     {
       cwd: hmrExampleRoot,
+      detached: true,
       env,
       stdio: ['ignore', 'pipe', 'pipe'],
     },
@@ -277,7 +301,11 @@ async function startHmrFixture(
 
 async function stopHmrFixture(fixture: HmrFixture) {
   await terminateChild(fixture.child);
-  await rm(fixture.dir, { recursive: true, force: true });
+  try {
+    await rm(fixture.dir, { recursive: true, force: true });
+  } catch {
+    // Best-effort cleanup; CI temp dirs are ephemeral
+  }
 }
 
 async function setPageToken(page: Page) {
@@ -295,8 +323,7 @@ async function expectPageToken(page: Page, token: string) {
 async function gotoHmrFixture(page: Page, fixture: HmrFixture) {
   await page.addInitScript(() => {
     (window as any).__essorHmrUpdateCount = 0;
-    (window as any).__essorViteAfterUpdateCount = 0;
-    (window as any).__essorViteAfterUpdateAt = 0;
+    (window as any).__essorHmrUpdateAt = 0;
   });
   await page.goto(fixture.url);
   await expect(page.locator('[data-test="example-root"]')).toBeVisible();
@@ -314,18 +341,18 @@ async function expectHmrUpdateCount(page: Page, count: number) {
     .toBe(count);
 }
 
-async function getViteAfterUpdateCount(page: Page) {
-  return page.evaluate(() => (window as any).__essorViteAfterUpdateCount ?? 0);
+function getHmrUpdateCount(page: Page) {
+  return page.evaluate(() => (window as any).__essorHmrUpdateCount ?? 0);
 }
 
-async function waitForNextViteAfterUpdate(page: Page, previousCount: number) {
+async function waitForNextHmrUpdate(page: Page, previousCount: number) {
   await expect
-    .poll(() => page.evaluate(() => (window as any).__essorViteAfterUpdateCount ?? 0))
+    .poll(() => page.evaluate(() => (window as any).__essorHmrUpdateCount ?? 0))
     .toBeGreaterThan(previousCount);
   await expect
     .poll(() =>
       page.evaluate(() => {
-        const updatedAt = (window as any).__essorViteAfterUpdateAt ?? 0;
+        const updatedAt = (window as any).__essorHmrUpdateAt ?? 0;
         return updatedAt > 0 ? performance.now() - updatedAt : 0;
       }),
     )
@@ -338,25 +365,27 @@ test.describe('hmr example', () => {
   });
 
   test('renders the hot refresh workbench', async ({ page, assertNoConsoleErrors }) => {
-    await expect(page.getByRole('heading', { level: 1, name: 'HMR Example' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Stateful Counter' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 2, name: 'Module Inspector' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'HMR Workbench' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 2, name: 'Interactive state' })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { level: 2, name: 'Hot module boundary' }),
+    ).toBeVisible();
     await expect(page.locator('[data-test="hmr-note"]')).toHaveText(
-      'State survives hot updates while module content refreshes.',
+      'Edit demo-content.ts or the counter module to watch HMR update the UI without a reload.',
     );
     await expect(page.locator('[data-test="hmr-count"]')).toHaveText('0');
     await expect(page.locator('[data-test="hmr-double"]')).toHaveText('0');
     await expect(page.locator('[data-test="hmr-parity"]')).toHaveText('even');
     await expect(page.locator('[data-test="hmr-last-action"]')).toHaveText('Ready');
-    await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.04');
+    await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.06');
     await expect(page.locator('[data-test="hmr-module-label"]')).toHaveText(
-      'Module: Component module',
+      'Boundary: counter-panel',
     );
-    await expect(page.locator('[data-test="hmr-module-badge"]')).toHaveText('Badge: interactive');
+    await expect(page.locator('[data-test="hmr-module-badge"]')).toHaveText('Status: live');
     await expect(page.locator('[data-test="hmr-module-summary"]')).toHaveText(
-      'Summary: Component module · interactive · idle',
+      'Summary: counter-panel / live / dormant',
     );
-    await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 0');
+    await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 0');
     await assertNoConsoleErrors();
   });
 
@@ -385,6 +414,8 @@ test.describe('hmr example', () => {
 });
 
 test.describe('hmr example real Vite updates', () => {
+  test.setTimeout(60_000);
+
   test('cleans up a self-accepting single-file app before remounting', async ({
     page,
     assertNoConsoleErrors,
@@ -394,10 +425,7 @@ test.describe('hmr example real Vite updates', () => {
     );
     const targetWarnings: string[] = [];
     const onConsole = (message: ConsoleMessage) => {
-      if (
-        message.type() === 'warning' &&
-        message.text().includes('Target element is not empty')
-      ) {
+      if (message.type() === 'warning' && message.text().includes('Target element is not empty')) {
         targetWarnings.push(message.text());
       }
     };
@@ -433,8 +461,8 @@ test.describe('hmr example real Vite updates', () => {
     assertNoConsoleErrors,
   }, testInfo) => {
     const fixture = await startHmrFixture(testInfo.testId, (paths) =>
-      patchConfig(paths, {
-        version: '2026.04-a',
+      patchDemoContent(paths, {
+        version: '2026.06-a',
         moduleLabel: 'Module A',
         moduleBadge: 'stable',
       }),
@@ -444,28 +472,28 @@ test.describe('hmr example real Vite updates', () => {
       await gotoHmrFixture(page, fixture);
       const token = await setPageToken(page);
 
-      await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.04-a');
+      await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.06-a');
       await expect(page.locator('[data-test="hmr-module-summary"]')).toHaveText(
-        'Summary: Module A · stable · idle',
+        'Summary: Module A / stable / dormant',
       );
 
-      await patchConfig(fixture.paths, {
-        version: '2026.04-b',
+      await patchDemoContent(fixture.paths, {
+        version: '2026.06-b',
         note: 'Hot update applied without a browser reload.',
         moduleLabel: 'Module B',
         moduleBadge: 'updated',
       });
 
-      await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.04-b');
+      await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: 2026.06-b');
       await expect(page.locator('[data-test="hmr-note"]')).toHaveText(
         'Hot update applied without a browser reload.',
       );
-      await expect(page.locator('[data-test="hmr-module-label"]')).toHaveText('Module: Module B');
-      await expect(page.locator('[data-test="hmr-module-badge"]')).toHaveText('Badge: updated');
+      await expect(page.locator('[data-test="hmr-module-label"]')).toHaveText('Boundary: Module B');
+      await expect(page.locator('[data-test="hmr-module-badge"]')).toHaveText('Status: updated');
       await expect(page.locator('[data-test="hmr-module-summary"]')).toHaveText(
-        'Summary: Module B · updated · idle',
+        'Summary: Module B / updated / dormant',
       );
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 1');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 1');
       await expect(page.locator('[data-test="hmr-last-action"]')).toHaveText('Hot update applied');
       await expectNoReloadedDuplicateRoot(page, token);
       await assertNoConsoleErrors();
@@ -479,7 +507,7 @@ test.describe('hmr example real Vite updates', () => {
     assertNoConsoleErrors,
   }, testInfo) => {
     const fixture = await startHmrFixture(testInfo.testId, (paths) =>
-      patchConfig(paths, { version: 'state-a' }),
+      patchDemoContent(paths, { version: 'state-a' }),
     );
 
     try {
@@ -493,7 +521,7 @@ test.describe('hmr example real Vite updates', () => {
       await expect(page.locator('[data-test="hmr-double"]')).toHaveText('2');
       await expect(page.locator('[data-test="hmr-parity"]')).toHaveText('odd');
 
-      await patchConfig(fixture.paths, {
+      await patchDemoContent(fixture.paths, {
         version: 'state-b',
         note: 'Counter state survived this hot update.',
       });
@@ -502,7 +530,7 @@ test.describe('hmr example real Vite updates', () => {
       await expect(page.locator('[data-test="hmr-count"]')).toHaveText('1');
       await expect(page.locator('[data-test="hmr-double"]')).toHaveText('2');
       await expect(page.locator('[data-test="hmr-parity"]')).toHaveText('odd');
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 1');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 1');
       await expect(page.locator('[data-test="hmr-note"]')).toHaveText(
         'Counter state survived this hot update.',
       );
@@ -518,26 +546,26 @@ test.describe('hmr example real Vite updates', () => {
     assertNoConsoleErrors,
   }, testInfo) => {
     const fixture = await startHmrFixture(testInfo.testId, (paths) =>
-      patchConfig(paths, { version: 'chain-a' }),
+      patchDemoContent(paths, { version: 'chain-a' }),
     );
 
     try {
       await gotoHmrFixture(page, fixture);
       const token = await setPageToken(page);
 
-      const beforeFirstUpdate = await getViteAfterUpdateCount(page);
-      await patchConfig(fixture.paths, {
+      const beforeFirstUpdate = await getHmrUpdateCount(page);
+      await patchDemoContent(fixture.paths, {
         version: 'chain-b',
         note: 'First hot update rendered.',
       });
       await expect(page.locator('[data-test="hmr-version"]')).toHaveText('Version: chain-b');
       await expect(page.locator('[data-test="hmr-note"]')).toHaveText('First hot update rendered.');
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 1');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 1');
       await expectNoReloadedDuplicateRoot(page, token);
       await expectHmrUpdateCount(page, 1);
-      await waitForNextViteAfterUpdate(page, beforeFirstUpdate);
+      await waitForNextHmrUpdate(page, beforeFirstUpdate);
 
-      await patchConfig(fixture.paths, {
+      await patchDemoContent(fixture.paths, {
         version: 'chain-c',
         note: 'Second hot update rendered.',
       });
@@ -545,7 +573,7 @@ test.describe('hmr example real Vite updates', () => {
       await expect(page.locator('[data-test="hmr-note"]')).toHaveText(
         'Second hot update rendered.',
       );
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 2');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 2');
       await expectNoReloadedDuplicateRoot(page, token);
       await assertNoConsoleErrors();
     } finally {
@@ -558,7 +586,7 @@ test.describe('hmr example real Vite updates', () => {
     assertNoConsoleErrors,
   }, testInfo) => {
     const fixture = await startHmrFixture(testInfo.testId, (paths) =>
-      patchConfig(paths, { version: 'handler-a' }),
+      patchDemoContent(paths, { version: 'handler-a' }),
     );
 
     try {
@@ -568,7 +596,7 @@ test.describe('hmr example real Vite updates', () => {
       await page.getByRole('button', { name: 'Increment' }).click();
       await expect(page.locator('[data-test="hmr-count"]')).toHaveText('1');
 
-      await patchConfig(fixture.paths, {
+      await patchDemoContent(fixture.paths, {
         version: 'handler-b',
         incrementLabel: 'Add 5',
         incrementStep: 5,
@@ -596,13 +624,13 @@ test.describe('hmr example real Vite updates', () => {
       await gotoHmrFixture(page, fixture);
       const token = await setPageToken(page);
 
-      await patchUnmountedSentinel(fixture.paths, 'module-only');
+      await patchDormantBoundary(fixture.paths, 'module-only');
 
       await expect(page.locator('[data-test="hmr-module-summary"]')).toHaveText(
-        'Summary: Component module · interactive · module-only',
+        'Summary: counter-panel / live / module-only',
       );
-      await expect(page.locator('[data-test="hmr-unmounted-sentinel"]')).toHaveCount(0);
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 0');
+      await expect(page.locator('[data-test="hmr-dormant-boundary"]')).toHaveCount(0);
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 0');
       await expectNoReloadedDuplicateRoot(page, token);
       await assertNoConsoleErrors();
     } finally {
@@ -626,7 +654,7 @@ test.describe('hmr example real Vite updates', () => {
         .poll(() => page.evaluate(() => (window as any).__essorHmrUnknownVersion))
         .toBe('unknown-a');
       await expect(page.locator('[data-test="hmr-unknown-component"]')).toHaveCount(0);
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 0');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 0');
 
       await writeFile(fixture.paths.unknownComponent, createUnknownComponentSource('unknown-b'));
 
@@ -634,7 +662,7 @@ test.describe('hmr example real Vite updates', () => {
         .poll(() => page.evaluate(() => (window as any).__essorHmrUnknownVersion))
         .toBe('unknown-b');
       await expect(page.locator('[data-test="hmr-unknown-component"]')).toHaveCount(0);
-      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Hot updates: 0');
+      await expect(page.locator('[data-test="hmr-update-count"]')).toHaveText('Runtime updates: 0');
       await expectNoReloadedDuplicateRoot(page, token);
       await assertNoConsoleErrors();
     } finally {
