@@ -56,6 +56,17 @@ function stripSignalPrefix(name: string): string {
 // ── Shared predicates ───────────────────────────────────────────────────────
 
 type MemberLike = t.MemberExpression | t.OptionalMemberExpression;
+type BindingTarget =
+  | t.Identifier
+  | t.MemberExpression
+  | t.AssignmentPattern
+  | t.ArrayPattern
+  | t.ObjectPattern
+  | t.VoidPattern
+  | t.TSAsExpression
+  | t.TSSatisfiesExpression
+  | t.TSTypeAssertion
+  | t.TSNonNullExpression;
 
 /** True for both `a.b` and `a?.b` member forms. */
 function isMemberLike(node: t.Node | null | undefined): node is MemberLike {
@@ -260,12 +271,12 @@ function bindObjectPattern(pattern: t.ObjectPattern, base: t.Expression): t.Vari
 function resolveObjectProp(prop: t.ObjectProperty): {
   keyExpr: t.Expression;
   computed: boolean;
-  target: t.LVal;
+  target: BindingTarget;
 } {
-  const target = prop.value as t.LVal;
+  const target = prop.value as BindingTarget;
   // Shorthand `{ $a }` (and `{ $a = d }`) binds the identifier directly, so the
   // source key is the name with its prefix stripped.
-  const shorthandId = t.isAssignmentPattern(target) ? target.left : target;
+  const shorthandId = unwrapBindingTarget(t.isAssignmentPattern(target) ? target.left : target);
   if (prop.shorthand && t.isIdentifier(shorthandId) && isSignal(shorthandId.name)) {
     return { keyExpr: t.identifier(stripSignalPrefix(shorthandId.name)), computed: false, target };
   }
@@ -287,15 +298,20 @@ function bindArrayPattern(pattern: t.ArrayPattern, base: t.Expression): t.Variab
       out.push(...bindTarget(el.argument, slice));
       return;
     }
-    out.push(...bindTarget(el as t.LVal, t.memberExpression(clone(base), t.numericLiteral(i), true)));
+    out.push(
+      ...bindTarget(el as BindingTarget, t.memberExpression(clone(base), t.numericLiteral(i), true)),
+    );
   });
   return out;
 }
 
 /** Emits declarator(s) for a single binding target reading from `access`. */
-function bindTarget(target: t.LVal, access: t.Expression): t.VariableDeclarator[] {
+function bindTarget(target: BindingTarget, access: t.Expression): t.VariableDeclarator[] {
   if (t.isAssignmentPattern(target)) {
-    return bindTarget(target.left, applyDefault(access, target.right));
+    return bindTarget(target.left as BindingTarget, applyDefault(access, target.right));
+  }
+  if (isTSWrappedBindingTarget(target)) {
+    return bindTarget(unwrapBindingTarget(target), access);
   }
   if (t.isIdentifier(target)) {
     const value = isSignal(target.name) ? makeComputed(access) : access;
@@ -303,8 +319,28 @@ function bindTarget(target: t.LVal, access: t.Expression): t.VariableDeclarator[
   }
   if (t.isObjectPattern(target)) return bindObjectPattern(target, access);
   if (t.isArrayPattern(target)) return bindArrayPattern(target, access);
-  // Unexpected target shape — fall back to a plain snapshot declarator.
+  if (t.isMemberExpression(target)) return [];
+  // Unexpected binding-only target shape — fall back to a plain snapshot declarator.
   return [t.variableDeclarator(target, access)];
+}
+
+function isTSWrappedBindingTarget(
+  target: BindingTarget,
+): target is t.TSAsExpression | t.TSSatisfiesExpression | t.TSTypeAssertion | t.TSNonNullExpression {
+  return (
+    t.isTSAsExpression(target) ||
+    t.isTSSatisfiesExpression(target) ||
+    t.isTSTypeAssertion(target) ||
+    t.isTSNonNullExpression(target)
+  );
+}
+
+function unwrapBindingTarget(target: BindingTarget): BindingTarget {
+  let current = target;
+  while (isTSWrappedBindingTarget(current)) {
+    current = current.expression as BindingTarget;
+  }
+  return current;
 }
 
 /** Builds `<access> === undefined ? <def> : <access>` for default values. */

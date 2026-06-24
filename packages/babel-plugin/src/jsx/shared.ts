@@ -112,7 +112,7 @@ export function buildComponentInvocation(
   // callee (which may itself register a built-in like Portal / Suspense). This
   // preserves the import declaration order emitted by older codegen paths.
   const createComponentId = options.wrap ? useImport('createComponent') : null;
-  const callee = resolveComponentCallee(tag, t.identifier(tag));
+  const callee = resolveComponentCallee(tag, buildComponentTagExpression(tag));
   const props = buildComponentPropsExpression(node, {
     dynamicPropsAsGetters: options.dynamicPropsAsGetters,
     cloneValues: options.cloneValues,
@@ -125,4 +125,12 @@ export function buildComponentInvocation(
     return t.callExpression(createComponentId, [callee, props]);
   }
   return t.callExpression(callee, [props]);
+}
+
+function buildComponentTagExpression(tag: string): t.Expression {
+  const [head, ...parts] = tag.split('.');
+  return parts.reduce<t.Expression>(
+    (expr, part) => t.memberExpression(expr, t.identifier(part)),
+    t.identifier(head),
+  );
 }

@@ -1,5 +1,6 @@
 // @vitest-environment node
-import babel, { types as t } from '@babel/core';
+import * as babel from '@babel/core';
+import { types as t } from '@babel/core';
 import generate from '@babel/generator';
 import traverse, { type NodePath } from '@babel/traverse';
 import { afterEach, describe, expect, it } from 'vitest';

@@ -1,14 +1,14 @@
 import { compile } from './compile';
 import { resolveOptions } from './options';
-import type { PluginObj } from '@babel/core';
+import type { PluginObject } from '@babel/core';
 
 /**
  * Babel plugin for Essor framework.
  * Transforms Essor JSX and reactivity syntax into runtime calls.
  *
- * @returns {PluginObj} The Babel plugin object.
+ * @returns {PluginObject} The Babel plugin object.
  */
-export default function (): PluginObj {
+export default function (): PluginObject {
   return {
     name: 'babel-plugin-essor',
 

@@ -117,9 +117,9 @@
     }
   },
   "dependencies": {
-    "@babel/core": "^7.29.7",
+    "@babel/core": "^8.0.1",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "2.3.11"
+    "unplugin": "^3.2.0"
   },
   "devDependencies": {
     "@rspack/cli": "^2.0.8",
@@ -130,5 +130,8 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
   }
 }

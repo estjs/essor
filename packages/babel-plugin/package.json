@@ -36,15 +36,15 @@
     "dev": "cross-env BUILD_ENV=production tsup --watch"
   },
   "dependencies": {
-    "@babel/core": "^7.29.7",
-    "@babel/generator": "^7.29.7",
+    "@babel/core": "^8.0.1",
+    "@babel/generator": "^8.0.0",
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
-    "@babel/traverse": "^7.29.7",
-    "@babel/types": "^7.29.7",
-    "@types/babel__core": "^7.20.5",
-    "@types/babel__generator": "^7.27.0",
-    "@types/babel__traverse": "^7.28.0"
+    "@babel/traverse": "^8.0.0",
+    "@babel/types": "^8.0.0"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.11.0"
   }
 }

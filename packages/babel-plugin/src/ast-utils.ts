@@ -32,7 +32,7 @@ export function isAnyFunctionPath(path: NodePath): path is NodePath<AnyFunction>
 }
 
 export function isFunctionLikeExpressionPath(
-  path: NodePath<t.Node | null | undefined>,
+  path: NodePath<t.Node | null>,
 ): path is NodePath<t.FunctionExpression | t.ArrowFunctionExpression> {
   return path.isFunctionExpression() || path.isArrowFunctionExpression();
 }
