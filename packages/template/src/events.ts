@@ -108,6 +108,7 @@ export function delegateEvents(
   eventNames: string[],
   document: Document = globalThis.document,
 ): void {
+  if (!document) return;
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
   const eventSet = docWithEvents[$EVENTS] || (docWithEvents[$EVENTS] = new Set<string>());
 
@@ -125,6 +126,7 @@ export function delegateEvents(
  * @param document - Document to clear events from (defaults to the global document).
  */
 export function clearDelegatedEvents(document: Document = globalThis.document): void {
+  if (!document) return;
   const docWithEvents = document as Document & { [$EVENTS]?: Set<string> };
   const eventSet = docWithEvents[$EVENTS];
   if (eventSet) {

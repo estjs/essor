@@ -5,7 +5,7 @@ import { createFilter } from 'vite';
 // @ts-ignore - resolved by esbuild raw plugin at build time
 import hmrRuntimeCode from './hmr-runtime.js?raw';
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin';
-import type { Options } from './types';
+import type { LegacyRenderMode, Options, RenderMode } from './types';
 
 /**
  * Virtual module ID for HMR runtime
@@ -18,21 +18,55 @@ const RESOLVED_VIRTUAL_MODULE_ID = '\0virtual:essor-hmr';
  * Default plugin options
  */
 const DEFAULT_OPTIONS = {
-  symbol: '$',
-  mode: 'client',
+  symbol: '$' as const,
+  mode: 'client' as RenderMode,
   props: true,
   hmr: true,
   enableFor: false,
   omitClosingTags: true,
+  delegateEvents: true,
 };
+
+/**
+ * Maps the deprecated `ssg` / `ssr` mode aliases onto the canonical render
+ * modes understood by `babel-plugin-essor`:
+ *   - `ssg` → `server`  (emit static HTML strings via `renderToString`)
+ *   - `ssr` → `hydrate` (emit hydration-ready client output)
+ *
+ * Retained only for backwards compatibility; the aliases will be removed in a
+ * future major release (see {@link LegacyRenderMode}). Use the canonical
+ * `client` | `server` | `hydrate` names instead.
+ */
+const LEGACY_MODE_ALIASES: Record<string, RenderMode> = {
+  ssg: 'server',
+  ssr: 'hydrate',
+};
+
+/**
+ * Normalizes a user-supplied `mode` to a canonical {@link RenderMode}. Accepts
+ * the canonical names verbatim and translates the deprecated `ssg` / `ssr`
+ * aliases so the rest of the plugin and the Babel plugin only ever see
+ * `client` | `server` | `hydrate`.
+ */
+function normalizeMode(mode: RenderMode | LegacyRenderMode | undefined): RenderMode {
+  if (mode) {
+    return LEGACY_MODE_ALIASES[mode] || (mode as RenderMode);
+  }
+  return 'client';
+}
 
 /**
  * Performance: Pre-compiled regex and constants
  */
 const FILE_EXTENSION_REGEX = /\.[cm]?[jt]sx?$/i;
-const SKIP_DIRECTORIES = ['node_modules', 'dist', 'public'];
+const SKIP_DIRECTORIES_REGEX = /[\\/](?:node_modules|dist|public)[\\/]/;
 const HMR_DISPOSE_PREFIX = 'import.meta.hot?.dispose(';
 const HMR_DISPOSE_SUFFIX = ');';
+
+const HMR_IMPORTS = {
+  createHMRComponent: `import { createHMRComponent as __$createHMRComponent$__ } from "${VIRTUAL_MODULE_ID}";`,
+  hmrAccept: `import { hmrAccept as __$hmrAccept$__ } from "${VIRTUAL_MODULE_ID}";`,
+} as const;
 
 type BundlerType = 'vite' | 'webpack5' | 'rspack' | 'rollup' | 'esbuild' | 'standard';
 
@@ -77,6 +111,9 @@ function detectBundler(meta: UnpluginContextMeta): BundlerType {
  * @returns Module code without inline disposal calls and the extracted handlers.
  */
 function extractHMRDisposeHandlers(code: string) {
+  if (!code.includes(HMR_DISPOSE_PREFIX)) {
+    return { code, disposeHandlers: [] };
+  }
   const lines = code.split('\n');
   const disposeHandlers: string[] = [];
   const cleanedLines = lines.filter((line) => {
@@ -110,11 +147,6 @@ function getHotExpression(bundlerType: BundlerType): string {
 }
 
 function generateHMRCode(bundlerType: BundlerType, disposeHandlers: string[] = []) {
-  const imports = {
-    createHMRComponent: `import { createHMRComponent as __$createHMRComponent$__ } from "${VIRTUAL_MODULE_ID}";`,
-    hmrAccept: `import { hmrAccept as __$hmrAccept$__ } from "${VIRTUAL_MODULE_ID}";`,
-  };
-
   const hot = getHotExpression(bundlerType);
   const disposeLines = disposeHandlers.map((handler) => `  ${hot}.dispose(${handler});`);
 
@@ -126,7 +158,7 @@ function generateHMRCode(bundlerType: BundlerType, disposeHandlers: string[] = [
   }
   lines.push(`  __$hmrAccept$__("${bundlerType}", ${hot}, __$registry$__);`, '}');
 
-  return { imports, register: lines.join('\n') };
+  return { imports: HMR_IMPORTS, register: lines.join('\n') };
 }
 
 export const unpluginFactory: UnpluginFactory<Options | undefined> = (
@@ -142,10 +174,13 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
   // NODE_ENV is set by most bundlers; fallback treats unknown env as dev (HMR on)
   let isProd = process.env.NODE_ENV === 'production';
 
-  // Merge user options with defaults (hmr excluded — computed dynamically in transform)
+  // Merge user options with defaults (hmr excluded — computed dynamically in
+  // transform). `mode` is normalized to a canonical RenderMode so the Babel
+  // plugin only ever receives `client` | `server` | `hydrate`.
   const finalOptions = {
     ...DEFAULT_OPTIONS,
     ...options,
+    mode: normalizeMode(options.mode ?? DEFAULT_OPTIONS.mode),
     bundler: bundlerType,
   };
 
@@ -153,7 +188,7 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
     name: 'unplugin-essor',
     /**
      * Vite-specific config to preserve JSX so the babel plugin can handle it.
-     
+
      */
     vite: {
       config(this: unknown) {
@@ -204,19 +239,26 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
     /**
      * Transform code with Babel plugin
      */
-    transform(code, id) {
-      // Skip node_modules, dist, and public directories
-      if (SKIP_DIRECTORIES.some((p) => id.includes(p))) {
+    transform(code, id, options?: { ssr?: boolean }) {
+      // Skip node_modules, dist, public and non-JS/TS files
+      if (SKIP_DIRECTORIES_REGEX.test(id) || !FILE_EXTENSION_REGEX.test(id) || !filter(id)) {
         return;
       }
-
       // Only transform JS/TS files
       if (!filter(id) || !FILE_EXTENSION_REGEX.test(id)) {
-        return null;
+        return;
       }
+      const isSsr = finalOptions.mode === 'server' || options?.ssr === true;
 
-      // options.hmr explicit value wins; otherwise enable only in dev
-      const babelOptions = { ...finalOptions, hmr: !isProd && finalOptions.hmr };
+      // Extract unplugin-only options before passing to Babel
+      const { symbol, include, exclude, ...babelPassOptions } = finalOptions;
+
+      const babelOptions = {
+        ...babelPassOptions,
+        signalPrefix: finalOptions.signalPrefix ?? symbol ?? '$',
+        mode: isSsr ? 'server' : finalOptions.mode,
+        hmr: !isSsr && !isProd && finalOptions.hmr,
+      };
 
       // Transform with Babel (with error handling)
       let result;
@@ -240,17 +282,21 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
 
       if (babelOptions.hmr) {
         const { code: strippedCode, disposeHandlers } = extractHMRDisposeHandlers(result.code);
-        const hmrCode = generateHMRCode(bundlerType, disposeHandlers);
         const hasComponents = strippedCode.includes('__$createHMRComponent$__');
         const hasRegistry = strippedCode.includes('__$registry$__');
 
-        const parts: string[] = [];
-        if (hasRegistry) parts.push(hmrCode.imports.hmrAccept);
-        if (hasComponents) parts.push(hmrCode.imports.createHMRComponent);
-        parts.push(strippedCode);
-        if (hasRegistry) parts.push(hmrCode.register);
+        if (!hasComponents && !hasRegistry && disposeHandlers.length === 0) {
+          finalCode = result.code;
+        } else {
+          const hmrCode = generateHMRCode(bundlerType, disposeHandlers);
+          const parts: string[] = [];
+          if (hasRegistry) parts.push(hmrCode.imports.hmrAccept);
+          if (hasComponents) parts.push(hmrCode.imports.createHMRComponent);
+          parts.push(strippedCode);
+          if (hasRegistry) parts.push(hmrCode.register);
 
-        finalCode = parts.join('\n');
+          finalCode = parts.join('\n');
+        }
       } else {
         finalCode = result.code;
       }

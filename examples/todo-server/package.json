@@ -1,0 +1,29 @@
+{
+  "name": "essor-example-todo-mvc-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "dev:ssr": "node server.js",
+    "build": "vite build --outDir dist/client && vite build --ssr src/entry-server.tsx --outDir dist/server && node prerender.js",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@estjs/server": "workspace:*",
+    "essor": "workspace:*",
+    "todomvc-app-css": "^2.4.3"
+  },
+  "devDependencies": {
+    "@estjs/eslint-config": "^2.3.0",
+    "@types/node": "^26.0.1",
+    "cross-env": "^10.1.0",
+    "eslint": "^10.5.0",
+    "jsdom": "^29.1.1",
+    "typescript": "^6.0.3",
+    "unplugin-essor": "workspace:*",
+    "vite": "^8.1.0",
+    "vite-plugin-inspect": "^11.4.1",
+    "vitest": "^4.1.9"
+  }
+}

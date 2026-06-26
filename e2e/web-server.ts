@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { type ChildProcess, spawn } from 'node:child_process';
 import { type Server, createServer } from 'node:http';
+import { resolve } from 'node:path';
 import process from 'node:process';
 import {
   E2E_READY_PORT,
   type ExampleName,
   getExamplePort,
+  getExampleServerMode,
   getExampleUrl,
   getSelectedExampleNames,
 } from './example-registry';
@@ -21,6 +23,16 @@ const examples = getSelectedExampleNames();
 
 function getSpawnConfig(exampleName: ExampleName): SpawnConfig {
   const port = String(getExamplePort(exampleName));
+
+  // SSR / SSG examples ship their own `server.js` (e.g. an express or vanilla
+  // Node server) so they can resolve Vite's SSR module loader in dev and serve
+  // prebuilt bundles in production. Plain client-only examples just need Vite.
+  if (getExampleServerMode(exampleName)) {
+    return {
+      command: 'node',
+      args: ['server.js', '--port', port],
+    };
+  }
 
   return {
     command: 'pnpm',
@@ -57,8 +69,12 @@ function attachLogs(exampleName: ExampleName, child: ChildProcess) {
 
 async function startExample(exampleName: ExampleName) {
   const { command, args } = getSpawnConfig(exampleName);
+  const cwd = getExampleServerMode(exampleName)
+    ? resolve(process.cwd(), 'examples', exampleName)
+    : process.cwd();
+
   const child = spawn(command, args, {
-    cwd: process.cwd(),
+    cwd,
     env: {
       ...process.env,
       E2E: '1',

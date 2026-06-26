@@ -9,11 +9,17 @@ export const EXAMPLE_REGISTRY = {
   'hmr': { port: 4108 },
   'hydrate': { port: 4109 },
   'transition': { port: 4110 },
+  'todo-server': { port: 4111, serverMode: true },
 } as const;
 
 export const E2E_READY_PORT = 4199;
 
 export type ExampleName = keyof typeof EXAMPLE_REGISTRY;
+
+/** Whether this example must be served by its own `node server.js` instead of plain Vite. */
+export function getExampleServerMode(exampleName: ExampleName): boolean {
+  return (EXAMPLE_REGISTRY[exampleName] as { serverMode?: boolean }).serverMode ?? false;
+}
 
 export function getExamplePort(exampleName: ExampleName) {
   return EXAMPLE_REGISTRY[exampleName].port;
