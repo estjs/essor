@@ -5,6 +5,24 @@ toc: false
 docClass: timeline
 ---
 
+## [0.0.17-beta.6](https://github.com/estjs/essor/compare/v0.0.17-beta.5...v0.0.17-beta.6) `2026-06-21`
+
+
+### Bug Fixes
+
+* **babel-plugin:** tighten hmr boundaries ([b6d641d](https://github.com/estjs/essor/commit/b6d641d816bce4a677ab67b0da96ccbdfa40f69a))
+* **hmr:** remove unnecessary exports of __$registry$__ in snapshot tests ([c0ad216](https://github.com/estjs/essor/commit/c0ad2165a49bf972c516e6f4f39cd3f8d062a7b8))
+* **hmr:** resolve HMR detection and update state issues in Vite ([7b89f07](https://github.com/estjs/essor/commit/7b89f074c7cc30e24d2a25c98296cacc7a843093))
+* **unplugin:** simplify hmr runtime cleanup ([3bb33c0](https://github.com/estjs/essor/commit/3bb33c09ad7375c1d14b88b968b42aa0da4dafc3))
+
+
+### Features
+
+* **hmr:** enhance HMR functionality and component disposal ([3690763](https://github.com/estjs/essor/commit/36907632112f6d30162488303e744aabece1106e))
+
+
+
+
 
 
 
