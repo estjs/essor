@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getHydrationKey } from '@estjs/template';
-import { createSSRComponent, render, renderToString } from '../src/render';
+import { For } from '../src/components';
+import { createSSRComponent, render, renderToString, ssr, ssrComponent } from '../src/render';
 import { escape } from '../src/utils';
 
 describe('server/render', () => {
@@ -91,6 +92,37 @@ describe('server/render', () => {
       const templates = ['<div>', '</div>'];
       const result = render(templates, '0', escape('<img src=x onerror=1>'));
       expect(result).toBe('<div data-hk="0">&lt;img src=x onerror=1&gt;</div>');
+    });
+
+    it('keeps For callback JSX output raw on the server', () => {
+      const result = render(
+        ['<div>', '</div>'],
+        '',
+        For({
+          each: ['one', 'two'],
+          children: (item) => render(['<span>', '</span>'], '', item),
+        }),
+      );
+
+      expect(result).toBe('<div><span>one</span><span>two</span></div>');
+      expect(result).not.toContain('&lt;span&gt;');
+    });
+
+    it('lets compiler SSR nodes pass through child escape while escaping plain strings', () => {
+      const safe = ssr(['<span>', '</span>'], '', escape('<ok>'));
+
+      expect(escape(safe)).toBe('<span>&lt;ok&gt;</span>');
+      expect(escape('<span>unsafe</span>')).toBe('&lt;span&gt;unsafe&lt;/span&gt;');
+    });
+
+    it('keeps public SSR helpers string-compatible', () => {
+      const Component = () => ssr(['<em>safe</em>'], '');
+
+      expect(render(['<div>', '</div>'], '', ssr(['<span>safe</span>'], ''))).toBe(
+        '<div><span>safe</span></div>',
+      );
+      expect(createSSRComponent(Component)).toBe('<em>safe</em>');
+      expect(String(ssrComponent(Component))).toBe('<em>safe</em>');
     });
   });
 });

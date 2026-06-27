@@ -54,7 +54,8 @@ export const IMPORTS_MAPS = [
  * keep their canonical names since client and server import from separate modules.
  */
 export const SERVER_IMPORT_REMAPS = {
-  createComponent: 'createSSRComponent',
+  createComponent: 'ssrComponent',
+  render: 'ssr',
   patchAttr: 'ssrAttrDynamic',
 } as const;
 

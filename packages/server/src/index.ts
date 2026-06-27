@@ -1,4 +1,11 @@
-export { render, createSSRComponent, renderToString, renderToStringAsync } from './render';
+export {
+  render,
+  ssr,
+  createSSRComponent,
+  ssrComponent,
+  renderToString,
+  renderToStringAsync,
+} from './render';
 export { escape, injectHydrationKeys, resolve } from './utils';
 export { escapeHTML } from '@estjs/shared';
 export { ssrAttrDynamic, normalizeProps } from './attrs';

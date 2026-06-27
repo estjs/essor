@@ -277,6 +277,97 @@ describe('jsx server transform', () => {
     expect(output).toContain('_escape$(_render$2(userText))');
   });
 
+  it('keeps local JSX factory calls escaped in SSR children', () => {
+    const inputCode = `
+      function renderIcon(kind) {
+        return kind === 'github'
+          ? <span class="i-carbon-logo-github" />
+          : <span class="text-sm">{kind}</span>;
+      }
+
+      const element = <a>{renderIcon(item.icon)}</a>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(renderIcon(item.icon))');
+  });
+
+  it('keeps computed values escaped in SSR children even when their factory returns JSX', () => {
+    const inputCode = `
+      import { computed } from 'essor';
+
+      const content = computed(() => {
+        switch (pageType) {
+          case 'home':
+            return <Home />;
+          case 'doc':
+            return <section><span>Ready</span></section>;
+          default:
+            return <NotFound />;
+        }
+      });
+      const element = <main>{content.value}</main>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(content.value)');
+  });
+
+  it('does not trust reassigned local JSX factories for raw SSR children', () => {
+    const inputCode = `
+      function renderIcon(kind) {
+        return <span>{kind}</span>;
+      }
+
+      renderIcon = (kind) => '<img src=x onerror=alert(1)>';
+      const element = <a>{renderIcon(item.icon)}</a>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(renderIcon(item.icon))');
+  });
+
+  it('keeps computed string values escaped in SSR children', () => {
+    const inputCode = `
+      import { computed } from 'essor';
+
+      const content = computed(() => '<img src=x onerror=alert(1)>');
+      const element = <main>{content.value}</main>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(content.value)');
+  });
+
+  it('does not trust user computed calls for raw SSR children', () => {
+    const inputCode = `
+      function computed(factory) {
+        return { value: factory() };
+      }
+
+      const content = computed(() => <span>local</span>);
+      const element = <main>{content.value}</main>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(content.value)');
+  });
+
+  it('keeps mixed local factory return values escaped in SSR children', () => {
+    const inputCode = `
+      function renderContent(kind) {
+        return kind === 'html'
+          ? <span class="safe" />
+          : '<img src=x onerror=alert(1)>';
+      }
+
+      const element = <main>{renderContent(pageType)}</main>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(renderContent(pageType))');
+  });
+
   it('omits dynamic comment markers when a stable static sibling can anchor hydration', () => {
     const inputCode = `
       const element = (
@@ -514,14 +605,31 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    // JSX branches compile to render() (safe HTML) and must NOT be escaped;
-    // escape() is distributed into the leaves, so the JSX render() calls stay
-    // raw while the bare `'<unsafe>'` string literal branch is escaped.
+    // `&&` keeps its condition raw and only renders the JSX branch. Other
+    // expressions are escaped as a whole so their JS short-circuit semantics
+    // stay intact; escape() unwraps compiler-owned SSR nodes at runtime.
     expect(output).toContain('escape as _escape$');
-    expect(output).toContain('isVisible && _render$(');
-    expect(output).not.toContain('_escape$(isVisible && _render$');
-    expect(output).toContain('isVisible ? _render$(');
-    expect(output).toContain("_escape$('<unsafe>')");
+    expect(output).toContain('isVisible && _ssr$(');
+    expect(output).not.toContain('_escape$(isVisible && _ssr$');
+    expect(output).toContain('_escape$(isVisible ? _ssr$(');
+    expect(output).toContain(": '<unsafe>')");
+  });
+
+  it('preserves short-circuit semantics for nullish and fallback child expressions', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          {maybe ?? <span>Fallback</span>}
+          {count || <strong>Empty</strong>}
+        </div>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_escape$(maybe ?? _ssr$(');
+    expect(output).toContain('_escape$(count || _ssr$(');
+    expect(output).not.toContain('_escape$(maybe) ??');
+    expect(output).not.toContain('_escape$(count) ||');
   });
 
   it('should work with list rendering in server', () => {
@@ -548,8 +656,24 @@ describe('jsx server transform', () => {
     `;
     const output = transformCodeWithFor(inputCode);
     expect(output).toContain('For as _For$');
-    expect(output).toContain('_createSSRComponent$(_For$, {');
+    expect(output).toContain('_ssrComponent$(_For$, {');
     expect(output).not.toContain('items.map(');
+  });
+
+  it('keeps optional-chained map expressions as escaped child expressions in server', () => {
+    const inputCode = `
+      const element = (
+        <div>
+          {hero.actions?.map(action => (
+            <a key={action.link} href={action.link}>{action.text}</a>
+          ))}
+        </div>
+      );
+    `;
+    const output = transformCodeWithFor(inputCode);
+    expect(output).toContain('_escape$(hero.actions?.map');
+    expect(output).not.toContain('For as _For$');
+    expect(output).not.toContain('_ssrComponent$(_For$, {');
   });
 
   it('should work with nested components and props in server', () => {

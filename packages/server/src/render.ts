@@ -9,7 +9,7 @@ import {
   setActiveScope,
 } from '@estjs/template/internal';
 import { type SSRContext, runWithSSRContext } from './context';
-import { injectHydrationKeys, resolve } from './utils';
+import { createSSRNode, injectHydrationKeys, resolve } from './utils';
 
 /**
  * Runs `fn` inside a freshly created scope whose parent is the currently
@@ -96,9 +96,10 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
  * compile-time-chosen helper:
  *   - attribute slots → `ssrAttr` / `ssrClass` / ... (escaped attribute string)
  *   - child-text slots → `escape(expr)` (escaped text)
- *   - nested element/component → `render(...)` / `createSSRComponent(...)`
- * so `render()` does NOT escape here — it just concatenates strings. Returns a
- * plain HTML string, which can be nested directly as another render() slot.
+ *   - nested element/component → `ssr(...)` / `ssrComponent(...)`
+ * so `render()` does NOT escape here — it just concatenates strings. Public
+ * callers receive a plain HTML string; compiled JSX uses `ssr()` for a trusted
+ * child value.
  *
  * @param templates - The static template fragments.
  * @param hydrationKey - The hydration key (empty string to skip injection).
@@ -125,10 +126,10 @@ export function render(templates: string[], hydrationKey: string, ...slots: unkn
    * ]
    *
    * function component(props) {
-   *   return render(_tmpl, getHydrationKey(),
-   *     createSSRComponent(Component1, {}),
-   *     createSSRComponent(Component2, {}),
-   *     createSSRComponent(Component3, {})
+   *   return ssr(_tmpl, getHydrationKey(),
+   *     ssrComponent(Component1, {}),
+   *     ssrComponent(Component2, {}),
+   *     ssrComponent(Component3, {})
    *   );
    * }
    */
@@ -152,6 +153,17 @@ export function render(templates: string[], hydrationKey: string, ...slots: unkn
 
   // Inject the hydration key attribute (data-hk) into the root element.
   return hydrationKey ? injectHydrationKeys(content, hydrationKey) : content;
+}
+
+/**
+ * Compiler-only SSR template helper.
+ *
+ * It has the same concatenation semantics as {@link render}, but returns a
+ * trusted SSR node so nested JSX can flow through child-text escape() without
+ * double-escaping. The public render() API still returns a plain string.
+ */
+export function ssr(templates: string[], hydrationKey: string, ...slots: unknown[]): string {
+  return createSSRNode(render(templates, hydrationKey, ...slots));
 }
 
 /**
@@ -242,4 +254,18 @@ export function createSSRComponent<P extends ComponentProps = ComponentProps>(
   // Component boundary: `resolve` treats a bare string return as trusted raw
   // HTML and coerces other final values to their HTML string.
   return resolve(result);
+}
+
+/**
+ * Compiler-only component helper.
+ *
+ * Public createSSRComponent() returns a string for manual SSR composition.
+ * Compiled JSX needs a trusted node so nested component output can pass through
+ * child-text escape() without becoming escaped text.
+ */
+export function ssrComponent<P extends ComponentProps = ComponentProps>(
+  component: ComponentFn<P>,
+  props: P | ComponentProps = {},
+): string {
+  return createSSRNode(createSSRComponent(component, props));
 }

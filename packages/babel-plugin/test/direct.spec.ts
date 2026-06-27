@@ -164,7 +164,8 @@ describe('babel plugin direct helpers', () => {
       const hydrateIds = createImportIdentifiers(path, 'hydrate');
       const clientIds = createImportIdentifiers(path, 'client');
 
-      expect(serverIds.createComponent.name).toContain('createSSRComponent');
+      expect(serverIds.createComponent.name).toContain('ssrComponent');
+      expect(serverIds.render.name).toContain('ssr');
       expect(serverIds.patchAttr.name).toContain('ssrAttrDynamic');
       expect(hydrateIds.template.name).toContain('getRenderedElement');
       expect(hydrateIds.patchStyle.name).toContain('patchStyleHydrate');

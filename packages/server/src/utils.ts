@@ -7,32 +7,42 @@ import {
   isString,
 } from '@estjs/shared';
 
+interface SSRNode {
+  html: string;
+  toString(): string;
+}
+
+const ssrNodes = new WeakSet<SSRNode>();
+
 // ---------------------------------------------------------------------------
 // SSR serialization
 //
-// There is no `{ t }` trusted-node wrapper. The whole SSR pipeline works on
-// plain strings, and the Babel compiler decides escape-vs-raw at compile time
-// by choosing a different helper per slot position :
+// The compiler emits SSRNode objects for trusted nested JSX/component output.
+// Plain strings are not trusted in child-text slots; they are escaped unless
+// they cross a component boundary.
 //
-//   - dynamic attribute slot  → ssrAttr / ssrClass / ssrStyle / ...   (returns
-//                               an already-escaped attribute string)
-//   - child-text slot `{expr}` → escape(expr)                          (escapes)
-//   - nested element/component → render(...) / createSSRComponent(...) (already
-//                               a final HTML string)
-//
-// `render()` then just concatenates the template fragments with the slot
-// strings — it never inspects a value's type to decide trust.
-//
-// Two serializers, distinguished by *channel* (provenance), not by a runtime
-// marker on the value:
-//   - escape()  — child-text channel: strings are UNTRUSTED → HTML-escaped.
-//   - resolve() — component-boundary channel (component return values): strings
-//                 are TRUSTED raw HTML → emitted verbatim. A hand-written
-//                 component returning `'<div>…</div>'` therefore "just works".
+// - escape(): child text channel. Strings are escaped; SSRNode passes through.
+// - resolve(): component boundary channel. Strings and SSRNode are raw HTML.
 //
 // Both share one recursive walker; they differ only in how a leaf string is
 // finalized (escaped vs verbatim).
 // ---------------------------------------------------------------------------
+
+export function createSSRNode(html: string): string {
+  const node: SSRNode = {
+    html,
+    toString() {
+      return html;
+    },
+  };
+
+  ssrNodes.add(node);
+  return node as unknown as string;
+}
+
+function isSSRNode(value: unknown): value is SSRNode {
+  return typeof value === 'object' && value !== null && ssrNodes.has(value as SSRNode);
+}
 
 /**
  * Recursive SSR walker shared by {@link escape} and {@link resolve}. Recurses
@@ -42,6 +52,9 @@ import {
 function serialize(value: unknown, leaf: (s: string) => string): string {
   if (isNil(value) || value === false) {
     return '';
+  }
+  if (isSSRNode(value)) {
+    return value.html;
   }
   if (isArray(value)) {
     let out = '';
@@ -55,17 +68,14 @@ function serialize(value: unknown, leaf: (s: string) => string): string {
 }
 
 /**
- * Serialize a child-text value to an HTML string, HTML-escaping bare strings.
- *
- * This is the `{expr}` child-slot serializer
+ * Serialize a `{expr}` child slot, escaping bare strings.
  */
 export function escape(value: unknown): string {
   return serialize(value, escapeHTML);
 }
 
 /**
- * Serialize a *component-boundary* value to an HTML string, treating bare
- * strings as already-trusted raw HTML (NOT escaped).
+ * Serialize a component return value, treating bare strings as raw HTML.
  *
  * Used for values returned by component functions (`renderToString` /
  * `createSSRComponent` / Fragment / Suspense / For / Portal children): a
@@ -80,6 +90,7 @@ export function resolve(value: unknown): string {
 function identity(s: string): string {
   return s;
 }
+
 /**
  * Combined regex that matches either an internal hydration anchor attribute or
  * a hydration comment marker (numeric body only) in a single scan. Capture groups:
@@ -144,7 +155,7 @@ function injectRootHydrationAttribute(htmlContent: string, hydrationId: string):
  * @returns {string} The html content with hydration attributes.
  */
 export function injectHydrationKeys(htmlContent: string, hydrationId: string): string {
-  // Single-pass rewrite for both element anchors and comment markers — half the
+  // Single-pass rewrite for both element anchors and comment markers; half the
   // string traversals compared to chained `replaceAll` calls.
   return injectRootHydrationAttribute(htmlContent, hydrationId).replaceAll(
     HYDRATION_REWRITE_REGEX,

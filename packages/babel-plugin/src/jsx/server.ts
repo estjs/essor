@@ -153,10 +153,10 @@ function createSSRSelectedExpression(
  * True when `expr` evaluates to trusted, already-serialized HTML and must NOT
  * be escaped again. That is either:
  *  - a raw JSX element/fragment that the program traversal will subsequently
- *    compile into a render()/component call, or
- *  - an already-compiled render() / createSSRComponent() call.
+ *    compile into an ssr()/ssrComponent() call, or
+ *  - an already-compiled ssr() / ssrComponent() call.
  *
- * Both forms yield a final HTML string at runtime.
+ * Both forms yield a compiler-owned SSR value at runtime.
  */
 function isSafeServerHtml(expr: t.Expression): boolean {
   if (t.isJSXElement(expr) || t.isJSXFragment(expr)) return true;
@@ -170,25 +170,21 @@ function isSafeServerHtml(expr: t.Expression): boolean {
 
 /**
  * Wrap an untrusted child expression so its dynamic text is HTML-escaped,
- * while leaving embedded JSX output (already compiled to render()/component
+ * while leaving embedded JSX output (already compiled to ssr()/ssrComponent()
  * calls) un-escaped.
  *
- * escape() is distributed into the leaves of `&&` / `||` / `??` / `?:` /
- * sequence / parenthesized expressions so that, e.g.:
- *   `cond && <p/>`        → `cond && render(...)`            (safe, not escaped)
- *   `cond ? <a/> : 'x'`   → `cond ? render(...) : escape('x')`
+ * For `&&`, the left side is a condition and only the right branch is rendered,
+ * so escape() is pushed into the right side. Other expressions are escaped as
+ * a whole so operators such as `??` and `||` keep their original JS semantics:
+ *   `cond && <p/>`        → `cond && ssr(...)`               (safe, not escaped)
+ *   `maybe ?? <a/>`       → `escape(maybe ?? ssr(...))`
  *   `someText`            → `escape(someText)`
- * A subexpression that is already a render()/component call is returned as-is;
+ * A subexpression that is already an ssr()/ssrComponent() call is returned as-is;
  * everything else (including plain values) is wrapped in escape().
  */
 function escapeChildExpression(expr: t.Expression): t.Expression {
-  // Already-safe HTML (raw JSX or compiled render call) — leave untouched.
+  // Already-safe HTML (raw JSX or compiled ssr call) — leave untouched.
   if (isSafeServerHtml(expr)) {
-    return expr;
-  }
-
-  if (t.isParenthesizedExpression(expr)) {
-    expr.expression = escapeChildExpression(expr.expression);
     return expr;
   }
 
@@ -196,31 +192,13 @@ function escapeChildExpression(expr: t.Expression): t.Expression {
   //  - `a && b`: when `a` is falsy the result is `a` (a falsy value → escape's
   //    nil/false handling renders it harmlessly), so the left is effectively a
   //    condition and is NOT escaped; only the right is a rendered branch.
-  //  - `a || b` / `a ?? b`: either side can be the surviving output, so escape
-  //    both. JSX on either side stays raw via the isSafeServerHtml short-circuit.
   if (t.isLogicalExpression(expr)) {
     if (expr.operator === '&&') {
       expr.right = escapeChildExpression(expr.right);
+      return expr;
     } else {
-      expr.left = escapeChildExpression(expr.left);
-      expr.right = escapeChildExpression(expr.right);
+      return t.callExpression(useImport('escape'), [expr]);
     }
-    return expr;
-  }
-
-  // Conditional: the TEST is a boolean (never rendered) — leave it alone.
-  // Only the two branches are output; escape() each independently.
-  if (t.isConditionalExpression(expr)) {
-    expr.consequent = escapeChildExpression(expr.consequent);
-    expr.alternate = escapeChildExpression(expr.alternate);
-    return expr;
-  }
-
-  // Sequence: only the final value is rendered; escape that one.
-  if (t.isSequenceExpression(expr) && expr.expressions.length > 0) {
-    const last = expr.expressions.length - 1;
-    expr.expressions[last] = escapeChildExpression(expr.expressions[last]);
-    return expr;
   }
 
   // Leaf (identifier, member, call, literal, …) → untrusted text, escape it.
@@ -247,12 +225,10 @@ function generateServerNode(
         return t.cloneNode(node.value, true);
       }
       // Untrusted child text → escape(). But nested JSX inside the expression
-      // has already been compiled to render()/createSSRComponent() calls, which
-      // return already-safe HTML strings; escaping those would double-escape
-      // valid markup. So we push escape() down into the leaves of logical /
-      // conditional / sequence expressions, wrapping only the non-safe operands
-      // Pure expressions with no embedded render() call are
-      // simply wrapped whole.
+      // has already been compiled to ssr()/ssrComponent() calls, which
+      // return already-safe SSR nodes/HTML; escaping those would double-escape
+      // valid markup. `&&` keeps its condition raw; other expressions are
+      // escaped as a whole so JS short-circuit semantics stay intact.
       return escapeChildExpression(t.cloneNode(node.value, true));
     }
     case IRType.COMPONENT:
