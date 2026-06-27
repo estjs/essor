@@ -117,7 +117,10 @@ export function App() {
             autofocus
             style="flex: 1;"
           />
-          <button class="add-btn" onClick={addTodo} style="height: 65px; padding: 0 16px; background: rgba(0, 0, 0, 0.05); border: none; font-size: 16px; cursor: pointer;">
+          <button
+            class="add-btn"
+            onClick={addTodo}
+            style="height: 65px; padding: 0 16px; background: rgba(0, 0, 0, 0.05); border: none; font-size: 16px; cursor: pointer;">
             Add
           </button>
         </div>
