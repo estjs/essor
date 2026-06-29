@@ -1,4 +1,4 @@
-import { computed, createStore, effect, signal } from '../src';
+import { computed, createStore, effect, effectScope, signal } from '../src';
 
 /**
  * Store Test Suite
@@ -374,6 +374,56 @@ describe('store - Built-in Methods', () => {
       const callback = vitest.fn();
 
       expect(() => store.$unsubscribe(callback)).not.toThrow();
+    });
+
+    it('auto-unsubscribes a $subscribe callback when its owning scope is disposed', () => {
+      const useStore = createStore({
+        state: { value: 0 },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+
+      const scope = effectScope();
+      scope.run(() => {
+        store.$subscribe(callback);
+      });
+
+      store.$patch({ value: 1 });
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      // Disposing the scope the subscription was created in must release the
+      // callback — otherwise the store's subscription Set holds the closure
+      // (and whatever it captures) forever.
+      scope.stop();
+
+      store.$patch({ value: 2 });
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+
+    it('auto-removes a $onAction callback when its owning scope is disposed', () => {
+      const useStore = createStore({
+        state: { count: 0 },
+        actions: {
+          increment() {
+            this.count++;
+          },
+        },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+
+      const scope = effectScope();
+      scope.run(() => {
+        store.$onAction(callback);
+      });
+
+      store.increment();
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      scope.stop();
+
+      store.increment();
+      expect(callback).toHaveBeenCalledTimes(1);
     });
   });
 

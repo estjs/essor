@@ -1,5 +1,5 @@
 import { isFunction, isObject, warn } from '@estjs/shared';
-import { batch, computed, reactive } from '.';
+import { batch, computed, onScopeDispose, reactive } from '.';
 
 /**
  * Represents a store's state object.
@@ -208,7 +208,14 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
       return () => {};
     }
     set.add(callback);
-    return () => set.delete(callback);
+    const unsubscribe = () => set.delete(callback);
+    // Backstop: if registered inside an active effect scope (e.g. a component
+    // body), release the callback when that scope is disposed. Without this,
+    // a subscriber that forgets to unsubscribe on unmount keeps the callback
+    // — and everything its closure captures — alive in the store's Set forever.
+    // The manual unsubscribe path above still works and is idempotent with this.
+    onScopeDispose(unsubscribe, /* failSilently */ true);
+    return unsubscribe;
   };
 
   /** Apply a mutation inside a batch, then notify subscribers once. */
