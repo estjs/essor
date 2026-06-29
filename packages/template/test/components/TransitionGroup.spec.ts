@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
-import {
-  TransitionGroup,
-  isTransitionGroup,
-} from '../../src/components/TransitionGroup';
+import { TransitionGroup, isTransitionGroup } from '../../src/components/TransitionGroup';
 import { createComponent } from '../../src/component';
 import { onCleanup as onCleanupFromTestScope } from '../../src/scope';
 import {
@@ -34,7 +31,7 @@ function flushMount(scope: any): void {
 function stubIndexBasedRects(): () => void {
   const original = Element.prototype.getBoundingClientRect;
   Element.prototype.getBoundingClientRect = function () {
-    if (!this.hasAttribute('data-rect-key')) return original.call(this);
+    if (!Object.hasOwn(this.dataset, 'rectKey')) return original.call(this);
     const parent = this.parentElement;
     const idx = parent ? [...parent.children].indexOf(this) : 0;
     return {
@@ -56,7 +53,7 @@ function stubIndexBasedRects(): () => void {
   };
 }
 
-describe('TransitionGroup', () => {
+describe('transitionGroup', () => {
   let container: HTMLElement;
 
   beforeEach(() => {
@@ -160,7 +157,7 @@ describe('TransitionGroup', () => {
       name: 'fade',
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -199,7 +196,7 @@ describe('TransitionGroup', () => {
       },
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -229,7 +226,7 @@ describe('TransitionGroup', () => {
       css: false,
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -257,7 +254,7 @@ describe('TransitionGroup', () => {
       children: (n) => {
         renderCount[n] = (renderCount[n] ?? 0) + 1;
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -270,11 +267,7 @@ describe('TransitionGroup', () => {
     items.value = [3, 1, 2];
     await Promise.resolve();
 
-    expect([...wrapper.children].map((c) => c.getAttribute('data-key'))).toEqual([
-      '3',
-      '1',
-      '2',
-    ]);
+    expect([...wrapper.children].map((c) => c.dataset.key)).toEqual(['3', '1', '2']);
     // Same elements were moved, not recreated.
     expect(wrapper.querySelector('[data-key="1"]')).toBe(initial1);
     expect(wrapper.querySelector('[data-key="2"]')).toBe(initial2);
@@ -285,7 +278,7 @@ describe('TransitionGroup', () => {
     cleanupContext(ctx);
   });
 
-  it('FLIP move applies moveClass when reorder produces a non-zero delta', async () => {
+  it('fLIP move applies moveClass when reorder produces a non-zero delta', async () => {
     // Index-based rect stub: items at index N report rect (N*10, 0, 10, 10).
     // After reorder, items occupy different indices, so dx becomes non-zero.
     const restore = stubIndexBasedRects();
@@ -303,7 +296,7 @@ describe('TransitionGroup', () => {
       duration: 0,
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-rect-key', String(n));
+        div.dataset.rectKey = String(n);
         return div;
       },
     });
@@ -315,16 +308,14 @@ describe('TransitionGroup', () => {
 
     const el1 = wrapper.querySelector('[data-rect-key="1"]') as HTMLElement;
     const el2 = wrapper.querySelector('[data-rect-key="2"]') as HTMLElement;
-    expect(
-      el1.classList.contains('list-move') || el2.classList.contains('list-move'),
-    ).toBe(true);
+    expect(el1.classList.contains('list-move') || el2.classList.contains('list-move')).toBe(true);
 
     restore();
     popContextStack();
     cleanupContext(ctx);
   });
 
-  it('honors a custom `moveClass`', async () => {
+  it('honors a custom `moveClass`', () => {
     const restore = stubIndexBasedRects();
 
     const items = signal([1, 2]);
@@ -337,7 +328,7 @@ describe('TransitionGroup', () => {
       duration: 0,
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-rect-key', String(n));
+        div.dataset.rectKey = String(n);
         return div;
       },
     });
@@ -345,7 +336,6 @@ describe('TransitionGroup', () => {
     flushMount(ctx);
 
     items.value = [2, 1];
-    await Promise.resolve();
 
     const el = wrapper.querySelector('[data-rect-key="1"]') as HTMLElement;
     expect(el.classList.contains('pony-move')).toBe(true);
@@ -356,7 +346,7 @@ describe('TransitionGroup', () => {
     cleanupContext(ctx);
   });
 
-  it('supports children returning a Component instance', async () => {
+  it('supports children returning a Component instance', () => {
     const items = signal([1, 2]);
     const Row = (props: { value: number }) => {
       const div = document.createElement('div');
@@ -506,6 +496,49 @@ describe('TransitionGroup', () => {
     expect(cleaned.sort()).toEqual([1, 2, 3]);
   });
 
+  it('cancels explicit enter duration timers on group cleanup', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      const items = signal([1]);
+      const after = vi.fn();
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const wrapper = TransitionGroup({
+        each: items,
+        key: (n) => n,
+        duration: 10_000,
+        onAfterEnter: after,
+        children: (n) => {
+          const div = document.createElement('div');
+          div.dataset.key = String(n);
+          return div;
+        },
+      });
+      mountGroup(wrapper);
+      flushMount(ctx);
+
+      items.value = [1, 2];
+      await Promise.resolve();
+      vi.advanceTimersByTime(34);
+      await Promise.resolve();
+
+      popContextStack();
+      cleanupContext(ctx);
+
+      expect(clearSpy).toHaveBeenCalled();
+
+      vi.runOnlyPendingTimers();
+      await Promise.resolve();
+
+      expect(after).not.toHaveBeenCalled();
+      expect(wrapper.querySelector('[data-key="2"]')).toBeNull();
+    } finally {
+      clearSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
   it('throws on missing key or children prop', () => {
     expect(() =>
       TransitionGroup({
@@ -543,7 +576,7 @@ describe('TransitionGroup', () => {
       },
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -582,7 +615,7 @@ describe('TransitionGroup', () => {
       name: 'fade',
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -592,11 +625,7 @@ describe('TransitionGroup', () => {
     items.value = [1, 2, 3];
     await Promise.resolve();
 
-    expect([...wrapper.children].map((c) => c.getAttribute('data-key'))).toEqual([
-      '1',
-      '2',
-      '3',
-    ]);
+    expect([...wrapper.children].map((c) => c.dataset.key)).toEqual(['1', '2', '3']);
     const inserted = wrapper.querySelector('[data-key="2"]') as HTMLElement;
     expect(inserted.classList.contains('fade-enter-from')).toBe(true);
     expect(
@@ -627,7 +656,7 @@ describe('TransitionGroup', () => {
       },
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -666,8 +695,8 @@ describe('TransitionGroup', () => {
       },
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-rect-key', String(n));
-        div.setAttribute('data-key', String(n));
+        div.dataset.rectKey = String(n);
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -692,7 +721,7 @@ describe('TransitionGroup', () => {
     const inOrder = [...wrapper.children].filter(
       (c) => (c as HTMLElement).style.position !== 'absolute',
     );
-    expect(inOrder.map((c) => c.getAttribute('data-key'))).toEqual(['3', '2', '4']);
+    expect(inOrder.map((c) => c.dataset.key)).toEqual(['3', '2', '4']);
 
     const stay2 = wrapper.querySelector('[data-key="2"]') as HTMLElement;
     const stay3 = wrapper.querySelector('[data-key="3"]') as HTMLElement;
@@ -715,7 +744,7 @@ describe('TransitionGroup', () => {
       css: false,
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });
@@ -726,11 +755,7 @@ describe('TransitionGroup', () => {
     items.value = [3, 2, 1];
     await Promise.resolve();
 
-    expect([...wrapper.children].map((c) => c.getAttribute('data-key'))).toEqual([
-      '3',
-      '2',
-      '1',
-    ]);
+    expect([...wrapper.children].map((c) => c.dataset.key)).toEqual(['3', '2', '1']);
 
     popContextStack();
     cleanupContext(ctx);
@@ -746,7 +771,7 @@ describe('TransitionGroup', () => {
       css: false,
       children: (n) => {
         const div = document.createElement('div');
-        div.setAttribute('data-key', String(n));
+        div.dataset.key = String(n);
         return div;
       },
     });

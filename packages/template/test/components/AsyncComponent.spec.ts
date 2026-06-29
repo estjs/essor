@@ -461,6 +461,66 @@ describe('defineAsyncComponent', () => {
       expect((onError.mock.calls[0]?.[0] as Error).message).toContain('Timeout after 250ms');
       expect(onError.mock.calls[0]?.[1]).toBeTypeOf('function');
     });
+
+    it('ignores stale loader resolution after timeout retry starts a newer load', async () => {
+      let latestRetry: (() => void) | undefined;
+      const resolvers: Array<(component: () => Node) => void> = [];
+      const loader = vi.fn(
+        () =>
+          new Promise<() => Node>((resolve) => {
+            resolvers.push(resolve);
+          }),
+      );
+      const loading = () => {
+        const el = document.createElement('div');
+        el.className = 'retry-loading';
+        el.textContent = 'Loading';
+        return el;
+      };
+      const error = ({ retry }: { error: Error; retry: () => void }) => {
+        latestRetry = retry;
+        const el = document.createElement('button');
+        el.className = 'timeout-retry';
+        return el;
+      };
+
+      const Async = defineAsyncComponent(loader, {
+        loading,
+        error,
+        delay: 0,
+        timeout: 100,
+      });
+
+      mount(() => createComponent(Async), container);
+      await vi.advanceTimersByTimeAsync(150);
+
+      expect(container.querySelector('.timeout-retry')).not.toBeNull();
+      expect(latestRetry).toBeTypeOf('function');
+
+      latestRetry!();
+      expect(loader).toHaveBeenCalledTimes(2);
+      expect(container.querySelector('.retry-loading')?.textContent).toBe('Loading');
+
+      resolvers[0](() => {
+        const el = document.createElement('span');
+        el.textContent = 'Stale first load';
+        return el;
+      });
+      await vi.runAllTimersAsync();
+
+      expect(container.textContent).not.toContain('Stale first load');
+      expect(container.querySelector('.retry-loading')?.textContent).toBe('Loading');
+
+      resolvers[1](() => {
+        const el = document.createElement('span');
+        el.textContent = 'Fresh retry load';
+        return el;
+      });
+      await vi.runAllTimersAsync();
+
+      expect(container.textContent).toContain('Fresh retry load');
+      expect(container.textContent).not.toContain('Stale first load');
+    });
   });
 
   // ── Suspense integration ──────────────────────────────────────────────────

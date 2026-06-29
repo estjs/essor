@@ -485,10 +485,6 @@ describe('transition duration (T11)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() {
-    return new Promise<void>((r) => requestAnimationFrame(() => r()));
-  }
-
   it('uses setTimeout when duration is a number', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
     try {
@@ -581,10 +577,6 @@ describe('transition appear (T12)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() {
-    return new Promise<void>((r) => requestAnimationFrame(() => r()));
-  }
-
   it('runs enter classes on initial mount when appear=true', async () => {
     const show = signal(true);
     const ctx = createContext(null);
@@ -753,10 +745,6 @@ describe('transition cancellation: leave→enter (T14)', () => {
   afterEach(() => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
-  function rafTick() {
-    return new Promise<void>((r) => requestAnimationFrame(() => r()));
-  }
-
   it('fires onLeaveCancelled and preserves the element when enter restarts during leave', async () => {
     const show = signal(true);
     const cancel = vi.fn();
@@ -827,6 +815,54 @@ describe('transition disposal (T15)', () => {
     cleanupContext(ctx); // destroys Transition's scope mid-leave
     expect(container.querySelector('.box')).toBeNull();
   });
+
+  it('cancels explicit duration timers when cleaned up mid-enter', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'requestAnimationFrame'] });
+    const clearSpy = vi.spyOn(globalThis, 'clearTimeout');
+    try {
+      const show = signal(false);
+      const cancelled = vi.fn();
+      const after = vi.fn();
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const anchor = Transition({
+        name: 'fade',
+        duration: 10_000,
+        onEnterCancelled: cancelled,
+        onAfterEnter: after,
+        children: () => {
+          if (!show.value) return undefined;
+          const el = document.createElement('div');
+          el.className = 'box';
+          return el;
+        },
+      });
+      container.appendChild(anchor);
+      flushMount(ctx);
+
+      show.value = true;
+      await Promise.resolve();
+      vi.advanceTimersByTime(34);
+      await Promise.resolve();
+
+      expect(vi.getTimerCount()).toBe(1);
+
+      popContextStack();
+      cleanupContext(ctx);
+
+      expect(cancelled).toHaveBeenCalledTimes(1);
+      expect(clearSpy).toHaveBeenCalled();
+
+      vi.runOnlyPendingTimers();
+      await Promise.resolve();
+
+      expect(after).not.toHaveBeenCalled();
+      expect(container.querySelector('.box')).toBeNull();
+    } finally {
+      clearSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
 });
 
 describe('transition validation (T16)', () => {
@@ -840,7 +876,7 @@ describe('transition validation (T16)', () => {
     if (container.parentNode) container.parentNode.removeChild(container);
   });
 
-  it('throws in __DEV__ when slot resolves to multiple elements', async () => {
+  it('throws in __DEV__ when slot resolves to multiple elements', () => {
     const ctx = createContext(null);
     pushContextStack(ctx);
     const anchor = Transition({
@@ -852,7 +888,7 @@ describe('transition validation (T16)', () => {
     cleanupContext(ctx);
   });
 
-  it('warns in __DEV__ when slot resolves to a text node / primitive', async () => {
+  it('warns in __DEV__ when slot resolves to a text node / primitive', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const ctx = createContext(null);
     pushContextStack(ctx);
@@ -1264,7 +1300,7 @@ describe('transition missing done() in JS hook (C)', () => {
     pushContextStack(ctx);
     const anchor = Transition({
       name: 'fade',
-      onEnter: (_el, _done) => {
+      onEnter: () => {
         /* intentionally never calls done */
       },
       onAfterEnter: afterEnter,

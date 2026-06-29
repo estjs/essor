@@ -15,7 +15,6 @@ import {
   type TransitionProps,
   addClass,
   forceReflow,
-  nextFrame,
   removeClass,
   resolveDuration,
   resolveTransitionClasses,
@@ -58,6 +57,22 @@ export interface TransitionGroupProps<T = unknown> extends GroupBaseProps {
 }
 
 type CancelCb = (cancelled?: boolean) => void;
+type TransitionCleanup = () => void;
+
+function nextFrameCancellable(cb: () => void): TransitionCleanup {
+  let cancelled = false;
+  let innerId: number | null = null;
+  const outerId = requestAnimationFrame(() => {
+    if (cancelled) return;
+    innerId = requestAnimationFrame(cb);
+  });
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(outerId);
+    if (innerId != null) cancelAnimationFrame(innerId);
+  };
+}
 
 interface Entry {
   key: unknown;
@@ -75,6 +90,9 @@ interface Entry {
   /** Cancellation hooks for in-flight enter/leave animations. */
   cancelEnter?: CancelCb;
   cancelLeave?: CancelCb;
+  cancelEnterWait?: TransitionCleanup;
+  cancelLeaveWait?: TransitionCleanup;
+  cancelMoveWait?: TransitionCleanup;
   /**
    * Saved inline styles that we override during leave (`position:absolute`
    * + locked geometry). Restored if a leave is cancelled mid-flight.
@@ -261,6 +279,9 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
   const disposeEntry = (entry: Entry): void => {
     entry.cancelEnter?.(true);
     entry.cancelLeave?.(true);
+    entry.cancelEnterWait?.();
+    entry.cancelLeaveWait?.();
+    entry.cancelMoveWait?.();
     if (entry.comp) entry.comp.destroy();
     detachEntryDom(entry);
     disposeScope(entry.scope);
@@ -287,6 +308,8 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
       if (called) return;
       called = true;
       entry.cancelEnter = undefined;
+      entry.cancelEnterWait?.();
+      entry.cancelEnterWait = undefined;
       removeClass(el, classes.enterFrom);
       removeClass(el, classes.enterActive);
       removeClass(el, classes.enterTo);
@@ -300,7 +323,8 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     entry.cancelEnter = done;
     entry.state = 'entering';
 
-    nextFrame(() => {
+    entry.cancelEnterWait = nextFrameCancellable(() => {
+      entry.cancelEnterWait = undefined;
       if (called) return;
       removeClass(el, classes.enterFrom);
       addClass(el, classes.enterTo);
@@ -308,7 +332,10 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
         props.onEnter(el, () => done(false));
       } else {
         const explicit = resolveDuration(props.duration, 'enter');
-        whenTransitionEnds(el, props.type, explicit, () => done(false));
+        entry.cancelEnterWait = whenTransitionEnds(el, props.type, explicit, () => {
+          entry.cancelEnterWait = undefined;
+          done(false);
+        });
       }
     });
   };
@@ -352,6 +379,8 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
       if (called) return;
       called = true;
       entry.cancelLeave = undefined;
+      entry.cancelLeaveWait?.();
+      entry.cancelLeaveWait = undefined;
       removeClass(el, classes.leaveFrom);
       removeClass(el, classes.leaveActive);
       removeClass(el, classes.leaveTo);
@@ -373,7 +402,8 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     };
     entry.cancelLeave = done;
 
-    nextFrame(() => {
+    entry.cancelLeaveWait = nextFrameCancellable(() => {
+      entry.cancelLeaveWait = undefined;
       if (called) return;
       removeClass(el, classes.leaveFrom);
       addClass(el, classes.leaveTo);
@@ -381,7 +411,10 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
         props.onLeave(el, () => done(false));
       } else {
         const explicit = resolveDuration(props.duration, 'leave');
-        whenTransitionEnds(el, props.type, explicit, () => done(false));
+        entry.cancelLeaveWait = whenTransitionEnds(el, props.type, explicit, () => {
+          entry.cancelLeaveWait = undefined;
+          done(false);
+        });
       }
     });
   };
@@ -414,7 +447,9 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     el.style.transitionDuration = savedTransition;
 
     const explicit = resolveDuration(props.duration, 'enter');
-    whenTransitionEnds(el, props.type, explicit, () => {
+    entry.cancelMoveWait?.();
+    entry.cancelMoveWait = whenTransitionEnds(el, props.type, explicit, () => {
+      entry.cancelMoveWait = undefined;
       removeClass(el, moveClass);
     });
   };

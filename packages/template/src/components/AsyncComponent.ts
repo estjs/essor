@@ -101,18 +101,27 @@ function defineClientAsyncComponent<P extends ComponentProps>(
   let error: Error | null = null;
   let status: 'pending' | 'resolved' | 'errored' = 'pending';
   let loadPromise: Promise<void> | null = null;
+  let loadId = 0;
 
-  const load = (): Promise<void> =>
-    (loadPromise ??= loader()
+  const load = (): Promise<void> => {
+    if (loadPromise) return loadPromise;
+
+    const id = ++loadId;
+    loadPromise = loader()
       .then((mod) => {
+        if (id !== loadId) return;
         component = resolveModule(mod);
         status = 'resolved';
       })
       .catch((error_) => {
+        if (id !== loadId) return;
         error = error_ instanceof Error ? error_ : new Error(String(error_));
         status = 'errored';
         loadPromise = null; // allow retry
-      }));
+      });
+
+    return loadPromise;
+  };
 
   load();
 
@@ -171,6 +180,7 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     const retryWith =
       (retryProps: P): (() => void) =>
       () => {
+        loadId++;
         loadPromise = null;
         status = 'pending';
         error = null;
@@ -219,6 +229,8 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     if (timeout != null) {
       timeoutTimer = setTimeout(() => {
         if (!alive || status !== 'pending') return;
+        loadId++;
+        loadPromise = null;
         error = new Error(`[defineAsyncComponent] Timeout after ${timeout}ms`);
         status = 'errored';
         if (errorComp) render(errorComp, { error, retry: retryWith(props) });

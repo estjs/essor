@@ -120,6 +120,23 @@ export function nextFrame(cb: () => void): void {
   requestAnimationFrame(() => requestAnimationFrame(cb));
 }
 
+type TransitionCleanup = () => void;
+
+function nextFrameCancellable(cb: () => void): TransitionCleanup {
+  let cancelled = false;
+  let innerId: number | null = null;
+  const outerId = requestAnimationFrame(() => {
+    if (cancelled) return;
+    innerId = requestAnimationFrame(cb);
+  });
+
+  return () => {
+    cancelled = true;
+    cancelAnimationFrame(outerId);
+    if (innerId != null) cancelAnimationFrame(innerId);
+  };
+}
+
 export function forceReflow(el: Element): void {
   void (el as HTMLElement).offsetHeight;
 }
@@ -134,15 +151,23 @@ export function whenTransitionEnds(
   type: TransitionProps['type'],
   explicit: number | null,
   resolve: () => void,
-): void {
+): TransitionCleanup {
   if (explicit != null) {
-    setTimeout(resolve, explicit);
-    return;
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      resolve();
+    }, explicit);
+    return () => {
+      done = true;
+      clearTimeout(timer);
+    };
   }
   const info = getTransitionInfo(el, type);
   if (!info) {
     resolve();
-    return;
+    return () => {};
   }
   let done = false;
   const finish = (): void => {
@@ -155,6 +180,12 @@ export function whenTransitionEnds(
   const onEnd = (): void => finish();
   el.addEventListener(info.event, onEnd);
   const timer = setTimeout(finish, info.timeout + 1);
+  return () => {
+    if (done) return;
+    done = true;
+    clearTimeout(timer);
+    el.removeEventListener(info.event, onEnd);
+  };
 }
 
 export function resolveDuration(
@@ -257,8 +288,29 @@ export function Transition(props: TransitionProps): Node {
   let hasPending = false;
   let scheduled = false;
   let disposed = false;
+  let cancelEnterWait: TransitionCleanup | null = null;
+  let cancelLeaveWait: TransitionCleanup | null = null;
+
+  const stopEnterWait = (): void => {
+    cancelEnterWait?.();
+    cancelEnterWait = null;
+  };
+
+  const stopLeaveWait = (): void => {
+    cancelLeaveWait?.();
+    cancelLeaveWait = null;
+  };
 
   const enter = (el: Element, phase: 'enter' | 'appear'): void => {
+    stopEnterWait();
+    let cancelWait: TransitionCleanup | null = null;
+    const stopWait = (): void => {
+      cancelWait?.();
+      cancelWait = null;
+      if (cancelEnterWait === stopWait) cancelEnterWait = null;
+    };
+    cancelEnterWait = stopWait;
+
     // Cancel any in-flight leave on the same element.
     const prevLeave = (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB];
     if (prevLeave) prevLeave(true);
@@ -279,6 +331,7 @@ export function Transition(props: TransitionProps): Node {
     const done = (cancelled?: boolean): void => {
       if (called) return;
       called = true;
+      stopWait();
       (el as unknown as Record<symbol, CancelCb>)[ENTER_CB] = undefined;
       if (useCss) {
         removeClass(el, fromCls);
@@ -294,7 +347,8 @@ export function Transition(props: TransitionProps): Node {
     };
     (el as unknown as Record<symbol, CancelCb>)[ENTER_CB] = done;
 
-    nextFrame(() => {
+    cancelWait = nextFrameCancellable(() => {
+      cancelWait = null;
       if (called) return;
       if (useCss) {
         removeClass(el, fromCls);
@@ -305,7 +359,10 @@ export function Transition(props: TransitionProps): Node {
         props.onEnter(el, () => done(false));
       } else if (useCss) {
         const explicit = resolveDuration(props.duration, 'enter');
-        whenTransitionEnds(el, props.type, explicit, () => done(false));
+        cancelWait = whenTransitionEnds(el, props.type, explicit, () => {
+          cancelWait = null;
+          done(false);
+        });
       } else {
         // css=false and no JS hook — no animation
         done(false);
@@ -314,6 +371,15 @@ export function Transition(props: TransitionProps): Node {
   };
 
   const leave = (el: Element, after: () => void): void => {
+    stopLeaveWait();
+    let cancelWait: TransitionCleanup | null = null;
+    const stopWait = (): void => {
+      cancelWait?.();
+      cancelWait = null;
+      if (cancelLeaveWait === stopWait) cancelLeaveWait = null;
+    };
+    cancelLeaveWait = stopWait;
+
     // Cancel any in-flight enter on the same element, then settle a reflow so
     // the swap to leave-from/leave-active takes effect cleanly
     const prevEnter = (el as unknown as Record<symbol, CancelCb>)[ENTER_CB];
@@ -334,6 +400,7 @@ export function Transition(props: TransitionProps): Node {
     const done = (cancelled?: boolean): void => {
       if (called) return;
       called = true;
+      stopWait();
       (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB] = undefined;
       if (useCss) {
         removeClass(el, classes.leaveFrom);
@@ -364,7 +431,8 @@ export function Transition(props: TransitionProps): Node {
       return;
     }
 
-    nextFrame(() => {
+    cancelWait = nextFrameCancellable(() => {
+      cancelWait = null;
       if (called) return;
       if (useCss) {
         removeClass(el, classes.leaveFrom);
@@ -374,7 +442,10 @@ export function Transition(props: TransitionProps): Node {
       if (props.onLeave) {
         props.onLeave(el, () => done(false));
       } else if (useCss) {
-        whenTransitionEnds(el, props.type, explicit, () => done(false));
+        cancelWait = whenTransitionEnds(el, props.type, explicit, () => {
+          cancelWait = null;
+          done(false);
+        });
       } else {
         done(false);
       }
@@ -467,6 +538,8 @@ export function Transition(props: TransitionProps): Node {
 
   onCleanup(() => {
     disposed = true;
+    stopEnterWait();
+    stopLeaveWait();
     effectRunner.stop();
     for (const el of [currentEl, leavingEl]) {
       if (!el) continue;
