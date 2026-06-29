@@ -42,6 +42,16 @@ export function For<T>(props: ForProps<T>): Node {
 
   let entries: ItemEntry[] = [];
   let fallbackNodes: Node[] = [];
+  let fallbackScope: Scope | null = null;
+
+  // Capture the scope that is active when <For> is first evaluated. The list
+  // effect below re-runs through the scheduler, where the template-level
+  // `activeScope` is no longer set (it's a module-global restored only inside
+  // runWithScope). Without re-establishing it, renderItem/fallback creation
+  // would run under a detached scope on updates, so `inject()` inside them can
+  // no longer resolve ancestor provides. Mirrors the parentScope capture in
+  // insert().
+  const ownerScope = getActiveScope();
 
   const keyFn = props.key;
   // The JSX babel pipeline wraps a single arrow child in a 1-element array —
@@ -93,11 +103,24 @@ export function For<T>(props: ForProps<T>): Node {
 
   const mountFallback = (parent: Node, before: Node | null) => {
     if (!props.fallback) return;
-    const nodes = mountValue(props.fallback(), parent, before);
-    fallbackNodes = nodes;
+    fallbackScope = createScope(getActiveScope() ?? ownerScope);
+    try {
+      runWithScope(fallbackScope, () => {
+        fallbackNodes = mountValue(props.fallback!(), parent, before);
+      });
+    } catch (error) {
+      disposeScope(fallbackScope);
+      fallbackScope = null;
+      fallbackNodes = [];
+      throw error;
+    }
   };
 
   const clearFallback = () => {
+    if (fallbackScope) {
+      disposeScope(fallbackScope);
+      fallbackScope = null;
+    }
     for (const node of fallbackNodes) {
       // Use removeNode() instead of raw removeChild so Component instances
       // in the fallback have their destroy() called, preventing scope/effect leaks.
@@ -105,14 +128,6 @@ export function For<T>(props: ForProps<T>): Node {
     }
     fallbackNodes = [];
   };
-
-  // Capture the scope that is active when <For> is first evaluated. The list
-  // effect below re-runs through the scheduler, where the template-level
-  // `activeScope` is no longer set (it's a module-global restored only inside
-  // runWithScope). Without re-establishing it, `renderItem` → getActiveScope()
-  // returns null on updates, so rows added later become detached scopes and
-  // `inject()` inside them fails. Mirrors the parentScope capture in insert().
-  const ownerScope = getActiveScope();
 
   /**
    * Render item with a child scope under the captured owner scope.

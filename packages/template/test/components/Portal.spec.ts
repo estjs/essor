@@ -243,6 +243,33 @@ describe('portal', () => {
       expect(portalTarget.textContent).toBe('');
       popContextStack();
     });
+
+    it('does not mount from a deferred target lookup after scope disposal', async () => {
+      const missingTarget = document.createElement('div');
+      missingTarget.id = 'late-target';
+
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const child = document.createElement('span');
+      child.textContent = 'stale';
+      const placeholder = Portal({
+        target: '#late-target',
+        children: child,
+      }) as Comment;
+      document.body.appendChild(placeholder);
+
+      flushMount(ctx);
+      cleanupContext(ctx);
+      document.body.appendChild(missingTarget);
+      await Promise.resolve();
+
+      expect(missingTarget.textContent).toBe('');
+      expect(child.parentNode).toBe(null);
+
+      placeholder.remove();
+      missingTarget.remove();
+      popContextStack();
+    });
   });
 
   // --- Rapid toggling (stress test) ---

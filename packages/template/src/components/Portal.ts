@@ -73,6 +73,7 @@ export function Portal(props: PortalProps): Comment {
 
   const parentScope = getActiveScope();
   let innerScope: Scope | null = null;
+  let disposed = false;
 
   /**
    * Mount children into the given parent, inside a fresh inner scope
@@ -80,6 +81,7 @@ export function Portal(props: PortalProps): Comment {
    * to be properly disposed on teardown.
    */
   const mountAt = (parent: Node, before?: Node): void => {
+    if (disposed || parentScope?.isDestroyed) return;
     innerScope = createScope(parentScope);
     runWithScope(innerScope, () => {
       insert(parent, () => children, before);
@@ -103,6 +105,7 @@ export function Portal(props: PortalProps): Comment {
    * invocations when called from within the tracking effect.
    */
   const apply = (disabled: boolean, target: Element | null): void => {
+    if (disposed) return;
     teardown();
 
     if (disabled) {
@@ -151,12 +154,14 @@ export function Portal(props: PortalProps): Comment {
     // Target may not be in the document yet (sibling elements mount bottom-up).
     // Defer to microtask — flushes before paint.
     queueMicrotask(() => {
+      if (disposed) return;
       if (!placeholder.parentNode) return;
       apply(evalDisabled(props), resolveTarget(props));
     });
   });
 
   onCleanup(() => {
+    disposed = true;
     effectRunner.stop();
     teardown();
   });

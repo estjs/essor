@@ -301,6 +301,41 @@ describe('for component', () => {
     expect(container.textContent).toBe('1');
   });
 
+  it('destroys component fallback scope when switching to rendered rows', async () => {
+    const $items = signal<number[]>([]);
+    const fallbackCleaned: string[] = [];
+
+    const Empty = () => {
+      onCleanupFromTestScope(() => fallbackCleaned.push('empty'));
+      const p = document.createElement('p');
+      p.textContent = 'empty';
+      return p;
+    };
+
+    scope = mount(
+      () =>
+        For({
+          each: $items,
+          fallback: () => createComponent(Empty),
+          children: (item) => {
+            const div = document.createElement('div');
+            div.textContent = String(item);
+            return div;
+          },
+        }),
+      container,
+    );
+
+    expect(container.textContent).toBe('empty');
+    expect(fallbackCleaned).toEqual([]);
+
+    $items.value = [1];
+    await Promise.resolve();
+
+    expect(container.textContent).toBe('1');
+    expect(fallbackCleaned).toEqual(['empty']);
+  });
+
   it('cleans marker and item ranges on scope dispose', async () => {
     const $items = signal([1, 2]);
 
@@ -543,7 +578,6 @@ describe('for component', () => {
       await Promise.resolve();
       expect(cleanups).toEqual([1]);
     });
-
   });
 
   // ---------------------------------------------------------------------------
@@ -554,7 +588,7 @@ describe('for component', () => {
   // reorders. These tests pin the boundaries.
   // ---------------------------------------------------------------------------
   describe('mixed / edge-case children', () => {
-    it('handles nested arrays in children() (recursive walk)', async () => {
+    it('handles nested arrays in children() (recursive walk)', () => {
       const items = signal([1, 2]);
       scope = mount(
         () =>
@@ -584,7 +618,7 @@ describe('for component', () => {
       ]);
     });
 
-    it('skips null/false children without inserting nodes', async () => {
+    it('skips null/false children without inserting nodes', () => {
       const items = signal([1, 2, 3]);
       scope = mount(
         () =>
@@ -607,7 +641,7 @@ describe('for component', () => {
       expect(container.querySelectorAll('div').length).toBe(2);
     });
 
-    it('mixes Component and Element rows in the same list', async () => {
+    it('mixes Component and Element rows in the same list', () => {
       const items = signal([1, 2, 3, 4]);
       const Row = (props: { value: number }) => {
         const div = document.createElement('div');
@@ -650,7 +684,7 @@ describe('for component', () => {
             key: (it) => it.id,
             children: (it) => {
               const div = document.createElement('div');
-              div.setAttribute('data-id', String(it.id));
+              div.dataset.id = String(it.id);
               div.textContent = it.label;
               return div;
             },
@@ -658,9 +692,9 @@ describe('for component', () => {
         container,
       );
 
-      const before = new Map<number, Element>();
-      for (const el of container.querySelectorAll('[data-id]')) {
-        before.set(Number(el.getAttribute('data-id')), el);
+      const before = new Map<number, HTMLElement>();
+      for (const el of container.querySelectorAll<HTMLElement>('[data-id]')) {
+        before.set(Number(el.dataset.id), el);
       }
       expect(before.size).toBe(50);
 
@@ -668,15 +702,15 @@ describe('for component', () => {
       items.value = [...initial].reverse();
       await Promise.resolve();
 
-      const after = [...container.querySelectorAll('[data-id]')];
+      const after = [...container.querySelectorAll<HTMLElement>('[data-id]')];
       expect(after.length).toBe(50);
       // Order should now be reversed.
-      expect(after.map((el) => Number(el.getAttribute('data-id')))).toEqual(
+      expect(after.map((el) => Number(el.dataset.id))).toEqual(
         Array.from({ length: 50 }, (_, i) => 49 - i),
       );
       // Every element identity is preserved — no remount.
       for (const el of after) {
-        const id = Number(el.getAttribute('data-id'));
+        const id = Number(el.dataset.id);
         expect(el).toBe(before.get(id));
       }
     });
