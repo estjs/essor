@@ -1,4 +1,4 @@
-import { error, isFunction, isPromise, isString } from '@estjs/shared';
+import { error, isArray, isFunction, isPromise, isString } from '@estjs/shared';
 import { type ComponentFn, type ComponentProps, resetHydrationKey } from '@estjs/template';
 import {
   type Scope,
@@ -45,6 +45,14 @@ async function runInFreshScopeAsync<T>(
   }
 }
 
+function assertSyncRenderResult(result: unknown, apiName: string): void {
+  if (isPromise(result)) {
+    throw new Error(
+      `${apiName} received a Promise - use renderToStringAsync for async components.`,
+    );
+  }
+}
+
 /**
  * Render a component to HTML string.
  *
@@ -77,9 +85,11 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
     runInFreshScope(() => component(props as P), null),
   );
 
-  if (__DEV__ && isPromise(result)) {
-    error('renderToString received a Promise — use renderToStringAsync for async components.');
-  }
+  // A Promise here means an async component was passed to the SYNC entry point.
+  // `resolve()` cannot await, so it would serialize the Promise to the literal
+  // string `[object Promise]` and ship broken HTML. Fail loudly instead - in
+  // production too, since a silent corrupt render is worse than a thrown error.
+  assertSyncRenderResult(result, 'renderToString');
 
   // Serialize to the final HTML string at the component boundary. `resolve`
   // emits the already-final HTML string from render()/createSSRComponent()
@@ -213,7 +223,7 @@ async function resolveAsync(content: unknown): Promise<string> {
   if (isPromise(content)) {
     return resolveAsync(await content);
   }
-  if (Array.isArray(content)) {
+  if (isArray(content)) {
     const parts = await Promise.all(content.map((c) => resolveAsync(c)));
     return parts.join('');
   }
@@ -250,6 +260,7 @@ export function createSSRComponent<P extends ComponentProps = ComponentProps>(
   // an outer createSSRComponent) so that provide/inject follow the component
   // tree hierarchy.
   const result = runInFreshScope(() => component(props as P));
+  assertSyncRenderResult(result, 'createSSRComponent');
 
   // Component boundary: `resolve` treats a bare string return as trusted raw
   // HTML and coerces other final values to their HTML string.

@@ -1,5 +1,5 @@
 // forked from https://github.com/stackblitz/alien-signals/blob/v3.0.0/src/system.ts
-import { error, isFunction } from '@estjs/shared';
+import { error, isArray, isFunction } from '@estjs/shared';
 import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags, SignalFlags } from './constants';
 
 export interface Link {
@@ -490,7 +490,7 @@ export function trigger(
   const version = ++triggerVersion;
 
   if (key !== undefined) {
-    if (Array.isArray(key)) {
+    if (isArray(key)) {
       for (const element of key) {
         collectTriggeredEffects(depsMap.get(element), effects, version);
       }
@@ -500,7 +500,7 @@ export function trigger(
   }
 
   if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
-    const iterationKey = Array.isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
+    const iterationKey = isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
     collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
   }
 

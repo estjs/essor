@@ -1,5 +1,6 @@
 import { generate } from '@babel/generator';
 import { type NodePath, types as t } from '@babel/core';
+import { isArray } from '@estjs/shared';
 import { type AnyFunction, isFunctionLikeExpressionPath } from '../ast-utils';
 import { checkHasJSXReturn } from '../ast-utils';
 import type { Binding } from '@babel/traverse';
@@ -65,7 +66,7 @@ function unwrapTopLevelDeclaration(
 
     if (
       declarationPath &&
-      !Array.isArray(declarationPath) &&
+      !isArray(declarationPath) &&
       (declarationPath.isFunctionDeclaration() || declarationPath.isVariableDeclaration())
     ) {
       return declarationPath as NodePath<t.FunctionDeclaration | t.VariableDeclaration>;

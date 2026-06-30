@@ -1,5 +1,5 @@
 import { type Signal, effect, isSignal } from '@estjs/signals';
-import { isFunction, warn } from '@estjs/shared';
+import { isArray, isFunction, warn } from '@estjs/shared';
 import {
   type Scope,
   createScope,
@@ -120,7 +120,7 @@ function resolveItemElement(
   parent: Element,
 ): { el: HTMLElement | null; comp: Component | null } {
   if (raw == null || raw === false) return { el: null, comp: null };
-  if (Array.isArray(raw) && raw.length === 1) {
+  if (isArray(raw) && raw.length === 1) {
     return resolveItemElement(raw[0], parent);
   }
   if (isFunction(raw)) {
@@ -208,7 +208,7 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
   // component only sees the function.
   const rawChildren = props.children as unknown;
   const childrenFn: TransitionGroupProps<T>['children'] =
-    Array.isArray(rawChildren) && rawChildren.length === 1 && isFunction(rawChildren[0])
+    isArray(rawChildren) && rawChildren.length === 1 && isFunction(rawChildren[0])
       ? (rawChildren[0] as TransitionGroupProps<T>['children'])
       : (props.children as TransitionGroupProps<T>['children']);
   if (!isFunction(childrenFn) || !isFunction(keyFn)) {

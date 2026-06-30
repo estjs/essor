@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { reactive, signal } from '@estjs/signals';
+import { isArray } from '@estjs/shared';
 import { Fragment, isFragment } from '../../src/components/Fragment';
 import { mount } from '../test-utils';
-import { reactive, signal } from '@estjs/signals';
 import { createComponent, insert } from '../../src';
 
 describe('fragment component', () => {
@@ -84,7 +85,7 @@ describe('fragment component', () => {
     const state = reactive({ children: [pre] });
 
     const result = Fragment(state);
-    expect(Array.isArray(result)).toBe(true);
+    expect(isArray(result)).toBe(true);
     expect(result).toHaveLength(1);
     expect(typeof result[0]).toBe('function');
     expect(result[0]()).toBe(state.children);

@@ -118,6 +118,7 @@
   },
   "dependencies": {
     "@babel/core": "^8.0.1",
+    "@estjs/shared": "workspace:*",
     "babel-plugin-essor": "workspace:*",
     "unplugin": "^3.2.0"
   },

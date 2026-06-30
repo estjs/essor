@@ -34,7 +34,7 @@
  */
 
 import { type NodePath, types as t } from '@babel/core';
-import { startsWith, warn } from '@estjs/shared';
+import { isNull, startsWith, warn } from '@estjs/shared';
 import { TRANSFORM_PROPERTY_NAME, importMap } from '../constants';
 import { getCompileContext, useImport } from '../context';
 import { checkHasJSXReturn } from '../ast-utils';
@@ -192,7 +192,7 @@ function collectObjectPattern(
     }
 
     const { keyExpr, computed, excludeKey } = resolveKey(prop);
-    if (excludeKey !== null) excludeKeys.push(excludeKey);
+    if (!isNull(excludeKey)) excludeKeys.push(excludeKey);
 
     const access = t.memberExpression(clone(base), keyExpr, computed);
     collectTarget(prop.value, access, leaves, rests);

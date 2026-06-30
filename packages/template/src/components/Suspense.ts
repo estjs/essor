@@ -1,4 +1,4 @@
-import { isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
+import { isArray, isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
 import { isComputed, isSignal } from '@estjs/signals';
 import { provide } from '../provide';
 import { createScope, disposeScope, getActiveScope, onCleanup, runWithScope } from '../scope';
@@ -23,7 +23,7 @@ export function resolveNodeValue(value: unknown): unknown {
     return resolveNodeValue((current as any).value);
   }
 
-  if (Array.isArray(current)) {
+  if (isArray(current)) {
     return current.map((item) => resolveNodeValue(item));
   }
 

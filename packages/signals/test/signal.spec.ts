@@ -1,3 +1,4 @@
+import { isArray } from '@estjs/shared';
 import { effect, shallowSignal, signal } from '../src';
 
 describe('signal', () => {
@@ -841,7 +842,7 @@ describe('signal nested unwrapping', () => {
     const outer = signal(inner);
 
     expect(outer.value).toEqual([1, 2, 3]);
-    expect(Array.isArray(outer.value)).toBe(true);
+    expect(isArray(outer.value)).toBe(true);
   });
 
   it('should unwrap signal in update function', () => {

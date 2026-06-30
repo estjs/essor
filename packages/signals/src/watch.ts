@@ -1,4 +1,4 @@
-import { hasChanged, isFunction, isMap, isObject, isSet, warn } from '@estjs/shared';
+import { hasChanged, isArray, isFunction, isMap, isObject, isSet, warn } from '@estjs/shared';
 import { type FlushTiming, createScheduler } from './scheduler';
 import { isSignal } from './signal';
 import { isReactive } from './reactive';
@@ -63,7 +63,7 @@ function traverseValue(value: any, seen: Set<any>): any {
   if (isSignal(value) || isComputed(value)) {
     traverseValue(value.value, seen);
     // If it's an array, traverse all its elements.
-  } else if (Array.isArray(value)) {
+  } else if (isArray(value)) {
     for (const element of value) {
       traverseValue(element, seen);
     }
@@ -161,7 +161,7 @@ function resolveSingleSource<T>(source: WatchSource<T>): () => T {
  * @returns A getter function that returns the current source value.
  */
 function resolveSource<T>(source: WatchSource<T>): () => T {
-  if (Array.isArray(source)) {
+  if (isArray(source)) {
     // Pre-build per-element getters; call sites only allocate the output array.
     const getters = (source as WatchSource[]).map((s) => resolveSingleSource(s));
     return () => getters.map((g) => g()) as unknown as T;
@@ -230,7 +230,7 @@ export function watch<T = any>(
   // (resolveSingleSource), so the effect body must NOT traverse it again —
   // that was the old double-walk for `watch(reactiveObj, cb, { deep: true })`.
   // For every other source, an explicit `deep: true` triggers the body traverse.
-  const isSingleReactive = !Array.isArray(source) && isReactive(source);
+  const isSingleReactive = !isArray(source) && isReactive(source);
   const needTraverse = deep && !isSingleReactive;
 
   // Resolve source to a getter function.

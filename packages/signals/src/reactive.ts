@@ -137,7 +137,7 @@ function createArrayInstrumentations() {
       const res = Array.prototype[key].apply(arr, args);
 
       // Return directly if result is not an array
-      if (!Array.isArray(res)) {
+      if (!isArray(res)) {
         return res;
       }
 
@@ -199,7 +199,7 @@ function createArrayInstrumentations() {
           }
 
           // Handle entries (returns [index, value] or [value, value] for Set)
-          if (Array.isArray(value)) {
+          if (isArray(value)) {
             return {
               value: value.map((v) => (isObject(v) ? reactiveImpl(v, isShallowMode) : v)),
               done,
@@ -515,7 +515,7 @@ const collectionInstrumentations = {
         }
 
         // For Map entries [key, value], wrap both if they're objects
-        if (Array.isArray(value)) {
+        if (isArray(value)) {
           return {
             value: value.map((v) => (isObject(v) ? reactiveImpl(v) : v)),
             done,

@@ -1,4 +1,15 @@
-import { isFunction, isObject, warn } from '@estjs/shared';
+import {
+  isArray,
+  isDate,
+  isFunction,
+  isMap,
+  isNull,
+  isObject,
+  isPromise,
+  isRegExp,
+  isSet,
+  warn,
+} from '@estjs/shared';
 import { batch, computed, onScopeDispose, reactive } from '.';
 
 /**
@@ -116,15 +127,15 @@ function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): 
     return seen.get(value) as T;
   }
 
-  if (value instanceof Date) {
+  if (isDate(value)) {
     return new Date(value.getTime()) as T;
   }
 
-  if (value instanceof RegExp) {
+  if (isRegExp(value)) {
     return new RegExp(value.source, value.flags) as T;
   }
 
-  if (value instanceof Map) {
+  if (isMap(value)) {
     const clone = new Map();
     seen.set(value, clone);
     value.forEach((mapValue, mapKey) => {
@@ -133,7 +144,7 @@ function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): 
     return clone as T;
   }
 
-  if (value instanceof Set) {
+  if (isSet(value)) {
     const clone = new Set();
     seen.set(value, clone);
     value.forEach((setValue) => {
@@ -142,7 +153,7 @@ function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): 
     return clone as T;
   }
 
-  if (Array.isArray(value)) {
+  if (isArray(value)) {
     const clone: unknown[] = [];
     seen.set(value, clone);
     value.forEach((item, index) => {
@@ -152,7 +163,7 @@ function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): 
   }
 
   const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {
+  if (prototype !== Object.prototype && !isNull(prototype)) {
     return value;
   }
 
@@ -211,17 +222,69 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     const unsubscribe = () => set.delete(callback);
     // Backstop: if registered inside an active effect scope (e.g. a component
     // body), release the callback when that scope is disposed. Without this,
-    // a subscriber that forgets to unsubscribe on unmount keeps the callback
-    // — and everything its closure captures — alive in the store's Set forever.
+    // a subscriber that forgets to unsubscribe on unmount keeps the callback,
+    // and everything its closure captures, alive in the store's Set forever.
     // The manual unsubscribe path above still works and is idempotent with this.
     onScopeDispose(unsubscribe, /* failSilently */ true);
     return unsubscribe;
   };
 
-  /** Apply a mutation inside a batch, then notify subscribers once. */
-  const commit = (mutate: () => void): void => {
-    batch(mutate);
-    notify(reactiveState);
+  type CommitTransaction = {
+    depth: number;
+    pending: number;
+    notified: boolean;
+  };
+
+  let activeTransaction: CommitTransaction | null = null;
+
+  const flushTransaction = (transaction: CommitTransaction): void => {
+    if (transaction.depth === 0 && transaction.pending === 0 && !transaction.notified) {
+      transaction.notified = true;
+      notify(reactiveState);
+    }
+  };
+
+  const commit = <T>(mutate: () => T): T => {
+    const transaction = activeTransaction ?? {
+      depth: 0,
+      pending: 0,
+      notified: false,
+    };
+    const previousTransaction = activeTransaction;
+    transaction.depth++;
+
+    let result: T;
+    try {
+      activeTransaction = transaction;
+      result = batch(mutate);
+    } catch (error) {
+      // A synchronously thrown action did not complete, so do not notify.
+      transaction.depth--;
+      activeTransaction = previousTransaction;
+      throw error;
+    }
+    activeTransaction = previousTransaction;
+
+    if (isPromise(result)) {
+      transaction.pending++;
+      transaction.depth--;
+      return result.then(
+        (value) => {
+          transaction.pending--;
+          flushTransaction(transaction);
+          return value;
+        },
+        (error) => {
+          transaction.pending--;
+          flushTransaction(transaction);
+          throw error;
+        },
+      ) as T;
+    }
+
+    transaction.depth--;
+    flushTransaction(transaction);
+    return result;
   };
 
   const defaultActions: StoreActions<S> = {
@@ -250,7 +313,9 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     },
 
     $reset() {
-      commit(() => Object.assign(reactiveState, initState));
+      commit(() => {
+        Object.assign(reactiveState, cloneInitialState(initState));
+      });
     },
   };
 
@@ -271,7 +336,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
     value: reactiveState,
     enumerable: true,
     configurable: true,
-    writable: true,
+    writable: false,
   });
 
   Object.assign(store, defaultActions);
@@ -297,9 +362,7 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
       const action = actions[key];
       if (action) {
         (store as Record<string, any>)[key] = (...args: any[]) => {
-          const result = action.apply(store, args);
-          actionCallbacks.forEach((callback) => callback(reactiveState));
-          return result;
+          return commit(() => action.apply(store, args));
         };
       }
     }

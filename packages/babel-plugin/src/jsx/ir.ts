@@ -1,4 +1,11 @@
-import { isDelegatedEvent, isSVGTag, isSelfClosingTag, isString, startsWith } from '@estjs/shared';
+import {
+  isArray,
+  isDelegatedEvent,
+  isSVGTag,
+  isSelfClosingTag,
+  isString,
+  startsWith,
+} from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
 import { TRANSFORM_PROPERTY_NAME } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
@@ -514,7 +521,7 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
       return t.stringLiteral(value.value);
     }
     const valuePath = attrPath.get('value');
-    if (!Array.isArray(valuePath) && valuePath.isJSXExpressionContainer()) {
+    if (!isArray(valuePath) && valuePath.isJSXExpressionContainer()) {
       const expressionPath = valuePath.get('expression');
       attrPath.remove();
       if (expressionPath.isJSXEmptyExpression()) return null;
@@ -538,7 +545,7 @@ function getForCallbackBody(callback: NodePath<t.ArrowFunctionExpression | t.Fun
   prelude: t.Statement[];
 } | null {
   const bodyPath = callback.get('body');
-  if (Array.isArray(bodyPath)) return null;
+  if (isArray(bodyPath)) return null;
 
   if (bodyPath.isJSXElement() || bodyPath.isJSXFragment()) {
     return {
@@ -559,7 +566,7 @@ function getForCallbackBody(callback: NodePath<t.ArrowFunctionExpression | t.Fun
     }
 
     const argument = statement.get('argument');
-    if (Array.isArray(argument) || !argument.node) {
+    if (isArray(argument) || !argument.node) {
       prelude.push(statement.node);
       continue;
     }

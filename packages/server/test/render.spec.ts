@@ -38,6 +38,13 @@ describe('server/render', () => {
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
     });
+
+    it('throws instead of emitting [object Promise] for an async component', () => {
+      const AsyncComponent = () => Promise.resolve('<div>async</div>');
+      // The sync entry point cannot await - it must fail loudly rather than
+      // serialize the Promise into broken HTML. Use renderToStringAsync instead.
+      expect(() => renderToString(AsyncComponent as any)).toThrow(/renderToStringAsync/);
+    });
   });
 
   describe('createSSRComponent', () => {
@@ -57,6 +64,12 @@ describe('server/render', () => {
       expect(createSSRComponent(null)).toBe('');
       expect(consoleSpy).toHaveBeenCalled();
       consoleSpy.mockRestore();
+    });
+
+    it('throws instead of emitting [object Promise] for an async nested component', () => {
+      const AsyncComponent = () => Promise.resolve('<span>async</span>');
+
+      expect(() => createSSRComponent(AsyncComponent as any)).toThrow(/async components/);
     });
   });
 

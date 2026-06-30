@@ -4,6 +4,7 @@ import {
   isArray,
   isFunction,
   isNil,
+  isPlainObject,
   isString,
 } from '@estjs/shared';
 
@@ -41,7 +42,7 @@ export function createSSRNode(html: string): string {
 }
 
 function isSSRNode(value: unknown): value is SSRNode {
-  return typeof value === 'object' && value !== null && ssrNodes.has(value as SSRNode);
+  return isPlainObject(value) && ssrNodes.has(value as SSRNode);
 }
 
 /**

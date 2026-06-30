@@ -1,4 +1,4 @@
-import { computed, createStore, effect, effectScope, signal } from '../src';
+import { computed, createStore, effect, effectScope, signal, toRaw } from '../src';
 
 /**
  * Store Test Suite
@@ -254,6 +254,54 @@ describe('store - Basic Functionality', () => {
       await store.fetchData();
       expect(store.state.data).toBe('fetched');
     });
+
+    it('should notify subscribers after an async action settles', async () => {
+      const useStore = createStore({
+        state: { data: null as string | null },
+        actions: {
+          async fetchData() {
+            await Promise.resolve();
+            this.data = 'fetched';
+          },
+        },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+      const seen: Array<string | null> = [];
+
+      store.$subscribe((state) => {
+        seen.push(state.data);
+        callback(state);
+      });
+
+      await store.fetchData();
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(seen).toEqual(['fetched']);
+    });
+
+    it('should notify subscribers when an async action rejects after mutating state', async () => {
+      const useStore = createStore({
+        state: { data: null as string | null },
+        actions: {
+          async failAfterUpdate() {
+            await Promise.resolve();
+            this.data = 'failed';
+            throw new Error('fetch failed');
+          },
+        },
+      });
+      const store = useStore();
+      const seen: Array<string | null> = [];
+
+      store.$subscribe((state) => {
+        seen.push(state.data);
+      });
+
+      await expect(store.failAfterUpdate()).rejects.toThrow('fetch failed');
+
+      expect(seen).toEqual(['failed']);
+    });
   });
 });
 
@@ -493,6 +541,127 @@ describe('store - Built-in Methods', () => {
 
       expect(callback).not.toHaveBeenCalled();
     });
+
+    it('should notify subscribers only once per outermost nested action', () => {
+      const useStore = createStore({
+        state: { a: 0, b: 0 },
+        actions: {
+          inner() {
+            this.b++;
+          },
+          outer() {
+            this.a++;
+            this.inner();
+          },
+        },
+      });
+      const store = useStore();
+      const callback = vitest.fn();
+
+      store.$subscribe(callback);
+      store.outer();
+
+      // One logical transaction (outer, which calls inner) must notify exactly
+      // once — not once per nested action commit.
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(store.state.a).toBe(1);
+      expect(store.state.b).toBe(1);
+    });
+
+    it('should expose flushed computed values to subscribers of nested actions', () => {
+      const useStore = createStore({
+        state: { count: 0 },
+        getters: {
+          doubled: (state) => state.count * 2,
+        },
+        actions: {
+          bump() {
+            this.count++;
+          },
+          bumpTwice() {
+            this.bump();
+            this.bump();
+          },
+        },
+      });
+      const store = useStore();
+      const seen: number[] = [];
+
+      store.$subscribe(() => {
+        seen.push(store.doubled);
+      });
+      store.bumpTwice();
+
+      // Subscriber must observe the final, settled derived value once.
+      expect(seen).toEqual([4]);
+      expect(store.doubled).toBe(4);
+    });
+
+    it('should notify subscribers once for nested async actions', async () => {
+      const useStore = createStore({
+        state: { a: 0, b: 0 },
+        actions: {
+          async inner() {
+            await Promise.resolve();
+            this.b++;
+          },
+          async outer() {
+            this.a++;
+            await this.inner();
+            this.a++;
+          },
+        },
+      });
+      const store = useStore();
+      const seen: Array<[number, number]> = [];
+
+      store.$subscribe((state) => {
+        seen.push([state.a, state.b]);
+      });
+
+      await store.outer();
+
+      expect(seen).toEqual([[2, 1]]);
+    });
+
+    it('should not merge independent async actions that overlap in time', async () => {
+      let releaseSlow!: () => void;
+      const slowGate = new Promise<void>((resolve) => {
+        releaseSlow = resolve;
+      });
+      const useStore = createStore({
+        state: { slow: 0, fast: 0 },
+        actions: {
+          async slowAction() {
+            await slowGate;
+            this.slow++;
+          },
+          async fastAction() {
+            await Promise.resolve();
+            this.fast++;
+          },
+        },
+      });
+      const store = useStore();
+      const seen: Array<[number, number]> = [];
+
+      store.$subscribe((state) => {
+        seen.push([state.slow, state.fast]);
+      });
+
+      const slow = store.slowAction();
+      await store.fastAction();
+
+      expect(seen).toEqual([[0, 1]]);
+
+      releaseSlow();
+      await slow;
+
+      expect(seen).toEqual([
+        [0, 1],
+        [1, 1],
+      ]);
+    });
   });
 
   describe('$reset', () => {
@@ -553,6 +722,205 @@ describe('store - Built-in Methods', () => {
 
       expect(callback).toHaveBeenCalledTimes(1);
       expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+    });
+
+    it('should replace nested objects on reset', () => {
+      const useStore = createStore({
+        state: { nested: { value: 0 } },
+      });
+      const store = useStore();
+
+      const nested = store.state.nested;
+      nested.value = 42;
+
+      store.$reset();
+
+      expect(store.state.nested).not.toBe(nested);
+      expect(store.state.nested.value).toBe(0);
+      expect(nested.value).toBe(42);
+    });
+
+    it('should reset deeply nested values by replacing the top-level branch', () => {
+      const useStore = createStore({
+        state: { a: { b: { c: 1 } } },
+      });
+      const store = useStore();
+
+      const a = store.state.a;
+      const b = store.state.a.b;
+      store.state.a.b.c = 99;
+
+      store.$reset();
+
+      expect(store.state.a).not.toBe(a);
+      expect(store.state.a.b).not.toBe(b);
+      expect(store.state.a.b.c).toBe(1);
+      expect(a.b.c).toBe(99);
+    });
+
+    it('should keep extra top-level keys when reset uses Object.assign', () => {
+      const useStore = createStore({
+        state: { value: 0 },
+      });
+      const store = useStore();
+
+      (store.state as Record<string, unknown>).extra = 'kept';
+      store.state.value = 42;
+
+      store.$reset();
+
+      expect(store.state.value).toBe(0);
+      expect((store.state as Record<string, unknown>).extra).toBe('kept');
+    });
+
+    it('should reset Date values to the initial snapshot', () => {
+      const useStore = createStore({
+        state: { when: new Date('2020-01-01T00:00:00.000Z') },
+      });
+      const store = useStore();
+
+      store.state.when = new Date('2099-12-31T00:00:00.000Z');
+      // `reactive()` wraps a Date in a generic object proxy, so Date methods
+      // cannot be called through `store.state.when` directly — read the raw
+      // value to assert against the underlying Date.
+      expect((toRaw(store.state.when) as Date).getUTCFullYear()).toBe(2099);
+
+      store.$reset();
+
+      // Date must be restored — it must NOT be treated as a recursable plain
+      // object (which would leave the mutated value untouched).
+      expect((toRaw(store.state.when) as Date).getUTCFullYear()).toBe(2020);
+    });
+
+    it('should reset Map values to the initial snapshot', () => {
+      const useStore = createStore({
+        state: { data: new Map<string, number>([['a', 1]]) },
+      });
+      const store = useStore();
+
+      store.state.data.set('a', 999);
+      store.state.data.set('b', 2);
+      expect(store.state.data.get('a')).toBe(999);
+      expect(store.state.data.size).toBe(2);
+
+      store.$reset();
+
+      expect(store.state.data.get('a')).toBe(1);
+      expect(store.state.data.has('b')).toBe(false);
+      expect(store.state.data.size).toBe(1);
+    });
+
+    it('should replace captured Map proxies across reset', () => {
+      const useStore = createStore({
+        state: { data: new Map<string, number>([['a', 1]]) },
+      });
+      const store = useStore();
+      const data = store.state.data;
+
+      store.state.data.set('a', 999);
+      store.state.data.set('b', 2);
+
+      store.$reset();
+
+      expect(store.state.data).not.toBe(data);
+      expect(store.state.data.get('a')).toBe(1);
+      expect(store.state.data.has('b')).toBe(false);
+      expect(data.get('a')).toBe(999);
+      expect(data.has('b')).toBe(true);
+    });
+
+    it('should reset Set values to the initial snapshot', () => {
+      const useStore = createStore({
+        state: { tags: new Set<number>([1, 2, 3]) },
+      });
+      const store = useStore();
+
+      store.state.tags.add(4);
+      store.state.tags.delete(1);
+      expect(store.state.tags.has(4)).toBe(true);
+
+      store.$reset();
+
+      expect([...store.state.tags]).toEqual([1, 2, 3]);
+    });
+
+    it('should replace captured Set proxies across reset', () => {
+      const useStore = createStore({
+        state: { tags: new Set<number>([1, 2, 3]) },
+      });
+      const store = useStore();
+      const tags = store.state.tags;
+
+      tags.add(4);
+      tags.delete(1);
+
+      store.$reset();
+
+      expect(store.state.tags).not.toBe(tags);
+      expect([...store.state.tags]).toEqual([1, 2, 3]);
+      expect([...tags]).toEqual([2, 3, 4]);
+    });
+
+    it('should reset array values to the initial snapshot', () => {
+      const useStore = createStore({
+        state: { items: [1, 2, 3] },
+      });
+      const store = useStore();
+
+      store.state.items.push(4);
+      store.state.items[0] = 99;
+
+      store.$reset();
+
+      expect(store.state.items).toEqual([1, 2, 3]);
+    });
+
+    it('should replace captured array proxies across reset', () => {
+      const useStore = createStore({
+        state: { items: [1, 2, 3] },
+      });
+      const store = useStore();
+      const items = store.state.items;
+
+      items.push(4);
+      items[0] = 99;
+
+      store.$reset();
+
+      expect(store.state.items).not.toBe(items);
+      expect(store.state.items).toEqual([1, 2, 3]);
+      expect(items).toEqual([99, 2, 3, 4]);
+    });
+
+    it('should update effects that read the store array property after reset', () => {
+      const useStore = createStore({
+        state: { items: [1, 2, 3] },
+      });
+      const store = useStore();
+      let snapshot: number[] = [];
+
+      effect(() => {
+        snapshot = store.state.items.slice();
+      });
+
+      store.state.items.push(4);
+      expect(snapshot).toEqual([1, 2, 3, 4]);
+
+      store.$reset();
+
+      expect(snapshot).toEqual([1, 2, 3]);
+    });
+
+    it('should not overflow the stack when resetting cyclic state', () => {
+      const state: { value: number; self?: unknown } = { value: 1 };
+      state.self = state;
+      const useStore = createStore({ state });
+      const store = useStore();
+
+      store.state.value = 2;
+
+      expect(() => store.$reset()).not.toThrow();
+      expect(store.state.value).toBe(1);
     });
   });
 });

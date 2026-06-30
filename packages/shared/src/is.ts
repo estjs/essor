@@ -144,12 +144,12 @@ export function isFalsy(val: unknown): val is false | null | undefined {
 export const isPrimitive = (
   val: unknown,
 ): val is string | number | boolean | symbol | null | undefined =>
-  val == null ||
-  typeof val === 'string' ||
-  typeof val === 'number' ||
-  typeof val === 'boolean' ||
-  typeof val === 'symbol' ||
-  typeof val === 'undefined';
+  isNull(val) ||
+  isUndefined(val) ||
+  isString(val) ||
+  isNumber(val) ||
+  isBoolean(val) ||
+  isSymbol(val);
 
 /**
  * Checks if a value is an HTMLElement.
@@ -227,4 +227,24 @@ export function isNaN(val: unknown): val is number {
  */
 export function isBigint(val: unknown): val is bigint {
   return typeof val === 'bigint';
+}
+
+/**
+ * Checks whether the value is a Date.
+ *
+ * @param val - The value to check.
+ * @returns True if the value is a Date.
+ */
+export function isDate(val: unknown): val is Date {
+  return _toString.call(val) === '[object Date]';
+}
+
+/**
+ * Checks whether the value is a RegExp.
+ *
+ * @param val - The value to check.
+ * @returns True if the value is a RegExp.
+ */
+export function isRegExp(val: unknown): val is RegExp {
+  return _toString.call(val) === '[object RegExp]';
 }

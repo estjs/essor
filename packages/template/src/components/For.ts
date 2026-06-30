@@ -1,5 +1,5 @@
 import { type Signal, effect, isSignal } from '@estjs/signals';
-import { isFunction } from '@estjs/shared';
+import { isArray, isFunction } from '@estjs/shared';
 import {
   type Scope,
   createScope,
@@ -59,7 +59,7 @@ export function For<T>(props: ForProps<T>): Node {
   // Unwrap it here so the rest of the component only deals with a function.
   const raw = props.children as unknown;
   const renderFn: ForProps<T>['children'] =
-    Array.isArray(raw) && raw.length === 1 && isFunction(raw[0])
+    isArray(raw) && raw.length === 1 && isFunction(raw[0])
       ? (raw[0] as ForProps<T>['children'])
       : (props.children as ForProps<T>['children']);
   if (!isFunction(renderFn)) {
@@ -82,7 +82,7 @@ export function For<T>(props: ForProps<T>): Node {
   const mountValue = (value: AnyNode, parent: Node, before: Node | null): Node[] => {
     if (value == null || value === false) return [];
 
-    if (Array.isArray(value)) {
+    if (isArray(value)) {
       const nodes: Node[] = [];
       for (const child of value) nodes.push(...mountValue(child as AnyNode, parent, before));
       return nodes;

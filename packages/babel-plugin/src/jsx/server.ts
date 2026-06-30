@@ -1,5 +1,5 @@
 import { types as t } from '@babel/core';
-import { HYDRATION_ANCHOR_ATTR, isString } from '@estjs/shared';
+import { HYDRATION_ANCHOR_ATTR, isNull, isString } from '@estjs/shared';
 import { type CompileContext, getCompileContext, registerDeclaration, useImport } from '../context';
 import { serializeStaticAttrs } from '../ast-utils';
 import {
@@ -381,7 +381,7 @@ function generateServerElement(
             }
           }
           const staticHTML = buildStaticServerHTML(child, anchorIndex);
-          if (staticHTML !== null) {
+          if (!isNull(staticHTML)) {
             currentStr += staticHTML;
           } else {
             templates.push(currentStr);
@@ -460,7 +460,7 @@ function buildStaticServerHTML(node: IRElement, staticIndex?: number): string | 
     } else if (child.type === IRType.ELEMENT) {
       if (child.binds.length > 0) return null;
       const nested = buildStaticServerHTML(child);
-      if (nested === null) return null;
+      if (isNull(nested)) return null;
       html += nested;
     } else {
       // EXPRESSION, COMPONENT, FOR — can't inline statically

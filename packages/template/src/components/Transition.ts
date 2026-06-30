@@ -1,5 +1,5 @@
 import { effect } from '@estjs/signals';
-import { isNumber, warn } from '@estjs/shared';
+import { isArray, isNumber, warn } from '@estjs/shared';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
 import { TRANSITION_COMPONENT } from '../constants';
@@ -199,7 +199,7 @@ export function resolveDuration(
 
 function validateSlot(value: unknown): Element | null {
   if (value == null || value === false) return null;
-  if (Array.isArray(value)) {
+  if (isArray(value)) {
     if (__DEV__) {
       throw new Error(
         '[essor] <Transition> expects a single root child. Use <TransitionGroup> for multiple children.',

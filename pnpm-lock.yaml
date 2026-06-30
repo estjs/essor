@@ -424,6 +424,9 @@ importers:
       '@babel/core':
         specifier: ^8.0.1
         version: 8.0.1
+      '@estjs/shared':
+        specifier: workspace:*
+        version: link:../shared
       babel-plugin-essor:
         specifier: workspace:*
         version: link:../babel-plugin

@@ -1,4 +1,4 @@
-import { isFunction } from '@estjs/shared';
+import { isArray, isFunction } from '@estjs/shared';
 
 /**
  * Read a slot value, unwrapping the common compilation shapes.
@@ -9,7 +9,7 @@ import { isFunction } from '@estjs/shared';
  */
 function unwrapSlotValue(raw: unknown): unknown {
   let v: unknown = raw;
-  if (Array.isArray(v) && v.length === 1) v = v[0];
+  if (isArray(v) && v.length === 1) v = v[0];
   return isFunction(v) ? v() : v;
 }
 
@@ -44,7 +44,7 @@ export function useChildren<T = unknown>(props: { children?: unknown }): () => T
 export function shallowCompare(a: any, b: any): boolean {
   if (a === b) return true;
   if (!a || !b) return false;
-  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (isArray(a) !== isArray(b)) return false;
 
   for (const key in a) {
     if (a[key] !== b[key]) return false;

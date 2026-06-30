@@ -37,6 +37,8 @@ export {
   isBoolean,
   isNaN,
   isBigint,
+  isDate,
+  isRegExp,
   type StringNumber,
 } from './is';
 
