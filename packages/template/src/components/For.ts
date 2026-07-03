@@ -1,4 +1,4 @@
-import { type Signal, effect, isSignal } from '@estjs/signals';
+import { type Signal, effect, isSignal, untrack } from '@estjs/signals';
 import { isArray, isFunction } from '@estjs/shared';
 import {
   type Scope,
@@ -236,7 +236,9 @@ export function For<T>(props: ForProps<T>): Node {
         entries[i] = renderItem(newItems[i], i, batchFragment, null);
       }
 
-      parent.insertBefore(batchFragment, marker);
+      untrack(() => {
+        parent.insertBefore(batchFragment, marker);
+      });
       return;
     }
 
@@ -291,7 +293,7 @@ export function For<T>(props: ForProps<T>): Node {
           else maxOldSeen = oldIndex;
         } else {
           if (!batchFragment) batchFragment = document.createDocumentFragment();
-          disposeItem(reused);
+          untrack(() => disposeItem(reused));
           newEntries[i] = renderItem(item, i, batchFragment, null, key);
         }
       } else {
@@ -304,40 +306,45 @@ export function For<T>(props: ForProps<T>): Node {
     for (const list of oldKeyMap.values()) {
       for (const [entry] of list) toRemove.push(entry);
     }
-    for (const entry of toRemove) disposeItem(entry);
+    for (const entry of toRemove) untrack(() => disposeItem(entry));
 
     // ===== Position correction with LIS =====
-    // We walk the new array right-to-left using `marker` as the initial
-    // anchor, which lets us use `insertBefore(node, nextNode)` uniformly.
-    const lis = moved ? getSequence(newIndexToOldIndex) : [];
-    let lisCursor = lis.length - 1;
-    let nextNode: Node = marker;
+    // DOM mutations inside untrack() — signal dependencies were already
+    // established by getList() and renderItem() above.  Pure DOM moves
+    // must not create spurious reactive links.
+    untrack(() => {
+      // We walk the new array right-to-left using `marker` as the initial
+      // anchor, which lets us use `insertBefore(node, nextNode)` uniformly.
+      const lis = moved ? getSequence(newIndexToOldIndex) : [];
+      let lisCursor = lis.length - 1;
+      let nextNode: Node = marker;
 
-    for (let i = newLen - 1; i >= 0; i--) {
-      const entry = newEntries[i];
-      const nodes = entry.nodes;
-      const isFresh = newIndexToOldIndex[i] === 0;
-      const inLis = !isFresh && moved && lisCursor >= 0 && i === lis[lisCursor];
+      for (let i = newLen - 1; i >= 0; i--) {
+        const entry = newEntries[i];
+        const nodes = entry.nodes;
+        const isFresh = newIndexToOldIndex[i] === 0;
+        const inLis = !isFresh && moved && lisCursor >= 0 && i === lis[lisCursor];
 
-      if (inLis) {
-        // Stable skeleton — leave every node untouched, but still update
-        // `nextNode` so the next iteration has the correct anchor.
-        lisCursor--;
-        for (let j = nodes.length - 1; j >= 0; j--) nextNode = nodes[j];
-        continue;
-      }
-
-      // Fresh entry OR reused entry that is out of place → (re)insert each
-      // node. The nextSibling guard keeps us from redundant writes for
-      // multi-node rows whose internal order is already correct.
-      for (let j = nodes.length - 1; j >= 0; j--) {
-        const node = nodes[j];
-        if (node.nextSibling !== nextNode) {
-          parent.insertBefore(node, nextNode);
+        if (inLis) {
+          // Stable skeleton — leave every node untouched, but still update
+          // `nextNode` so the next iteration has the correct anchor.
+          lisCursor--;
+          for (let j = nodes.length - 1; j >= 0; j--) nextNode = nodes[j];
+          continue;
         }
-        nextNode = node;
+
+        // Fresh entry OR reused entry that is out of place → (re)insert each
+        // node. The nextSibling guard keeps us from redundant writes for
+        // multi-node rows whose internal order is already correct.
+        for (let j = nodes.length - 1; j >= 0; j--) {
+          const node = nodes[j];
+          if (node.nextSibling !== nextNode) {
+            parent.insertBefore(node, nextNode);
+          }
+          nextNode = node;
+        }
       }
-    }
+    }); // untrack — end DOM mutation block
 
     entries = newEntries;
   }

@@ -12,9 +12,11 @@ import { onMount } from '../lifecycle';
 import { TRANSITION_GROUP_COMPONENT } from '../constants';
 import { isComponent } from '../component';
 import {
+  type TransitionCleanup,
   type TransitionProps,
   addClass,
   forceReflow,
+  nextFrameCancellable,
   removeClass,
   resolveDuration,
   resolveTransitionClasses,
@@ -57,22 +59,6 @@ export interface TransitionGroupProps<T = unknown> extends GroupBaseProps {
 }
 
 type CancelCb = (cancelled?: boolean) => void;
-type TransitionCleanup = () => void;
-
-function nextFrameCancellable(cb: () => void): TransitionCleanup {
-  let cancelled = false;
-  let innerId: number | null = null;
-  const outerId = requestAnimationFrame(() => {
-    if (cancelled) return;
-    innerId = requestAnimationFrame(cb);
-  });
-
-  return () => {
-    cancelled = true;
-    cancelAnimationFrame(outerId);
-    if (innerId != null) cancelAnimationFrame(innerId);
-  };
-}
 
 interface Entry {
   key: unknown;

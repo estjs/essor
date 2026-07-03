@@ -120,9 +120,9 @@ export function nextFrame(cb: () => void): void {
   requestAnimationFrame(() => requestAnimationFrame(cb));
 }
 
-type TransitionCleanup = () => void;
+export type TransitionCleanup = () => void;
 
-function nextFrameCancellable(cb: () => void): TransitionCleanup {
+export function nextFrameCancellable(cb: () => void): TransitionCleanup {
   let cancelled = false;
   let innerId: number | null = null;
   const outerId = requestAnimationFrame(() => {
