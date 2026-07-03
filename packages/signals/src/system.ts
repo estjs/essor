@@ -1,6 +1,6 @@
 // forked from https://github.com/stackblitz/alien-signals/blob/v3.0.0/src/system.ts
 import { error, isArray, isFunction } from '@estjs/shared';
-import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags, SignalFlags } from './constants';
+import { ARRAY_ITERATE_KEY, ITERATE_KEY, ReactiveFlags } from './constants';
 
 export interface Link {
   version: number;
@@ -149,6 +149,7 @@ export function unlinkReactiveNode(
   subNode: ReactiveNode = linkNode.subNode,
 ): Link | undefined {
   const depNode = linkNode.depNode;
+
   const prevSub = linkNode.prevSubLink;
   const nextSub = linkNode.nextSubLink;
   const prevDep = linkNode.prevDepLink;
@@ -526,19 +527,70 @@ export function trigger(
   }
 }
 
-export function getTargetDepSize(target: object, key: string | symbol): number {
-  const rawTarget =
-    (target as Record<string, unknown> | null)?.[SignalFlags.RAW] instanceof Object
-      ? ((target as Record<string, unknown>)[SignalFlags.RAW] as object)
-      : target;
-  const dep = targetMap.get(rawTarget)?.get(key);
-  if (!dep) {
-    return 0;
-  }
+// ── Direct node tracking (bypasses targetMap + Dep) ──────────────────────
+//
+// The standard track()/trigger() path goes:
+//   track(target, key) → targetMap → Map → Dep → linkReactiveNode
+//
+// For per-property signals (ReactiveProperty), we can skip the targetMap
+// lookup because the node itself IS the depNode.  This is the same pattern
+// VitarX uses with trackSignal/triggerSignal on per-property signal objects.
 
-  let size = 0;
-  for (let link = dep.subLink; link; link = link.nextSubLink) {
-    size++;
+/**
+ * Track a ReactiveNode directly as a dependency of the active subscriber.
+ *
+ * Unlike {@link track}, this bypasses the targetMap and Dep layers —
+ * the node itself already has depLink/subLink chains.
+ *
+ * Used by ReactiveProperty for per-property signal granularity.
+ *
+ * @param node - The node to track (acts as its own depNode).
+ */
+export function trackNode(node: ReactiveNode): void {
+  if (!activeSub || isUntracking) return;
+  linkReactiveNode(node, activeSub);
+}
+
+/**
+ * Trigger all subscribers of a ReactiveNode.
+ *
+ * Unlike {@link trigger}, this bypasses the targetMap + Dep lookup — the node
+ * itself already owns the subLink chain.
+ *
+ * It deliberately does NOT delegate to {@link propagate}. propagate marks
+ * computed subscribers PENDING (lazy) and relies on checkDirty() later reading
+ * the dep's DIRTY flag. But a ReactiveProperty reads its value live from the
+ * target and clears no cache, so — exactly like a plain signal — a synchronous
+ * effect reading the property first can clear coordination state before a
+ * sibling computed is validated, producing a stale (glitchy) read. Instead we
+ * force each computed subscriber DIRTY so it unconditionally recomputes. This
+ * makes reactive-object derivations glitch-free even in the mixed
+ * "direct-effect + computed on the same property" case.
+ *
+ * Iteration safety: effects run synchronously via notify(), so a subscriber's
+ * re-run can mutate this chain mid-loop. That is safe here because
+ * unlinkReactiveNode() never nulls a removed link's own nextSubLink — the
+ * cursor always has a valid forward pointer even after it (or a neighbor) is
+ * unlinked. The caller marks nothing; DIRTY is set on subscribers here.
+ *
+ * Used by ReactiveProperty for per-property signal granularity.
+ *
+ * @param node - The node whose subscribers should be notified.
+ */
+export function triggerNode(node: ReactiveNode): void {
+  const link = node.subLink;
+  if (!link) return;
+
+  for (let current: Link | undefined = link; current; current = current.nextSubLink) {
+    const effect = current.subNode;
+
+    if (effect.flag & ReactiveFlags.WATCHING) {
+      (effect as Effect).notify?.();
+    } else if (effect.flag & ReactiveFlags.MUTABLE) {
+      effect.flag |= ReactiveFlags.DIRTY;
+      if (effect.subLink) {
+        propagate(effect.subLink);
+      }
+    }
   }
-  return size;
 }

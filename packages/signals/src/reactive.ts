@@ -15,12 +15,92 @@ import {
   ARRAY_KEY,
   COLLECTION_KEY,
   ITERATE_KEY,
+  ReactiveFlags,
   SignalFlags,
   TriggerOpTypes,
   WEAK_COLLECTION_KEY,
 } from './constants';
-import { track, trigger } from './system';
+import {
+  type Link,
+  type ReactiveNode,
+  activeSub,
+  track,
+  trackNode,
+  trigger,
+  triggerNode,
+} from './system';
 import { isSignal } from './signal';
+
+/**
+ * ReactiveProperty — per-property reactive signal for reactive proxy objects.
+ *
+ * Each ReactiveProperty is a ReactiveNode with its own depLink/subLink/flag,
+ * enabling direct track/trigger without the targetMap → Map → Dep indirection.
+ *
+ * This gives VitarX-style per-property signal granularity on top of Essor's
+ * alien-signals infrastructure.
+ *
+ * The value is NOT cached here — it is read live from the target object. The
+ * DIRTY coordination lives in {@link triggerNode}, which force-marks computed
+ * subscribers dirty so derivations stay glitch-free (see triggerNode's docs).
+ *
+ * @internal
+ */
+export class ReactiveProperty implements ReactiveNode {
+  // ── ReactiveNode interface ────────────────────────────────────────────
+  depLink?: Link;
+  subLink?: Link;
+  depLinkTail?: Link;
+  subLinkTail?: Link;
+  flag: ReactiveFlags = ReactiveFlags.MUTABLE;
+  onTrack?: never;
+  onTrigger?: never;
+
+  constructor(
+    private _target: object,
+    private _key: string | symbol,
+  ) {}
+
+  /**
+   * Read the property value and track the dependency.
+   *
+   * Uses trackNode(this) — bypasses targetMap/Dep. The ReactiveProperty itself
+   * IS the depNode, so linkReactiveNode connects the active subscriber directly
+   * to this node's subLink chain.
+   *
+   * Nested proxy wrapping and signal auto-unwrapping are handled by the caller
+   * (the reactive proxy get trap), keeping this method self-contained and free
+   * of a circular dependency on the rest of reactive.ts.
+   */
+  getValue(): any {
+    trackNode(this);
+    return (this._target as any)[this._key];
+  }
+
+  /**
+   * Update the property value and notify subscribers.
+   *
+   * Uses triggerNode(this) — directly walks the subLink chain, bypassing
+   * targetMap + collectTriggeredEffects.
+   *
+   * @param rawValue - The new (already unrawed) value.
+   * @param oldValue - The previous value, read BEFORE Reflect.set.
+   */
+  setValue(rawValue: any, oldValue: any): void {
+    if (Object.is(oldValue, rawValue)) {
+      return;
+    }
+    triggerNode(this);
+  }
+
+  /**
+   * Invalidate this property (called on delete).
+   * Notifies subscribers that the value is gone.
+   */
+  invalidate(): void {
+    triggerNode(this);
+  }
+}
 
 // Use separate WeakMaps so deep and shallow wrappers for the same raw object
 // cannot accidentally reuse each other.
@@ -769,9 +849,77 @@ const weakInstrumentations = {
  * @param shallow - Indicates whether to create shallow reactive proxy.
  * @returns {any} Object containing get, set, and delete traps.
  */
+/**
+ * Per-target property maps for the per-property signal optimization.
+ *
+ * Each reactive proxy gets its own Map<key, ReactiveProperty>, keyed by the
+ * raw target object.  Using a WeakMap here means the property maps are
+ * automatically garbage-collected when the raw object is no longer referenced.
+ */
+const targetPropertyMaps = new WeakMap<object, Map<string | symbol, ReactiveProperty>>();
+
+/**
+ * Count the number of active effect subscribers on a reactive object property.
+ *
+ * Own-key deps live on their {@link ReactiveProperty} node inside
+ * `targetPropertyMaps`; prototype / collection deps are still in the
+ * standard `targetMap` (via `system.ts`), but plain-object own keys
+ * always use the fast path, so checking the property map is sufficient.
+ *
+ * Used by tests to assert that effects are properly cleaned up.
+ */
+export function getTargetDepSize(target: object, key: string | symbol): number {
+  // Unwrap reactive proxy to raw object so both `reactive(x)` and `x`
+  // resolve to the same entry in targetPropertyMaps.
+  const rawTarget = (target as any)[SignalFlags.RAW] ?? target;
+  const prop = targetPropertyMaps.get(rawTarget)?.get(key);
+  if (!prop?.subLink) return 0;
+  let size = 0;
+  for (let link: Link | undefined = prop.subLink; link; link = link.nextSubLink) size++;
+  return size;
+}
+
+function getPropertyMap(target: object): Map<string | symbol, ReactiveProperty> {
+  let map = targetPropertyMaps.get(target);
+  if (!map) {
+    map = new Map();
+    targetPropertyMaps.set(target, map);
+  }
+  return map;
+}
+
+/**
+ * Track an own property through its per-property {@link ReactiveProperty} node
+ * and return the raw stored value.
+ *
+ * The node itself is the depNode, so trackNode() links the active subscriber
+ * directly to it — bypassing the targetMap → Map → Dep indirection.
+ *
+ * Fast exit: outside any effect (and inside untrack, where activeSub is
+ * undefined) there is nothing to track, so we skip materializing the per-target
+ * Map and ReactiveProperty entirely and just read the value live. This keeps
+ * untracked reads — event handlers, one-off lookups — allocation-free.
+ */
+function trackProperty(target: object, key: string | symbol): any {
+  if (!activeSub) {
+    return (target as any)[key];
+  }
+  const pm = getPropertyMap(target);
+  let prop = pm.get(key);
+  if (!prop) {
+    prop = new ReactiveProperty(target, key);
+    pm.set(key, prop);
+  }
+  return prop.getValue(); // trackNode fast path
+}
+
 const objectHandlers = (shallow: boolean) => ({
   /**
    * Reads an object property, unwraps signals, and tracks the access.
+   *
+   * Own properties use the per-property signal fast path (trackNode),
+   * which bypasses the targetMap → Map → Dep indirection.
+   * Prototype-chain properties fall back to the standard track() path.
    */
   get(target: object, key: string | symbol, receiver: object) {
     if (key === SignalFlags.RAW) {
@@ -784,12 +932,33 @@ const objectHandlers = (shallow: boolean) => ({
       return shallow;
     }
 
+    // ── Per-property signal fast path ─────────────────────────────────
+    // Only for own (non-inherited) properties while inside an active effect.
+    // Untracked reads (event handlers, one-off lookups) skip the per-property
+    // machinery entirely to remain allocation-free.
+    // Prototype properties (toString, hasOwnProperty, etc.) go through the standard track() path.
+    if (activeSub && hasOwn(target, key)) {
+      const result = trackProperty(target, key);
+
+      // Auto-unwrap signals. Read via `.value` (not `.peek()`) so a nested
+      // signal stored as a property value is also tracked — matching the
+      // standard path below, which reads `value.value`.
+      const unwrapped = isSignal(result) ? (result as { value: unknown }).value : result;
+
+      // Wrap nested objects for deep reactivity (same behaviour as standard path).
+      // reactiveImpl() is cached via WeakMap, so repeated accesses are fast.
+      if (isObject(unwrapped) && !shallow) {
+        return reactiveImpl(unwrapped);
+      }
+      return unwrapped;
+    }
+
     const value = Reflect.get(target, key, receiver);
 
-    // Auto-unwrap signals.
+    // Auto-unwrap signals (tracking via .value getter for standard path).
     const valueUnwrapped = isSignal(value) ? value.value : value;
 
-    // Collect dependencies for accessed properties.
+    // Collect dependencies for accessed properties (standard path).
     track(target, key);
 
     // If needed, recursively wrap the value in a reactive proxy.
@@ -804,6 +973,17 @@ const objectHandlers = (shallow: boolean) => ({
     // When setting value, ensure the raw value is set.
     const rawValue = toRaw(value);
     const result = Reflect.set(target, key, rawValue, receiver);
+
+    // ── Per-property signal fast path ─────────────────────────────────
+    if (hadKey) {
+      const pm = targetPropertyMaps.get(target);
+      const prop = pm?.get(key);
+      if (prop) {
+        prop.setValue(rawValue, oldValue); // triggerNode fast path (oldValue from before Reflect.set)
+        return result;
+      }
+    }
+
     if (hasStoredValueChanged(rawValue, oldValue)) {
       // Distinguish ADD (new property) from SET (existing property) so that
       // iteration-dependent effects (Object.keys(), for…in, etc.) are notified
@@ -816,6 +996,13 @@ const objectHandlers = (shallow: boolean) => ({
     const hadKey = hasOwn(target, key);
     const result = Reflect.deleteProperty(target, key);
     if (hadKey && result) {
+      // ── Per-property signal fast path ────────────────────────────────
+      const pm = targetPropertyMaps.get(target);
+      const prop = pm?.get(key);
+      if (prop) {
+        pm!.delete(key);
+        prop.invalidate();
+      }
       trigger(target, TriggerOpTypes.DELETE, key, undefined);
     }
     return result;

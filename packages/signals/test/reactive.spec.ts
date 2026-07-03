@@ -1,8 +1,14 @@
+import { describe, expect, it, vi } from 'vitest';
 import {
   computed,
   effect,
+  effectScope,
   isReactive,
   isShallow,
+  nextTick,
+  queueJob,
+  queuePostFlushJob,
+  queuePreFlushCb,
   reactive,
   shallowReactive,
   signal,
@@ -1639,6 +1645,179 @@ describe('reactive - edge cases', () => {
       // @ts-ignore - testing hidden property
       state.hidden = 'updated';
       expect(mockFn).toHaveBeenCalledTimes(2);
+    });
+  });
+});
+
+describe('reactivity fixes', () => {
+  describe('per-property reactive tracking', () => {
+    it('a computed derived through a reactive property recomputes on change', () => {
+      const state = reactive({ n: 1 });
+      const double = computed(() => state.n * 2);
+      const spy = vi.fn();
+      effect(() => spy(double.value));
+      expect(spy).toHaveBeenLastCalledWith(2);
+
+      state.n = 5;
+      expect(double.value).toBe(10);
+      expect(spy).toHaveBeenLastCalledWith(10);
+    });
+
+    it('is glitch-free with a direct effect and a computed on the same property', () => {
+      const state = reactive({ n: 1 });
+      const eff = vi.fn();
+      effect(() => eff(state.n));
+
+      const c = computed(() => state.n + 100);
+      const cEff = vi.fn();
+      effect(() => cEff(c.value));
+
+      state.n = 2;
+      expect(eff).toHaveBeenLastCalledWith(2);
+      // Even though the direct effect reads the property first, the computed's
+      // downstream effect must observe the fresh derived value (no glitch).
+      expect(cEff).toHaveBeenLastCalledWith(102);
+    });
+
+    it('tracks a nested signal stored as a reactive property (via .value, not .peek)', () => {
+      const inner = signal(1);
+      const state = reactive({ inner });
+      const spy = vi.fn();
+      // Reading state.inner auto-unwraps the nested signal AND tracks it.
+      effect(() => spy((state as unknown as { inner: number }).inner));
+      expect(spy).toHaveBeenLastCalledWith(1);
+
+      inner.value = 2;
+      expect(spy).toHaveBeenLastCalledWith(2);
+    });
+
+    it('notifies subscribers when an own property is deleted', () => {
+      const state = reactive<{ a?: number }>({ a: 1 });
+      const spy = vi.fn();
+      effect(() => spy(state.a));
+      expect(spy).toHaveBeenLastCalledWith(1);
+
+      delete state.a;
+      expect(spy).toHaveBeenLastCalledWith(undefined);
+    });
+
+    it('does not re-run when setting a property to an equal value', () => {
+      const state = reactive({ n: 1 });
+      const spy = vi.fn();
+      effect(() => spy(state.n));
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      state.n = 1;
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('dependency index (isValidLink) correctness', () => {
+    it('handles branch switching without stale or missed updates', () => {
+      const use = signal(true);
+      const a = signal(1);
+      const b = signal(2);
+      const spy = vi.fn();
+      const c = computed(() => (use.value ? a.value : b.value));
+      effect(() => spy(c.value));
+      expect(spy).toHaveBeenLastCalledWith(1);
+
+      // Switch the branch — `a` should be dropped as a dep, `b` picked up.
+      use.value = false;
+      expect(spy).toHaveBeenLastCalledWith(2);
+
+      // Mutating the now-unused `a` must NOT re-run the effect.
+      const callsAfterSwitch = spy.mock.calls.length;
+      a.value = 100;
+      expect(spy).toHaveBeenCalledTimes(callsAfterSwitch);
+
+      // Mutating the active `b` must re-run.
+      b.value = 20;
+      expect(spy).toHaveBeenLastCalledWith(20);
+
+      // Switch back — `a` is re-linked and `b` dropped.
+      use.value = true;
+      expect(spy).toHaveBeenLastCalledWith(100);
+      const callsBack = spy.mock.calls.length;
+      b.value = 999;
+      expect(spy).toHaveBeenCalledTimes(callsBack);
+    });
+  });
+
+  describe('effectScope lifecycle', () => {
+    it('exposes isPaused / isDisposed / active state', () => {
+      const scope = effectScope();
+      expect(scope.active).toBe(true);
+      expect(scope.isPaused).toBe(false);
+      expect(scope.isDisposed).toBe(false);
+
+      scope.pause();
+      expect(scope.isPaused).toBe(true);
+      expect(scope.active).toBe(true); // paused is still "active" (not disposed)
+
+      scope.resume();
+      expect(scope.isPaused).toBe(false);
+
+      scope.stop();
+      expect(scope.isDisposed).toBe(true);
+      expect(scope.active).toBe(false);
+    });
+
+    it('can still run fn() while paused', () => {
+      const scope = effectScope();
+      scope.pause();
+      let ran = false;
+      const result = scope.run(() => {
+        ran = true;
+        return 'ok';
+      });
+      expect(ran).toBe(true);
+      expect(result).toBe('ok');
+    });
+
+    it('refuses to run once disposed', () => {
+      const scope = effectScope();
+      scope.stop();
+      const result = scope.run(() => 'nope');
+      expect(result).toBeUndefined();
+    });
+
+    it('pause freezes effect re-execution, resume restores it', () => {
+      const count = signal(0);
+      const scope = effectScope();
+      const spy = vi.fn();
+      scope.run(() => {
+        effect(() => spy(count.value));
+      });
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      scope.pause();
+      count.value = 1;
+      expect(spy).toHaveBeenCalledTimes(1); // frozen
+
+      scope.resume();
+      count.value = 2;
+      expect(spy).toHaveBeenLastCalledWith(2); // restored
+    });
+  });
+
+  describe('scheduler flush ordering', () => {
+    it('runs pre-flush → main → post-flush within a single flush', async () => {
+      const order: string[] = [];
+      queuePostFlushJob(() => order.push('post'));
+      queueJob(() => order.push('main'));
+      queuePreFlushCb(() => order.push('pre'));
+
+      await nextTick();
+      expect(order).toEqual(['pre', 'main', 'post']);
+    });
+
+    it('deduplicates post-flush callbacks', async () => {
+      const spy = vi.fn();
+      queuePostFlushJob(spy);
+      queuePostFlushJob(spy);
+      await nextTick();
+      expect(spy).toHaveBeenCalledTimes(1);
     });
   });
 });

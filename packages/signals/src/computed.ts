@@ -20,7 +20,7 @@ import type { DebuggerEvent, Link, ReactiveNode } from './system';
 /**
  * Computed getter function type
  */
-export type ComputedGetter<T> = () => T;
+export type ComputedGetter<T> = (oldValue?: T) => T;
 
 /**
  * Computed setter function type
@@ -247,8 +247,8 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
     const prevSub = startTracking(this);
 
     try {
-      // Execute computation
-      const newValue = this.getter();
+      // Execute computation, passing old value for incremental derivation
+      const newValue = this.getter(hadValue ? (oldValue as T) : undefined);
 
       // Cache current flags and subLink for efficient bitwise operations and reduced property access
       const flags = this.flag;

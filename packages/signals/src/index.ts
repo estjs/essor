@@ -37,6 +37,7 @@ export {
   toRaw,
   isShallow,
   toReactive,
+  getTargetDepSize,
   type Reactive,
 } from './reactive';
 
@@ -46,8 +47,10 @@ export {
   nextTick,
   queueJob,
   queuePreFlushCb,
+  queuePostFlushJob,
   type Job,
   type PreFlushCallback,
+  type PostFlushCallback,
   type FlushTiming,
 } from './scheduler';
 
@@ -57,6 +60,8 @@ export { TriggerOpTypes } from './constants';
 export { createStore, type StoreOptions, type StoreActions } from './store';
 
 export { type Ref, isRef, ref } from './ref';
+
+export { unref, toRef, toRefs } from './refUtils';
 
 export { watch } from './watch';
 

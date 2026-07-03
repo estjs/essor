@@ -7,10 +7,23 @@ export interface ScopedReactiveEffect {
   scope?: EffectScope;
 }
 
+/**
+ * EffectScope lifecycle state.
+ *
+ * - `Active`   — accepting new effects, running normally
+ * - `Paused`   — effects temporarily frozen (no new tracking, no re-execution)
+ * - `Disposed` — permanently stopped, all effects cleaned up
+ */
+const enum ScopeState {
+  Active,
+  Paused,
+  Disposed,
+}
+
 export let activeEffectScope: EffectScope | undefined;
 
 export class EffectScope {
-  private _active = true;
+  private _state: ScopeState = ScopeState.Active;
   // Use Sets instead of arrays for O(1) add/delete instead of O(n) indexOf+splice
   private effects = new Set<ScopedReactiveEffect>();
   private scopes = new Set<EffectScope>();
@@ -27,13 +40,25 @@ export class EffectScope {
   }
 
   get active(): boolean {
-    return this._active;
+    return this._state !== ScopeState.Disposed;
+  }
+
+  /** Whether the scope is paused. */
+  get isPaused(): boolean {
+    return this._state === ScopeState.Paused;
+  }
+
+  /** Whether the scope has been stopped / disposed. */
+  get isDisposed(): boolean {
+    return this._state === ScopeState.Disposed;
   }
 
   pause(): void {
-    if (!this._active) {
+    if (this._state !== ScopeState.Active) {
       return;
     }
+
+    this._state = ScopeState.Paused;
 
     for (const scope of this.scopes) {
       scope.pause();
@@ -45,9 +70,11 @@ export class EffectScope {
   }
 
   resume(): void {
-    if (!this._active) {
+    if (this._state !== ScopeState.Paused) {
       return;
     }
+
+    this._state = ScopeState.Active;
 
     for (const scope of this.scopes) {
       scope.resume();
@@ -59,9 +86,11 @@ export class EffectScope {
   }
 
   run<T>(fn: () => T): T | undefined {
-    if (!this._active) {
+    // Only a disposed scope refuses to run. A paused scope can still run fn()
+    // — pausing freezes effect re-execution, it does not make the scope unusable.
+    if (this._state === ScopeState.Disposed) {
       if (__DEV__) {
-        warn('cannot run an inactive effect scope.');
+        warn('cannot run a disposed effect scope.');
       }
       return;
     }
@@ -77,11 +106,11 @@ export class EffectScope {
   }
 
   stop(fromParent = false): void {
-    if (!this._active) {
+    if (this._state === ScopeState.Disposed) {
       return;
     }
 
-    this._active = false;
+    this._state = ScopeState.Disposed;
 
     // Snapshot before clearing to avoid mutation during iteration
     for (const scope of this.scopes) {
@@ -107,6 +136,9 @@ export class EffectScope {
       this.parent.scopes.delete(this);
     }
 
+    // Drop the parent reference so a disposed scope doesn't pin its ancestor
+    // chain alive through closures. The effects/scopes Sets and cleanups array
+    // were already cleared above.
     this.parent = undefined;
   }
 

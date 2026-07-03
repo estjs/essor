@@ -11,10 +11,15 @@ export type Job = () => void;
 export type PreFlushCallback = () => void;
 
 /**
+ * Represents a callback function that should be executed after the main task queue
+ */
+export type PostFlushCallback = () => void;
+
+/**
  * Represents the possible flush timing strategies for effects
  *
  * - 'pre': Execute before the main queue (useful for component updates)
- * - 'post': Execute after the main queue (default behavior)
+ * - 'post': Execute on the main queue (default behavior)
  * - 'sync': Execute immediately and synchronously (use sparingly)
  */
 export type FlushTiming = 'pre' | 'post' | 'sync';
@@ -26,6 +31,11 @@ const queue: Set<Job> = new Set();
 // Pre-flush callback queue, cleared before main task queue execution
 // Using Set for automatic deduplication
 const activePreFlushCbs: Set<PreFlushCallback> = new Set();
+
+// Post-flush callback queue, executed after the main queue is fully drained.
+// Used by Suspense to fire onResolved after all effects have settled.
+// Using Set for automatic deduplication
+const activePostFlushCbs: Set<PostFlushCallback> = new Set();
 
 // Resolved Promise used to schedule tasks into the microtask queue
 const p = Promise.resolve();
@@ -85,6 +95,19 @@ export function queuePreFlushCb(cb: PreFlushCallback): void {
 }
 
 /**
+ * Adds a callback to be executed after the main queue has been fully drained.
+ *
+ * Useful for Suspense onResolved handlers and DOM-measurement callbacks that
+ * must fire after all reactive effects have settled.
+ *
+ * @param cb - The callback to execute after the main queue.
+ */
+export function queuePostFlushJob(cb: PostFlushCallback): void {
+  activePostFlushCbs.add(cb); // Set automatically deduplicates
+  queueFlush();
+}
+
+/**
  * Executes all enqueued jobs and pre-flush callbacks.
  *
  * @returns {void}
@@ -131,6 +154,10 @@ export function flushJobs(): void {
       }
     }
   }
+
+  // Execute post-flush callbacks after the main queue is completely drained.
+  // These are used by Suspense onResolved and similar "after-all-effects" hooks.
+  flushPostFlushCbs();
 }
 
 /**
@@ -157,6 +184,29 @@ function flushPreFlushCbs(): void {
 }
 
 /**
+ * Executes all post-flush callbacks.
+ *
+ * Post-flush callbacks fire after the main job queue has been fully drained.
+ * They run synchronously (not via microtask) as part of the same flush cycle.
+ */
+function flushPostFlushCbs(): void {
+  if (activePostFlushCbs.size === 0) return;
+
+  const callbacks = Array.from(activePostFlushCbs);
+  activePostFlushCbs.clear();
+
+  for (const callback of callbacks) {
+    try {
+      callback();
+    } catch (_error) {
+      if (__DEV__) {
+        error('Error executing post-flush callback:', _error);
+      }
+    }
+  }
+}
+
+/**
  * Creates a scheduler function for an effect based on the specified flush timing.
  *
  * @param effect - The effect function to schedule.
@@ -173,6 +223,7 @@ export function createScheduler(
     case 'pre':
       return () => queuePreFlushCb(effect);
     case 'post':
+      // 'post' is the default — effects run on the main job queue.
       return () => queueJob(effect);
     default:
       if (__DEV__) {
