@@ -76,6 +76,22 @@ describe('server/attrs', () => {
       expect(ssrAttrDynamic('onClick', () => {})).toBe('');
     });
 
+    it('escapes class and style values to prevent attribute break-out (XSS)', () => {
+      expect(ssrAttrDynamic('class', 'a" onmouseover="alert(1)')).toBe(
+        ' class="a&quot; onmouseover=&quot;alert(1)"',
+      );
+      expect(ssrAttrDynamic('style', 'color:red" onload="alert(1)')).toBe(
+        ' style="color:red&quot; onload=&quot;alert(1)"',
+      );
+      expect(ssrAttrDynamic('style', { color: 'red"><script>' })).toBe(
+        ' style="color:red&quot;&gt;&lt;script&gt;;"',
+      );
+    });
+
+    it('drops unsafe attribute names (XSS)', () => {
+      expect(ssrAttrDynamic('x onmouseover=alert(1)', 'v')).toBe('');
+    });
+
     it('unwraps signals', () => {
       const count = signal(0);
       expect(ssrAttrDynamic('data-count', count)).toBe(' data-count="0"');
@@ -117,7 +133,9 @@ describe('server/attrs', () => {
     });
 
     it('escapes special characters in standard attribute values (XSS prevention)', () => {
-      expect(ssrAttrDynamic('title', '"break" <out>')).toBe(' title="&quot;break&quot; &lt;out&gt;"');
+      expect(ssrAttrDynamic('title', '"break" <out>')).toBe(
+        ' title="&quot;break&quot; &lt;out&gt;"',
+      );
     });
   });
 });

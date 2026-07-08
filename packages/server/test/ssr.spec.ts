@@ -19,6 +19,16 @@ describe('server/ssr helpers', () => {
         ' title="&lt;unsafe&gt;&quot;x&quot;&lt;/unsafe&gt;"',
       );
     });
+
+    it('drops attribute names that would break out of the tag (XSS)', () => {
+      // Attribute-name injection: a spread key such as `x onmouseover=alert(1)`
+      // or one that closes the tag must not be emitted verbatim.
+      expect(ssrAttr('x onmouseover=alert(1)', 'v')).toBe('');
+      expect(ssrAttr('foo><script>alert(1)</script>', 'v')).toBe('');
+      expect(ssrAttr('a"b', 'v')).toBe('');
+      // Boolean form is guarded too.
+      expect(ssrAttr('x onmouseover=alert(1)', true)).toBe('');
+    });
   });
 
   describe('ssrClass', () => {
@@ -43,6 +53,16 @@ describe('server/ssr helpers', () => {
           'hidden': false,
         }),
       ).toBe(' style="color:red;font-size:14px;--accent:&lt;unsafe&gt;"');
+    });
+
+    it('normalizes nested style collections before serializing', () => {
+      expect(
+        ssrStyle({
+          color: 'red',
+          nested: { fontSize: '14px' },
+          more: ['margin: 0;', { padding: '4px' }],
+        }),
+      ).toBe(' style="color:red;font-size:14px;margin:0;padding:4px"');
     });
 
     it('returns an empty string for unsupported or empty values', () => {
@@ -73,6 +93,15 @@ describe('server/ssr helpers', () => {
       expect(ssrSpread(null as any)).toBe('');
       expect(ssrSpread('nope' as any)).toBe('');
     });
+
+    it('drops unsafe attribute names from spread props (XSS)', () => {
+      const result = ssrSpread({
+        'id': 'ok',
+        'x onmouseover=alert(1)': 'boom',
+        'foo><script>': 'boom',
+      });
+      expect(result).toBe(' id="ok"');
+    });
   });
 
   describe('ssrBind', () => {
@@ -99,14 +128,18 @@ describe('server/ssr helpers', () => {
     });
 
     it('renders radio checked state by comparing model with own value', () => {
-      expect(ssrBind('checked', 'dark', undefined, 'dark', {
-        tag: 'input',
-        type: 'radio',
-      })).toBe(' checked');
-      expect(ssrBind('checked', 'dark', undefined, 'light', {
-        tag: 'input',
-        type: 'radio',
-      })).toBe('');
+      expect(
+        ssrBind('checked', 'dark', undefined, 'dark', {
+          tag: 'input',
+          type: 'radio',
+        }),
+      ).toBe(' checked');
+      expect(
+        ssrBind('checked', 'dark', undefined, 'light', {
+          tag: 'input',
+          type: 'radio',
+        }),
+      ).toBe('');
     });
 
     it('renders checked for checkbox group (array model)', () => {
@@ -115,17 +148,21 @@ describe('server/ssr helpers', () => {
     });
 
     it('uses the browser default checkbox value for checkbox groups without a value attr', () => {
-      expect(ssrBind('checked', ['on'], undefined, undefined, {
-        tag: 'input',
-        type: 'checkbox',
-      })).toBe(' checked');
+      expect(
+        ssrBind('checked', ['on'], undefined, undefined, {
+          tag: 'input',
+          type: 'checkbox',
+        }),
+      ).toBe(' checked');
     });
 
     it('matches explicit empty checkbox values in checkbox groups', () => {
-      expect(ssrBind('checked', [''], undefined, '', {
-        tag: 'input',
-        type: 'checkbox',
-      })).toBe(' checked');
+      expect(
+        ssrBind('checked', [''], undefined, '', {
+          tag: 'input',
+          type: 'checkbox',
+        }),
+      ).toBe(' checked');
     });
 
     it('returns empty string for files binding', () => {

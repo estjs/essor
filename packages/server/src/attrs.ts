@@ -1,6 +1,7 @@
 import { isComputed, isSignal } from '@estjs/signals';
 import {
   escapeHTML,
+  isSSRSafeAttrName,
   isString,
   normalizeClassName,
   normalizeStyle,
@@ -68,6 +69,11 @@ export function ssrAttrDynamic(attrName: string, attrValue: any): string {
     return '';
   }
 
+  // Defense-in-depth: never emit an unsafe attribute name into the tag.
+  if (!isSSRSafeAttrName(attrName)) {
+    return '';
+  }
+
   // Special attribute handling: style
   if (attrName === 'style') {
     const normalizedStyle = normalizeStyle(attrValue);
@@ -76,16 +82,16 @@ export function ssrAttrDynamic(attrName: string, attrValue: any): string {
     }
 
     if (isString(normalizedStyle)) {
-      return ` style="${normalizedStyle}"`;
+      return ` style="${escapeHTML(normalizedStyle)}"`;
     }
 
-    return ` style="${styleToString(normalizedStyle)}"`;
+    return ` style="${escapeHTML(styleToString(normalizedStyle))}"`;
   }
 
   // Special attribute handling: class
   if (attrName === 'class') {
     const normalizedClassName = normalizeClassName(attrValue);
-    return normalizedClassName ? ` class="${normalizedClassName}"` : '';
+    return normalizedClassName ? ` class="${escapeHTML(normalizedClassName)}"` : '';
   }
 
   // Ignore event handler attributes (client-side behavior)

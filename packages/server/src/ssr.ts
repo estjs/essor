@@ -1,4 +1,14 @@
-import { escapeHTML, isArray, isNil, isObject, isString, startsWith } from '@estjs/shared';
+import {
+  escapeHTML,
+  isArray,
+  isNil,
+  isObject,
+  isSSRSafeAttrName,
+  isString,
+  kebabCase,
+  normalizeStyle,
+  startsWith,
+} from '@estjs/shared';
 
 // ---------------------------------------------------------------------------
 // SSR attribute helpers
@@ -19,6 +29,10 @@ import { escapeHTML, isArray, isNil, isObject, isString, startsWith } from '@est
  */
 export function ssrAttr(name: string, value: unknown): string {
   if (isNil(value) || value === false) return '';
+  // Guard against attribute-name injection (e.g. a spread key like
+  // `x onmouseover=alert(1)` or `foo><script>`). The name is emitted verbatim
+  // into the tag, so an unsafe name is an XSS sink — drop it entirely.
+  if (!isSSRSafeAttrName(name)) return '';
   if (value === true) return ` ${name}`;
   return ` ${name}="${escapeHTML(String(value))}"`;
 }
@@ -43,15 +57,19 @@ export function ssrClass(value: unknown): string {
  */
 export function ssrStyle(value: unknown): string {
   if (isNil(value)) return '';
-  if (isString(value)) return value ? ` style="${escapeHTML(value)}"` : '';
-  if (isObject(value)) {
-    const obj = value as Record<string, unknown>;
+  const normalized = normalizeStyle(value);
+  if (!normalized) return '';
+  if (isString(normalized)) return normalized ? ` style="${escapeHTML(normalized)}"` : '';
+  if (isObject(normalized)) {
     const parts: string[] = [];
-    for (const key in obj) {
-      const v = obj[key];
-      if (v != null && v !== false) {
-        const prop = startsWith(key, '--') ? key : camelToKebab(key);
-        parts.push(`${prop}:${escapeHTML(String(v))}`);
+    for (const key in normalized) {
+      const v = normalized[key];
+      if (v != null) {
+        // Use the shared kebabCase so SSR output matches the client/styleToString
+        // path (avoids hydration text mismatches). Escape both the property name
+        // and value so neither can break out of the quoted attribute.
+        const prop = startsWith(key, '--') ? key : kebabCase(key);
+        parts.push(`${escapeHTML(prop)}:${escapeHTML(String(v))}`);
       }
     }
     if (!parts.length) return '';
@@ -103,18 +121,6 @@ function normalizeClassSSR(value: unknown): string {
       .join(' ');
   }
   return String(value);
-}
-
-/**
- * Matches uppercase characters for camelCase to kebab-case conversion.
- */
-const UPPER_RE = /[A-Z]/g;
-
-/**
- * Converts a camelCase CSS property into kebab-case.
- */
-function camelToKebab(str: string): string {
-  return str.replaceAll(UPPER_RE, (m) => `-${m.toLowerCase()}`);
 }
 
 // ---------------------------------------------------------------------------
