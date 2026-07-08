@@ -17,7 +17,7 @@ interface WatchOptions {
   /**
    * When the callback fires relative to the reactive flush cycle.
    * - `'post'` (default) — queued on the microtask job queue (essor's historical
-   *   behavior). NOTE: Vue defaults `watch` to `'pre'`; essor keeps `'post'`.
+   *   behavior).
    * - `'pre'`  — queued before the main job queue.
    * - `'sync'` — run synchronously the instant the source changes. Use sparingly:
    *   a callback that mutates a tracked dependency can recurse.
@@ -31,8 +31,6 @@ interface WatchOptions {
 type WatchSource<T = any> = T | { value: T } | (() => T);
 /**
  * Register a cleanup handler that runs right before the next callback invocation
- * and when the watcher stops. Mirrors Vue's `onCleanup`/`onInvalidate` — use it
- * to cancel stale async work (timers, fetches, subscriptions).
  */
 type OnCleanup = (cleanupFn: () => void) => void;
 // Watch callback function type.
@@ -129,11 +127,6 @@ function cloneValue<T>(value: T): T {
 /**
  * Resolve a single (non-array) watch source into a standard getter function.
  *
- * Reactive sources self-deep-traverse here (Vue-style implicit deep) so that a
- * reactive element nested inside an array source is also tracked. For a *single*
- * reactive source the watch effect body skips its own deep traverse (see
- * `needTraverse`) to avoid walking the tree twice when `deep: true` is also set.
- *
  * @param source - The watch source.
  * @returns A getter function.
  */
@@ -171,15 +164,6 @@ function resolveSource<T>(source: WatchSource<T>): () => T {
 
 /**
  * Watch one or more reactive data sources and execute callback when sources change.
- *
- * ⚠️ **`oldValue` caveat for object / reactive sources.** For performance,
- * `watch` does NOT deep-clone the watched value between runs (deep cloning
- * every tick is prohibitively expensive). The `newValue` and `oldValue` passed
- * to your callback are therefore the *same reference* whenever the source is a
- * reactive object, array, Map/Set, or a getter that returns one — i.e.
- * `newValue === oldValue` and reading `oldValue.foo` yields the already-mutated
- * value. This differs from Vue, which snapshots primitives but likewise shares
- * the reference for deep/reactive sources.
  *
  * To capture a previous snapshot for object sources, derive the specific
  * primitive you care about in a getter:
@@ -236,7 +220,7 @@ export function watch<T = any>(
   // Resolve source to a getter function.
   const getter = resolveSource(source);
 
-  // ── Cleanup handling (Vue-style onCleanup / onInvalidate) ──────────────────
+  // ── Cleanup handling ────────
   let cleanup: (() => void) | undefined;
   const onCleanup: OnCleanup = (fn: () => void) => {
     cleanup = () => {

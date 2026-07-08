@@ -445,6 +445,21 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('renders dynamic SVG class via ssrClass (string, no isSVG flag needed)', () => {
+    // Server mode builds an HTML string and never touches el.className, so SVG
+    // needs no special handling — `class` compiles to the same ssrClass slot as
+    // for HTML elements.
+    const inputCode = `
+      const p = {};
+      const element = <svg class={p.c}><line x1="5" /></svg>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_ssrClass$(p.c)');
+    expect(output).not.toContain('patchClass');
+    expect(output).toMatchSnapshot();
+  });
+
   it('should work with bind api', () => {
     const inputCode = `
     const value = 1;

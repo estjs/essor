@@ -42,7 +42,6 @@ export function isHydrating(): boolean {
 
 /**
  * Pre-built map of data-hk → Element, populated by beginHydration().
- * Mirrors SolidJS's sharedConfig.registry / gatherHydratable().
  */
 const _registry = new Map<string, Element>();
 

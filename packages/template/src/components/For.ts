@@ -31,7 +31,7 @@ interface ItemEntry {
 
 /**
  * Optimized For Component
- * - Uses createDetachedScope to avoid parent.children Set overhead (SolidJS style)
+ * - Uses createDetachedScope to avoid parent.children Set overhead
  * - Uses DocumentFragment batching for mass creation
  * - Inlines scope switching for performance
  */

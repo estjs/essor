@@ -146,8 +146,7 @@ user.age = 31;
 > runs. When the source is a **reactive object, array, Map/Set, or a getter that
 > returns one**, the `newValue` and `oldValue` passed to your callback are the
 > **same reference** (`newValue === oldValue`), and reading `oldValue.foo`
-> returns the already-mutated value — there is no previous snapshot. (Vue
-> behaves the same way for deep/reactive sources.)
+> returns the already-mutated value — there is no previous snapshot.
 >
 > To get a real previous value, watch a **derived primitive** instead:
 >

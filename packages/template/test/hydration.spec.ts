@@ -129,6 +129,25 @@ describe('hydration utilities', () => {
     expect(el.style.color).toBe('red');
   });
 
+  it('patches SVG class after hydration via the isSVG flag', () => {
+    // Regression: a post-hydration reactive class update on an SVG element hits
+    // patchClass(el, ...), whose default `el.className =` path throws because an
+    // SVG element's className is a read-only SVGAnimatedString. The compiler now
+    // forwards isSVG=true so the runtime routes through setAttribute('class').
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    document.body.appendChild(svg);
+
+    beginHydration(document.body);
+    // Suppressed during hydration — matches server markup, no throw.
+    expect(() => patchClassHydrate(svg, null, 'icon', true)).not.toThrow();
+    endHydration();
+
+    // Post-hydration reactive update: without the flag this throws.
+    expect(() => patchClassHydrate(svg, null, 'icon')).toThrow();
+    expect(() => patchClassHydrate(svg, null, 'icon', true)).not.toThrow();
+    expect(svg.getAttribute('class')).toBe('icon');
+  });
+
   describe('claimHydratedNodes', () => {
     it('splits browser-merged text nodes back to expected boundaries', () => {
       const root = document.createElement('div');
