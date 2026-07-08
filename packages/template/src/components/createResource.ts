@@ -30,8 +30,6 @@ function isAbortError(error: unknown): boolean {
 
 /**
  * Create a resource for async data fetching.
- * Inspired by SolidJS createResource + Vue VueUse useFetch.
- *
  * The fetcher receives an {@link AbortSignal} that is aborted when:
  * - A new fetch is triggered (refetch / concurrent call) — cancels the stale request.
  * - The owning scope is disposed (component unmount) — cancels the in-flight request.
