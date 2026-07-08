@@ -1,6 +1,6 @@
 import { hasChanged } from '@estjs/shared';
 import { ReactiveFlags, SignalFlags } from './constants';
-import { activeSub, linkReactiveNode, propagate } from './system';
+import { activeSub, linkReactiveNode, propagate, shallowPropagate } from './system';
 import { type Signal, SignalImpl, isSignal } from './signal';
 
 /**
@@ -48,6 +48,16 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
     if (sub) {
       linkReactiveNode(this, sub);
     }
+    // Clear the DIRTY flag once observed (mirrors SignalImpl.get value).
+    // Without this a ref stays MUTABLE|DIRTY forever after its first write, so
+    // checkDirty() treats it as perpetually dirty and forces every dependent
+    // computed to recompute on every access.
+    if (this.flag & ReactiveFlags.DIRTY && this.shouldUpdate()) {
+      const subs = this.subLink;
+      if (subs) {
+        shallowPropagate(subs);
+      }
+    }
     // ref just returns the value without reactive wrapping
     return this._value;
   }
@@ -68,6 +78,9 @@ class RefImpl<T> extends SignalImpl<T> implements Ref<T> {
 
     // Only trigger updates if the value has actually changed
     if (hasChanged(this._value, newValue)) {
+      // Record the previous raw value so shouldUpdate() (called from get value)
+      // can confirm the change and clear DIRTY correctly.
+      this._oldValue = this._rawValue;
       this._rawValue = newValue;
       this._value = newValue;
       this.flag |= ReactiveFlags.DIRTY;

@@ -1,7 +1,32 @@
 import { isFunction } from '@estjs/shared';
+import { SignalFlags } from './constants';
 import { isRef } from './ref';
 import { isSignal } from './signal';
-import { type Computed, computed, isComputed } from './computed';
+import { type Computed, isComputed } from './computed';
+import { untrack } from './system';
+
+class ObjectPropertyRef<T extends object, K extends keyof T> implements Computed<T[K]> {
+  readonly [SignalFlags.IS_COMPUTED] = true;
+
+  constructor(
+    private readonly obj: T,
+    private readonly key: K,
+    private readonly defaultValue?: T[K],
+  ) {}
+
+  get value(): T[K] {
+    const value = this.obj[this.key];
+    return value !== undefined ? value : (this.defaultValue as T[K]);
+  }
+
+  set value(value: T[K]) {
+    this.obj[this.key] = value;
+  }
+
+  peek(): T[K] {
+    return untrack(() => this.value);
+  }
+}
 
 // ── unref ────────────────────────────────────────────────────────────────
 
@@ -60,15 +85,7 @@ export function toRef<T extends object, K extends keyof T>(
   key: K,
   defaultValue?: T[K],
 ): Computed<T[K]> {
-  return computed({
-    get: () => {
-      const val = obj[key];
-      return val !== undefined ? val : (defaultValue as T[K]);
-    },
-    set: (v: T[K]) => {
-      obj[key] = v;
-    },
-  });
+  return new ObjectPropertyRef(obj, key, defaultValue);
 }
 
 // ── toRefs ───────────────────────────────────────────────────────────────

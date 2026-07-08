@@ -314,7 +314,15 @@ function createOptionsStore<S extends State, G extends Getters<S>, A extends Act
 
     $reset() {
       commit(() => {
-        Object.assign(reactiveState, cloneInitialState(initState));
+        const fresh = cloneInitialState(initState);
+        // Delete keys added after initialization so $reset is a true reset,
+        // not just an overwrite of the original keys.
+        for (const key of Object.keys(reactiveState)) {
+          if (!Object.prototype.hasOwnProperty.call(fresh, key)) {
+            delete (reactiveState as Record<string, unknown>)[key];
+          }
+        }
+        Object.assign(reactiveState, fresh);
       });
     },
   };

@@ -368,6 +368,36 @@ const arrayHandlers = (shallow: boolean) => ({
     }
     return result;
   },
+  has: (target: any, key: string | symbol) => {
+    const result = Reflect.has(target, key);
+    // Track membership so `key in arr` / index existence checks are reactive.
+    // Skip symbol keys to avoid tracking internal lookups (Symbol.iterator, etc.).
+    if (typeof key !== 'symbol') {
+      if (isStringNumber(key)) {
+        track(target, key);
+      }
+      track(target, ARRAY_KEY);
+    }
+    return result;
+  },
+  deleteProperty: (target: any, key: string | symbol) => {
+    const hadKey = hasOwn(target, key);
+    const result = Reflect.deleteProperty(target, key);
+    if (hadKey && result) {
+      // `delete arr[i]` must notify index, iteration, and whole-array watchers.
+      if (isStringNumber(key)) {
+        trigger(target, TriggerOpTypes.DELETE, [key, ARRAY_ITERATE_KEY, ARRAY_KEY]);
+      } else {
+        trigger(target, TriggerOpTypes.DELETE, key);
+      }
+    }
+    return result;
+  },
+  ownKeys: (target: any) => {
+    // Track array iteration so Object.keys()/for…in re-run when the shape changes.
+    track(target, ARRAY_ITERATE_KEY);
+    return Reflect.ownKeys(target);
+  },
 });
 
 const shallowArrayHandlers = arrayHandlers(true);

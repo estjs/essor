@@ -139,7 +139,10 @@ export function flushJobs(): void {
             'The remaining queued jobs have been dropped to keep the app responsive.',
         );
       }
-      return;
+      // Break (not return) so post-flush callbacks still run — Suspense
+      // onResolved and similar "after-all-effects" hooks must fire even after a
+      // runaway loop is aborted.
+      break;
     }
 
     const jobs = [...queue];

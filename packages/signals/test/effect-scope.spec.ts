@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { computed, effect, effectScope, getCurrentScope, onScopeDispose, signal } from '../src';
 
 describe('effectScope', () => {
@@ -72,5 +72,35 @@ describe('effectScope', () => {
     count.value = 2;
 
     expect(childRuns).toBe(2);
+  });
+
+  it('continues disposing sibling scopes when a child cleanup throws', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const parent = effectScope();
+    let siblingCleanupRuns = 0;
+
+    try {
+      parent.run(() => {
+        const throwingChild = effectScope();
+        throwingChild.run(() => {
+          onScopeDispose(() => {
+            throw new Error('cleanup failed');
+          });
+        });
+
+        const sibling = effectScope();
+        sibling.run(() => {
+          onScopeDispose(() => {
+            siblingCleanupRuns++;
+          });
+        });
+      });
+
+      parent.stop();
+
+      expect(siblingCleanupRuns).toBe(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

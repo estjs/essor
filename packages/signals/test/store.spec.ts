@@ -758,7 +758,7 @@ describe('store - Built-in Methods', () => {
       expect(a.b.c).toBe(99);
     });
 
-    it('should keep extra top-level keys when reset uses Object.assign', () => {
+    it('should remove extra top-level keys added after init on reset', () => {
       const useStore = createStore({
         state: { value: 0 },
       });
@@ -769,8 +769,10 @@ describe('store - Built-in Methods', () => {
 
       store.$reset();
 
+      // $reset restores exactly the initial state — keys added after
+      // initialization must be removed, not merely overwritten.
       expect(store.state.value).toBe(0);
-      expect((store.state as Record<string, unknown>).extra).toBe('kept');
+      expect((store.state as Record<string, unknown>).extra).toBeUndefined();
     });
 
     it('should reset Date values to the initial snapshot', () => {

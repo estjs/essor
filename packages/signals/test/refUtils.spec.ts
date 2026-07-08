@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { computed, effect, reactive, ref, signal, toRef, toRefs, unref } from '../src';
+import { computed, effect, isComputed, reactive, ref, signal, toRef, toRefs, unref } from '../src';
 
 describe('refUtils', () => {
   describe('unref', () => {
@@ -81,6 +81,24 @@ describe('refUtils', () => {
 
       state.count = 3;
       expect(countRef.value).toBe(3);
+    });
+
+    it('keeps the computed marker for compatibility', () => {
+      const state = reactive({ count: 1 });
+      expect(isComputed(toRef(state, 'count'))).toBe(true);
+    });
+
+    it('peek reads the current value without tracking the source property', () => {
+      const state = reactive({ count: 1 });
+      const countRef = toRef(state, 'count');
+      const spy = vi.fn();
+
+      effect(() => spy(countRef.peek()));
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      state.count = 2;
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(countRef.peek()).toBe(2);
     });
   });
 

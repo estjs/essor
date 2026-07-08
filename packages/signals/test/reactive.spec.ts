@@ -837,6 +837,43 @@ describe('reactive Arrays - element identity after non-mutating methods', () => 
     // auto-wrapped — that matches native concat semantics.
   });
 });
+describe('reactive Arrays - has/delete/ownKeys traps', () => {
+  it('re-runs an effect that uses `index in array` when the index is deleted', () => {
+    const state = reactive([1, 2, 3]);
+    const spy = vi.fn(() => 2 in state);
+    effect(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    delete state[2];
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(2 in state).toBe(false);
+  });
+
+  it('triggers effects reading an index when that index is deleted', () => {
+    const state = reactive([10, 20, 30]);
+    const spy = vi.fn(() => state[1]);
+    effect(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    delete state[1];
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(state[1]).toBeUndefined();
+  });
+
+  it('re-runs an effect iterating keys when the array shape changes', () => {
+    const state = reactive([1, 2]);
+    const spy = vi.fn(() => Object.keys(state).length);
+    effect(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    state.push(3);
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(Object.keys(state)).toEqual(['0', '1', '2']);
+  });
+});
 describe('reactive Set with Effects', () => {
   let state: Set<number>;
   let effectFn;

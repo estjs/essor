@@ -1,4 +1,4 @@
-import { warn } from '@estjs/shared';
+import { error, warn } from '@estjs/shared';
 
 export interface ScopedReactiveEffect {
   stop(): void;
@@ -112,34 +112,47 @@ export class EffectScope {
 
     this._state = ScopeState.Disposed;
 
-    // Snapshot before clearing to avoid mutation during iteration
-    for (const scope of this.scopes) {
-      scope.stop(true);
-    }
-    this.scopes.clear();
+    try {
+      // Snapshot before clearing to avoid mutation during iteration
+      for (const scope of this.scopes) {
+        try {
+          scope.stop(true);
+        } catch (error_) {
+          if (__DEV__) error('[EffectScope] child scope disposal threw:', error_);
+        }
+      }
+      this.scopes.clear();
 
-    // Snapshot effects before clearing — some stop() implementations may
-    // call _remove() which would otherwise mutate the Set mid-iteration.
-    const effects = Array.from(this.effects);
-    this.effects.clear();
-    for (const effect of effects) {
-      effect.stop();
-    }
+      // Snapshot effects before clearing — some stop() implementations may
+      // call _remove() which would otherwise mutate the Set mid-iteration.
+      const effects = Array.from(this.effects);
+      this.effects.clear();
+      for (const effect of effects) {
+        try {
+          effect.stop();
+        } catch (error_) {
+          if (__DEV__) error('[EffectScope] effect disposal threw:', error_);
+        }
+      }
 
-    for (let i = 0; i < this.cleanups.length; i++) {
-      this.cleanups[i]();
+      for (let i = 0; i < this.cleanups.length; i++) {
+        try {
+          this.cleanups[i]();
+        } catch (error_) {
+          if (__DEV__) error('[EffectScope] cleanup threw:', error_);
+        }
+      }
+      this.cleanups.length = 0;
+    } finally {
+      // Always detach from the parent and drop the parent reference, even if a
+      // disposal step above threw — otherwise a disposed scope would remain
+      // pinned in its parent's set and leak its ancestor chain.
+      if (!fromParent && this.parent) {
+        // O(1) Set.delete instead of O(n) indexOf+splice
+        this.parent.scopes.delete(this);
+      }
+      this.parent = undefined;
     }
-    this.cleanups.length = 0;
-
-    if (!fromParent && this.parent) {
-      // O(1) Set.delete instead of O(n) indexOf+splice
-      this.parent.scopes.delete(this);
-    }
-
-    // Drop the parent reference so a disposed scope doesn't pin its ancestor
-    // chain alive through closures. The effects/scopes Sets and cleanups array
-    // were already cleared above.
-    this.parent = undefined;
   }
 
   _record(effect: ScopedReactiveEffect): void {

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { isRef, ref } from '../src/ref';
 import { effect } from '../src/effect';
 import { signal } from '../src/signal';
+import { ReactiveFlags } from '../src/constants';
 
 describe('ref', () => {
   it('should create a ref with initial value', () => {
@@ -96,5 +97,28 @@ describe('ref', () => {
     // @ts-ignore
     r.value = ref(3);
     expect(r.value).toBe(3);
+  });
+
+  it('clears its DIRTY flag once read so dependents are not forced to recompute', () => {
+    // Regression (F8): RefImpl.get value used to skip DIRTY clearing, leaving a
+    // ref MUTABLE|DIRTY forever after its first write. checkDirty() then treated
+    // it as perpetually dirty and forced dependent computeds to recompute even
+    // when nothing relevant changed.
+    const r = ref(1);
+    // Freshly created (no write yet): not dirty.
+    expect((r as any).flag & ReactiveFlags.DIRTY).toBe(0);
+
+    r.value = 2;
+    // A write sets DIRTY so pending dependents are validated.
+    expect((r as any).flag & ReactiveFlags.DIRTY).toBe(ReactiveFlags.DIRTY);
+
+    // Reading the ref must clear DIRTY again — otherwise it stays dirty forever.
+    void r.value;
+    expect((r as any).flag & ReactiveFlags.DIRTY).toBe(0);
+
+    // Writing the same value must not re-dirty it.
+    r.value = 2;
+    void r.value;
+    expect((r as any).flag & ReactiveFlags.DIRTY).toBe(0);
   });
 });

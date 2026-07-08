@@ -436,6 +436,19 @@ export function isValidLink(checkLink: Link, sub: ReactiveNode): boolean {
 
 const targetMap = new WeakMap<object, Map<string | symbol, Dep>>();
 let triggerVersion = 0;
+const triggerEffects: ReactiveNode[] = [];
+let triggerDepth = 0;
+
+function startTriggerEffects(): ReactiveNode[] {
+  const effects = triggerDepth === 0 ? triggerEffects : [];
+  triggerDepth++;
+  return effects;
+}
+
+function endTriggerEffects(effects: ReactiveNode[]): void {
+  effects.length = 0;
+  triggerDepth--;
+}
 
 function collectTriggeredEffects(
   dep: Dep | undefined,
@@ -487,43 +500,47 @@ export function trigger(
     return;
   }
 
-  const effects: ReactiveNode[] = [];
+  const effects = startTriggerEffects();
   const version = ++triggerVersion;
 
-  if (key !== undefined) {
-    if (isArray(key)) {
-      for (const element of key) {
-        collectTriggeredEffects(depsMap.get(element), effects, version);
-      }
-    } else {
-      collectTriggeredEffects(depsMap.get(key), effects, version);
-    }
-  }
-
-  if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
-    const iterationKey = isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
-    collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
-  }
-
-  for (const effect of effects) {
-    if (__DEV__ && isFunction(effect.onTrigger)) {
-      effect.onTrigger({
-        effect,
-        target,
-        type,
-        key,
-        newValue,
-      });
-    }
-
-    if (effect.flag & ReactiveFlags.WATCHING) {
-      (effect as Effect).notify?.();
-    } else if (effect.flag & ReactiveFlags.MUTABLE) {
-      effect.flag |= ReactiveFlags.DIRTY;
-      if (effect.subLink) {
-        propagate(effect.subLink);
+  try {
+    if (key !== undefined) {
+      if (isArray(key)) {
+        for (const element of key) {
+          collectTriggeredEffects(depsMap.get(element), effects, version);
+        }
+      } else {
+        collectTriggeredEffects(depsMap.get(key), effects, version);
       }
     }
+
+    if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
+      const iterationKey = isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
+      collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
+    }
+
+    for (const effect of effects) {
+      if (__DEV__ && isFunction(effect.onTrigger)) {
+        effect.onTrigger({
+          effect,
+          target,
+          type,
+          key,
+          newValue,
+        });
+      }
+
+      if (effect.flag & ReactiveFlags.WATCHING) {
+        (effect as Effect).notify?.();
+      } else if (effect.flag & ReactiveFlags.MUTABLE) {
+        effect.flag |= ReactiveFlags.DIRTY;
+        if (effect.subLink) {
+          propagate(effect.subLink);
+        }
+      }
+    }
+  } finally {
+    endTriggerEffects(effects);
   }
 }
 
@@ -567,11 +584,12 @@ export function trackNode(node: ReactiveNode): void {
  * makes reactive-object derivations glitch-free even in the mixed
  * "direct-effect + computed on the same property" case.
  *
- * Iteration safety: effects run synchronously via notify(), so a subscriber's
- * re-run can mutate this chain mid-loop. That is safe here because
- * unlinkReactiveNode() never nulls a removed link's own nextSubLink — the
- * cursor always has a valid forward pointer even after it (or a neighbor) is
- * unlinked. The caller marks nothing; DIRTY is set on subscribers here.
+ * Iteration safety: effects run synchronously via notify(), and a subscriber's
+ * re-run can unlink/relink nodes in this exact subLink chain mid-iteration
+ * (endTracking → unlinkReactiveNode). Walking the live chain would risk skipping
+ * or revisiting links, so we snapshot subscribers into an array first — with the
+ * same _triggerVersion dedup used by collectTriggeredEffects — then notify from
+ * the stable snapshot. The caller marks nothing; DIRTY is set on subscribers here.
  *
  * Used by ReactiveProperty for per-property signal granularity.
  *
@@ -581,16 +599,32 @@ export function triggerNode(node: ReactiveNode): void {
   const link = node.subLink;
   if (!link) return;
 
-  for (let current: Link | undefined = link; current; current = current.nextSubLink) {
-    const effect = current.subNode;
+  // Snapshot before notifying so synchronous effect re-runs can freely mutate
+  // this subLink chain without corrupting the iteration.
+  const effects = startTriggerEffects();
+  const version = ++triggerVersion;
 
-    if (effect.flag & ReactiveFlags.WATCHING) {
-      (effect as Effect).notify?.();
-    } else if (effect.flag & ReactiveFlags.MUTABLE) {
-      effect.flag |= ReactiveFlags.DIRTY;
-      if (effect.subLink) {
-        propagate(effect.subLink);
+  try {
+    for (let current: Link | undefined = link; current; current = current.nextSubLink) {
+      const effect = current.subNode;
+      if (effect._triggerVersion === version) {
+        continue;
+      }
+      effect._triggerVersion = version;
+      effects.push(effect);
+    }
+
+    for (const effect of effects) {
+      if (effect.flag & ReactiveFlags.WATCHING) {
+        (effect as Effect).notify?.();
+      } else if (effect.flag & ReactiveFlags.MUTABLE) {
+        effect.flag |= ReactiveFlags.DIRTY;
+        if (effect.subLink) {
+          propagate(effect.subLink);
+        }
       }
     }
+  } finally {
+    endTriggerEffects(effects);
   }
 }
