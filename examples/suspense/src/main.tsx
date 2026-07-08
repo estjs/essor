@@ -14,14 +14,36 @@ const timelines: Record<Workspace, string[]> = {
   gamma: ['Gamma publish', 'Gamma handoff'],
 };
 
-function waitFor<T>(value: T, delay: number) {
-  return new Promise<T>((resolve) => {
-    setTimeout(() => resolve(value), delay);
+function waitFor<T>(value: T, delay: number, signal: AbortSignal) {
+  return new Promise<T>((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+
+    let timer: ReturnType<typeof setTimeout>;
+
+    function cleanup() {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+    }
+
+    function onAbort() {
+      cleanup();
+      reject(new DOMException('Aborted', 'AbortError'));
+    }
+
+    timer = setTimeout(() => {
+      cleanup();
+      resolve(value);
+    }, delay);
+
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 }
 
 function ProfileCard({ view }: { view: Workspace }) {
-  const [profile] = createResource(() => waitFor(profiles[view], 120));
+  const [profile] = createResource((signal) => waitFor(profiles[view], 500, signal));
 
   return (
     <div class="box stack" data-test="profile-card">
@@ -32,7 +54,7 @@ function ProfileCard({ view }: { view: Workspace }) {
 }
 
 function TimelineCard({ view }: { view: Workspace }) {
-  const [items] = createResource(() => waitFor(timelines[view], 180));
+  const [items] = createResource((signal) => waitFor(timelines[view], 750, signal));
 
   return (
     <div class="box stack">

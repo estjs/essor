@@ -251,19 +251,19 @@ function AsyncPage() {
 
 ```ts
 function createResource<T>(
-  source: () => any,
-  fetcher: (sourceValue: any) => Promise<T>
-): Resource<T>;
+  fetcher: (signal: AbortSignal) => Promise<T>,
+  options?: { initialValue?: T }
+): [Resource<T>, ResourceActions<T>];
 ```
 
 ### 返回值
 
-- `value` — 包含解析后数据的 signal
-- `loading` — 表示是否正在加载的 signal
-- `error` — 包含请求错误的 signal（如果有）
-- `state` — 当前状态的 signal（`'pending' | 'ready' | 'error'`）
-- `mutate` — 手动更新数据的函数
-- `refetch` — 重新发起请求的函数
+- `resource()` — 读取当前值的访问器（`T | undefined`）
+- `resource.loading` — 表示是否正在加载的 signal
+- `resource.error` — 包含请求错误的 signal（如果有）
+- `resource.state` — 当前状态的 signal（`'pending' | 'ready' | 'errored'`）
+- `actions.mutate(value)` — 手动更新数据的函数
+- `actions.refetch()` — 重新发起请求的函数
 
 ### 示例
 
@@ -271,21 +271,23 @@ function createResource<T>(
 import { createResource } from '@estjs/template';
 
 function UserProfile({ userId }) {
-  const user = createResource(() => userId, async (id) => {
-    const res = await fetch(`/api/users/${id}`);
+  const [user, { refetch }] = createResource(async (signal) => {
+    const res = await fetch(`/api/users/${userId}`, { signal });
+    if (!res.ok) throw new Error('Failed to load user');
     return res.json();
   });
 
   return (
     <div>
-      {user.loading() ? (
+      {user.loading.value ? (
         <p>Loading...</p>
-      ) : user.error() ? (
-        <p>Error: {user.error().message}</p>
+      ) : user.error.value ? (
+        <p>Error: {user.error.value.message}</p>
       ) : (
         <div>
-          <h1>{user.value().name}</h1>
-          <p>{user.value().email}</p>
+          <h1>{user()?.name}</h1>
+          <p>{user()?.email}</p>
+          <button onClick={refetch}>Refresh</button>
         </div>
       )}
     </div>
@@ -293,27 +295,34 @@ function UserProfile({ userId }) {
 }
 ```
 
+fetcher 会收到一个 `AbortSignal`。把它传给 `fetch` 或其他可取消 API，这样资源重新获取或组件卸载时，过期请求会被取消。
+
 ### 手动刷新
 
 ```tsx
-<button onClick={() => user.refetch()}>Refresh</button>
+<button onClick={() => refetch()}>Refresh</button>
 ```
 
 ### 手动修改
 
 ```tsx
-user.mutate({ name: 'New Name', email: 'new@example.com' });
+const [, { mutate }] = createResource(fetcher);
+
+mutate({ name: 'New Name', email: 'new@example.com' });
 ```
 
 ## 类型定义
 
 ```ts
 interface Resource<T> {
-  value: () => T;
-  loading: () => boolean;
-  error: () => any;
-  state: () => 'pending' | 'ready' | 'error';
+  (): T | undefined;
+  loading: Signal<boolean>;
+  error: Signal<Error | null>;
+  state: Signal<'pending' | 'ready' | 'errored'>;
+}
+
+interface ResourceActions<T> {
   mutate: (value: T) => void;
-  refetch: () => void;
+  refetch: () => Promise<void>;
 }
 ```

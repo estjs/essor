@@ -33,8 +33,9 @@ Suspense 与 `createResource` 天然配合 —— 资源会把待处理的 Promi
 import { Suspense, createResource } from '@estjs/template';
 
 function UserProfile({ userId }: { userId: string }) {
-  const [user] = createResource(async () => {
-    const res = await fetch(`/api/users/${userId}`);
+  const [user] = createResource(async (signal) => {
+    const res = await fetch(`/api/users/${userId}`, { signal });
+    if (!res.ok) throw new Error('Failed to load user');
     return res.json();
   });
 
@@ -58,7 +59,7 @@ function App() {
 }
 ```
 
-`createResource` 返回 `[resource, actions]` 元组。`resource` 是可调用的 —— `user()` 返回当前值（pending 时为 `undefined`）。同时还能拿到 `actions.refetch()` 与 `actions.mutate(value)`。
+`createResource` 返回 `[resource, actions]` 元组。`resource` 是可调用的 —— `user()` 返回当前值（pending 时为 `undefined`）。同时还能拿到 `actions.refetch()` 与 `actions.mutate(value)`。把框架传入的 `AbortSignal` 传给 `fetch`，可以在 refetch 或组件卸载时取消过期请求。
 
 ## 嵌套 Suspense
 

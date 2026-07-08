@@ -5,6 +5,20 @@ toc: false
 docClass: timeline
 ---
 
+## Unreleased
+
+### Bug Fixes
+
+* **babel-plugin:** preserve component prop/spread override order, avoid rewriting non-transformed `$` bindings, and normalize nested static style objects before template serialization
+* **server:** drop unsafe SSR attribute names, escape dynamic class/style output, and serialize nested style collections consistently with the client
+* **shared:** tighten plain-object detection and recursively normalize nested style collections
+* **signals:** harden effect-scope disposal, snapshot trigger subscribers during synchronous re-runs, clear dirty refs after reads, make array delete/key iteration reactive, and reset stores back to their exact initial shape
+* **template:** harden async component retry/timeout settling, Suspense stale promise/release handling, AbortError settling, failed mount cleanup, hydration of empty text nodes, primitive text patching, checkbox-array binding, boolean form-property sync, multi-root component events, `For` duplicate-key warnings, and bubbled transition-end handling
+
+### Documentation
+
+* **resources:** align English and Chinese `createResource` docs, streaming examples, and the Suspense example with the current AbortSignal-based API
+
 ## [0.0.17-beta.6](https://github.com/estjs/essor/compare/v0.0.17-beta.5...v0.0.17-beta.6) `2026-06-21`
 
 
