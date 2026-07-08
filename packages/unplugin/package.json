@@ -120,17 +120,17 @@
     "@babel/core": "^8.0.1",
     "@estjs/shared": "workspace:*",
     "babel-plugin-essor": "workspace:*",
-    "unplugin": "^3.2.0"
+    "unplugin": "^3.3.0"
   },
   "devDependencies": {
-    "@rspack/cli": "^2.0.8",
-    "@rspack/core": "^2.0.8",
-    "@types/node": "^26.0.0",
+    "@rspack/cli": "^2.1.2",
+    "@rspack/core": "^2.1.2",
+    "@types/node": "^26.1.0",
     "essor": "workspace:*",
     "rollup": "^4.62.2",
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
-    "vite": "^8.0.16"
+    "vite": "^8.1.3"
   },
   "engines": {
     "node": "^22.18.0 || >=24.11.0"

@@ -53,6 +53,6 @@
     "@estjs/template": "workspace:*"
   },
   "devDependencies": {
-    "@types/node": "^26.0.0"
+    "@types/node": "^26.1.0"
   }
 }
