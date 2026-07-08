@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.0",
     "unplugin-essor": "workspace:*",
     "vite": "^8.1.3"
   }
