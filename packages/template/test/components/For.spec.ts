@@ -144,6 +144,34 @@ describe('for component', () => {
     ]);
   });
 
+  it('warns in dev when keyed rows contain duplicate keys', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const items = signal([
+      { id: 'a', label: 'A1' },
+      { id: 'a', label: 'A2' },
+    ]);
+
+    scope = mount(
+      () =>
+        For({
+          each: items,
+          key: (item) => item.id,
+          children: (item) => {
+            const div = document.createElement('div');
+            div.textContent = item.label;
+            return div;
+          },
+        }),
+      container,
+    );
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[Essor warn]: [For] duplicate key "a" detected. Duplicate keys may cause rows to remount or lose state.',
+    );
+
+    warnSpy.mockRestore();
+  });
+
   it('refreshes row content when key is stable but item object changes', async () => {
     // With keyed reconciliation, the same key == same logical row, so the
     // DOM node and its owning scope are preserved across updates. Row

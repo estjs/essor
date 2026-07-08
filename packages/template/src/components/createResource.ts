@@ -22,6 +22,12 @@ export interface ResourceOptions<T> {
   initialValue?: T;
 }
 
+function isAbortError(error: unknown): boolean {
+  return (
+    !!error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError'
+  );
+}
+
 /**
  * Create a resource for async data fetching.
  * Inspired by SolidJS createResource + Vue VueUse useFetch.
@@ -96,7 +102,7 @@ export function createResource<T>(
       if (id !== fetchId) return;
 
       // AbortError is expected during cleanup / refetch, not a real error
-      if (error_ instanceof DOMException && error_.name === 'AbortError') {
+      if (isAbortError(error_)) {
         // If still the active fetch, just reset loading state
         loading.value = false;
         return;

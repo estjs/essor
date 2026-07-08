@@ -177,7 +177,10 @@ export function whenTransitionEnds(
     el.removeEventListener(info.event, onEnd);
     resolve();
   };
-  const onEnd = (): void => finish();
+  const onEnd = (event: Event): void => {
+    if (event.target !== el) return;
+    finish();
+  };
   el.addEventListener(info.event, onEnd);
   const timer = setTimeout(finish, info.timeout + 1);
   return () => {

@@ -180,8 +180,9 @@ export class Component<P extends ComponentProps = {}> {
    */
   private syncSpecialProps(props: P): void {
     if (!props) return;
-    const root = this.firstChild;
-    if (!root || !(root instanceof Element)) return;
+    const roots = this.getRootElements();
+    if (roots.length === 0) return;
+    const refRoot = roots[0];
 
     this.releaseSpecialProps();
 
@@ -190,7 +191,7 @@ export class Component<P extends ComponentProps = {}> {
 
       if (key === REF_KEY) {
         const value = readDescriptorValue(props, key);
-        this.rootRefCleanup = this.bindRootRef(value, root);
+        this.rootRefCleanup = this.bindRootRef(value, refRoot);
         continue;
       }
 
@@ -198,13 +199,19 @@ export class Component<P extends ComponentProps = {}> {
         const value = readDescriptorValue(props, key);
         if (!isFunction(value)) continue;
         const eventName = key.slice(2).toLowerCase();
-        this.bindRootEvent(
-          root as RootEventTarget,
-          eventName,
-          value as (this: Element, event: Event) => unknown,
-        );
+        for (const root of roots) {
+          this.bindRootEvent(root, eventName, value as (this: Element, event: Event) => unknown);
+        }
       }
     }
+  }
+
+  private getRootElements(): RootEventTarget[] {
+    const roots: RootEventTarget[] = [];
+    for (const node of this.renderedNodes) {
+      if (node instanceof Element) roots.push(node as RootEventTarget);
+    }
+    return roots;
   }
 
   private bindRootEvent(

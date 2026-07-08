@@ -43,6 +43,7 @@ const EMPTY_FILES = ((): FileList => {
   if (typeof DataTransfer !== 'undefined') return new DataTransfer().files;
   return [] as unknown as FileList;
 })();
+const checkboxArraySnapshots = new WeakMap<unknown[], unknown[]>();
 
 /** Compare-then-assign for string-coercible `.value` properties. */
 function writeValue(el: Element, v: unknown): void {
@@ -225,10 +226,14 @@ export function bindElement(
   const computeNext: (raw: unknown) => unknown = checkboxArray
     ? (raw) => {
         const current = getModel();
-        if (!isArray(current)) return cast(raw);
+        if (!isArray(current)) {
+          return cast(raw);
+        }
         const own = (node as HTMLInputElement).value;
-        const next = current.filter((item) => String(item) !== own);
+        const source = checkboxArraySnapshots.get(current) ?? current;
+        const next = source.filter((item) => String(item) !== own);
         if (raw) next.push(own);
+        checkboxArraySnapshots.set(current, next);
         return next;
       }
     : cast;
@@ -270,6 +275,9 @@ export function bindElement(
   // (b) the focused input already shows the canonical value (avoids caret jump).
   const runner = effect(() => {
     const value = getModel();
+    if (checkboxArray) {
+      if (isArray(value)) checkboxArraySnapshots.set(value, [...value]);
+    }
     if (ime && composing) return;
     if (ime && !lazy && isFocused(node) && Object.is(cast(read(node)), value)) return;
     write(node, value);

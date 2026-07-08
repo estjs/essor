@@ -137,6 +137,31 @@ describe('attributes module', () => {
         patchAttr(element, 'SpecialBooleanAtt', '', null);
         expect(element.getAttribute('SpecialBooleanAtt')).toBeNull();
       });
+
+      it('should sync boolean attributes to form control properties', () => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+
+        input.checked = false;
+        patchAttr(input, 'checked', null, true);
+        expect(input.hasAttribute('checked')).toBe(true);
+        expect(input.checked).toBe(true);
+
+        input.checked = true;
+        patchAttr(input, 'checked', true, false);
+        expect(input.hasAttribute('checked')).toBe(false);
+        expect(input.checked).toBe(false);
+      });
+
+      it('should clear property-only boolean form state when removed', () => {
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+
+        input.indeterminate = true;
+        patchAttr(input, 'indeterminate', true, null);
+
+        expect(input.indeterminate).toBe(false);
+      });
     });
 
     describe('data attributes', () => {

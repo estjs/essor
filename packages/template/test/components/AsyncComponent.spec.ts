@@ -521,6 +521,73 @@ describe('defineAsyncComponent', () => {
       expect(container.textContent).toContain('Fresh retry load');
       expect(container.textContent).not.toContain('Stale first load');
     });
+
+    it('settles sibling instances that were waiting on a stale load after timeout retry', async () => {
+      const secondContainer = document.createElement('div');
+      document.body.appendChild(secondContainer);
+
+      try {
+        let latestRetry: (() => void) | undefined;
+        const resolvers: Array<(component: () => Node) => void> = [];
+        const loader = vi.fn(
+          () =>
+            new Promise<() => Node>((resolve) => {
+              resolvers.push(resolve);
+            }),
+        );
+        const loading = () => {
+          const el = document.createElement('div');
+          el.className = 'retry-loading';
+          el.textContent = 'Loading';
+          return el;
+        };
+        const error = ({ retry }: { error: Error; retry: () => void }) => {
+          latestRetry = retry;
+          const el = document.createElement('button');
+          el.className = 'timeout-retry';
+          return el;
+        };
+
+        const Async = defineAsyncComponent(loader, {
+          loading,
+          error,
+          delay: 0,
+          timeout: 100,
+        });
+
+        mount(() => createComponent(Async), container);
+        mount(() => createComponent(Async), secondContainer);
+
+        await vi.advanceTimersByTimeAsync(150);
+        expect(latestRetry).toBeTypeOf('function');
+
+        latestRetry!();
+        expect(loader).toHaveBeenCalledTimes(2);
+
+        resolvers[0](() => {
+          const el = document.createElement('span');
+          el.textContent = 'Stale first load';
+          return el;
+        });
+        await vi.runAllTimersAsync();
+
+        expect(container.textContent).not.toContain('Stale first load');
+        expect(secondContainer.textContent).not.toContain('Stale first load');
+        expect(secondContainer.querySelector('.retry-loading')).not.toBeNull();
+
+        resolvers[1](() => {
+          const el = document.createElement('span');
+          el.textContent = 'Fresh retry load';
+          return el;
+        });
+        await vi.runAllTimersAsync();
+
+        expect(container.textContent).toContain('Fresh retry load');
+        expect(secondContainer.textContent).toContain('Fresh retry load');
+      } finally {
+        document.body.removeChild(secondContainer);
+      }
+    });
   });
 
   // ── Suspense integration ──────────────────────────────────────────────────

@@ -1,7 +1,6 @@
-import { coerceArray, error, hasOwn, isFunction, isObject, isPrimitive, warn } from '@estjs/shared';
+import { coerceArray, error, isFunction, isObject, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { isComponent } from './component';
-import { KEY_PROP } from './constants';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
 import { claimHydratedNodes, isHydrating } from './hydration';
 import { reconcileArrays } from './reconcile';
@@ -76,72 +75,6 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
     : (oldNode as Node).nextSibling!;
   removeNode(oldNode);
   insertNode(parent, newNode, beforeNode);
-}
-
-/**
- * Check if two nodes are the same (inline for performance)
- * This combines key check and type check
- */
-export function isSameNode(a: AnyNode, b: AnyNode): boolean {
-  // Check key equality first (fast path)
-  const keyA = getNodeKey(a);
-  const keyB = getNodeKey(b);
-
-  if (keyA !== keyB) {
-    return false;
-  }
-
-  // Inline type check to avoid function call
-  const aIsComponent = isComponent(a);
-  const bIsComponent = isComponent(b);
-
-  if (aIsComponent && bIsComponent) {
-    return a.component === b.component;
-  }
-
-  if (aIsComponent !== bIsComponent) {
-    return false;
-  }
-
-  if (isPrimitive(a) || isPrimitive(b)) {
-    return a === b;
-  }
-
-  const aNode = a as Node;
-  const bNode = b as Node;
-
-  if (aNode.nodeType !== bNode.nodeType) {
-    return false;
-  }
-
-  if (aNode.nodeType === Node.ELEMENT_NODE) {
-    return (aNode as Element).tagName === (bNode as Element).tagName;
-  }
-
-  return true;
-}
-
-/**
- * Extract the optional stable key associated with a runtime node.
- */
-function getNodeKey(node: AnyNode): unknown {
-  if (!node) {
-    return undefined;
-  }
-
-  if (isComponent(node)) {
-    return hasOwn(node.props, KEY_PROP) ? node.props[KEY_PROP] : undefined;
-  }
-
-  if (node instanceof Element) {
-    return node.getAttribute(KEY_PROP);
-  }
-
-  if (isObject(node) && hasOwn(node, KEY_PROP)) {
-    return Reflect.get(node as object, KEY_PROP);
-  }
-
-  return undefined;
 }
 
 /**
@@ -226,6 +159,13 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
   const effectRunner = effect(() => {
     const executeUpdate = () => {
       const rawNodes = isFunction(nodeFactory) ? nodeFactory() : nodeFactory;
+      const rawType = typeof rawNodes;
+      const canPatchText =
+        rawNodes == null ||
+        rawType === 'string' ||
+        rawType === 'number' ||
+        rawType === 'boolean' ||
+        rawType === 'symbol';
       const nodes = resolveNodes(rawNodes);
       // Hydration mode: skip DOM operations on first run only when every
       // node already exists under the target parent. Component instances and
@@ -246,6 +186,19 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
           isFirstRun = false;
           return;
         }
+      }
+      if (
+        canPatchText &&
+        renderedNodes.length === 1 &&
+        nodes.length === 1 &&
+        renderedNodes[0].nodeType === Node.TEXT_NODE &&
+        nodes[0].nodeType === Node.TEXT_NODE
+      ) {
+        const current = renderedNodes[0];
+        const nextText = nodes[0].textContent;
+        if (current.textContent !== nextText) current.textContent = nextText;
+        isFirstRun = false;
+        return;
       }
       renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
       isFirstRun = false;

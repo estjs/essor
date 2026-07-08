@@ -251,6 +251,53 @@ describe('transition enter flow', () => {
     popContextStack();
     cleanupContext(ctx);
   });
+
+  it('ignores transitionend events bubbled from descendant elements', async () => {
+    const show = signal(false);
+    const afterEnter = vi.fn();
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const anchor = Transition({
+      name: 'fade',
+      onAfterEnter: afterEnter,
+      children: () => {
+        if (!show.value) return undefined;
+        const el = document.createElement('div');
+        el.className = 'box';
+        el.style.transitionDuration = '100ms';
+        el.style.transitionDelay = '0ms';
+        const child = document.createElement('span');
+        child.className = 'child';
+        el.appendChild(child);
+        return el;
+      },
+    });
+    container.appendChild(anchor);
+    flushMount(ctx);
+
+    show.value = true;
+    await Promise.resolve();
+    await rafTick();
+    await rafTick();
+
+    const el = container.querySelector('.box') as HTMLElement;
+    const child = container.querySelector('.child') as HTMLElement;
+
+    child.dispatchEvent(new Event('transitionend', { bubbles: true }));
+
+    expect(afterEnter).not.toHaveBeenCalled();
+    expect(el.classList.contains('fade-enter-active')).toBe(true);
+    expect(el.classList.contains('fade-enter-to')).toBe(true);
+
+    el.dispatchEvent(new Event('transitionend'));
+
+    expect(afterEnter).toHaveBeenCalledTimes(1);
+    expect(el.classList.contains('fade-enter-active')).toBe(false);
+    expect(el.classList.contains('fade-enter-to')).toBe(false);
+
+    popContextStack();
+    cleanupContext(ctx);
+  });
 });
 
 describe('transition leave flow', () => {

@@ -32,6 +32,26 @@ export type AttrValue = string | boolean | number | null | undefined | Record<st
 const DANGEROUS_DATA_MIME_RE =
   /^data:\s*(?:text\/html|text\/xml|application\/xhtml\+xml|image\/svg\+xml|application\/xml)/;
 
+const BOOLEAN_PROPERTY_ALIASES: Record<string, string> = {
+  allowfullscreen: 'allowFullscreen',
+  formnovalidate: 'formNoValidate',
+  ismap: 'isMap',
+  nomodule: 'noModule',
+  novalidate: 'noValidate',
+  readonly: 'readOnly',
+};
+
+function syncBooleanProperty(el: Element, key: string, value: boolean): void {
+  if (el.namespaceURI === SVG_NAMESPACE) return;
+  const prop = BOOLEAN_PROPERTY_ALIASES[key.toLowerCase()] ?? key;
+  if (!(prop in el) || typeof el[prop] !== 'boolean') return;
+  try {
+    el[prop] = value;
+  } catch {
+    /* read-only DOM property */
+  }
+}
+
 /**
  * Returns true when a URL-bearing attribute value uses a protocol/payload that
  * could execute script in the document.
@@ -158,15 +178,20 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     } else {
       el.removeAttribute(key);
     }
+    if (isBoolean || lowerKey === 'indeterminate') {
+      syncBooleanProperty(el, key, false);
+    }
     return;
   }
 
   if (isBoolean) {
-    if (includeBooleanAttr(next)) {
+    const included = includeBooleanAttr(next);
+    if (included) {
       el.setAttribute(key, '');
     } else {
       el.removeAttribute(key);
     }
+    syncBooleanProperty(el, key, included);
     return;
   }
 

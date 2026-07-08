@@ -165,5 +165,36 @@ describe('hydration utilities', () => {
 
       endHydration();
     });
+
+    it('claims empty text nodes inside browser-merged adjacent text', () => {
+      const root = document.createElement('div');
+      document.body.appendChild(root);
+
+      const merged = document.createTextNode('HelloWorld');
+      root.appendChild(merged);
+
+      beginHydration(root);
+
+      const expected = [
+        document.createTextNode(''),
+        document.createTextNode('Hello'),
+        document.createTextNode(''),
+        document.createTextNode('World'),
+      ];
+
+      const claimed = claimHydratedNodes(root, expected, undefined);
+
+      expect(claimed).not.toBeNull();
+      expect(claimed).toHaveLength(4);
+      expect(claimed!.map((node) => node.textContent)).toEqual(['', 'Hello', '', 'World']);
+      expect([...root.childNodes].map((node) => node.textContent)).toEqual([
+        '',
+        'Hello',
+        '',
+        'World',
+      ]);
+
+      endHydration();
+    });
   });
 });

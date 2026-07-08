@@ -56,7 +56,11 @@ function eventHandler(e: Event): void {
    * Walk up the DOM tree handling events
    */
   const walkUpTree = (): void => {
-    while (handleNode() && (node = node._$host || node.parentNode || node.host));
+    while (handleNode() && (node = node._$host || node.parentNode || node.host)) {
+      // Don't process above the delegation root (mirrors the composedPath
+      // branch's `node.parentNode === oriCurrentTarget` guard).
+      if (node === oriCurrentTarget) break;
+    }
   };
 
   // simulate currentTarget
@@ -70,27 +74,33 @@ function eventHandler(e: Event): void {
     },
   });
 
-  if (e.composedPath) {
-    const path = e.composedPath();
-    reTargetEvent(e, path[0]);
-    for (let i = 0; i < path.length - 2; i++) {
-      node = path[i] as any;
-      if (!handleNode()) break;
-      if (node._$host) {
-        node = node._$host;
-        // bubble up from portal mount instead of composedPath
-        walkUpTree();
-        break;
-      }
-      if (node.parentNode === oriCurrentTarget) {
-        break; // don't bubble above root of event delegation
+  try {
+    if (e.composedPath) {
+      const path = e.composedPath();
+      reTargetEvent(e, path[0]);
+      for (let i = 0; i < path.length - 2; i++) {
+        node = path[i] as any;
+        if (!handleNode()) break;
+        if (node._$host) {
+          node = node._$host;
+          // bubble up from portal mount instead of composedPath
+          walkUpTree();
+          break;
+        }
+        if (node.parentNode === oriCurrentTarget) {
+          break; // don't bubble above root of event delegation
+        }
       }
     }
+    // fallback for browsers that don't support composedPath
+    else walkUpTree();
+  } finally {
+    // Always restore the original target, even if a handler threw — otherwise
+    // e.target stays pointing at the delegated node and corrupts every later
+    // listener that reads e.target. Mixing portals and shadow DOM can also lead
+    // to a nonstandard target, so reset here unconditionally.
+    reTargetEvent(e, oriTarget!);
   }
-  // fallback for browsers that don't support composedPath
-  else walkUpTree();
-  // Mixing portals and shadow dom can lead to a nonstandard target, so reset here.
-  reTargetEvent(e, oriTarget!);
 }
 
 /**

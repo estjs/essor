@@ -2,6 +2,7 @@ import { isArray, isBrowser, isFunction, isPromise, warn } from '@estjs/shared';
 import { isComputed, isSignal } from '@estjs/signals';
 import { provide } from '../provide';
 import { createScope, disposeScope, getActiveScope, onCleanup, runWithScope } from '../scope';
+import { onUpdate } from '../lifecycle';
 import { insert } from '../dom';
 import { SUSPENSE_COMPONENT } from '../constants';
 import type { AnyNode } from '../types';
@@ -42,9 +43,15 @@ export interface SuspenseProps {
 export const SuspenseContext = Symbol('SuspenseContext');
 
 export interface SuspenseContextType {
-  register: (promise: Promise<any>) => void;
-  increment: () => void;
+  register: (promise: Promise<any>) => () => void;
+  increment: () => () => void;
   decrement: () => void;
+}
+
+function isAbortError(error: unknown): boolean {
+  return (
+    !!error && typeof error === 'object' && (error as { name?: unknown }).name === 'AbortError'
+  );
 }
 
 /**
@@ -79,6 +86,8 @@ export function Suspense(props: SuspenseProps): Node {
   let mounted = true;
   let pending = 0;
   let mounting = false;
+  let boundaryVersion = 0;
+  let currentChildren: SuspenseProps['children'] | null = null;
 
   // Content: a child scope + its nodes live between `start` and `end` in the
   // fragment. When fallback is shown, the nodes move to `parked`.
@@ -89,6 +98,10 @@ export function Suspense(props: SuspenseProps): Node {
   let fallbackScope: ReturnType<typeof createScope> | null = null;
 
   let resolved: AnyNode | AnyNode[] | null = null;
+  let hasResolved = false;
+
+  type PendingRelease = (() => void) & { active: boolean };
+  let manualReleases: PendingRelease[] = [];
 
   // ── DOM helpers ──────────────────────────────────────────────────────────
 
@@ -129,13 +142,35 @@ export function Suspense(props: SuspenseProps): Node {
     fallbackScope = null;
   };
 
+  const disposeContent = (): void => {
+    if (contentScope) {
+      disposeScope(contentScope);
+      contentScope = null;
+    }
+    if (parked) {
+      while (parked.firstChild) parked.firstChild.remove();
+      parked = null;
+    }
+  };
+
   const mountContent = (children: AnyNode | AnyNode[]): void => {
+    const scope = createScope(owner);
     mounting = true;
-    contentScope = createScope(owner);
-    runWithScope(contentScope, () => {
-      insert(end.parentNode ?? frag, () => resolveNodeValue(children) as AnyNode, end);
-    });
-    mounting = false;
+    contentScope = scope;
+    try {
+      runWithScope(scope, () => {
+        insert(end.parentNode ?? frag, () => resolveNodeValue(children) as AnyNode, end);
+      });
+    } catch (error) {
+      if (contentScope === scope) contentScope = null;
+      disposeScope(scope);
+      pending = 0;
+      manualReleases = [];
+      boundaryVersion++;
+      throw error;
+    } finally {
+      mounting = false;
+    }
     // A resource registered synchronously during mount — park content.
     if (pending && !parked) {
       parkContent();
@@ -155,8 +190,8 @@ export function Suspense(props: SuspenseProps): Node {
   const showContent = (): void => {
     if (!parked) return;
 
-    const hasSyncChildren = props.children != null && !isPromise(props.children);
-    if (contentScope == null && resolved == null && !hasSyncChildren) return;
+    const hasSyncChildren = currentChildren != null && !isPromise(currentChildren);
+    if (contentScope == null && !hasResolved && !hasSyncChildren) return;
 
     disposeFallback();
     restoreContent();
@@ -167,60 +202,102 @@ export function Suspense(props: SuspenseProps): Node {
     // its nodes were parked; restoring covers it (the `contentScope != null`
     // check above would be true, so we don't enter here).
     if (!contentScope) {
-      if (resolved) {
+      if (hasResolved) {
         mountContent(resolved);
       } else if (hasSyncChildren) {
-        mountContent(props.children as AnyNode);
+        mountContent(currentChildren as AnyNode);
       }
     }
   };
 
   // ── Context (created before children handling so register() is available) ─
 
-  const settle = () => {
+  const addPending = (version = boundaryVersion): PendingRelease => {
+    pending++;
+    showFallback();
+
+    const release = (() => {
+      if (!release.active) return;
+      release.active = false;
+      if (!mounted || version !== boundaryVersion) return;
+      if (--pending === 0) showContent();
+    }) as PendingRelease;
+    release.active = true;
+    return release;
+  };
+
+  const settle = (release: PendingRelease) => {
     if (!mounted) return;
-    if (--pending === 0) showContent();
+    release();
+  };
+
+  const dequeueManualRelease = (): PendingRelease | undefined => {
+    while (manualReleases.length > 0) {
+      const release = manualReleases.shift()!;
+      if (release.active) return release;
+    }
+    return undefined;
   };
 
   const ctx: SuspenseContextType = {
     register: (promise: Promise<any>) => {
-      pending++;
-      showFallback();
-      promise.then(settle).catch((error) => {
-        if (__DEV__) warn('[Suspense] Resource failed:', error);
-        settle();
-      });
+      const release = addPending();
+      promise.then(
+        () => settle(release),
+        (error) => {
+          if (__DEV__ && !isAbortError(error)) warn('[Suspense] Resource failed:', error);
+          settle(release);
+        },
+      );
+      return release;
     },
     increment: () => {
-      pending++;
-      showFallback();
+      const release = addPending();
+      manualReleases.push(release);
+      return release;
     },
     decrement: () => {
-      pending = Math.max(0, pending - 1);
-      if (pending === 0) showContent();
+      const release = dequeueManualRelease();
+      if (release) settle(release);
     },
   };
 
   provide(SuspenseContext, ctx);
 
-  // ── Initial render ───────────────────────────────────────────────────────
+  const renderChildren = (children: SuspenseProps['children']): void => {
+    const version = ++boundaryVersion;
 
-  const children = props.children;
+    currentChildren = children ?? null;
+    pending = 0;
+    resolved = null;
+    hasResolved = false;
+    manualReleases = [];
 
-  if (isPromise(children)) {
-    children
-      .then((value) => {
-        resolved = value as AnyNode | AnyNode[];
-      })
-      .catch(() => {
-        /* handled by register() */
-      });
-    ctx.register(children);
-  } else if (children != null) {
-    mountContent(children as AnyNode);
-  } else if (props.fallback != null) {
-    showFallback();
-  }
+    disposeContent();
+    disposeFallback();
+
+    if (isPromise(children)) {
+      children
+        .then((value) => {
+          if (!mounted || version !== boundaryVersion) return;
+          resolved = value as AnyNode | AnyNode[];
+          hasResolved = true;
+        })
+        .catch(() => {
+          /* handled by register() */
+        });
+      ctx.register(children);
+    } else if (children != null) {
+      mountContent(children as AnyNode);
+    } else if (props.fallback != null) {
+      showFallback();
+    }
+  };
+
+  // ── Initial render / prop updates ────────────────────────────────────────
+
+  renderChildren(props.children);
+  onUpdate(() => renderChildren(props.children));
 
   // ── Cleanup ──────────────────────────────────────────────────────────────
 

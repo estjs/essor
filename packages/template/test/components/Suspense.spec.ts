@@ -301,6 +301,159 @@ describe('suspense component', () => {
       expect(container.querySelector('.increment-loading')).toBeNull();
       expect(container.querySelector('.increment-child')?.textContent).toBe('increment-ready');
     });
+
+    it('pairs increment release handles so stale releases cannot resolve the boundary early', async () => {
+      let releaseA!: () => void;
+      let releaseB!: () => void;
+
+      const ResourceChild = () => {
+        const ctx = inject<any>(SuspenseContext, null);
+        releaseA = ctx.increment();
+        releaseB = ctx.increment();
+
+        const el = document.createElement('span');
+        el.className = 'paired-child';
+        el.textContent = 'paired-ready';
+        return el;
+      };
+
+      const resource = createComponent(ResourceChild);
+      render(() =>
+        Suspense({
+          children: resource as any,
+          fallback: createFallback('paired-loading'),
+        }),
+      );
+
+      expect(container.querySelector('.paired-loading')).not.toBeNull();
+      expect(container.querySelector('.paired-child')).toBeNull();
+      expect(typeof releaseA).toBe('function');
+      expect(typeof releaseB).toBe('function');
+
+      releaseA();
+      await Promise.resolve();
+      expect(container.querySelector('.paired-loading')).not.toBeNull();
+      expect(container.querySelector('.paired-child')).toBeNull();
+
+      releaseA();
+      await Promise.resolve();
+      expect(container.querySelector('.paired-loading')).not.toBeNull();
+      expect(container.querySelector('.paired-child')).toBeNull();
+
+      releaseB();
+      await Promise.resolve();
+      expect(container.querySelector('.paired-loading')).toBeNull();
+      expect(container.querySelector('.paired-child')?.textContent).toBe('paired-ready');
+    });
+
+    it('settles aborted resources without warning', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const ResourceChild = () => {
+        const ctx = inject<any>(SuspenseContext, null);
+        ctx.register(Promise.reject(new DOMException('Aborted', 'AbortError')));
+
+        const el = document.createElement('span');
+        el.className = 'aborted-child';
+        el.textContent = 'aborted-ready';
+        return el;
+      };
+
+      const resource = createComponent(ResourceChild);
+      render(() =>
+        Suspense({
+          children: resource as any,
+          fallback: createFallback('aborted-loading'),
+        }),
+      );
+
+      expect(container.querySelector('.aborted-loading')).not.toBeNull();
+
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(warnSpy).not.toHaveBeenCalled();
+      expect(container.querySelector('.aborted-loading')).toBeNull();
+      expect(container.querySelector('.aborted-child')?.textContent).toBe('aborted-ready');
+
+      warnSpy.mockRestore();
+    });
+
+    it('ignores stale children promise resolutions after children changes', async () => {
+      let resolveFirst!: (value: Node) => void;
+      let resolveSecond!: (value: Node) => void;
+      const first = new Promise<Node>((resolve) => {
+        resolveFirst = resolve;
+      });
+      const second = new Promise<Node>((resolve) => {
+        resolveSecond = resolve;
+      });
+      const suspense = createComponent(Suspense, {
+        children: first,
+        fallback: createFallback('switch-loading'),
+      } as any);
+      const rootScope = mount(() => suspense, container);
+
+      expect(container.querySelector('.switch-loading')).not.toBeNull();
+
+      suspense.update({
+        children: second,
+        fallback: createFallback('switch-loading'),
+      } as any);
+      await Promise.resolve();
+
+      const stale = document.createElement('span');
+      stale.className = 'stale-content';
+      stale.textContent = 'stale';
+      resolveFirst(stale);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(container.querySelector('.stale-content')).toBeNull();
+      expect(container.querySelector('.switch-loading')).not.toBeNull();
+
+      const fresh = document.createElement('span');
+      fresh.className = 'fresh-content';
+      fresh.textContent = 'fresh';
+      resolveSecond(fresh);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(container.querySelector('.switch-loading')).toBeNull();
+      expect(container.querySelector('.fresh-content')?.textContent).toBe('fresh');
+
+      unmount(rootScope);
+    });
+
+    it('restores fallback ability after sync children throw during update', async () => {
+      const pending = new Promise<Node>(() => {});
+      const suspense = createComponent(Suspense, {
+        children: document.createTextNode('ready'),
+        fallback: createFallback('recover-loading'),
+      } as any);
+      const rootScope = mount(() => suspense, container);
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const ThrowingChild = () => {
+        throw new Error('sync child failed');
+      };
+
+      suspense.update({
+        children: createComponent(ThrowingChild) as any,
+        fallback: createFallback('recover-loading'),
+      } as any);
+
+      suspense.update({
+        children: pending,
+        fallback: createFallback('recover-loading'),
+      } as any);
+      await Promise.resolve();
+
+      expect(container.querySelector('.recover-loading')).not.toBeNull();
+
+      errorSpy.mockRestore();
+      unmount(rootScope);
+    });
   });
 
   describe('type checking', () => {

@@ -240,6 +240,45 @@ describe('component', () => {
       expect(handler).toHaveBeenCalledTimes(1);
     });
 
+    it('wires DOM event listeners to every element root from fragment results', () => {
+      const root = createTestRoot();
+      const handler = vi.fn();
+      const Comp = () => {
+        const first = document.createElement('button');
+        first.textContent = 'first';
+        const second = document.createElement('button');
+        second.textContent = 'second';
+        return [first, second];
+      };
+      const instance = createComponent(Comp, { onClick: handler } as any) as any;
+      instance.mount(root);
+
+      const buttons = root.querySelectorAll('button');
+      buttons[0].click();
+      buttons[1].click();
+
+      expect(handler).toHaveBeenCalledTimes(2);
+    });
+
+    it('skips non-element roots when wiring DOM events and refs', () => {
+      const root = createTestRoot();
+      const handler = vi.fn();
+      const ref = signal<Element | null>(null);
+      const Comp = () => {
+        const button = document.createElement('button');
+        button.textContent = 'click';
+        return [document.createTextNode('label'), button];
+      };
+      const instance = createComponent(Comp, { onClick: handler, ref } as any) as any;
+      instance.mount(root);
+
+      const button = root.querySelector('button')!;
+      button.click();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      expect(ref.value).toBe(button);
+    });
+
     it('overrides a JSX-bound delegated handler in the `_$<event>` slot (Solid-style)', async () => {
       const root = createTestRoot();
       const internal = vi.fn();

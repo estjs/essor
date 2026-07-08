@@ -162,14 +162,27 @@ export function claimHydratedNodes(parent: Node, expected: Node[], before?: Node
   let cursor: Node | null = before ? before.previousSibling : parent.lastChild;
 
   for (let i = expected.length - 1; i >= 0; i--) {
-    if (!cursor) return null;
-
     const expectedNode = expected[i];
 
     const expectedType = expectedNode.nodeType;
     if (expectedType === Node.TEXT_NODE) {
       const expectedText = expectedNode.textContent ?? '';
-      if (!expectedText || cursor.nodeType !== Node.TEXT_NODE) return null;
+
+      if (expectedText === '') {
+        if (cursor?.nodeType === Node.TEXT_NODE && (cursor.textContent ?? '') === '') {
+          claimed[i] = cursor;
+          cursor = cursor.previousSibling;
+        } else {
+          const emptyNode = document.createTextNode('');
+          const anchor = i + 1 < expected.length ? claimed[i + 1] : (before ?? null);
+          parent.insertBefore(emptyNode, anchor);
+          claimed[i] = emptyNode;
+        }
+        continue;
+      }
+
+      if (!cursor) return null;
+      if (cursor.nodeType !== Node.TEXT_NODE) return null;
 
       const existingText = cursor.textContent ?? '';
       if (existingText === expectedText) {
@@ -190,6 +203,7 @@ export function claimHydratedNodes(parent: Node, expected: Node[], before?: Node
       continue;
     }
 
+    if (!cursor) return null;
     if (cursor.nodeType !== expectedType) return null;
     if (expectedType === Node.ELEMENT_NODE) {
       if ((cursor as Element).tagName !== (expectedNode as Element).tagName) return null;

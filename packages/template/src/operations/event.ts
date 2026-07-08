@@ -46,7 +46,7 @@ export function addEvent(
    */
   const wrappedHandler = (e: Event) => {
     const target = e.target as Element;
-    if (target.matches(selector) || target.closest(selector)) {
+    if (target.closest(selector)) {
       handler.call(el, e);
     }
   };

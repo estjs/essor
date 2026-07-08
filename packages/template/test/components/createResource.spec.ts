@@ -329,6 +329,21 @@ describe('createResource', () => {
       expect(capturedSignal!.aborted).toBe(true);
     });
 
+    it('treats AbortError-shaped rejections as cancellation', async () => {
+      await runWithScope(scope, async () => {
+        const abortError = Object.assign(new Error('aborted'), { name: 'AbortError' });
+        const fetcher = () => Promise.reject(abortError);
+        const [resource] = createResource(fetcher);
+
+        await vi.waitFor(() => {
+          expect(resource.loading.value).toBe(false);
+        });
+
+        expect(resource.error.value).toBe(null);
+        expect(resource.state.value).toBe('pending');
+      });
+    });
+
     it('should ignore late results after scope dispose when fetcher ignores abort', async () => {
       let resolveFetch!: (value: string) => void;
       let resource: ReturnType<typeof createResource<string>>[0];

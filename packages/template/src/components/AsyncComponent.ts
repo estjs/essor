@@ -96,26 +96,32 @@ function defineClientAsyncComponent<P extends ComponentProps>(
 ): ComponentFn<P> {
   const { loading, error: errorComp, delay = 200, timeout, onError } = options;
 
-  // Module-level cache: all instances share one loader invocation.
+  // Shared module-level cache: all instances share one loader invocation so the
+  // module is fetched at most once. `loadId` guards stale loads; stale promise
+  // chains forward to the current load so siblings already waiting on the old
+  // promise still settle when a retry replaces it.
   let component: ComponentFn<P> | null = null;
-  let error: Error | null = null;
+  let loadError: Error | null = null;
   let status: 'pending' | 'resolved' | 'errored' = 'pending';
   let loadPromise: Promise<void> | null = null;
   let loadId = 0;
 
-  const load = (): Promise<void> => {
-    if (loadPromise) return loadPromise;
+  const currentLoad = (id: number): Promise<void> | undefined =>
+    id !== loadId ? (loadPromise ?? undefined) : undefined;
 
-    const id = ++loadId;
+  const load = (forceId?: number): Promise<void> => {
+    if (loadPromise && forceId === undefined) return loadPromise;
+
+    const id = forceId ?? ++loadId;
     loadPromise = loader()
       .then((mod) => {
-        if (id !== loadId) return;
+        if (id !== loadId) return currentLoad(id);
         component = resolveModule(mod);
         status = 'resolved';
       })
       .catch((error_) => {
-        if (id !== loadId) return;
-        error = error_ instanceof Error ? error_ : new Error(String(error_));
+        if (id !== loadId) return currentLoad(id);
+        loadError = error_ instanceof Error ? error_ : new Error(String(error_));
         status = 'errored';
         loadPromise = null; // allow retry
       });
@@ -126,11 +132,6 @@ function defineClientAsyncComponent<P extends ComponentProps>(
   load();
 
   function AsyncWrapper(props: P): AnyNode {
-    // Wrapper-free: returns a fragment whose sole child is the end anchor of a
-    // `<!--async-->` anchored range. Each state transition (loading / resolved
-    // / error) creates a fresh child scope and mounts a Component before that
-    // anchor using `insert()`. The returning `<For>`-style fragment also works
-    // here — the framework moves the fragment's children into the host.
     const owner = getActiveScope();
     const end = document.createComment('async');
     const frag = document.createDocumentFragment();
@@ -141,6 +142,12 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     let delayTimer: ReturnType<typeof setTimeout> | null = null;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
+    // Per-instance retry counter — incremented only for THIS instance.
+    // Using the shared `loadId` for retry would invalidate sibling instances'
+    // in-flight `.then` guards, causing them to silently no-op and stay stuck
+    // on the loading state forever.
+    let instanceRetryId = 0;
+
     const clearTimers = () => {
       if (delayTimer != null) clearTimeout(delayTimer);
       if (timeoutTimer != null) clearTimeout(timeoutTimer);
@@ -150,9 +157,6 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     /** Dispose old view, mount `fn` as the new one before `end`. */
     const render = (fn: ComponentFn<any> | null, fnProps?: any): void => {
       if (!alive) return;
-      // Guard: if the owner scope was destroyed while we were awaiting (e.g.
-      // the component unmounted before the Promise resolved), bail out to
-      // prevent creating an orphan child scope attached to a dead parent.
       if (owner && owner.isDestroyed) return;
       if (viewScope) {
         disposeScope(viewScope);
@@ -161,7 +165,6 @@ function defineClientAsyncComponent<P extends ComponentProps>(
       if (!fn) return;
       viewScope = createScope(owner);
       runWithScope(viewScope, () => {
-        // Lazy-parent: before flush end is in frag, after flush it's in the host.
         insert(end.parentNode ?? frag, () => new Component(fn, fnProps), end);
       });
     };
@@ -180,12 +183,21 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     const retryWith =
       (retryProps: P): (() => void) =>
       () => {
-        loadId++;
+        if (!alive) return;
+        // Bump the shared loadId so the next load() call is authoritative.
+        // Older in-flight promises forward to this new load instead of settling
+        // early, so sibling instances and Suspense boundaries do not get stuck.
+        const retryLoadId = ++loadId;
         loadPromise = null;
         status = 'pending';
-        error = null;
+        loadError = null;
+        instanceRetryId++;
+        const capturedRetry = instanceRetryId;
         if (loading) render(loading);
-        load().then(() => settle(retryProps));
+        load(retryLoadId).then(() => {
+          // Only settle if this instance's retry is still the latest one.
+          if (alive && capturedRetry === instanceRetryId) settle(retryProps);
+        });
       };
 
     /** Reflect the current cache status into the rendered view. */
@@ -194,9 +206,9 @@ function defineClientAsyncComponent<P extends ComponentProps>(
       clearTimers();
       if (status === 'resolved' && component) {
         render(component, renderProps);
-      } else if (status === 'errored' && error) {
-        if (errorComp) render(errorComp, { error, retry: retryWith(renderProps) });
-        if (onError) onError(error, retryWith(renderProps));
+      } else if (status === 'errored' && loadError) {
+        if (errorComp) render(errorComp, { error: loadError, retry: retryWith(renderProps) });
+        if (onError) onError(loadError, retryWith(renderProps));
       }
     };
 
@@ -206,8 +218,8 @@ function defineClientAsyncComponent<P extends ComponentProps>(
       render(component, props);
       return frag as unknown as AnyNode;
     }
-    if (status === 'errored' && error) {
-      if (errorComp) render(errorComp, { error, retry: retryWith(props) });
+    if (status === 'errored' && loadError) {
+      if (errorComp) render(errorComp, { error: loadError, retry: retryWith(props) });
       return frag as unknown as AnyNode;
     }
 
@@ -229,12 +241,11 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     if (timeout != null) {
       timeoutTimer = setTimeout(() => {
         if (!alive || status !== 'pending') return;
-        loadId++;
-        loadPromise = null;
-        error = new Error(`[defineAsyncComponent] Timeout after ${timeout}ms`);
-        status = 'errored';
-        if (errorComp) render(errorComp, { error, retry: retryWith(props) });
-        if (onError) onError(error, retryWith(props));
+        // Timeout is per-instance; don't mutate shared loadId so sibling
+        // instances continue to settle normally.
+        const err = new Error(`[defineAsyncComponent] Timeout after ${timeout}ms`);
+        if (errorComp) render(errorComp, { error: err, retry: retryWith(props) });
+        if (onError) onError(err, retryWith(props));
       }, timeout);
     }
 

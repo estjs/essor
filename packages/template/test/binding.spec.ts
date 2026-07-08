@@ -473,6 +473,36 @@ describe('binding utilities', () => {
         expect(b.checked).toBe(true);
       });
 
+      it('accumulates checkbox array changes when the setter commits later', () => {
+        const a = document.createElement('input');
+        a.type = 'checkbox';
+        a.value = 'a';
+        const b = document.createElement('input');
+        b.type = 'checkbox';
+        b.value = 'b';
+
+        let model: string[] = [];
+        let pending: string[] = [];
+        const setter = (value: unknown) => {
+          pending = value as string[];
+        };
+
+        for (const el of [a, b]) {
+          bindElement(el, 'checked', () => model, setter);
+        }
+
+        a.checked = true;
+        a.dispatchEvent(new Event('change'));
+        expect(pending).toEqual(['a']);
+
+        b.checked = true;
+        b.dispatchEvent(new Event('change'));
+        expect(pending).toEqual(['a', 'b']);
+
+        model = pending;
+        expect(model).toEqual(['a', 'b']);
+      });
+
       it('still works as a plain boolean when model is not an array', () => {
         const input = document.createElement('input');
         input.type = 'checkbox';

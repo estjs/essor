@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@estjs/signals';
 import { createComponent } from '../src/component';
 import {
   child,
   insert,
   insertNode,
-  isSameNode,
   next,
   normalizeNode,
   nthChild,
@@ -72,28 +72,6 @@ describe('dom helpers', () => {
     replaceNode(parent, replacement, instance);
 
     expect(parent.innerHTML).toBe('<strong>replacement</strong><p>anchor</p>');
-  });
-
-  it('compares keyed elements, keyed components, and primitives correctly', () => {
-    const elA = document.createElement('div');
-    const elB = document.createElement('div');
-    const elC = document.createElement('div');
-    elA.setAttribute('key', 'a');
-    elB.setAttribute('key', 'a');
-    elC.setAttribute('key', 'b');
-
-    const Comp = () => document.createElement('div');
-    const OtherComp = () => document.createElement('div');
-    const compA = createComponent(Comp, { key: 'row' });
-    const compB = createComponent(Comp, { key: 'row' });
-    const compC = createComponent(OtherComp, { key: 'row' });
-
-    expect(isSameNode(elA, elB)).toBe(true);
-    expect(isSameNode(elA, elC)).toBe(false);
-    expect(isSameNode(compA, compB)).toBe(true);
-    expect(isSameNode(compA, compC)).toBe(false);
-    expect(isSameNode('text', 'text')).toBe(true);
-    expect(isSameNode('text', 'other')).toBe(false);
   });
 
   it('normalizes primitives into text nodes and preserves existing nodes', () => {
@@ -297,6 +275,48 @@ describe('dom helpers', () => {
       expect(warnSpy).toHaveBeenCalled();
 
       warnSpy.mockRestore();
+      cleanupContext(context);
+    });
+
+    it('updates primitive reactive text in place without replacing the Text node', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      const value = signal('one');
+      pushContextStack(context);
+
+      insert(root, () => value.value);
+      popContextStack();
+
+      const firstNode = root.firstChild;
+      expect(firstNode?.nodeType).toBe(Node.TEXT_NODE);
+      expect(firstNode?.textContent).toBe('one');
+
+      value.value = 'two';
+
+      expect(root.firstChild).toBe(firstNode);
+      expect(firstNode?.textContent).toBe('two');
+
+      cleanupContext(context);
+    });
+
+    it('replaces explicit Text nodes instead of patching their text into the old node', () => {
+      const context = createContext(null);
+      const root = createTestRoot();
+      const useSecond = signal(false);
+      const first = document.createTextNode('first');
+      const second = document.createTextNode('second');
+      pushContextStack(context);
+
+      insert(root, () => (useSecond.value ? second : first));
+      popContextStack();
+
+      expect(root.firstChild).toBe(first);
+
+      useSecond.value = true;
+
+      expect(root.firstChild).toBe(second);
+      expect(root.firstChild?.textContent).toBe('second');
+
       cleanupContext(context);
     });
 
