@@ -82,6 +82,22 @@ describe('normalizeStyle', () => {
       color: 'blue',
     });
   });
+
+  it('recursively normalizes nested object values before stringifying', () => {
+    const normalized = normalizeStyle({
+      color: 'red',
+      nested: { fontSize: '14px' },
+      more: ['margin: 0;', { padding: '4px' }],
+    });
+
+    expect(normalized).toEqual({
+      color: 'red',
+      fontSize: '14px',
+      margin: '0',
+      padding: '4px',
+    });
+    expect(styleToString(normalized)).toBe('color:red;font-size:14px;margin:0;padding:4px;');
+  });
 });
 
 describe('parseStyleString', () => {

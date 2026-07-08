@@ -318,10 +318,15 @@ describe('type Check Utils', () => {
   });
 
   describe('isPlainObject', () => {
+    class TestClass {
+      value = 1;
+    }
+
     const testCases = [
       { value: {}, expected: true },
       { value: { a: 1, b: 2 }, expected: true },
       { value: Object.create(null), expected: true },
+      { value: new TestClass(), expected: false },
       { value: [], expected: false },
       { value: () => {}, expected: false },
       { value: new Date(), expected: false },

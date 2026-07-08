@@ -167,8 +167,11 @@ export function isHTMLElement(val: unknown): val is HTMLElement {
  * @param val - The value to check.
  * @returns {boolean} True if the value is a plain object, false otherwise.
  */
-export const isPlainObject = (val: unknown): val is object =>
-  _toString.call(val) === '[object Object]';
+export const isPlainObject = (val: unknown): val is object => {
+  if (_toString.call(val) !== '[object Object]') return false;
+  const proto = Object.getPrototypeOf(val);
+  return proto === null || proto === Object.prototype;
+};
 
 /**
  * String representation of a number

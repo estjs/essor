@@ -79,9 +79,35 @@ export function normalizeStyle(styleValue: unknown): NormalizedStyle | string | 
     return normalizedStyleObject;
   }
 
-  // Handle string or object format styles
-  if (isString(styleValue) || isObject(styleValue)) {
-    return styleValue as NormalizedStyle | string;
+  // Handle string format styles
+  if (isString(styleValue)) {
+    return styleValue;
+  }
+
+  // Handle object format styles. Nested objects/arrays are treated as nested
+  // style collections and flattened before styleToString sees them.
+  if (isObject(styleValue)) {
+    const normalizedStyleObject: NormalizedStyle = {};
+
+    for (const key in styleValue) {
+      const value = styleValue[key];
+      if (isString(value) || isNumber(value)) {
+        normalizedStyleObject[key] = value;
+        continue;
+      }
+
+      const normalizedValue = normalizeStyle(value);
+      if (!normalizedValue) continue;
+
+      const nestedStyle = isString(normalizedValue)
+        ? parseStyleString(normalizedValue)
+        : normalizedValue;
+      for (const nestedKey in nestedStyle) {
+        normalizedStyleObject[nestedKey] = nestedStyle[nestedKey];
+      }
+    }
+
+    return normalizedStyleObject;
   }
 
   return undefined;
