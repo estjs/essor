@@ -20,6 +20,7 @@ import {
   textTrim,
 } from '../ast-utils';
 import { createBindingSetter } from './emitters';
+import type { RenderMode } from '../options';
 
 // ─── IR Types ──────────────────────────────
 
@@ -40,15 +41,36 @@ export function hasDynamicBoundary(children: IRNode[], index: number): boolean {
   return isText(prev) || isText(next) || isDynamic(prev) || isDynamic(next);
 }
 
+export type DynamicAnchorKind = 'comment' | 'element' | 'tail';
+
+export function getDynamicAnchorKind(
+  children: IRNode[],
+  index: number,
+  mode: RenderMode,
+): DynamicAnchorKind {
+  if (!hasDynamicBoundary(children, index)) {
+    const next = children[index + 1];
+    if ((mode === 'hydrate' || mode === 'server') && next?.type === IRType.ELEMENT) {
+      return 'element';
+    }
+    if (!next) {
+      return 'tail';
+    }
+  }
+  return 'comment';
+}
+
 export interface IRStaticAttr {
   name: string;
   value: string | boolean;
+  order?: number;
 }
 
 export interface IRDynamicAttr {
   name: string;
   value: t.Expression;
   kind: 'static' | 'dynamic';
+  order?: number;
 }
 
 export interface IREvent {
@@ -61,6 +83,7 @@ export interface IREvent {
 export interface IRSpread {
   value: t.Expression;
   kind: 'static' | 'dynamic';
+  order?: number;
 }
 
 export interface IRRef {
@@ -172,7 +195,7 @@ function buildElementIR(tag: string, path: NodePath<t.JSXElement>, ctx: CompileC
     staticAttrs,
     dynamicAttrs: [],
     events: [],
-    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind })),
+    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind, order: s.order })),
     binds: [],
     children: [],
     selfClosing: isSelfClosingTag(tag),
@@ -214,6 +237,7 @@ function buildComponentIR(
       name: attr.name,
       value: isString(attr.value) ? t.stringLiteral(attr.value) : t.booleanLiteral(attr.value),
       kind: 'static',
+      order: attr.order,
     });
   }
 
@@ -226,6 +250,7 @@ function buildComponentIR(
         name: attr.name,
         value: attr.value,
         kind: attr.effectKind,
+        order: attr.order,
       });
     } else if (startsWith(attr.name, 'bind:')) {
       const binding = attr.name.slice('bind:'.length);
@@ -247,6 +272,7 @@ function buildComponentIR(
         name: binding,
         value: t.cloneNode(valueExpr),
         kind: attr.effectKind,
+        order: attr.order,
       });
       // The setter is a static arrow function — it captures the assignment
       // target by reference and never reads reactive state itself. Marking
@@ -256,12 +282,14 @@ function buildComponentIR(
         name: `update:${binding}`,
         value: createBindingSetter(valueExpr),
         kind: 'static',
+        order: attr.order,
       });
     } else {
       props.push({
         name: attr.name,
         value: attr.value,
         kind: attr.effectKind,
+        order: attr.order,
       });
     }
   }
@@ -270,7 +298,7 @@ function buildComponentIR(
     type: IRType.COMPONENT,
     tag,
     props,
-    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind })),
+    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind, order: s.order })),
     children: buildChildren(path as NodePath<t.JSXElement>, ctx),
     loc: path.node.loc,
   };
@@ -504,6 +532,7 @@ function buildForIR(expression: NodePath<t.Expression>, ctx: CompileContext): IR
  * Extracts key expression.
  */
 function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
+  if (path.isJSXFragment()) return extractFragmentKeyExpression(path);
   if (!path.isJSXElement()) return null;
 
   for (const attrPath of path.get('openingElement.attributes')) {
@@ -532,6 +561,15 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
   }
 
   return null;
+}
+
+function extractFragmentKeyExpression(path: NodePath<t.JSXFragment>): t.Expression | null {
+  const children = (path.get('children') as NodePath<JSXChild>[]).filter(isValidChild);
+  if (children.length !== 1) return null;
+
+  const child = children[0];
+  if (!child.isJSXElement() && !child.isJSXFragment()) return null;
+  return extractKeyExpression(child as NodePath<JSXElement>);
 }
 
 /**

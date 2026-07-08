@@ -19,7 +19,7 @@ import {
   type IRNode,
   type IRSpread,
   IRType,
-  hasDynamicBoundary,
+  getDynamicAnchorKind,
 } from './ir';
 import {
   createBindingSetter,
@@ -108,23 +108,6 @@ function closeTag(
   return shouldCloseTag(element, isLastElement, hasClosingParent, options)
     ? `</${element.tag}>`
     : '';
-}
-
-function getDynamicAnchorKind(
-  children: IRNode[],
-  index: number,
-  mode: RenderMode,
-): 'comment' | 'element' | 'tail' {
-  if ((mode === 'client' || mode === 'hydrate') && !hasDynamicBoundary(children, index)) {
-    const next = children[index + 1];
-    if (mode === 'hydrate' && next?.type === IRType.ELEMENT) {
-      return 'element';
-    }
-    if (!next) {
-      return 'tail';
-    }
-  }
-  return 'comment';
 }
 
 // Scans from the end to find the last element whose closing tag can be omitted.

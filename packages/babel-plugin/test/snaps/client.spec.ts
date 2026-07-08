@@ -110,6 +110,18 @@ describe('should work with jsx client transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('preserves interleaved Component prop and spread override order', () => {
+    const inputCode = `
+      const spread = { b: 1 };
+      const element = <Component a={1} {...spread} b={2} />;
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toMatch(
+      /Object\.assign\(\{\},\s*\{\s*a:\s*"1"\s*\},\s*spread,\s*\{\s*b:\s*"2"\s*\}\)/,
+    );
+  });
+
   it('transforms JSX element with conditional attributes', () => {
     const inputCode = `
       const hasClass = true;
@@ -239,6 +251,21 @@ describe('should work with jsx client transform', () => {
     const output = transformCode(inputCode);
     expect(output).not.toContain('_memoEffect$');
     expect(output).toContain('style=\\"color:red;font-size:16px\\"');
+  });
+
+  it('normalizes nested static style bindings before serializing', () => {
+    const inputCode = `
+      const style = {
+        color: 'red',
+        nested: { fontSize: '14px' },
+        more: ['margin: 0;', { padding: '4px' }]
+      };
+      const element = <div style={style}>Hello, World!</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).not.toContain('[object Object]');
+    expect(output).toContain('style=\\"color:red;font-size:14px;margin:0;padding:4px\\"');
   });
 
   it('transforms JSX element with class and style attributes', () => {
@@ -1140,6 +1167,19 @@ describe('should work with jsx client transform', () => {
     const output = transformCodeWithFor(code);
     expect(output).not.toContain('Fragment as _Fragment$');
     expect(output).not.toContain('_patchAttr$(_root$, "key"');
+  });
+
+  it('extracts keys from single-child fragment map bodies', () => {
+    const code = `
+      <tbody>
+        {items.map(item => <><Row key={item.id} item={item} /></>)}
+      </tbody>
+    `;
+    const output = transformCodeWithFor(code);
+
+    expect(output).toContain('Fragment as _Fragment$');
+    expect(output).toContain('key: item => item.id');
+    expect(output).not.toContain('"key": item.id');
   });
 
   it('compiles <Transition> as a built-in import from essor', () => {

@@ -14,6 +14,7 @@ export interface CompileContext {
   delegateEvents: Set<string>;
   imports: Set<IMPORT_MAP_NAMES>;
   importIdentifiers: Record<IMPORT_MAP_NAMES, t.Identifier>;
+  signalBindings: WeakSet<object>;
   declarations: Map<string, t.Identifier>;
   hmrComponents: Set<string>;
   hmrSignatures: Map<string, string>;
@@ -64,6 +65,7 @@ export function createCompileContext(
     delegateEvents: new Set(),
     imports: new Set<IMPORT_MAP_NAMES>(),
     importIdentifiers: createImportIdentifiers(programPath, options.mode!),
+    signalBindings: new WeakSet(),
     declarations: new Map(),
     hmrComponents: new Set(),
     hmrSignatures: new Map(),

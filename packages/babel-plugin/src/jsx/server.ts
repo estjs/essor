@@ -8,7 +8,7 @@ import {
   type IRFor,
   type IRNode,
   IRType,
-  hasDynamicBoundary,
+  getDynamicAnchorKind,
 } from './ir';
 import { buildComponentInvocation, buildForCall, renderChildExpressions } from './shared';
 
@@ -354,11 +354,11 @@ function generateServerElement(
           child.type === IRType.COMPONENT ||
           child.type === IRType.FOR
         ) {
-          const marker = hasDynamicBoundary(node.children, i);
+          const anchorKind = getDynamicAnchorKind(node.children, i, 'server');
           const slotIndex = markerIndex++;
           templates.push(currentStr);
-          currentStr = marker ? `<!--${slotIndex}-->` : '';
-          if (!marker && node.children[i + 1]?.type === IRType.ELEMENT) {
+          currentStr = anchorKind === 'comment' ? `<!--${slotIndex}-->` : '';
+          if (anchorKind === 'element') {
             pendingAnchorIndex = slotIndex;
           }
           expressions.push(generateServerNode(child, ctx));

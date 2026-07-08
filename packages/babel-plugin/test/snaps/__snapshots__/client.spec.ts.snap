@@ -233,8 +233,8 @@ const _t$ = _template$("<tbody>");
       return data.value;
     },
     children: item => Row(Object.assign({}, {
-      "other": "1",
-      "item": item
+      "item": item,
+      "other": "1"
     }, {
       other: 2
     })),
@@ -880,9 +880,9 @@ const props = {
 const otherProps = {
   props: "other"
 };
-const element = _createComponent$(Component, Object.assign({}, {
+const element = _createComponent$(Component, Object.assign({}, props, {
   other: "other"
-}, props, otherProps));"
+}, otherProps));"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with JSX fragment 1`] = `
