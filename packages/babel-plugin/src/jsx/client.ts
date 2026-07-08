@@ -507,6 +507,7 @@ interface PendingMemoPatch {
   target: t.Expression;
   attrName: string;
   value: t.Expression;
+  isSVG?: boolean;
 }
 
 type NodeVarMap = Map<number, t.Identifier>;
@@ -610,11 +611,11 @@ function emitElementEffect(
   }
 
   for (const attr of element.dynamicAttrs) {
-    emitDynamicAttr(attr, target, body, state, pendingMemoPatches);
+    emitDynamicAttr(attr, target, body, state, pendingMemoPatches, element.isSVG);
   }
 
   for (const spread of element.spreads) {
-    emitSpread(spread, target, body, state, pendingMemoPatches);
+    emitSpread(spread, target, body, state, pendingMemoPatches, element.isSVG);
   }
 }
 
@@ -763,6 +764,7 @@ function emitDynamicAttr(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -772,6 +774,7 @@ function emitDynamicAttr(
     body,
     () => createEffectKey(attr.name, state.effectIndex++),
     pendingMemoPatches,
+    isSVG,
   );
 }
 
@@ -784,6 +787,7 @@ function emitSpread(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -793,6 +797,7 @@ function emitSpread(
     body,
     () => createSpreadEffectKey(state.effectIndex++),
     pendingMemoPatches,
+    isSVG,
   );
 }
 
@@ -807,9 +812,12 @@ function emitPatchOrEffect(
   body: t.Statement[],
   getEffectKey: () => string,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   if (kind === 'static') {
-    body.push(t.expressionStatement(createPatchCall(useImport, target, attrName, value)));
+    body.push(
+      t.expressionStatement(createPatchCall(useImport, target, attrName, value, { isSVG })),
+    );
     return;
   }
 
@@ -818,6 +826,7 @@ function emitPatchOrEffect(
     target,
     attrName,
     value,
+    isSVG,
   });
 }
 
@@ -850,6 +859,7 @@ function createMemoPatchStatements(
   const updateCall = createPatchCall(useImport, patch.target, patch.attrName, valueId, {
     previousValue: effectState,
     nextValue: t.assignmentExpression('=', effectState, valueId),
+    isSVG: patch.isSVG,
   });
 
   return [

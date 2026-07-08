@@ -486,6 +486,53 @@ describe('should work with jsx client transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it('threads isSVG flag into patchClass for dynamic SVG class', () => {
+    // Regression: SVG elements expose a read-only `className` getter, so the
+    // runtime must patch class via `setAttribute`. The compiler tells it to by
+    // appending a trailing `true` (isSVG) arg to `patchClass` for SVG targets.
+    const inputCode = `
+      function ArrowIcon(props) {
+        return (
+          <svg class={props.class} viewBox="0 0 24 24">
+            <line x1="5" y1="12" x2="19" y2="12" />
+            <polyline points="12 5 19 12 12 19" />
+          </svg>
+        );
+      }
+    `;
+
+    const output = transformCode(inputCode);
+    // Dynamic class on an SVG element must carry the trailing isSVG flag.
+    expect(output).toMatch(/_patchClass\$\([^)]*,\s*true\)/);
+    expect(output).toMatchSnapshot();
+  });
+
+  it('threads isSVG flag into patchClass for nested SVG children', () => {
+    const inputCode = `
+      const p = {};
+      const element = (
+        <svg>
+          <line class={p.c} x1="5" />
+        </svg>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toMatch(/_patchClass\$\([^)]*,\s*true\)/);
+  });
+
+  it('does not add isSVG flag to patchClass for HTML elements', () => {
+    const inputCode = `
+      const p = {};
+      const element = <div class={p.c}>Hello</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    // HTML class patches stay 3-arg — no trailing isSVG flag.
+    expect(output).not.toMatch(/_patchClass\$\([^)]*,\s*true\)/);
+    expect(output).toContain('_patchClass$');
+  });
+
   it('should work with bind api', () => {
     const inputCode = `
     const value = 1;

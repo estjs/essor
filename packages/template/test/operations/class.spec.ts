@@ -95,6 +95,14 @@ describe('classNames module', () => {
       expect(svgElement.getAttribute('class')).toBe('test-class');
     });
 
+    it('throws when patching SVG class without the isSVG flag', () => {
+      // Documents why the compiler MUST pass isSVG for SVG targets: an SVG
+      // element's `className` is a read-only SVGAnimatedString, so the default
+      // `el.className =` path throws. The isSVG flag routes to setAttribute.
+      expect(() => patchClass(svgElement, null, 'test-class')).toThrow();
+      expect(() => patchClass(svgElement, null, 'test-class', true)).not.toThrow();
+    });
+
     it('should remove class attribute when class is empty string', () => {
       element.className = 'test-class';
       patchClass(element, 'test-class', '');

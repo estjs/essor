@@ -6,6 +6,7 @@ export interface PatchCallOptions {
   includePreviousValuePlaceholder?: boolean;
   previousValue?: t.Expression | null;
   nextValue?: t.Expression;
+  isSVG?: boolean;
 }
 
 /**
@@ -34,13 +35,22 @@ export function createPatchCall(
   const nextValue = options.nextValue ?? value;
   const isAttr = helper === 'patchAttr';
 
+  // `patchClass(el, prev, next, isSVG)` takes the SVG flag as a 4th positional
+  // arg, so `prev` must be present for the flag to land in the right slot.
+  const emitSVGFlag = helper === 'patchClass' && options.isSVG === true;
+
   const args: t.Expression[] = isAttr ? [target, t.stringLiteral(name)] : [target];
 
-  if (options.previousValue != null || options.includePreviousValuePlaceholder) {
+  if (options.previousValue != null || options.includePreviousValuePlaceholder || emitSVGFlag) {
     args.push(options.previousValue ?? t.identifier('undefined'));
   }
 
   args.push(nextValue);
+
+  if (emitSVGFlag) {
+    args.push(t.booleanLiteral(true));
+  }
+
   return t.callExpression(importFn(helper), args);
 }
 
