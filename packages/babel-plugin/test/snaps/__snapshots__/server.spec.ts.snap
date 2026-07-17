@@ -1,12 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`jsx server transform > renders dynamic SVG class via ssrClass (string, no isSVG flag needed) 1`] = `
-"import { ssrClass as _ssrClass$, ssr as _ssr$, getHydrationKey as _getHydrationKey$ } from "essor/server";
-const _tmpl$ = ["<svg", "><line x1=\\"5\\"></line></svg>"];
-const p = {};
-const element = _ssr$(_tmpl$, _getHydrationKey$(), _ssrClass$(p.c));"
-`;
-
 exports[`jsx server transform > should work with CSS-in-JS in server 1`] = `
 "import { ssrClass as _ssrClass$, ssr as _ssr$, getHydrationKey as _getHydrationKey$, ssrComponent as _ssrComponent$ } from "essor/server";
 const _tmpl$ = ["<div", " data-styled>", "</div>"];

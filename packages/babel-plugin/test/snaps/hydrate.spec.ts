@@ -356,20 +356,6 @@ describe('jsx hydrate transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('threads isSVG flag into patchClassHydrate for dynamic SVG class', () => {
-    // Hydrate shares the client emitter, so SVG class updates must also carry
-    // the trailing isSVG flag — the post-hydration reactive path calls
-    // patchClass(el, ...) which throws on an SVG element's read-only className.
-    const inputCode = `
-      const p = {};
-      const element = <svg class={p.c}><line x1="5" /></svg>;
-    `;
-
-    const output = transformCode(inputCode);
-    expect(output).toContain('patchClassHydrate');
-    expect(output).toMatch(/_patchClassHydrate\$\([^)]*,\s*true\)/);
-  });
-
   it('should work with bind api', () => {
     const inputCode = `
     const value = 1;

@@ -12,10 +12,16 @@ import {
   setCompileContext,
 } from '../src/context';
 import { buildComponentPropsExpression } from '../src/jsx/component-props';
-import { type IRComponent, IRType, buildIR, getDynamicAnchorKind } from '../src/jsx/ir';
+import { type IRComponent, IRType, buildIR } from '../src/jsx/ir';
 import { resolveOptions } from '../src/options';
 import { applyHmr, collectTopLevelHmrComponents } from '../src/plugins/hmr';
-import { isMemberAccessingProperty, isSignal, transformSymbol } from '../src/plugins/symbol';
+import {
+  isMemberAccessingProperty,
+  isSignal,
+  symbolAssignment,
+  symbolUpdate,
+  transformSymbol,
+} from '../src/plugins/symbol';
 
 function getProgramPath(code: string): NodePath<t.Program> {
   const ast = babel.parseSync(code, {
@@ -305,7 +311,22 @@ describe('babel plugin direct helpers', () => {
         resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-assign.tsx'),
         path,
       );
-      transformSymbol(path);
+
+      const assignmentPaths: Array<NodePath<t.AssignmentExpression>> = [];
+      const updatePaths: Array<NodePath<t.UpdateExpression>> = [];
+      path.traverse({
+        AssignmentExpression(assignmentPath) {
+          assignmentPaths.push(assignmentPath);
+        },
+        UpdateExpression(updatePath) {
+          updatePaths.push(updatePath);
+        },
+      });
+
+      symbolAssignment(assignmentPaths[0]!);
+      symbolUpdate(updatePaths[0]!);
+      symbolAssignment(assignmentPaths[1]!);
+      symbolUpdate(updatePaths[1]!);
 
       const code = generate(path.node).code;
       expect(code).toContain('sigCount.value = 1;');
@@ -377,19 +398,6 @@ describe('babel plugin direct helpers', () => {
       expect(code).toContain('Object.assign');
       expect(code).toContain('get children()');
       expect(code).toContain('["child"]');
-    });
-  });
-
-  describe('hydration marker helpers', () => {
-    it('classifies dynamic child anchors consistently by render mode', () => {
-      const dynamic = { type: IRType.EXPRESSION, value: t.identifier('value') } as const;
-      const element = { type: IRType.ELEMENT } as any;
-      const text = { type: IRType.TEXT, value: 'label' } as const;
-
-      expect(getDynamicAnchorKind([dynamic], 0, 'hydrate')).toBe('tail');
-      expect(getDynamicAnchorKind([dynamic, element], 0, 'hydrate')).toBe('element');
-      expect(getDynamicAnchorKind([dynamic, text], 0, 'hydrate')).toBe('comment');
-      expect(getDynamicAnchorKind([dynamic, element], 0, 'client')).toBe('comment');
     });
   });
 

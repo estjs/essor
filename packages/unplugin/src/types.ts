@@ -60,7 +60,7 @@ export interface Options {
   hmr?: boolean;
 
   /**
-   * Whether to omit closing tags from native DOM templates using Solid's omitLastClosingTag behavior.
+   * Whether to omit closing tags from native DOM templates
    * @default true
    */
   omitClosingTags?: boolean;

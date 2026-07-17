@@ -15,8 +15,6 @@ import {
   isNumber,
   isPlainObject,
   isString,
-  kebabCase,
-  normalizeStyle,
   propsToAttrMap,
   startsWith,
 } from '@estjs/shared';
@@ -185,26 +183,16 @@ export interface DynamicAttr {
   name: string;
   value: t.Expression;
   effectKind: 'static' | 'dynamic';
-  order: number;
-}
-
-export interface StaticAttr {
-  name: string;
-  value: string | boolean;
-  order: number;
-}
-
-export interface SpreadAttr {
-  value: t.Expression;
-  effectKind: 'static' | 'dynamic';
-  order: number;
 }
 
 export interface ParsedAttributes {
-  staticAttrs: StaticAttr[];
+  staticAttrs: Array<{ name: string; value: string | boolean }>;
   dynamicAttrs: DynamicAttr[];
-  spreadAttrs: SpreadAttr[];
+  spreadAttrs: Array<{ value: t.Expression; effectKind: 'static' | 'dynamic' }>;
 }
+
+type StaticAttr = ParsedAttributes['staticAttrs'][number];
+type SpreadAttr = ParsedAttributes['spreadAttrs'][number];
 
 interface OrderedAttribute<T> {
   attr: T;
@@ -256,20 +244,13 @@ function isSerializableStaticValue(
 /**
  * Serializes a static JSX style object into an inline CSS string.
  */
-function styleToString(style: unknown): string | undefined {
-  const normalized = normalizeStyle(style);
-  if (!normalized) return undefined;
-  if (isString(normalized)) return normalized;
-
-  const parts: string[] = [];
-  for (const key in normalized) {
-    const value = normalized[key];
-    if (isString(value) || isNumber(value)) {
-      const prop = startsWith(key, '--') ? key : kebabCase(key);
-      parts.push(`${prop}:${value}`);
-    }
-  }
-  return parts.join(';');
+function styleToString(style: Record<string, string | number>): string {
+  return Object.entries(style)
+    .map(([key, value]) => {
+      const kebabKey = key.replaceAll(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
+      return `${kebabKey}:${value}`;
+    })
+    .join(';');
 }
 
 /**
@@ -289,7 +270,7 @@ function createStaticAttr(
   order: number,
 ): OrderedAttribute<StaticAttr> {
   return {
-    attr: { name: attrName, value, order },
+    attr: { name: attrName, value },
     order,
     templateName: normalizeTemplateAttrName(attrName),
   };
@@ -308,7 +289,6 @@ function createDynamicAttr(
       name: attrName,
       value,
       effectKind,
-      order,
     },
     order,
     templateName: normalizeTemplateAttrName(attrName),
@@ -329,10 +309,8 @@ function resolveStaticExpressionValue(
   }
 
   let value = evaluated.value;
-  if (attrName === 'style') {
-    const style = styleToString(value);
-    if (style === undefined) return undefined;
-    value = style;
+  if (attrName === 'style' && isPlainObject(value)) {
+    value = styleToString(value as Record<string, string | number>);
   }
 
   if (isString(value) || isBoolean(value)) {
@@ -423,7 +401,6 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
       spreadAttrs.push({
         value: attrPath.node.argument,
         effectKind: classifyAttrValue(attrPath.node.argument).kind,
-        order,
       });
       continue;
     }

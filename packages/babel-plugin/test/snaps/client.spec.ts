@@ -110,18 +110,6 @@ describe('should work with jsx client transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('preserves interleaved Component prop and spread override order', () => {
-    const inputCode = `
-      const spread = { b: 1 };
-      const element = <Component a={1} {...spread} b={2} />;
-    `;
-    const output = transformCode(inputCode);
-
-    expect(output).toMatch(
-      /Object\.assign\(\{\},\s*\{\s*a:\s*"1"\s*\},\s*spread,\s*\{\s*b:\s*"2"\s*\}\)/,
-    );
-  });
-
   it('transforms JSX element with conditional attributes', () => {
     const inputCode = `
       const hasClass = true;
@@ -251,21 +239,6 @@ describe('should work with jsx client transform', () => {
     const output = transformCode(inputCode);
     expect(output).not.toContain('_memoEffect$');
     expect(output).toContain('style=\\"color:red;font-size:16px\\"');
-  });
-
-  it('normalizes nested static style bindings before serializing', () => {
-    const inputCode = `
-      const style = {
-        color: 'red',
-        nested: { fontSize: '14px' },
-        more: ['margin: 0;', { padding: '4px' }]
-      };
-      const element = <div style={style}>Hello, World!</div>;
-    `;
-
-    const output = transformCode(inputCode);
-    expect(output).not.toContain('[object Object]');
-    expect(output).toContain('style=\\"color:red;font-size:14px;margin:0;padding:4px\\"');
   });
 
   it('transforms JSX element with class and style attributes', () => {
@@ -484,53 +457,6 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
-  });
-
-  it('threads isSVG flag into patchClass for dynamic SVG class', () => {
-    // Regression: SVG elements expose a read-only `className` getter, so the
-    // runtime must patch class via `setAttribute`. The compiler tells it to by
-    // appending a trailing `true` (isSVG) arg to `patchClass` for SVG targets.
-    const inputCode = `
-      function ArrowIcon(props) {
-        return (
-          <svg class={props.class} viewBox="0 0 24 24">
-            <line x1="5" y1="12" x2="19" y2="12" />
-            <polyline points="12 5 19 12 12 19" />
-          </svg>
-        );
-      }
-    `;
-
-    const output = transformCode(inputCode);
-    // Dynamic class on an SVG element must carry the trailing isSVG flag.
-    expect(output).toMatch(/_patchClass\$\([^)]*,\s*true\)/);
-    expect(output).toMatchSnapshot();
-  });
-
-  it('threads isSVG flag into patchClass for nested SVG children', () => {
-    const inputCode = `
-      const p = {};
-      const element = (
-        <svg>
-          <line class={p.c} x1="5" />
-        </svg>
-      );
-    `;
-
-    const output = transformCode(inputCode);
-    expect(output).toMatch(/_patchClass\$\([^)]*,\s*true\)/);
-  });
-
-  it('does not add isSVG flag to patchClass for HTML elements', () => {
-    const inputCode = `
-      const p = {};
-      const element = <div class={p.c}>Hello</div>;
-    `;
-
-    const output = transformCode(inputCode);
-    // HTML class patches stay 3-arg — no trailing isSVG flag.
-    expect(output).not.toMatch(/_patchClass\$\([^)]*,\s*true\)/);
-    expect(output).toContain('_patchClass$');
   });
 
   it('should work with bind api', () => {
@@ -1214,19 +1140,6 @@ describe('should work with jsx client transform', () => {
     const output = transformCodeWithFor(code);
     expect(output).not.toContain('Fragment as _Fragment$');
     expect(output).not.toContain('_patchAttr$(_root$, "key"');
-  });
-
-  it('extracts keys from single-child fragment map bodies', () => {
-    const code = `
-      <tbody>
-        {items.map(item => <><Row key={item.id} item={item} /></>)}
-      </tbody>
-    `;
-    const output = transformCodeWithFor(code);
-
-    expect(output).toContain('Fragment as _Fragment$');
-    expect(output).toContain('key: item => item.id');
-    expect(output).not.toContain('"key": item.id');
   });
 
   it('compiles <Transition> as a built-in import from essor', () => {

@@ -19,7 +19,7 @@ import {
   type IRNode,
   type IRSpread,
   IRType,
-  getDynamicAnchorKind,
+  hasDynamicBoundary,
 } from './ir';
 import {
   createBindingSetter,
@@ -110,6 +110,23 @@ function closeTag(
     : '';
 }
 
+function getDynamicAnchorKind(
+  children: IRNode[],
+  index: number,
+  mode: RenderMode,
+): 'comment' | 'element' | 'tail' {
+  if ((mode === 'client' || mode === 'hydrate') && !hasDynamicBoundary(children, index)) {
+    const next = children[index + 1];
+    if (mode === 'hydrate' && next?.type === IRType.ELEMENT) {
+      return 'element';
+    }
+    if (!next) {
+      return 'tail';
+    }
+  }
+  return 'comment';
+}
+
 // Scans from the end to find the last element whose closing tag can be omitted.
 // A trailing dynamic node is skippable only when getDynamicAnchorKind returns
 // 'tail' (i.e. it is the last child and has no following sibling that would
@@ -153,6 +170,7 @@ function buildTemplateAndFlatten(
     element: IRElement,
     parentId: number,
     childIndex: number,
+    domChildIndexParam = childIndex,
     forcedStaticIndex?: number,
     isLastElement = false,
     hasClosingParent = false,
@@ -176,7 +194,7 @@ function buildTemplateAndFlatten(
         staticIndex: forcedStaticIndex,
         parentId,
         childIndex,
-        domChildIndex: childIndex,
+        domChildIndex: domChildIndexParam,
         needsRef: hasOwnEffects(element),
       });
       return;
@@ -194,7 +212,7 @@ function buildTemplateAndFlatten(
       staticIndex: forcedStaticIndex,
       parentId,
       childIndex,
-      domChildIndex: childIndex,
+      domChildIndex: domChildIndexParam,
       needsRef: hasOwnEffects(element) || hasDynamicChildren,
     });
 
@@ -202,6 +220,7 @@ function buildTemplateAndFlatten(
     let domChildIndex = 0;
     let markerIndex = 0;
     let pendingAnchorIndex: number | undefined;
+    let pendingAnchorNode: FlatNode | undefined;
     const lastElementIndex = findLastOmittableElementIndex(element.children, mode);
     for (let i = 0; i < element.children.length; i++) {
       const child = element.children[i];
@@ -218,28 +237,34 @@ function buildTemplateAndFlatten(
           });
           break;
         case IRType.ELEMENT:
+          if (pendingAnchorNode) {
+            pendingAnchorNode.domChildIndex = domChildIndex;
+          }
           visit(
             child,
             myId,
             templateChildIndex++,
+            domChildIndex,
             pendingAnchorIndex,
             i === lastElementIndex,
             closes,
           );
           domChildIndex++;
           pendingAnchorIndex = undefined;
+          pendingAnchorNode = undefined;
           break;
         case IRType.EXPRESSION:
         case IRType.COMPONENT:
         case IRType.FOR: {
           const anchorKind = getDynamicAnchorKind(element.children, i, mode);
           const index = markerIndex++;
+          let anchorNode: FlatNode | undefined;
           if (anchorKind === 'comment') {
             template += '<!>';
           } else if (anchorKind === 'element') {
             pendingAnchorIndex = index;
           }
-          nodes.push({
+          anchorNode = {
             id: nextId++,
             kind: 'anchor',
             dynamicChild: child,
@@ -249,11 +274,15 @@ function buildTemplateAndFlatten(
             childIndex: templateChildIndex,
             domChildIndex,
             needsRef: true,
-          });
+          };
+          nodes.push(anchorNode);
           if (anchorKind === 'comment') {
             templateChildIndex++;
             domChildIndex++;
           } else {
+            if (anchorKind === 'element') {
+              pendingAnchorNode = anchorNode;
+            }
             domChildIndex++;
           }
           break;
@@ -264,7 +293,7 @@ function buildTemplateAndFlatten(
     template += closeTag(element, isLastElement, hasClosingParent, options);
   }
 
-  visit(root, -1, 0, undefined, true, false);
+  visit(root, -1, 0, 0, undefined, true, false);
   return { template, nodes };
 }
 
@@ -507,7 +536,6 @@ interface PendingMemoPatch {
   target: t.Expression;
   attrName: string;
   value: t.Expression;
-  isSVG?: boolean;
 }
 
 type NodeVarMap = Map<number, t.Identifier>;
@@ -611,11 +639,11 @@ function emitElementEffect(
   }
 
   for (const attr of element.dynamicAttrs) {
-    emitDynamicAttr(attr, target, body, state, pendingMemoPatches, element.isSVG);
+    emitDynamicAttr(attr, target, body, state, pendingMemoPatches);
   }
 
   for (const spread of element.spreads) {
-    emitSpread(spread, target, body, state, pendingMemoPatches, element.isSVG);
+    emitSpread(spread, target, body, state, pendingMemoPatches);
   }
 }
 
@@ -764,7 +792,6 @@ function emitDynamicAttr(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
-  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -774,7 +801,6 @@ function emitDynamicAttr(
     body,
     () => createEffectKey(attr.name, state.effectIndex++),
     pendingMemoPatches,
-    isSVG,
   );
 }
 
@@ -787,7 +813,6 @@ function emitSpread(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
-  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -797,7 +822,6 @@ function emitSpread(
     body,
     () => createSpreadEffectKey(state.effectIndex++),
     pendingMemoPatches,
-    isSVG,
   );
 }
 
@@ -812,12 +836,9 @@ function emitPatchOrEffect(
   body: t.Statement[],
   getEffectKey: () => string,
   pendingMemoPatches: PendingMemoPatch[],
-  isSVG: boolean,
 ): void {
   if (kind === 'static') {
-    body.push(
-      t.expressionStatement(createPatchCall(useImport, target, attrName, value, { isSVG })),
-    );
+    body.push(t.expressionStatement(createPatchCall(useImport, target, attrName, value)));
     return;
   }
 
@@ -826,7 +847,6 @@ function emitPatchOrEffect(
     target,
     attrName,
     value,
-    isSVG,
   });
 }
 
@@ -859,7 +879,6 @@ function createMemoPatchStatements(
   const updateCall = createPatchCall(useImport, patch.target, patch.attrName, valueId, {
     previousValue: effectState,
     nextValue: t.assignmentExpression('=', effectState, valueId),
-    isSVG: patch.isSVG,
   });
 
   return [

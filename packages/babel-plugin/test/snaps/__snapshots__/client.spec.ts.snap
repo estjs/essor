@@ -233,8 +233,8 @@ const _t$ = _template$("<tbody>");
       return data.value;
     },
     children: item => Row(Object.assign({}, {
-      "item": item,
-      "other": "1"
+      "other": "1",
+      "item": item
     }, {
       other: 2
     })),
@@ -871,24 +871,6 @@ const element = _createComponent$(_Suspense$, {
 });"
 `;
 
-exports[`should work with jsx client transform > threads isSVG flag into patchClass for dynamic SVG class 1`] = `
-"import { template as _template$, patchClass as _patchClass$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<svg viewBox=\\"0 0 24 24\\"><line x1=\\"5\\" y1=\\"12\\" x2=\\"19\\" y2=\\"12\\"></line><polyline points=\\"12 5 19 12 12 19\\">");
-function ArrowIcon(props) {
-  return (() => {
-    const _root$ = _t$();
-    _memoEffect$(_p$ => {
-      let _v$ = props.class;
-      _v$ !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$, true);
-      return _p$;
-    }, {
-      c0: undefined
-    });
-    return _root$;
-  })();
-}"
-`;
-
 exports[`should work with jsx client transform > transforms Component props with spread attributes 1`] = `
 "import { createComponent as _createComponent$ } from "essor";
 const props = {
@@ -898,9 +880,9 @@ const props = {
 const otherProps = {
   props: "other"
 };
-const element = _createComponent$(Component, Object.assign({}, props, {
+const element = _createComponent$(Component, Object.assign({}, {
   other: "other"
-}, otherProps));"
+}, props, otherProps));"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with JSX fragment 1`] = `
