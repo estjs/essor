@@ -53,15 +53,15 @@ export default defineConfig({
       use: { ...devices['Desktop Safari'] },
     },
 
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
+    /* Mobile viewport smoke coverage: core interactive flows only.
+       Touch/small-viewport differences surface in form bindings, hydration,
+       and the TodoMVC interaction set — the other specs are viewport-neutral
+       (HMR, SSR output) and would only slow the suite down. */
+    {
+      name: 'mobile-chrome',
+      use: { ...devices['Pixel 5'] },
+      testMatch: /(todo-mvc|binding|hydrate)\.spec\.ts/,
+    },
 
     /* Test against branded browsers. */
     // {
