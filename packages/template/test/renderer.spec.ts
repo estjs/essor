@@ -163,7 +163,7 @@ describe('renderer utilities', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Dependency injection & lifecycle (Solid-style — no app plugin system)
+// Dependency injection & lifecycle
 // ---------------------------------------------------------------------------
 
 describe('dependency injection & lifecycle', () => {

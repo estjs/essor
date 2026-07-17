@@ -279,7 +279,7 @@ describe('component', () => {
       expect(ref.value).toBe(button);
     });
 
-    it('overrides a JSX-bound delegated handler in the `_$<event>` slot (Solid-style)', async () => {
+    it('overrides a JSX-bound delegated handler in the `_$<event>` slot', async () => {
       const root = createTestRoot();
       const internal = vi.fn();
       const parent = vi.fn();
