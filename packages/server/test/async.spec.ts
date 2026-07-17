@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { type InjectionKey, inject, provide } from '@estjs/template';
 import { getActiveScope } from '@estjs/template/internal';
 import { renderToStringAsync } from '../src/render';
+import { unsafeHTML } from '../src/utils';
 
 describe('server/renderToStringAsync', () => {
   it('renders sync component', async () => {
-    const Component = () => '<div>sync</div>';
+    const Component = () => unsafeHTML('<div>sync</div>');
     await expect(renderToStringAsync(Component)).resolves.toBe('<div>sync</div>');
   });
 
   it('renders async component', async () => {
     const AsyncComponent = async (props: { msg: string }) => {
       const value = await Promise.resolve(props.msg);
-      return `<p>${value}</p>`;
+      return unsafeHTML(`<p>${value}</p>`);
     };
     await expect(renderToStringAsync(AsyncComponent as any, { msg: 'hi' })).resolves.toBe(
       '<p>hi</p>',
@@ -20,7 +21,11 @@ describe('server/renderToStringAsync', () => {
   });
 
   it('awaits promises in array results', async () => {
-    const Component = () => ['<a/>', Promise.resolve('<b/>'), ['<c/>', Promise.resolve('<d/>')]];
+    const Component = () => [
+      unsafeHTML('<a/>'),
+      Promise.resolve(unsafeHTML('<b/>')),
+      [unsafeHTML('<c/>'), Promise.resolve(unsafeHTML('<d/>'))],
+    ];
     await expect(renderToStringAsync(Component as any)).resolves.toBe('<a/><b/><c/><d/>');
   });
 
@@ -28,7 +33,7 @@ describe('server/renderToStringAsync', () => {
     const key: InjectionKey<string> = Symbol('async-ctx');
     const Child = () => {
       const v = inject(key, 'default');
-      return `<x>${v}</x>`;
+      return unsafeHTML(`<x>${v}</x>`);
     };
     const Parent = () => {
       provide(key, 'provided');
@@ -41,7 +46,7 @@ describe('server/renderToStringAsync', () => {
     const key: InjectionKey<string> = Symbol('awaited-ctx');
     const Child = () => {
       const value = inject(key, 'default');
-      return `<x>${value}</x>`;
+      return unsafeHTML(`<x>${value}</x>`);
     };
     const Parent = async () => {
       provide(key, 'provided-after-await');

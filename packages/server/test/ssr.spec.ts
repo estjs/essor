@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import * as ssrRuntime from '../src/ssr';
 import {
   ssrAttr,
   ssrBind,
@@ -6,10 +7,53 @@ import {
   ssrSelected,
   ssrSpread,
   ssrStyle,
+  ssrTextContent,
   ssrTextValue,
 } from '../src/ssr';
 
+const URL_ATTRIBUTE_NAMES = [
+  'href',
+  'SRC',
+  'xlink:href',
+  'ACTION',
+  'formAction',
+  'PoStEr',
+] as const;
+
+const UNSAFE_URLS = [
+  ['mixed-case javascript protocol', 'JaVaScRiPt:alert(1)'],
+  ['leading ASCII whitespace and controls', '\u0000\t\n  javascript:alert(1)'],
+  ['interspersed ASCII controls including DEL', 'java\u0000\u001F\u007Fscript:alert(1)'],
+  ['vbscript protocol', 'Vb\u000BScRiPt:msgbox(1)'],
+  ['text/html data URL', 'data:text/html,<script>alert(1)</script>'],
+  ['text/xml data URL', 'data:text/xml,<root/>'],
+  ['application/xml data URL', 'data:application/xml,<root/>'],
+  ['application/xhtml+xml data URL', 'data:application/xhtml+xml,<html/>'],
+  ['image/svg+xml data URL', 'data:image/svg+xml,<svg onload="alert(1)"/>'],
+  ['generic +xml data URL', 'DATA:application/atom+xml,<feed/>'],
+] as const;
+
+const SAFE_URLS = [
+  '/docs/getting-started',
+  'http://example.com/page',
+  'https://example.com/page',
+  'mailto:hello@example.com',
+  'tel:+123456789',
+  'data:image/png;base64,iVBORw0KGgo=',
+  'data:font/woff2;base64,d09GMg==',
+  'data:audio/ogg;base64,T2dnUw==',
+] as const;
+
+const COERCIBLE_UNSAFE_URLS = [
+  ['boxed string', new Object('javascript:alert(1)')],
+  ['custom toString', { toString: () => 'javascript:alert(1)' }],
+] as const;
+
 describe('server/ssr helpers', () => {
+  it('exports the compiler whole-text serializer', () => {
+    expect((ssrRuntime as Record<string, unknown>).ssrTextContent).toBeTypeOf('function');
+  });
+
   describe('ssrAttr', () => {
     it('handles nil, boolean, and escaped string values', () => {
       expect(ssrAttr('title', null)).toBe('');
@@ -28,6 +72,44 @@ describe('server/ssr helpers', () => {
       expect(ssrAttr('a"b', 'v')).toBe('');
       // Boolean form is guarded too.
       expect(ssrAttr('x onmouseover=alert(1)', true)).toBe('');
+    });
+
+    it.each(URL_ATTRIBUTE_NAMES)('drops unsafe URL values for %s', (name) => {
+      for (const [, value] of UNSAFE_URLS) {
+        expect(ssrAttr(name, value)).toBe('');
+      }
+    });
+
+    it.each(URL_ATTRIBUTE_NAMES)('preserves safe URL values for %s', (name) => {
+      for (const value of SAFE_URLS) {
+        expect(ssrAttr(name, value)).toBe(` ${name}="${value}"`);
+      }
+    });
+
+    it.each(COERCIBLE_UNSAFE_URLS)('drops unsafe URL values from %s', (_, value) => {
+      expect(ssrAttr('href', value)).toBe('');
+    });
+
+    it('coerces a URL value once and emits the checked string', () => {
+      let calls = 0;
+      const value = {
+        toString() {
+          calls += 1;
+          return calls === 1 ? '/safe' : 'javascript:alert(1)';
+        },
+      };
+
+      expect(ssrAttr('href', value)).toBe(' href="/safe"');
+      expect(calls).toBe(1);
+    });
+
+    it('preserves boolean URL attributes and safely stringifies symbols', () => {
+      expect(ssrAttr('href', true)).toBe(' href');
+      expect(ssrAttr('href', Symbol('safe'))).toBe(' href="Symbol(safe)"');
+    });
+
+    it('preserves object coercion for non-URL attributes', () => {
+      expect(ssrAttr('title', { toString: () => '<label>' })).toBe(' title="&lt;label&gt;"');
     });
   });
 
@@ -102,6 +184,17 @@ describe('server/ssr helpers', () => {
       });
       expect(result).toBe(' id="ok"');
     });
+
+    it('inherits URL safety filtering from ssrAttr', () => {
+      const result = ssrSpread({
+        id: 'safe',
+        href: 'javascript:alert(1)',
+        src: '/assets/logo.png',
+        poster: 'data:image/svg+xml,<svg onload="alert(1)"/>',
+      });
+
+      expect(result).toBe(' id="safe" src="/assets/logo.png"');
+    });
   });
 
   describe('ssrBind', () => {
@@ -109,11 +202,13 @@ describe('server/ssr helpers', () => {
       expect(ssrBind('value', 'hello')).toBe(' value="hello"');
     });
 
-    it('applies trim modifier', () => {
-      expect(ssrBind('value', '  hi  ', { trim: true })).toBe(' value="hi"');
+    it('does NOT pre-apply the trim modifier to the first paint (BIND-03)', () => {
+      // trim/number normalize the DOM→model READ pipeline only; the SSR value
+      // must match the client's initial model→DOM write (the raw model).
+      expect(ssrBind('value', '  hi  ', { trim: true })).toBe(' value="  hi  "');
     });
 
-    it('applies number modifier', () => {
+    it('does NOT pre-apply the number modifier to the first paint (BIND-03)', () => {
       expect(ssrBind('value', '42', { number: true })).toBe(' value="42"');
     });
 
@@ -196,8 +291,74 @@ describe('server/ssr helpers', () => {
   });
 
   describe('ssrTextValue', () => {
-    it('renders escaped textarea text with bind modifiers applied', () => {
-      expect(ssrTextValue('  <bio>  ', { trim: true })).toBe('&lt;bio&gt;');
+    it('renders escaped textarea text WITHOUT pre-applying modifiers (BIND-03)', () => {
+      // Modifiers belong to the DOM→model read pipeline; the SSR first paint
+      // shows the raw model value (escaped), matching CSR's initial write.
+      expect(ssrTextValue('  <bio>  ', { trim: true })).toBe('  &lt;bio&gt;  ');
+    });
+
+    it('renders escaped textarea text without modifiers', () => {
+      expect(ssrTextValue('<bio>')).toBe('&lt;bio&gt;');
+    });
+
+    it('renders empty string for nullish and false models', () => {
+      expect(ssrTextValue(null)).toBe('');
+      expect(ssrTextValue(undefined)).toBe('');
+      expect(ssrTextValue(false)).toBe('');
+    });
+
+    it('duplicates a leading LF so textarea bind values survive HTML parsing', () => {
+      expect(ssrTextValue('\nline')).toBe('\n\nline');
+    });
+  });
+
+  describe('ssrTextContent', () => {
+    function parseText(tag: 'title' | 'textarea' | 'style', serialized: string): string {
+      const template = document.createElement('template');
+      template.innerHTML = `<${tag}>${serialized}</${tag}>`;
+      return template.content.firstElementChild?.textContent ?? '';
+    }
+
+    it.each(['title', 'textarea'] as const)(
+      'round-trips nested primitive values through <%s> RCDATA',
+      (tag) => {
+        const value = ['A<', ['&', null, false, '>B']];
+        const serialized = ssrTextContent(tag, value);
+
+        expect(serialized).not.toContain('A<&');
+        expect(parseText(tag, serialized)).toBe('A<&>B');
+      },
+    );
+
+    it('preserves a leading textarea LF after HTML parsing', () => {
+      const serialized = ssrTextContent('textarea', '\nline');
+
+      expect(serialized.startsWith('\n\n')).toBe(true);
+      expect(parseText('textarea', serialized)).toBe('\nline');
+    });
+
+    it('round-trips safe style raw text without entity rewriting', () => {
+      const value = 'a::before { content: "<&"; }';
+      const serialized = ssrTextContent('style', value);
+
+      expect(serialized).toBe(value);
+      expect(parseText('style', serialized)).toBe(value);
+    });
+
+    it('rejects case-insensitive style end-tag breakout tokens', () => {
+      expect(() => ssrTextContent('style', 'a{} </StYlE><script>alert(1)</script>')).toThrow(
+        /<\/style>/i,
+      );
+    });
+
+    it('preserves style text that only shares an end-tag name prefix', () => {
+      expect(ssrTextContent('style', 'a::after { content: "</stylesheet>"; }')).toBe(
+        'a::after { content: "</stylesheet>"; }',
+      );
+    });
+
+    it('rejects executable script serialization as a defense-in-depth boundary', () => {
+      expect(() => ssrTextContent('script', 'alert(1)')).toThrow(/dynamic <script>/i);
     });
   });
 });

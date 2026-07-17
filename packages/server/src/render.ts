@@ -1,19 +1,18 @@
 import { error, isArray, isFunction, isPromise, isString } from '@estjs/shared';
-import { type ComponentFn, type ComponentProps, resetHydrationKey } from '@estjs/template';
+import { type ComponentProps, resetHydrationKey } from '@estjs/template';
 import {
   type Scope,
-  SSR_ASYNC_CONTEXT_ERROR,
-  createSSRExecutionState,
+  activateScopeEffects,
   createScope,
   disposeScope,
   getActiveScope,
-  getSSRExecutionCarrier,
   runWithScope,
   setActiveScope,
 } from '@estjs/template/internal';
-import { type SSRContext, hasSSRExecutionCarrier, runWithSSRContext } from './context';
-import { createCollectingResourceBridge, type CollectingResourceBridge } from './resource-bridge';
-import { createSSRNode, injectHydrationKeys, resolve } from './utils';
+import { type SSRContext, hasAsyncContextSupport, runWithSSRContext } from './context';
+import { type SSRNode, createSSRNode, injectHydrationKeys, resolve } from './utils';
+
+type SSRComponentFn<P = ComponentProps> = (props: P) => unknown;
 
 /**
  * Runs `fn` inside a freshly created scope whose parent is the currently
@@ -30,9 +29,10 @@ function runInFreshScope<T>(fn: () => T, parent: Scope | null = getActiveScope()
 }
 
 /**
- * Async variant of {@link runInFreshScope}. Keeps the scope alive across
- * `await` boundaries by manually saving/restoring the active scope instead
- * of using {@link runWithScope}.
+ * Async variant of {@link runInFreshScope}. The request-local template scope
+ * stays alive across awaits, while the process-global reactive effect scope is
+ * active only for the initial synchronous segment. Later continuations are
+ * bracketed by the server async hook.
  */
 async function runInFreshScopeAsync<T>(
   fn: () => Promise<T>,
@@ -40,9 +40,16 @@ async function runInFreshScopeAsync<T>(
 ): Promise<T> {
   const scope = createScope(parent);
   const prevScope = getActiveScope();
-  setActiveScope(scope);
   try {
-    return await fn();
+    let result: Promise<T>;
+    const restoreEffects = activateScopeEffects(scope);
+    try {
+      setActiveScope(scope);
+      result = fn();
+    } finally {
+      restoreEffects();
+    }
+    return await result;
   } finally {
     setActiveScope(prevScope);
     disposeScope(scope);
@@ -57,46 +64,22 @@ function assertSyncRenderResult(result: unknown, apiName: string): void {
   }
 }
 
-function runWithExecutionStateSync<T>(context: SSRContext | null, fn: () => T): T {
-  const carrier = getSSRExecutionCarrier();
-  if (!carrier) {
-    // Sync path may still run without ALS (e.g. constrained runtimes). Use a
-    // module-local reset for isolation between sequential sync renders only.
-    resetHydrationKey();
-    return runWithSSRContext(context, fn);
-  }
-  const state = createSSRExecutionState({
-    hydrationKey: 0,
-    activeScope: null,
-    resources: context?.resources,
-  });
-  return carrier.run(state, () => runWithSSRContext(context, fn)) as T;
-}
-
-async function runWithExecutionStateAsync<T>(
-  context: SSRContext | null,
-  fn: () => Promise<T>,
-): Promise<T> {
-  const carrier = getSSRExecutionCarrier();
-  if (!carrier || !hasSSRExecutionCarrier()) {
-    throw new Error(SSR_ASYNC_CONTEXT_ERROR);
-  }
-  const state = createSSRExecutionState({
-    hydrationKey: 0,
-    activeScope: null,
-    resources: context?.resources,
-  });
-  return (await carrier.run(state, fn)) as T;
-}
-
 /**
  * Render a component to HTML string.
  *
  * Each invocation runs inside its own root scope so that `provide()` calls
  * stay isolated between independent `renderToString` calls.
+ *
+ * @param component - The component to render.
+ * @param props - The props to pass to the component.
+ * @param context - Optional {@link SSRContext} that collects out-of-tree
+ *   render output (currently: `Portal`/`Teleport` content). The same context
+ *   is visible to nested `createSSRComponent` calls; the caller integrates
+ *   `context.teleports[selector]` into the final document.
+ * @returns {string} The rendered HTML string.
  */
 export function renderToString<P extends ComponentProps = ComponentProps>(
-  component: ComponentFn<P>,
+  component: SSRComponentFn<P>,
   props: P | ComponentProps = {},
   context: SSRContext | null = null,
 ): string {
@@ -105,18 +88,51 @@ export function renderToString<P extends ComponentProps = ComponentProps>(
     return '';
   }
 
-  const result = runWithExecutionStateSync(context, () =>
-    runInFreshScope(() => component(props as P), null),
-  );
+  // Render and serialize inside the same SSR store + fresh root scope so that
+  // any compiled thunks executed by resolve() still see this request's
+  // provide/inject state and hydration-key counter. The hydration-key reset
+  // runs INSIDE the store: resetting outside would rewind the OUTER request's
+  // counter when a render is nested in another request's ALS scope, producing
+  // duplicate data-hk keys.
+  return runWithSSRContext(context, () =>
+    runInFreshScope(() => {
+      resetHydrationKey();
+      const result = component(props as P);
 
-  assertSyncRenderResult(result, 'renderToString');
-  return resolve(result);
+      // A Promise here means an async component was passed to the SYNC entry point.
+      // `resolve()` cannot await, so it would serialize the Promise to the literal
+      // string `[object Promise]` and ship broken HTML. Fail loudly instead - in
+      // production too, since a silent corrupt render is worse than a thrown error.
+      assertSyncRenderResult(result, 'renderToString');
+
+      // Serialize to the final HTML string at the component boundary.
+      return resolve(result);
+    }, null),
+  );
 }
 
 /**
  * Render template with components (used by babel plugin in SSG mode).
+ *
+ * Interleaves the static template fragments with the dynamic slot values.
+ *
+ * Each slot has ALREADY been converted to its final HTML string by the
+ * compile-time-chosen helper:
+ *   - attribute slots → `ssrAttr` / `ssrClass` / ... (escaped attribute string)
+ *   - child-text slots → `escape(expr)` (escaped text)
+ *   - nested element/component → `ssr(...)` / `ssrComponent(...)`
+ * so `render()` does NOT escape here — it just concatenates strings. Public
+ * callers receive a plain HTML string; compiled JSX uses `ssr()` for a trusted
+ * child value.
+ *
+ * @param templates - The static template fragments.
+ * @param hydrationKey - The hydration key (empty string to skip injection).
+ * @param slots - The pre-serialized HTML strings interleaved between fragments.
+ * @returns {string} The rendered HTML string.
  */
 export function render(templates: string[], hydrationKey: string, ...slots: unknown[]): string {
+  // Direct string concatenation — avoids array allocation + join overhead
+  // for typical 2-4 template fragments.
   const templateLen = templates.length;
   const slotLen = slots.length;
   let content = '';
@@ -125,17 +141,28 @@ export function render(templates: string[], hydrationKey: string, ...slots: unkn
     content += templates[i];
     if (i < slotLen) {
       const slot = slots[i];
+      // TRUST CONTRACT: a bare string slot is a pre-escaped fragment produced
+      // by a compile-time helper (ssrAttr/ssrClass/escape/...) — it is
+      // concatenated verbatim; escaping again would corrupt attribute quotes.
+      // Any other value goes through resolve(), which escapes bare strings
+      // and only lets WeakSet-branded SSRNode values through raw. render() is
+      // compiler-facing: do not pass user input as a string slot.
       content += isString(slot) ? slot : resolve(slot);
     }
   }
 
+  // Inject the hydration key attribute (data-hk) into the root element.
   return hydrationKey ? injectHydrationKeys(content, hydrationKey) : content;
 }
 
 /**
  * Compiler-only SSR template helper.
+ *
+ * It has the same concatenation semantics as {@link render}, but returns a
+ * trusted SSR node so nested JSX can flow through child-text escape() without
+ * double-escaping. The public render() API still returns a plain string.
  */
-export function ssr(templates: string[], hydrationKey: string, ...slots: unknown[]): string {
+export function ssr(templates: string[], hydrationKey: string, ...slots: unknown[]): SSRNode {
   return createSSRNode(render(templates, hydrationKey, ...slots));
 }
 
@@ -143,88 +170,52 @@ export function ssr(templates: string[], hydrationKey: string, ...slots: unknown
  * Async variant of {@link renderToString}. Awaits component results so that
  * `async` components and promise-returning expressions can participate in SSR.
  *
- * Isolation: each call creates a request-local {@link SSRExecutionState}
- * (hydration counter, active scope, resource bridge) and runs the full
- * promise lifetime inside the async context carrier. Concurrent renders must
- * not observe each other's keys or scopes.
+ * The awaited value is passed through the same resolve() component-boundary
+ * pipeline as the synchronous path, which transparently awaits nested promises
+ * (arrays of promises, promise-returning thunks, etc.).
  */
-export async function renderToStringAsync<P extends ComponentProps = ComponentProps>(
-  component: ComponentFn<P>,
+export function renderToStringAsync<P extends ComponentProps = ComponentProps>(
+  component: SSRComponentFn<P>,
   props: P | ComponentProps = {},
   context: SSRContext | null = null,
 ): Promise<string> {
   if (!isFunction(component)) {
     error('Component must be a function');
-    return '';
+    return Promise.resolve('');
   }
 
-  return runWithExecutionStateAsync(context, () =>
-    runInFreshScopeAsync(
-      () =>
-        runWithSSRContext(context, async () => {
-          let result: unknown = component(props as P);
-          if (isPromise(result)) {
-            result = await result;
-          }
-          return resolveAsync(result);
-        }),
-      null,
-    ),
+  // Without AsyncLocalStorage, concurrent async renders would silently share
+  // the module-global scope and hydration counter — exactly the cross-request
+  // leakage this API is meant to prevent. Warn loudly instead of failing quietly.
+  if (__DEV__ && !hasAsyncContextSupport()) {
+    error(
+      'renderToStringAsync: AsyncLocalStorage is unavailable on this runtime; ' +
+        'concurrent renders will share request state (hydration keys, provide/inject).',
+    );
+  }
+
+  // Keep both the SSR request store and the reactive scope alive for the
+  // ENTIRE async render lifetime, including serialization: thunks produced by
+  // compiled children execute inside resolveAsync, so it must run before
+  // runInFreshScopeAsync's finally disposes the scope — otherwise Portal()
+  // and inject() calls inside deferred thunks would lose this request.
+  // resetHydrationKey runs INSIDE the store (see renderToString).
+  return runWithSSRContext(context, () =>
+    runInFreshScopeAsync(async () => {
+      resetHydrationKey();
+      let result: unknown = component(props as P);
+      if (isPromise(result)) {
+        result = await result;
+      }
+      return resolveAsync(result);
+    }, null),
   );
 }
 
 /**
- * Multi-pass async render with resource bridge collection.
- * Max 10 passes; throws ESSOR_SSR_RESOURCE_LOOP when a pass still creates new keys.
- */
-export async function renderToStringAsyncMultiPass<P extends ComponentProps = ComponentProps>(
-  component: ComponentFn<P>,
-  props: P | ComponentProps = {},
-  context: SSRContext | null = null,
-  options: { maxPass?: number } = {},
-): Promise<{ html: string; passes: number; bridge: CollectingResourceBridge }> {
-  const maxPass = options.maxPass ?? 10;
-  const bridge =
-    (context?.resources as CollectingResourceBridge | undefined) ?? createCollectingResourceBridge();
-  const ctx: SSRContext = { ...(context ?? { teleports: Object.create(null) }), resources: bridge };
-
-  let html = '';
-  let passes = 0;
-  const allNewKeys: string[][] = [];
-
-  for (let pass = 0; pass < maxPass; pass++) {
-    passes = pass + 1;
-    bridge.beginPass();
-    html = await renderToStringAsync(component, props, ctx);
-    const newKeys = [...bridge.keysAddedInPass];
-    allNewKeys.push(newKeys);
-    if (!bridge.hasPending()) break;
-    await bridge.waitPending();
-    if (pass === maxPass - 1 && bridge.hasPending()) {
-      throw new Error(
-        `ESSOR_SSR_RESOURCE_LOOP: exceeded ${maxPass} passes; new keys per pass=${JSON.stringify(allNewKeys)}`,
-      );
-    }
-  }
-
-  // Final pass after last pending resolved (if last loop broke on pending clear mid-way)
-  if (bridge.hasPending()) {
-    await bridge.waitPending();
-    bridge.beginPass();
-    html = await renderToStringAsync(component, props, ctx);
-    passes += 1;
-  } else if (passes > 0 && allNewKeys[passes - 1]?.length) {
-    // One more pass to materialize ready values into HTML
-    bridge.beginPass();
-    html = await renderToStringAsync(component, props, ctx);
-    passes += 1;
-  }
-
-  return { html, passes, bridge };
-}
-
-/**
  * Promise-aware variant of {@link resolve} used by {@link renderToStringAsync}.
+ * Recursively unwraps promises and arrays of promises, then defers to the
+ * synchronous `resolve` (component-boundary semantics: bare strings are raw).
  */
 async function resolveAsync(content: unknown): Promise<string> {
   if (isPromise(content)) {
@@ -242,9 +233,17 @@ async function resolveAsync(content: unknown): Promise<string> {
 
 /**
  * Create a SSG component (renders component to string).
+ *
+ * The component executes inside a child scope that inherits from the current
+ * active scope, so `inject()` calls can resolve values from ancestor
+ * `provide()` calls, and `provide()` inside the component is scoped to it.
+ *
+ * @param component - The component to create.
+ * @param props - The props to pass to the component.
+ * @returns {string} The rendered primitive HTML string.
  */
 export function createSSRComponent<P extends ComponentProps = ComponentProps>(
-  component: ComponentFn<P>,
+  component: SSRComponentFn<P>,
   props: P | ComponentProps = {},
 ): string {
   if (!isFunction(component)) {
@@ -252,17 +251,27 @@ export function createSSRComponent<P extends ComponentProps = ComponentProps>(
     return '';
   }
 
-  const result = runInFreshScope(() => component(props as P));
-  assertSyncRenderResult(result, 'createSSRComponent');
-  return resolve(result);
+  // Inherit the active scope (set by the enclosing renderToString call or by
+  // an outer createSSRComponent) so that provide/inject follow the component
+  // tree hierarchy. `resolve` must run INSIDE the fresh scope too: compiled
+  // children are lazy thunks that resolve() invokes, and they must still see
+  // this component's provide() state (same fix as renderToString).
+  return runInFreshScope(() => {
+    const result = component(props as P);
+    assertSyncRenderResult(result, 'createSSRComponent');
+    return resolve(result);
+  });
 }
 
 /**
  * Compiler-only component helper.
+ *
+ * Brands the already-safe primitive returned by {@link createSSRComponent} so
+ * nested compiled composition can cross another serialization boundary.
  */
 export function ssrComponent<P extends ComponentProps = ComponentProps>(
-  component: ComponentFn<P>,
+  component: SSRComponentFn<P>,
   props: P | ComponentProps = {},
-): string {
+): SSRNode {
   return createSSRNode(createSSRComponent(component, props));
 }

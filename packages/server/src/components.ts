@@ -1,6 +1,6 @@
 import { isFunction, isNil, isString, warn } from '@estjs/shared';
 import { isComputed, isSignal } from '@estjs/signals';
-import { resolve } from './utils';
+import { type SSRNode, createSSRNode, resolve } from './utils';
 import { getSSRContext } from './context';
 
 export interface SSRComponentProps {
@@ -8,11 +8,22 @@ export interface SSRComponentProps {
   [key: string]: unknown;
 }
 
+// ---------------------------------------------------------------------------
+// NOTE: every built-in below returns a BRANDED SSR node (createSSRNode), not a
+// bare string. The babel server codegen compiles `<Fragment>...</Fragment>`
+// etc. to `ssrComponent(Fragment, {...})`, and the component-boundary
+// resolve() inside createSSRComponent escapes bare strings — an unbranded
+// return would be double-escaped (and Portal's `<!--teleport-anchor-->`
+// comment would be corrupted, breaking hydration). This mirrors the re-brand
+// ssrComponent applies to createSSRComponent's primitive result.
+// ---------------------------------------------------------------------------
+
 /**
- * SSR Fragment — serializes children to an HTML string.
+ * SSR Fragment — serializes children to a branded SSR node
+ * (`String()` yields the HTML).
  */
-export function Fragment(props: SSRComponentProps): string {
-  return resolve(props.children);
+export function Fragment(props: SSRComponentProps): SSRNode {
+  return createSSRNode(resolve(props.children));
 }
 
 // ---------------------------------------------------------------------------
@@ -44,8 +55,11 @@ export const TELEPORT_BLOCK_END = '<!--teleport-end-->';
  * `<!--teleport-start-->...<!--teleport-end-->` in the target buffer.
  * Disabled / no-target / no-context falls back to inline rendering.
  */
-export function Portal(props: SSRPortalProps): string {
+export function Portal(props: SSRPortalProps): SSRNode {
   const { target, children } = props;
+  // `rendered` stays a plain string for ctx.teleports concatenation; every
+  // RETURN below is branded so the ssrComponent boundary keeps it raw (and
+  // does not escape the anchor comment, which would break hydration).
   const rendered = resolve(children);
 
   // Unwrap disabled getter (for API parity with client)
@@ -53,23 +67,23 @@ export function Portal(props: SSRPortalProps): string {
     ? !!(props.disabled as () => boolean)()
     : !!props.disabled;
 
-  if (disabled || !target) return rendered;
+  if (disabled || !target) return createSSRNode(rendered);
 
   const ctx = getSSRContext();
-  if (!ctx) return rendered;
+  if (!ctx) return createSSRNode(rendered);
 
   // Only string selectors are meaningful for SSR; DOM nodes are inlined.
   if (!isString(target)) {
     if (__DEV__) {
       warn('[Portal] SSR only supports string selector targets; rendering inline.');
     }
-    return rendered;
+    return createSSRNode(rendered);
   }
 
   ctx.teleports[target] =
     (ctx.teleports[target] ?? '') + TELEPORT_BLOCK_START + rendered + TELEPORT_BLOCK_END;
 
-  return TELEPORT_CALLSITE_ANCHOR;
+  return createSSRNode(TELEPORT_CALLSITE_ANCHOR);
 }
 
 // ---------------------------------------------------------------------------
@@ -78,10 +92,11 @@ export function Portal(props: SSRPortalProps): string {
 
 /**
  * SSR Suspense — renders children when available, otherwise the fallback slot.
+ * Returns a branded SSR node (`String()` yields the HTML).
  */
-export function Suspense(props: SSRComponentProps & { fallback?: unknown }): string {
+export function Suspense(props: SSRComponentProps & { fallback?: unknown }): SSRNode {
   const { children, fallback } = props;
-  return isNil(children) ? resolve(fallback) : resolve(children);
+  return createSSRNode(isNil(children) ? resolve(fallback) : resolve(children));
 }
 
 // ---------------------------------------------------------------------------
@@ -109,16 +124,17 @@ function resolveList<T>(input: SSRForProps<T>['each']): T[] {
 
 /**
  * SSR For — maps each item through the render function and joins the output.
+ * Returns a branded SSR node (`String()` yields the HTML).
  */
-export function For<T>(props: SSRForProps<T>): string {
+export function For<T>(props: SSRForProps<T>): SSRNode {
   const list = resolveList<T>(props.each);
 
   if (list.length === 0) {
-    return resolve(props.fallback);
+    return createSSRNode(resolve(props.fallback));
   }
 
   const render = props.children;
-  if (!isFunction(render)) return '';
+  if (!isFunction(render)) return createSSRNode('');
 
-  return list.map((item, i) => resolve(render(item, i))).join('');
+  return createSSRNode(list.map((item, i) => resolve(render(item, i))).join(''));
 }

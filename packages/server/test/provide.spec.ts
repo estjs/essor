@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { type InjectionKey, getHydrationKey, inject, provide } from '@estjs/template';
-import { createSSRComponent, renderToString } from '../src/render';
+import { createSSRComponent, renderToString, ssrComponent } from '../src/render';
+import { unsafeHTML } from '../src/utils';
 
 describe('server/provide-inject', () => {
   describe('renderToString with provide/inject', () => {
@@ -9,7 +10,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const theme = inject(key, 'default');
-        return `<div class="${theme}">content</div>`;
+        return unsafeHTML(`<div class="${theme}">content</div>`);
       };
 
       const Parent = () => {
@@ -24,7 +25,7 @@ describe('server/provide-inject', () => {
     it('should support string keys for provide/inject', () => {
       const Child = () => {
         const value = inject('my-key', 'fallback');
-        return `<span>${value}</span>`;
+        return unsafeHTML(`<span>${value}</span>`);
       };
 
       const Parent = () => {
@@ -41,7 +42,7 @@ describe('server/provide-inject', () => {
 
       const Component = () => {
         const value = inject(key, 'default-value');
-        return `<div>${value}</div>`;
+        return unsafeHTML(`<div>${value}</div>`);
       };
 
       const result = renderToString(Component);
@@ -55,7 +56,7 @@ describe('server/provide-inject', () => {
       const DeepChild = () => {
         const theme = inject(themeKey, 'no-theme');
         const user = inject(userKey, 'no-user');
-        return `<div>theme:${theme},user:${user}</div>`;
+        return unsafeHTML(`<div>theme:${theme},user:${user}</div>`);
       };
 
       const MiddleComponent = () => {
@@ -77,7 +78,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const value = inject(key, 'default');
-        return `<span>${value}</span>`;
+        return unsafeHTML(`<span>${value}</span>`);
       };
 
       const ShadowProvider = () => {
@@ -88,7 +89,7 @@ describe('server/provide-inject', () => {
       const Root = () => {
         provide(key, 'root');
         // Direct child sees 'root', but ShadowProvider's child sees 'shadowed'
-        return `<div>${Child()}${ShadowProvider()}</div>`;
+        return unsafeHTML(`<div>${Child()}${ShadowProvider()}</div>`);
       };
 
       const result = renderToString(Root);
@@ -100,7 +101,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const store = inject(storeKey, { count: 0, name: '' });
-        return `<div>count:${store.count},name:${store.name}</div>`;
+        return unsafeHTML(`<div>count:${store.count},name:${store.name}</div>`);
       };
 
       const Parent = () => {
@@ -117,7 +118,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const fn = inject(fnKey, () => 'default');
-        return `<div>${fn()}</div>`;
+        return unsafeHTML(`<div>${fn()}</div>`);
       };
 
       const Parent = () => {
@@ -134,7 +135,7 @@ describe('server/provide-inject', () => {
 
       const Component = () => {
         const value = inject(key, 'not-found');
-        return `<div>${value}</div>`;
+        return unsafeHTML(`<div>${value}</div>`);
       };
 
       const WithProvider = () => {
@@ -153,22 +154,46 @@ describe('server/provide-inject', () => {
     });
   });
 
-  describe('createSSRComponent with provide/inject', () => {
+  describe('createSSRComponent and ssrComponent with provide/inject', () => {
     it('should support provide/inject in nested SSG components', () => {
       const key: InjectionKey<string> = Symbol('ssg-key');
 
       const ChildComponent = () => {
         const value = inject(key, 'default');
-        return `<span>${value}</span>`;
+        return unsafeHTML(`<span>${value}</span>`);
       };
 
       const ParentComponent = () => {
         provide(key, 'ssg-value');
-        return `<div>${createSSRComponent(ChildComponent)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(ChildComponent)}</div>`);
       };
 
       const result = renderToString(ParentComponent);
       expect(result).toBe('<div><span>ssg-value</span></div>');
+    });
+
+    it('resolves lazy children thunks inside the provider scope (compiled output shape)', () => {
+      const key: InjectionKey<string> = Symbol('lazy-key');
+
+      const Child = () => {
+        const value = inject(key, 'missing');
+        return unsafeHTML(`<span>${value}</span>`);
+      };
+
+      // Mirrors compiled output: children are lazy thunks that resolve()
+      // invokes AFTER the component body returns. They must still see the
+      // provider's scope.
+      const Provider = () => {
+        provide(key, 'from-provider');
+        return [unsafeHTML('<div>'), () => ssrComponent(Child), unsafeHTML('</div>')];
+      };
+
+      // ssrComponent delegates to createSSRComponent, then brands the result
+      // so this nested compiled boundary stays trusted by renderToString.
+      const App = () => ssrComponent(Provider);
+
+      const result = renderToString(App);
+      expect(result).toBe('<div><span>from-provider</span></div>');
     });
 
     it('should inherit parent scope in createSSRComponent', () => {
@@ -178,17 +203,17 @@ describe('server/provide-inject', () => {
       const DeepChild = () => {
         const theme = inject(themeKey, 'no-theme');
         const lang = inject(langKey, 'no-lang');
-        return `<span>theme:${theme},lang:${lang}</span>`;
+        return unsafeHTML(`<span>theme:${theme},lang:${lang}</span>`);
       };
 
       const MiddleComponent = () => {
         provide(langKey, 'en');
-        return createSSRComponent(DeepChild);
+        return ssrComponent(DeepChild);
       };
 
       const RootComponent = () => {
         provide(themeKey, 'light');
-        return `<div>${createSSRComponent(MiddleComponent)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(MiddleComponent)}</div>`);
       };
 
       const result = renderToString(RootComponent);
@@ -200,16 +225,16 @@ describe('server/provide-inject', () => {
 
       const Level3 = () => {
         const depth = inject(key, 0);
-        return `<span>depth:${depth}</span>`;
+        return unsafeHTML(`<span>depth:${depth}</span>`);
       };
 
       const Level2 = () => {
-        return `<div>${createSSRComponent(Level3)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(Level3)}</div>`);
       };
 
       const Level1 = () => {
         provide(key, 3);
-        return `<section>${createSSRComponent(Level2)}</section>`;
+        return unsafeHTML(`<section>${createSSRComponent(Level2)}</section>`);
       };
 
       const result = renderToString(Level1);
@@ -221,21 +246,23 @@ describe('server/provide-inject', () => {
 
       const Leaf = () => {
         const value = inject(key, 'none');
-        return `<span>${value}</span>`;
+        return unsafeHTML(`<span>${value}</span>`);
       };
 
       const ShadowBranch = () => {
         provide(key, 'shadow-value');
-        return createSSRComponent(Leaf);
+        return ssrComponent(Leaf);
       };
 
       const NormalBranch = () => {
-        return createSSRComponent(Leaf);
+        return ssrComponent(Leaf);
       };
 
       const Root = () => {
         provide(key, 'root-value');
-        return `<div>${createSSRComponent(NormalBranch)}|${createSSRComponent(ShadowBranch)}</div>`;
+        return unsafeHTML(
+          `<div>${createSSRComponent(NormalBranch)}|${createSSRComponent(ShadowBranch)}</div>`,
+        );
       };
 
       const result = renderToString(Root);
@@ -255,17 +282,21 @@ describe('server/provide-inject', () => {
 
       const Button = (props: { label: string }) => {
         const theme = inject(ThemeKey, { primary: '#000', secondary: '#fff', mode: 'light' });
-        return `<button style="background:${theme.primary};color:${theme.secondary}">${props.label}</button>`;
+        return unsafeHTML(
+          `<button style="background:${theme.primary};color:${theme.secondary}">${props.label}</button>`,
+        );
       };
 
       const Card = (props: { title: string }) => {
         const theme = inject(ThemeKey, { primary: '#000', secondary: '#fff', mode: 'light' });
-        return `<div class="card card-${theme.mode}"><h2>${props.title}</h2>${createSSRComponent(Button, { label: 'Click me' })}</div>`;
+        return unsafeHTML(
+          `<div class="card card-${theme.mode}"><h2>${props.title}</h2>${createSSRComponent(Button, { label: 'Click me' })}</div>`,
+        );
       };
 
       const App = () => {
         provide(ThemeKey, { primary: '#007bff', secondary: '#ffffff', mode: 'dark' });
-        return `<main>${createSSRComponent(Card, { title: 'Welcome' })}</main>`;
+        return unsafeHTML(`<main>${createSSRComponent(Card, { title: 'Welcome' })}</main>`);
       };
 
       const result = renderToString(App);
@@ -294,12 +325,12 @@ describe('server/provide-inject', () => {
 
       const Greeting = () => {
         const i18n = inject(I18nKey, createI18n('en'));
-        return `<p>${i18n.t('greeting')}</p>`;
+        return unsafeHTML(`<p>${i18n.t('greeting')}</p>`);
       };
 
       const App = (props: { locale: string }) => {
         provide(I18nKey, createI18n(props.locale));
-        return `<div>${createSSRComponent(Greeting)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(Greeting)}</div>`);
       };
 
       expect(renderToString(App, { locale: 'en' })).toBe('<div><p>Hello</p></div>');
@@ -317,13 +348,13 @@ describe('server/provide-inject', () => {
       const UserInfo = () => {
         const auth = inject(AuthKey, { isAuthenticated: false, user: null });
         if (!auth.isAuthenticated || !auth.user) {
-          return '<span>Guest</span>';
+          return unsafeHTML('<span>Guest</span>');
         }
-        return `<span>${auth.user.name} (${auth.user.role})</span>`;
+        return unsafeHTML(`<span>${auth.user.name} (${auth.user.role})</span>`);
       };
 
       const Header = () => {
-        return `<header>${createSSRComponent(UserInfo)}</header>`;
+        return unsafeHTML(`<header>${createSSRComponent(UserInfo)}</header>`);
       };
 
       const App = (props: { user?: { name: string; role: string } }) => {
@@ -331,7 +362,7 @@ describe('server/provide-inject', () => {
           ? { isAuthenticated: true, user: props.user }
           : { isAuthenticated: false, user: null };
         provide(AuthKey, auth);
-        return `<div>${createSSRComponent(Header)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(Header)}</div>`);
       };
 
       // Guest user
@@ -354,16 +385,20 @@ describe('server/provide-inject', () => {
       const Link = (props: { to: string; children: string }) => {
         const router = inject(RouterKey, { path: '/', params: {} });
         const isActive = router.path === props.to;
-        return `<a href="${props.to}" class="${isActive ? 'active' : ''}">${props.children}</a>`;
+        return unsafeHTML(
+          `<a href="${props.to}" class="${isActive ? 'active' : ''}">${props.children}</a>`,
+        );
       };
 
       const Nav = () => {
-        return `<nav>${createSSRComponent(Link, { to: '/', children: 'Home' })}${createSSRComponent(Link, { to: '/about', children: 'About' })}</nav>`;
+        return unsafeHTML(
+          `<nav>${createSSRComponent(Link, { to: '/', children: 'Home' })}${createSSRComponent(Link, { to: '/about', children: 'About' })}</nav>`,
+        );
       };
 
       const App = (props: { path: string }) => {
         provide(RouterKey, { path: props.path, params: {} });
-        return `<div>${createSSRComponent(Nav)}</div>`;
+        return unsafeHTML(`<div>${createSSRComponent(Nav)}</div>`);
       };
 
       const homeResult = renderToString(App, { path: '/' });
@@ -381,13 +416,13 @@ describe('server/provide-inject', () => {
       const Child = () => {
         const value = inject(key, 'default');
         const hk = getHydrationKey();
-        return `<div data-hk="${hk}">${value}</div>`;
+        return unsafeHTML(`<div data-hk="${hk}">${value}</div>`);
       };
 
       const Parent = () => {
         provide(key, 'hydrated-value');
         const hk = getHydrationKey();
-        return `<main data-hk="${hk}">${createSSRComponent(Child)}</main>`;
+        return unsafeHTML(`<main data-hk="${hk}">${createSSRComponent(Child)}</main>`);
       };
 
       const result = renderToString(Parent);
@@ -403,7 +438,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const value = inject(key, 'default');
-        return `<div>${value ?? 'was-undefined'}</div>`;
+        return unsafeHTML(`<div>${value ?? 'was-undefined'}</div>`);
       };
 
       const Parent = () => {
@@ -422,7 +457,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const value = inject(key, 'default');
-        return `<div>${value ?? 'was-null'}</div>`;
+        return unsafeHTML(`<div>${value ?? 'was-null'}</div>`);
       };
 
       const Parent = () => {
@@ -438,7 +473,7 @@ describe('server/provide-inject', () => {
     it('should handle number keys', () => {
       const Child = () => {
         const value = inject(123, 'default');
-        return `<div>${value}</div>`;
+        return unsafeHTML(`<div>${value}</div>`);
       };
 
       const Parent = () => {
@@ -467,7 +502,7 @@ describe('server/provide-inject', () => {
 
       const Child = () => {
         const value = inject(key, 'default');
-        return [`<span>${value}</span>`, '<span>second</span>'];
+        return [unsafeHTML(`<span>${value}</span>`), unsafeHTML('<span>second</span>')];
       };
 
       const Parent = () => {

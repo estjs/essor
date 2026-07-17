@@ -1,29 +1,36 @@
 import { describe, expect, it, vi } from 'vitest';
 import { getHydrationKey } from '@estjs/template';
-import { For } from '../src/components';
-import { createSSRComponent, render, renderToString, ssr, ssrComponent } from '../src/render';
-import { escape } from '../src/utils';
+import {
+  For,
+  Fragment,
+  Portal,
+  type SSRNode,
+  Suspense,
+  createSSRComponent,
+  escape,
+  render,
+  renderToString,
+  renderToStringAsync,
+  ssr,
+  ssrComponent,
+  unsafeHTML,
+} from '../src/index';
 
 describe('server/render', () => {
   describe('renderToString', () => {
     it('renders component to string', () => {
-      const Component = () => '<div>hello</div>';
+      const Component = () => unsafeHTML('<div>hello</div>');
       expect(renderToString(Component)).toBe('<div>hello</div>');
     });
 
     it('passes props to component', () => {
-      const Component = (props: any) => `<div>${props.msg}</div>`;
+      const Component = (props: any) => unsafeHTML(`<div>${props.msg}</div>`);
       expect(renderToString(Component, { msg: 'hello' })).toBe('<div>hello</div>');
-    });
-
-    it('keeps raw HTML returned by components untouched', () => {
-      const Component = () => '<div><strong>safe</strong></div>';
-      expect(renderToString(Component)).toBe('<div><strong>safe</strong></div>');
     });
 
     it('resets hydration key before render', () => {
       const Component = () => {
-        return `<div data-hk="${getHydrationKey()}"></div>`;
+        return unsafeHTML(`<div data-hk="${getHydrationKey()}"></div>`);
       };
       // First render
       expect(renderToString(Component)).toBe('<div data-hk="0"></div>');
@@ -49,12 +56,12 @@ describe('server/render', () => {
 
   describe('createSSRComponent', () => {
     it('creates ssg component string', () => {
-      const Component = () => '<div>hello</div>';
+      const Component = () => unsafeHTML('<div>hello</div>');
       expect(createSSRComponent(Component)).toBe('<div>hello</div>');
     });
 
     it('passes props', () => {
-      const Component = (props: any) => `<div>${props.msg}</div>`;
+      const Component = (props: any) => unsafeHTML(`<div>${props.msg}</div>`);
       expect(createSSRComponent(Component, { msg: 'hello' })).toBe('<div>hello</div>');
     });
 
@@ -90,15 +97,6 @@ describe('server/render', () => {
       expect(result).toBe('<div data-hk="0"></div>');
     });
 
-    it('concatenates pre-serialized slot strings verbatim (no re-escaping)', () => {
-      // render() does NOT escape — the compiler wraps child-text slots in
-      // escape() and attribute slots in ssrAttr(), so slot strings are already
-      // final. A nested render()/component result is likewise already-safe HTML.
-      const templates = ['<div>', '</div>'];
-      const result = render(templates, '0', '<span>safe</span>');
-      expect(result).toBe('<div data-hk="0"><span>safe</span></div>');
-    });
-
     it('escapes untrusted child text via escape() at the slot position', () => {
       // This mirrors what the babel server codegen emits for `<div>{expr}</div>`:
       // the slot is `escape(expr)`, not the bare expression.
@@ -113,7 +111,7 @@ describe('server/render', () => {
         '',
         For({
           each: ['one', 'two'],
-          children: (item) => render(['<span>', '</span>'], '', item),
+          children: (item) => unsafeHTML(render(['<span>', '</span>'], '', item)),
         }),
       );
 
@@ -121,21 +119,44 @@ describe('server/render', () => {
       expect(result).not.toContain('&lt;span&gt;');
     });
 
-    it('lets compiler SSR nodes pass through child escape while escaping plain strings', () => {
-      const safe = ssr(['<span>', '</span>'], '', escape('<ok>'));
+    it('returns primitive strings from every public string helper', async () => {
+      const Component = () => ssr(['<em>safe</em>'], '');
+      const rendered: string = render(['<span>safe</span>'], '');
+      const renderedSync: string = renderToString(Component);
+      const renderedAsyncPromise: Promise<string> = renderToStringAsync(Component);
+      const renderedAsync: string = await renderedAsyncPromise;
+      const escaped: string = escape('<safe>');
+      const componentHtml: string = createSSRComponent(Component);
+      const values: ReadonlyArray<readonly [string, string]> = [
+        [rendered, '<span>safe</span>'],
+        [renderedSync, '<em>safe</em>'],
+        [renderedAsync, '<em>safe</em>'],
+        [escaped, '&lt;safe&gt;'],
+        [componentHtml, '<em>safe</em>'],
+      ];
 
-      expect(escape(safe)).toBe('<span>&lt;ok&gt;</span>');
-      expect(escape('<span>unsafe</span>')).toBe('&lt;span&gt;unsafe&lt;/span&gt;');
+      for (const [value, expected] of values) {
+        expect(typeof value).toBe('string');
+        expect(value).toBe(expected);
+      }
     });
 
-    it('keeps public SSR helpers string-compatible', () => {
-      const Component = () => ssr(['<em>safe</em>'], '');
+    it('returns SSRNode from every compiler-facing helper and built-in', () => {
+      const Component = (): SSRNode => ssr(['<em>safe</em>'], '');
+      const rawHtml: SSRNode = unsafeHTML('<strong>safe</strong>');
+      const nodes: SSRNode[] = [
+        ssr(['<span>safe</span>'], ''),
+        ssrComponent(Component),
+        rawHtml,
+        Fragment({ children: rawHtml }),
+        Portal({ children: rawHtml, disabled: true }),
+        Suspense({ children: rawHtml }),
+        For({ each: [rawHtml], children: (node) => node }),
+      ];
 
-      expect(render(['<div>', '</div>'], '', ssr(['<span>safe</span>'], ''))).toBe(
-        '<div><span>safe</span></div>',
-      );
-      expect(createSSRComponent(Component)).toBe('<em>safe</em>');
-      expect(String(ssrComponent(Component))).toBe('<em>safe</em>');
+      for (const node of nodes) {
+        expect(typeof node).toBe('object');
+      }
     });
   });
 });

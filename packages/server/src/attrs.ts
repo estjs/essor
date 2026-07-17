@@ -3,6 +3,8 @@ import {
   escapeHTML,
   isSSRSafeAttrName,
   isString,
+  isUnsafeUrl,
+  isUrlAttribute,
   normalizeClassName,
   normalizeStyle,
   startsWith,
@@ -105,5 +107,10 @@ export function ssrAttrDynamic(attrName: string, attrValue: any): string {
   }
 
   // Standard attribute handling — escape to prevent attribute injection (XSS)
-  return ` ${attrName}="${escapeHTML(String(attrValue))}"`;
+  // and block dangerous URL schemes, matching ssrAttr and the client patchAttr.
+  const stringValue = String(attrValue);
+  if (isUrlAttribute(attrName) && isUnsafeUrl(stringValue)) {
+    return '';
+  }
+  return ` ${attrName}="${escapeHTML(stringValue)}"`;
 }

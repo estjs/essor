@@ -2,23 +2,29 @@ import { describe, expect, it } from 'vitest';
 import { Portal } from '../src/components';
 import { createSSRContext } from '../src/context';
 import { renderToString, renderToStringAsync } from '../src/render';
+import { unsafeHTML } from '../src/utils';
 
+// Portal returns a branded SSR node, so components can return it directly —
+// no unsafeHTML() wrapper needed. Wrappers remain only where a test builds
+// raw HTML around the Portal output in a template literal.
 describe('server/components/Portal', () => {
   describe('inline fallback', () => {
     it('renders inline when no context is active', () => {
-      expect(Portal({ target: '#m', children: '<div>x</div>' })).toBe('<div>x</div>');
+      expect(String(Portal({ target: '#m', children: unsafeHTML('<div>x</div>') }))).toBe(
+        '<div>x</div>',
+      );
     });
 
     it('renders inline when no target is provided', () => {
       const ctx = createSSRContext();
-      const App = () => Portal({ children: '<p/>' });
+      const App = () => Portal({ children: unsafeHTML('<p/>') });
       expect(renderToString(App, {}, ctx)).toBe('<p/>');
       expect(ctx.teleports).toEqual({});
     });
 
     it('renders inline when disabled is true', () => {
       const ctx = createSSRContext();
-      const App = () => Portal({ target: '#m', disabled: true, children: '<p/>' });
+      const App = () => Portal({ target: '#m', disabled: true, children: unsafeHTML('<p/>') });
       expect(renderToString(App, {}, ctx)).toBe('<p/>');
       expect(ctx.teleports).toEqual({});
     });
@@ -29,7 +35,7 @@ describe('server/components/Portal', () => {
         Portal({
           target: '#m',
           disabled: () => true,
-          children: '<p>gated</p>',
+          children: unsafeHTML('<p>gated</p>'),
         });
       expect(renderToString(App, {}, ctx)).toBe('<p>gated</p>');
       expect(ctx.teleports).toEqual({});
@@ -41,7 +47,7 @@ describe('server/components/Portal', () => {
         Portal({
           target: '#m',
           disabled: () => false,
-          children: '<p>go</p>',
+          children: unsafeHTML('<p>go</p>'),
         });
       expect(renderToString(App, {}, ctx)).toBe('<!--teleport-anchor-->');
       expect(ctx.teleports['#m']).toBe('<!--teleport-start--><p>go</p><!--teleport-end-->');
@@ -55,15 +61,18 @@ describe('server/components/Portal', () => {
     });
 
     it('renders inline for nullish children without target', () => {
-      expect(Portal({ children: null })).toBe('');
-      expect(Portal({ children: undefined })).toBe('');
+      expect(String(Portal({ children: null }))).toBe('');
+      expect(String(Portal({ children: undefined }))).toBe('');
     });
   });
 
   describe('teleport collection', () => {
     it('collects rendered HTML into ctx.teleports keyed by target', () => {
       const ctx = createSSRContext();
-      const App = () => `<main>${Portal({ target: '#modal', children: '<div>hi</div>' })}</main>`;
+      const App = () =>
+        unsafeHTML(
+          `<main>${Portal({ target: '#modal', children: unsafeHTML('<div>hi</div>') })}</main>`,
+        );
 
       const html = renderToString(App, {}, ctx);
 
@@ -74,7 +83,9 @@ describe('server/components/Portal', () => {
     it('keeps multiple Portals to the same selector independently delimited', () => {
       const ctx = createSSRContext();
       const App = () =>
-        `<div>${Portal({ target: '#root', children: '<a/>' })}${Portal({ target: '#root', children: '<b/>' })}</div>`;
+        unsafeHTML(
+          `<div>${Portal({ target: '#root', children: unsafeHTML('<a/>') })}${Portal({ target: '#root', children: unsafeHTML('<b/>') })}</div>`,
+        );
 
       const html = renderToString(App, {}, ctx);
 
@@ -87,8 +98,10 @@ describe('server/components/Portal', () => {
 
     it('separates Portals with different targets', () => {
       const ctx = createSSRContext();
-      const App = () =>
-        `${Portal({ target: '#a', children: '<x/>' })}${Portal({ target: '#b', children: '<y/>' })}`;
+      const App = () => [
+        Portal({ target: '#a', children: unsafeHTML('<x/>') }),
+        Portal({ target: '#b', children: unsafeHTML('<y/>') }),
+      ];
 
       renderToString(App, {}, ctx);
 
@@ -101,7 +114,7 @@ describe('server/components/Portal', () => {
     it('isolates teleports between independent renderToString calls', () => {
       const ctx1 = createSSRContext();
       const ctx2 = createSSRContext();
-      const App = () => Portal({ target: '#t', children: '<div/>' });
+      const App = () => Portal({ target: '#t', children: unsafeHTML('<div/>') });
 
       renderToString(App, {}, ctx1);
       renderToString(App, {}, ctx2);
@@ -114,9 +127,9 @@ describe('server/components/Portal', () => {
 
     it('does not leak SSR context after render returns', () => {
       const ctx = createSSRContext();
-      renderToString(() => Portal({ target: '#t', children: '<x/>' }), {}, ctx);
+      renderToString(() => Portal({ target: '#t', children: unsafeHTML('<x/>') }), {}, ctx);
 
-      expect(Portal({ target: '#t', children: '<y/>' })).toBe('<y/>');
+      expect(String(Portal({ target: '#t', children: unsafeHTML('<y/>') }))).toBe('<y/>');
     });
 
     it('handles deeply nested Portal children', () => {
@@ -124,7 +137,7 @@ describe('server/components/Portal', () => {
       const App = () =>
         Portal({
           target: '#deep',
-          children: '<div><span><em>deep</em></span></div>',
+          children: unsafeHTML('<div><span><em>deep</em></span></div>'),
         });
       renderToString(App, {}, ctx);
       expect(ctx.teleports['#deep']).toBe(
@@ -137,7 +150,7 @@ describe('server/components/Portal', () => {
       const App = () =>
         Portal({
           target: '#arr',
-          children: ['<span>1</span>', '<span>2</span>'],
+          children: [unsafeHTML('<span>1</span>'), unsafeHTML('<span>2</span>')],
         });
       renderToString(App, {}, ctx);
       expect(ctx.teleports['#arr']).toBe(
@@ -150,7 +163,7 @@ describe('server/components/Portal', () => {
       const App = () =>
         Portal({
           target: '#fn',
-          children: (() => '<b>lazy</b>') as any,
+          children: (() => unsafeHTML('<b>lazy</b>')) as any,
         });
       renderToString(App, {}, ctx);
       expect(ctx.teleports['#fn']).toBe('<!--teleport-start--><b>lazy</b><!--teleport-end-->');
@@ -162,7 +175,9 @@ describe('server/components/Portal', () => {
       const ctx = createSSRContext();
       const AsyncBody = async () => {
         const data = await Promise.resolve('hello');
-        return `<main>${Portal({ target: '#toast', children: `<p>${data}</p>` })}</main>`;
+        return unsafeHTML(
+          `<main>${Portal({ target: '#toast', children: unsafeHTML(`<p>${data}</p>`) })}</main>`,
+        );
       };
 
       const html = await renderToStringAsync(AsyncBody as any, {}, ctx);
@@ -176,7 +191,10 @@ describe('server/components/Portal', () => {
       const AsyncBody = async () => {
         const a = await Promise.resolve('alpha');
         const b = await Promise.resolve('beta');
-        return `${Portal({ target: '#a', children: `<p>${a}</p>` })}${Portal({ target: '#b', children: `<p>${b}</p>` })}`;
+        return [
+          Portal({ target: '#a', children: unsafeHTML(`<p>${a}</p>`) }),
+          Portal({ target: '#b', children: unsafeHTML(`<p>${b}</p>`) }),
+        ];
       };
 
       await renderToStringAsync(AsyncBody as any, {}, ctx);
@@ -189,14 +207,14 @@ describe('server/components/Portal', () => {
   describe('edge cases', () => {
     it('disabled=false with target teleports normally', () => {
       const ctx = createSSRContext();
-      const App = () => Portal({ target: '#t', disabled: false, children: '<ok/>' });
+      const App = () => Portal({ target: '#t', disabled: false, children: unsafeHTML('<ok/>') });
       expect(renderToString(App, {}, ctx)).toBe('<!--teleport-anchor-->');
       expect(ctx.teleports['#t']).toBe('<!--teleport-start--><ok/><!--teleport-end-->');
     });
 
     it('empty string target renders inline', () => {
       const ctx = createSSRContext();
-      const App = () => Portal({ target: '', children: '<inline/>' });
+      const App = () => Portal({ target: '', children: unsafeHTML('<inline/>') });
       expect(renderToString(App, {}, ctx)).toBe('<inline/>');
       expect(ctx.teleports).toEqual({});
     });

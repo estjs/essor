@@ -5,6 +5,8 @@ import {
   isObject,
   isSSRSafeAttrName,
   isString,
+  isUnsafeUrl,
+  isUrlAttribute,
   kebabCase,
   normalizeStyle,
   startsWith,
@@ -34,7 +36,9 @@ export function ssrAttr(name: string, value: unknown): string {
   // into the tag, so an unsafe name is an XSS sink — drop it entirely.
   if (!isSSRSafeAttrName(name)) return '';
   if (value === true) return ` ${name}`;
-  return ` ${name}="${escapeHTML(String(value))}"`;
+  const attrValue = String(value);
+  if (isUrlAttribute(name) && isUnsafeUrl(attrValue)) return '';
+  return ` ${name}="${escapeHTML(attrValue)}"`;
 }
 
 /**
@@ -141,24 +145,6 @@ interface SSRBindElementContext {
   type?: unknown;
 }
 
-/**
- * Apply `bind:` modifiers to a model value the same way the client runtime does
- * for the *displayed* value. Blank/whitespace strings are preserved (parity with
- * `applyModifiers` in the client binding runtime).
- */
-function applyBindModifiers(value: unknown, modifiers: SSRBindModifiers): unknown {
-  if (!isString(value)) return value;
-  const s = modifiers.trim ? value.trim() : value;
-  if (modifiers.number) {
-    const probe = modifiers.trim ? s : s.trim();
-    if (probe !== '') {
-      const n = Number(probe);
-      if (!Number.isNaN(n)) return n;
-    }
-  }
-  return s;
-}
-
 function normalizeTagName(tag: unknown): string {
   return isString(tag) ? tag.toLowerCase() : '';
 }
@@ -183,7 +169,12 @@ function hasStringMatch(values: unknown[], value: string): boolean {
  *
  * @param bindName  - The bind name (e.g. `value`, `checked`, `files`).
  * @param value     - The current model value.
- * @param modifiers - Optional `{ trim, number, lazy }` modifier object.
+ * @param _modifiers - Optional `{ trim, number, lazy }` modifier object.
+ *                    Accepted for call-shape compatibility but NOT applied to
+ *                    the rendered value: trim/number normalize the DOM→model
+ *                    READ pipeline only. Pre-applying them to the first paint
+ *                    made the SSR value diverge from the client's initial
+ *                    model→DOM write.
  * @param ownValue  - Optional static `value` attr on the same element.
  *                    For checkbox/radio inputs, used to match the model
  *                    against the element's own value.
@@ -194,7 +185,7 @@ function hasStringMatch(values: unknown[], value: string): boolean {
 export function ssrBind(
   bindName: string,
   value: unknown,
-  modifiers?: SSRBindModifiers,
+  _modifiers?: SSRBindModifiers,
   ownValue?: unknown,
   element: SSRBindElementContext = {},
 ): string {
@@ -227,8 +218,8 @@ export function ssrBind(
   // by the renderer, not directly as a `value` attribute. Best-effort: emit nothing.
   if (bindName === 'value' && isArray(value)) return '';
 
-  const next = modifiers ? applyBindModifiers(value, modifiers) : value;
-  return ssrAttr(bindName, next);
+  // Modifiers are NOT applied to the first-paint value — see ssrBind.
+  return ssrAttr(bindName, value);
 }
 
 /**
@@ -251,10 +242,51 @@ export function ssrSelected(value: unknown, ownValue?: unknown): string {
  * The text is HTML-escaped and returned as a plain string; render() emits it
  * verbatim (it is already escaped and must not be double-escaped).
  *
+ * `_modifiers` is accepted for call-shape compatibility but NOT applied —
+ * see {@link ssrBind}.
+ *
  * @returns {string} The pre-escaped text fragment.
  */
-export function ssrTextValue(value: unknown, modifiers?: SSRBindModifiers): string {
-  const next = modifiers ? applyBindModifiers(value, modifiers) : value;
-  if (isNil(next) || next === false) return '';
-  return escapeHTML(String(next));
+export function ssrTextValue(value: unknown, _modifiers?: SSRBindModifiers): string {
+  if (isNil(value) || value === false) return '';
+  const text = String(value);
+  const serialized = escapeHTML(text);
+  return text.startsWith('\n') ? `\n${serialized}` : serialized;
+}
+
+function normalizeTextContent(value: unknown): string {
+  if (isNil(value) || value === false) return '';
+  if (isArray(value)) {
+    let text = '';
+    for (const item of value as unknown[]) text += normalizeTextContent(item);
+    return text;
+  }
+  if (typeof value === 'function') return normalizeTextContent((value as () => unknown)());
+  return String(value);
+}
+
+function escapeRCDATA(value: string): string {
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;');
+}
+
+export function ssrTextContent(tag: string, value: unknown): string {
+  const normalizedTag = tag.toLowerCase();
+  const text = normalizeTextContent(value);
+
+  if (normalizedTag === 'title') return escapeRCDATA(text);
+  if (normalizedTag === 'textarea') {
+    const serialized = escapeRCDATA(text);
+    return text.startsWith('\n') ? `\n${serialized}` : serialized;
+  }
+  if (normalizedTag === 'style') {
+    if (/<\/style(?=[\t\n\f\r />])/i.test(text)) {
+      throw new Error('Unsafe </style> token in dynamic <style> text content.');
+    }
+    return text;
+  }
+  if (normalizedTag === 'script') {
+    throw new Error('Dynamic <script> text content is not supported.');
+  }
+
+  throw new Error(`Unsupported whole-text element <${tag}>.`);
 }
