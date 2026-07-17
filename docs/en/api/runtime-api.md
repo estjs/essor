@@ -252,19 +252,19 @@ Create an async data resource to work with `Suspense` for elegant async state ma
 
 ```ts
 function createResource<T>(
-  fetcher: (signal: AbortSignal) => Promise<T>,
-  options?: { initialValue?: T }
-): [Resource<T>, ResourceActions<T>];
+  source: () => any,
+  fetcher: (sourceValue: any) => Promise<T>
+): Resource<T>;
 ```
 
 ### Return value
 
-- `resource()` — Accessor for the current value (`T | undefined`)
-- `resource.loading` — Signal indicating whether loading is in progress
-- `resource.error` — Signal containing the request error, if any
-- `resource.state` — Signal with the current state (`'pending' | 'ready' | 'errored'`)
-- `actions.mutate(value)` — Function to manually update the data
-- `actions.refetch()` — Function to re-initiate the request
+- `value` — Signal containing the resolved data
+- `loading` — Signal indicating whether loading is in progress
+- `error` — Signal containing the request error, if any
+- `state` — Signal with the current state (`'pending' | 'ready' | 'error'`)
+- `mutate` — Function to manually update the data
+- `refetch` — Function to re-initiate the request
 
 ### Example
 
@@ -272,23 +272,21 @@ function createResource<T>(
 import { createResource } from '@estjs/template';
 
 function UserProfile({ userId }) {
-  const [user, { refetch }] = createResource(async (signal) => {
-    const res = await fetch(`/api/users/${userId}`, { signal });
-    if (!res.ok) throw new Error('Failed to load user');
+  const user = createResource(() => userId, async (id) => {
+    const res = await fetch(`/api/users/${id}`);
     return res.json();
   });
 
   return (
     <div>
-      {user.loading.value ? (
+      {user.loading() ? (
         <p>Loading...</p>
-      ) : user.error.value ? (
-        <p>Error: {user.error.value.message}</p>
+      ) : user.error() ? (
+        <p>Error: {user.error().message}</p>
       ) : (
         <div>
-          <h1>{user()?.name}</h1>
-          <p>{user()?.email}</p>
-          <button onClick={refetch}>Refresh</button>
+          <h1>{user.value().name}</h1>
+          <p>{user.value().email}</p>
         </div>
       )}
     </div>
@@ -296,34 +294,27 @@ function UserProfile({ userId }) {
 }
 ```
 
-The fetcher receives an `AbortSignal`. Pass it to `fetch` or another cancellable API so stale requests are cancelled when the resource refetches or the component unmounts.
-
 ### Manual refresh
 
 ```tsx
-<button onClick={() => refetch()}>Refresh</button>
+<button onClick={() => user.refetch()}>Refresh</button>
 ```
 
 ### Manual mutation
 
 ```tsx
-const [, { mutate }] = createResource(fetcher);
-
-mutate({ name: 'New Name', email: 'new@example.com' });
+user.mutate({ name: 'New Name', email: 'new@example.com' });
 ```
 
 ## Type definitions
 
 ```ts
 interface Resource<T> {
-  (): T | undefined;
-  loading: Signal<boolean>;
-  error: Signal<Error | null>;
-  state: Signal<'pending' | 'ready' | 'errored'>;
-}
-
-interface ResourceActions<T> {
+  value: () => T;
+  loading: () => boolean;
+  error: () => any;
+  state: () => 'pending' | 'ready' | 'error';
   mutate: (value: T) => void;
-  refetch: () => Promise<void>;
+  refetch: () => void;
 }
 ```

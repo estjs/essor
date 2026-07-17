@@ -33,9 +33,8 @@ Suspense pairs naturally with `createResource`. The resource registers its pendi
 import { Suspense, createResource } from '@estjs/template';
 
 function UserProfile({ userId }: { userId: string }) {
-  const [user] = createResource(async (signal) => {
-    const res = await fetch(`/api/users/${userId}`, { signal });
-    if (!res.ok) throw new Error('Failed to load user');
+  const [user] = createResource(async () => {
+    const res = await fetch(`/api/users/${userId}`);
     return res.json();
   });
 
@@ -59,7 +58,7 @@ function App() {
 }
 ```
 
-`createResource` returns a tuple `[resource, actions]`. The `resource` is callable — `user()` returns the current value (or `undefined` while pending). `actions.refetch()` and `actions.mutate(value)` are also available. Pass the provided `AbortSignal` to `fetch` so stale requests can be cancelled during refetches or unmounts.
+`createResource` returns a tuple `[resource, actions]`. The `resource` is callable — `user()` returns the current value (or `undefined` while pending). `actions.refetch()` and `actions.mutate(value)` are also available.
 
 ## Nested Suspense
 

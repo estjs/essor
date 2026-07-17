@@ -5,6 +5,7 @@ export {
   ssrComponent,
   renderToString,
   renderToStringAsync,
+  renderToStringAsyncMultiPass,
 } from './render';
 export { escape, injectHydrationKeys, resolve } from './utils';
 export { escapeHTML } from '@estjs/shared';
@@ -26,8 +27,11 @@ export {
 export type { SSRComponentProps, SSRForProps, SSRPortalProps } from './components';
 
 // SSR rendering context (Portal teleports, etc.)
-export { createSSRContext, getSSRContext } from './context';
+export { createSSRContext, getSSRContext, hasSSRExecutionCarrier } from './context';
 export type { SSRContext } from './context';
 
 // Hydration key management (re-exported for server use)
 export { getHydrationKey, resetHydrationKey } from '@estjs/template';
+
+export { createCollectingResourceBridge } from './resource-bridge';
+export type { CollectingResourceBridge } from './resource-bridge';

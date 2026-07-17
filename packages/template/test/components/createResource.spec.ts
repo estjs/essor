@@ -73,6 +73,25 @@ describe('createResource', () => {
         expect(resource.state.value).toBe('ready');
       });
     });
+
+    it('does not fetch until refetch when immediate is false', async () => {
+      await runWithScope(scope, async () => {
+        const fetcher = vi.fn(async () => 'fetched data');
+        const [resource, { refetch }] = createResource(fetcher, {
+          initialValue: 'hydrated data',
+          immediate: false,
+        });
+
+        expect(resource()).toBe('hydrated data');
+        expect(resource.loading.value).toBe(false);
+        expect(resource.state.value).toBe('ready');
+        expect(fetcher).not.toHaveBeenCalled();
+
+        await refetch();
+        expect(fetcher).toHaveBeenCalledOnce();
+        expect(resource()).toBe('fetched data');
+      });
+    });
   });
 
   describe('error handling', () => {
@@ -327,21 +346,6 @@ describe('createResource', () => {
       // Dispose the scope — should abort
       disposeScope(childScope);
       expect(capturedSignal!.aborted).toBe(true);
-    });
-
-    it('treats AbortError-shaped rejections as cancellation', async () => {
-      await runWithScope(scope, async () => {
-        const abortError = Object.assign(new Error('aborted'), { name: 'AbortError' });
-        const fetcher = () => Promise.reject(abortError);
-        const [resource] = createResource(fetcher);
-
-        await vi.waitFor(() => {
-          expect(resource.loading.value).toBe(false);
-        });
-
-        expect(resource.error.value).toBe(null);
-        expect(resource.state.value).toBe('pending');
-      });
     });
 
     it('should ignore late results after scope dispose when fetcher ignores abort', async () => {

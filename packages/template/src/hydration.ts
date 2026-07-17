@@ -1,4 +1,5 @@
 import { HYDRATION_ANCHOR_ATTR, isBrowser, warn } from '@estjs/shared';
+import { getSSRExecutionState } from './ssr-execution';
 import { patchAttr } from './operations/attr';
 import { patchClass } from './operations/class';
 import { patchStyle } from './operations/style';
@@ -11,10 +12,19 @@ import { template } from './renderer';
 let _hydrationKey = 0;
 
 export function getHydrationKey(): string {
+  const ssr = getSSRExecutionState();
+  if (ssr) {
+    return String(ssr.hydrationKey++);
+  }
   return String(_hydrationKey++);
 }
 
 export function resetHydrationKey(): void {
+  const ssr = getSSRExecutionState();
+  if (ssr) {
+    ssr.hydrationKey = 0;
+    return;
+  }
   _hydrationKey = 0;
 }
 
@@ -134,6 +144,11 @@ export function consumeTeleportBlock(
 export function beginHydration(root: Element): void {
   _isHydrating = true;
   _hydrationKey = 0;
+  try {
+    (globalThis as { __ESSOR_HYDRATE_ORDINAL__?: number }).__ESSOR_HYDRATE_ORDINAL__ = 0;
+  } catch {
+    /* ignore */
+  }
   _registry.clear();
   _teleportCallsiteAnchors.length = 0;
   _teleportTargetStarts.clear();

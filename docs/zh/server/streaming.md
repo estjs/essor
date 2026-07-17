@@ -101,20 +101,18 @@ function App() {
 
 // UserProfile.tsx
 function UserProfile({ userId }) {
-  const [user] = createResource(async (signal) => {
-    const res = await fetch(`/api/users/${userId}`, { signal })
-    return res.json()
-  })
+  const [user] = createResource(() => 
+    fetch(`/api/users/${userId}`).then(r => r.json())
+  )
   
   return <div>Welcome, {user()!.name}!</div>
 }
 
 // PostList.tsx
 function PostList() {
-  const [posts] = createResource(async (signal) => {
-    const res = await fetch('/api/posts', { signal })
-    return res.json()
-  })
+  const [posts] = createResource(() => 
+    fetch('/api/posts').then(r => r.json())
+  )
   
   return (
     <ul>
@@ -227,9 +225,9 @@ function App() {
 
 ```typescript
 function Dashboard() {
-  const [user] = createResource((signal) => fetchUser(signal))
-  const [stats] = createResource((signal) => fetchStats(signal))
-  const [notifications] = createResource((signal) => fetchNotifications(signal))
+  const [user] = createResource(() => fetchUser())
+  const [stats] = createResource(() => fetchStats())
+  const [notifications] = createResource(() => fetchNotifications())
   
   return (
     <div>
@@ -381,25 +379,33 @@ function App() {
 </Suspense>
 ```
 
-### 3. 拆分关键和次要资源
+### 3. 预加载关键资源
 
 ```typescript
 function App() {
+  // 预加载关键资源
+  const [user] = createResource(() => fetchUser(), {
+    ssrLoad: true  // 在 SSR 时立即加载
+  })
+  
+  // 延迟加载次要资源
+  const [stats] = createResource(() => fetchStats(), {
+    ssrLoad: false  // 只在客户端加载
+  })
+  
   return (
     <div>
-      <Suspense fallback={<UserSkeleton />}>
-        <UserProfile />
+      <Suspense fallback={<Loading />}>
+        <UserProfile user={user()} />
       </Suspense>
       
-      <Suspense fallback={<StatsSkeleton />}>
-        <Stats />
+      <Suspense fallback={<Loading />}>
+        <Stats stats={stats()} />
       </Suspense>
     </div>
   )
 }
 ```
-
-在拥有数据的组件里创建 resource，把框架传入的 `AbortSignal` 继续传给 fetcher，并用独立的 Suspense 边界拆分关键内容与次要内容，避免次要请求阻塞关键内容。
 
 ## 最佳实践
 

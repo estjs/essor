@@ -83,19 +83,17 @@ function App() {
 
 // UserProfile.tsx
 function UserProfile({ userId }) {
-  const [user] = createResource(async (signal) => {
-    const res = await fetch(`/api/users/${userId}`, { signal })
-    return res.json()
-  })
+  const [user] = createResource(() => 
+    fetch(`/api/users/${userId}`).then(r => r.json())
+  )
   return <div>Welcome, {user()!.name}!</div>
 }
 
 // PostList.tsx
 function PostList() {
-  const [posts] = createResource(async (signal) => {
-    const res = await fetch('/api/posts', { signal })
-    return res.json()
-  })
+  const [posts] = createResource(() => 
+    fetch('/api/posts').then(r => r.json())
+  )
   return (
     <ul>
       {posts()!.map(post => (
@@ -207,9 +205,9 @@ function App() {
 
 ```typescript
 function Dashboard() {
-  const [user] = createResource((signal) => fetchUser(signal))
-  const [stats] = createResource((signal) => fetchStats(signal))
-  const [notifications] = createResource((signal) => fetchNotifications(signal))
+  const [user] = createResource(() => fetchUser())
+  const [stats] = createResource(() => fetchStats())
+  const [notifications] = createResource(() => fetchNotifications())
   
   return (
     <div>
@@ -361,27 +359,33 @@ Use multiple small Suspense boundaries instead of one large one:
 </Suspense>
 ```
 
-### 3. Split Critical and Secondary Resources
+### 3. Preload Critical Resources
 
 ```typescript
 function App() {
+  // Preload critical resources
+  const [user] = createResource(() => fetchUser(), {
+    ssrLoad: true  // Load immediately during SSR
+  })
+  
+  // Defer secondary resources
+  const [stats] = createResource(() => fetchStats(), {
+    ssrLoad: false  // Only load on client
+  })
+  
   return (
     <div>
-      <Suspense fallback={<UserSkeleton />}>
-        <UserProfile />
+      <Suspense fallback={<Loading />}>
+        <UserProfile user={user()} />
       </Suspense>
       
-      <Suspense fallback={<StatsSkeleton />}>
-        <Stats />
+      <Suspense fallback={<Loading />}>
+        <Stats stats={stats()} />
       </Suspense>
     </div>
   )
 }
 ```
-
-Create each resource inside the component that owns it, pass the provided
-`AbortSignal` to the fetcher, and use separate Suspense boundaries so secondary
-work does not block critical content.
 
 ## Best Practices
 

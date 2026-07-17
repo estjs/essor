@@ -1,6 +1,7 @@
 import { error } from '@estjs/shared';
 import { type EffectScope, effectScope, setCurrentScope } from '@estjs/signals';
 import type { InjectionKey } from './provide';
+import { getSSRExecutionState } from './ssr-execution';
 
 /**
  * Scope represents an execution context in the component tree.
@@ -41,8 +42,8 @@ export interface Scope {
   isDestroyed: boolean;
 }
 
-/** Currently active scope */
-let activeScope: Scope | null = null;
+/** Document-local active scope (CSR/hydrate). SSR uses execution-state scope. */
+let documentActiveScope: Scope | null = null;
 
 /** Scope ID counter for unique identification */
 let scopeId = 0;
@@ -53,7 +54,9 @@ let scopeId = 0;
  * @returns The active scope or null if none is active.
  */
 export function getActiveScope(): Scope | null {
-  return activeScope;
+  const ssr = getSSRExecutionState();
+  if (ssr) return ssr.activeScope;
+  return documentActiveScope;
 }
 
 /**
@@ -63,7 +66,12 @@ export function getActiveScope(): Scope | null {
  * @returns {void}
  */
 export function setActiveScope(scope: Scope | null): void {
-  activeScope = scope;
+  const ssr = getSSRExecutionState();
+  if (ssr) {
+    ssr.activeScope = scope;
+  } else {
+    documentActiveScope = scope;
+  }
   setCurrentScope(scope?.effectScope);
 }
 
@@ -74,7 +82,7 @@ export function setActiveScope(scope: Scope | null): void {
  * @param parent - Optional parent scope (defaults to active scope).
  * @returns A new scope instance.
  */
-export function createScope(parent: Scope | null = activeScope): Scope {
+export function createScope(parent: Scope | null = getActiveScope()): Scope {
   const reactiveScope = parent ? parent.effectScope.run(() => effectScope())! : effectScope(true);
   const scope: Scope = {
     id: ++scopeId,
@@ -110,7 +118,7 @@ export function createScope(parent: Scope | null = activeScope): Scope {
  * @returns The return value of the function.
  */
 export function runWithScope<T>(scope: Scope, fn: () => T): T {
-  const prevScope = activeScope;
+  const prevScope = getActiveScope();
   setActiveScope(scope);
   try {
     return scope.effectScope.run(fn) as T;
@@ -159,7 +167,7 @@ export function disposeScope(scope: Scope): void {
   }
 
   // Execute destroy hooks with this scope active so inject/provide work in callbacks.
-  const prevScope = activeScope;
+  const prevScope = getActiveScope();
   setActiveScope(scope);
   if (scope.onDestroy) {
     for (let i = 0; i < scope.onDestroy.length; i++) {
@@ -202,7 +210,7 @@ export function disposeScope(scope: Scope): void {
  * @param fn - The cleanup function.
  */
 export function onCleanup(fn: () => void): void {
-  const scope = activeScope;
+  const scope = getActiveScope();
 
   if (!scope) {
     if (__DEV__) {

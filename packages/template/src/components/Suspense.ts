@@ -72,9 +72,52 @@ function isAbortError(error: unknown): boolean {
  * ```
  */
 export function Suspense(props: SuspenseProps): Node {
-  // SSR: render the fallback, deterministic, never touch DOM.
+  // SSR / multipass: always evaluate children so createResource participates in
+  // the request-local bridge. Prefer resolved children; fall back only when the
+  // children are empty or still pending.
+  //
+  // Note: register/increment return no-op releases here — during a synchronous
+  // SSR pass a promise can never settle before we return, so counting
+  // registrations is all that matters.
   if (!isBrowser()) {
-    return props.fallback ?? ('' as unknown as Node);
+    let ssrPending = 0;
+    const noopRelease = (): void => {};
+    const ssrCtx: SuspenseContextType = {
+      register: () => {
+        ssrPending++;
+        return noopRelease;
+      },
+      increment: () => {
+        ssrPending++;
+        return noopRelease;
+      },
+      decrement: () => {
+        ssrPending = Math.max(0, ssrPending - 1);
+      },
+    };
+    provide(SuspenseContext, ssrCtx);
+    let content: unknown;
+    try {
+      content = resolveNodeValue(props.children);
+    } catch (error) {
+      if (__DEV__) warn('[Suspense] children threw during SSR:', error);
+      content = null;
+    }
+    // Promise children can never settle within a synchronous SSR pass.
+    if (isPromise(content)) {
+      ssrPending++;
+      content = null;
+    }
+    if (ssrPending === 0 && content != null && content !== false && content !== '') {
+      return content as Node;
+    }
+    try {
+      const fallback = resolveNodeValue(props.fallback);
+      if (fallback != null && fallback !== '') return fallback as Node;
+    } catch (error) {
+      if (__DEV__) warn('[Suspense] fallback threw during SSR:', error);
+    }
+    return '' as unknown as Node;
   }
 
   const owner = getActiveScope();

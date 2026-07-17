@@ -47,6 +47,8 @@ export {
   Suspense,
   isSuspense,
   createResource,
+  setHydrateResources,
+  clearHydrateResources,
   defineAsyncComponent,
   type AsyncComponentOptions,
   For,

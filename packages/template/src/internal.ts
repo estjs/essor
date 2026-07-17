@@ -8,4 +8,19 @@
  */
 
 export type { Scope } from './scope';
-export { createScope, disposeScope, getActiveScope, runWithScope, setActiveScope } from './scope';
+export {
+  createScope,
+  disposeScope,
+  getActiveScope,
+  onCleanup,
+  runWithScope,
+  setActiveScope,
+} from './scope';
+
+export {
+  SSR_ASYNC_CONTEXT_ERROR,
+  createSSRExecutionState,
+  getSSRExecutionCarrier,
+  getSSRExecutionState,
+  setSSRExecutionCarrier,
+} from './ssr-execution';
