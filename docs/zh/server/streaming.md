@@ -1,568 +1,127 @@
-# 流式渲染 (Streaming SSR)
+# 异步 SSR (renderToStringAsync)
 
-## 概述
+> **流式渲染尚未实现。** Essor 当前渲染完整页面并返回单个字符串。真正的流式（带乱序 Suspense 输出的 `renderToStream`）在路线图上——见底部[路线图](#路线图真流式)。本页记录的是**当前存在**的异步渲染能力。
 
-流式渲染允许你渐进式地发送 HTML 到客户端，而不是等待整个页面渲染完成。配合 Suspense 边界，可以实现乱序流式渲染，让用户尽快看到内容。
+## 同步 vs 异步渲染
 
-## renderToStream
-
-将组件渲染为可读流，支持乱序流式渲染。
-
-### 类型签名
+`renderToString` 是严格同步的。如果组件返回 Promise，它会**直接抛错**——同步路径无法 await，而静默序列化 Promise 会输出损坏的 HTML：
 
 ```typescript
-function renderToStream<P>(
+import { renderToString } from '@estjs/server';
+
+const AsyncPage = async () => { /* ... */ };
+
+renderToString(AsyncPage, {});
+// Error: renderToString received a Promise - use renderToStringAsync for async components.
+```
+
+`renderToStringAsync` 是 Promise 感知的变体：
+
+```typescript
+function renderToStringAsync<P>(
   component: ComponentFn<P>,
-  props: P
-): ReadableStream<Uint8Array>
+  props?: P,
+  context?: SSRContext | null
+): Promise<string>
 ```
 
-### 基础用法
+## 基础用法
 
 ```typescript
-import { Readable } from 'node:stream'
-import { renderToStream } from '@estjs/server'
-import App from './App'
+import { renderToStringAsync } from '@estjs/server';
 
-// Node.js
+async function App({ userId }) {
+  const user = await fetchUser(userId);
+  return (
+    <main>
+      <h1>Welcome, {user.name}</h1>
+    </main>
+  );
+}
 
-const stream = renderToStream(App, { userId: '123' })
-const nodeStream = Readable.fromWeb(stream)
-
-nodeStream.pipe(res)
-
-// 或使用 Web Streams API
-const response = new Response(stream, {
-  headers: {
-    'Content-Type': 'text/html',
-    'Transfer-Encoding': 'chunked'
-  }
-})
+// 服务端 handler
+const html = await renderToStringAsync(App, { userId: '123' });
+res.setHeader('Content-Type', 'text/html');
+res.end(html);
 ```
 
-## 工作原理
+发送任何内容前整棵树都会被 await 完毕：**TTFB 等于最慢的数据依赖**。这是与流式相比的取舍——换来的是 HTTP 状态码完全可控（见[并发与错误](#并发与错误)）。
 
-### 渲染流程
+## 哪些内容会被 await
 
-```
-1. 同步内容立即渲染并发送
-   ↓
-2. 遇到 Suspense 边界
-   ↓
-3. 渲染 fallback 并继续
-   ↓
-4. 异步内容准备好
-   ↓
-5. 发送 <template> + 替换脚本
-   ↓
-6. 所有边界完成，关闭流
-```
+被 await 的组件结果会流经一条 Promise 感知的解析管线，递归透明地解包：
 
-### 示例
+- `async` 组件函数（组件本身返回 Promise）
+- 数组结果中嵌套的 Promise（如 `{items.map(async item => ...)}`）
+- 返回 Promise 的 thunk（编译产物的惰性 children）
 
 ```typescript
-// App.tsx
-import { Suspense } from 'essor'
-
-function App() {
-  return (
-    <html>
-      <head>
-        <title>My App</title>
-      </head>
-      <body>
-        <header>
-          <h1>My App</h1>
-        </header>
-        
-        {/* 同步内容，立即发送 */}
-        <nav>
-          <a href="/">Home</a>
-          <a href="/about">About</a>
-        </nav>
-        
-        {/* 异步内容，先显示 fallback */}
-        <Suspense fallback={<div>Loading user...</div>}>
-          <UserProfile userId="123" />
-        </Suspense>
-        
-        {/* 另一个异步边界，独立解析 */}
-        <Suspense fallback={<div>Loading posts...</div>}>
-          <PostList />
-        </Suspense>
-        
-        <footer>
-          <p>© 2024 My App</p>
-        </footer>
-      </body>
-    </html>
-  )
-}
-
-// UserProfile.tsx
-function UserProfile({ userId }) {
-  const [user] = createResource(() => 
-    fetch(`/api/users/${userId}`).then(r => r.json())
-  )
-  
-  return <div>Welcome, {user()!.name}!</div>
-}
-
-// PostList.tsx
-function PostList() {
-  const [posts] = createResource(() => 
-    fetch('/api/posts').then(r => r.json())
-  )
-  
-  return (
-    <ul>
-      {posts()!.map(post => (
-        <li key={post.id}>{post.title}</li>
-      ))}
-    </ul>
-  )
+async function Sections() {
+  return [
+    renderHeader(),            // 同步值
+    fetchBody(),               // Promise<JSX>
+    async () => fetchFooter(), // 返回 Promise 的 thunk
+  ];
 }
 ```
 
-### 渲染输出
+## 跨 await 的 provide / inject
 
-**初始 HTML（立即发送）**：
-```html
-<html>
-  <head><title>My App</title></head>
-  <body>
-    <header><h1>My App</h1></header>
-    <nav>
-      <a href="/">Home</a>
-      <a href="/about">About</a>
-    </nav>
-    
-    <!-- Suspense 边界 1 -->
-    <div data-suspense-id="suspense-1">
-      <div>Loading user...</div>
-    </div>
-    
-    <!-- Suspense 边界 2 -->
-    <div data-suspense-id="suspense-2">
-      <div>Loading posts...</div>
-    </div>
-    
-    <footer><p>© 2024 My App</p></footer>
-  </body>
-</html>
-```
-
-**用户数据准备好（乱序发送）**：
-```html
-<template id="suspense-1-content">
-  <div>Welcome, John!</div>
-</template>
-<script>
-  (function() {
-    const template = document.getElementById('suspense-1-content')
-    const target = document.querySelector('[data-suspense-id="suspense-1"]')
-    target.replaceWith(template.content.cloneNode(true))
-  })()
-</script>
-```
-
-**文章列表准备好（乱序发送）**：
-```html
-<template id="suspense-2-content">
-  <ul>
-    <li>Post 1</li>
-    <li>Post 2</li>
-  </ul>
-</template>
-<script>
-  (function() {
-    const template = document.getElementById('suspense-2-content')
-    const target = document.querySelector('[data-suspense-id="suspense-2"]')
-    target.replaceWith(template.content.cloneNode(true))
-  })()
-</script>
-```
-
-## Suspense 集成
-
-### 基础 Suspense
+请求的响应式作用域跨 `await` 边界存活（Node 上通过 `AsyncLocalStorage`），因此依赖注入在异步组件中自然可用——包括在 `await` **之后**调用的 `provide()`：
 
 ```typescript
-import { Suspense } from 'essor'
+import { provide, inject } from 'essor';
 
-function MyComponent() {
+const PageDataKey = Symbol('page-data');
+
+async function Parent() {
+  const data = await loadPageData();
+  provide(PageDataKey, data); // await 之后 —— 仍是请求级作用域
+  return <Child />;
+}
+
+function Child() {
+  const data = inject(PageDataKey);
+  return <p>{data.title}</p>;
+}
+```
+
+并发渲染互相不可见——见 [SSR 上下文与请求隔离](/zh/server/ssr-context)。
+
+## Suspense 在 SSR 中的语义
+
+在服务端，`<Suspense>` 在序列化时刻是同步的：`children` 有内容就渲染 children，只有 children 为空时才输出 `fallback`。配合 `renderToStringAsync`，数据在序列化**之前**已经 resolve，因此输出的 HTML 是最终内容——而不是 fallback：
+
+```tsx
+async function Page() {
+  const todos = await fetchTodos();
   return (
-    <Suspense fallback={<Loading />}>
-      <AsyncContent />
+    <Suspense fallback={<p>Loading…</p>}>
+      <TodoList items={todos} />
     </Suspense>
-  )
+  );
+}
+// 输出的 HTML:todo 列表。fallback 在服务端永远不会出现。
+```
+
+客户端水合后，`Suspense` 照常接管*后续的*异步工作。
+
+## 并发与错误
+
+- 每次 `renderToStringAsync` 调用运行在隔离的请求作用域中：`provide()`/`inject()` 状态、hydration key、`SSRContext` 在并发渲染间零泄漏。
+- 组件 reject 会**让整个渲染 Promise reject**，渲染作用域随之销毁。由于还没有发送任何内容，服务器对 HTTP 状态码保持完全控制：
+
+```typescript
+try {
+  const html = await renderToStringAsync(App, props);
+  res.writeHead(200, { 'Content-Type': 'text/html' }).end(html);
+} catch (err) {
+  res.writeHead(500).end('Internal Server Error');
 }
 ```
 
-### 嵌套 Suspense
+这是相对流式的真实优势：一旦流以 `200` 开始发送，流中途的错误就无法再改变状态码。
 
-```typescript
-function App() {
-  return (
-    <Suspense fallback={<div>Loading app...</div>}>
-      <Header />
-      
-      <Suspense fallback={<div>Loading sidebar...</div>}>
-        <Sidebar />
-      </Suspense>
-      
-      <main>
-        <Suspense fallback={<div>Loading content...</div>}>
-          <Content />
-        </Suspense>
-      </main>
-    </Suspense>
-  )
-}
-```
+## 路线图：真流式
 
-### 多个异步资源
-
-```typescript
-function Dashboard() {
-  const [user] = createResource(() => fetchUser())
-  const [stats] = createResource(() => fetchStats())
-  const [notifications] = createResource(() => fetchNotifications())
-  
-  return (
-    <div>
-      <Suspense fallback={<div>Loading user...</div>}>
-        <UserCard user={user()} />
-      </Suspense>
-      
-      <Suspense fallback={<div>Loading stats...</div>}>
-        <StatsPanel stats={stats()} />
-      </Suspense>
-      
-      <Suspense fallback={<div>Loading notifications...</div>}>
-        <NotificationList notifications={notifications()} />
-      </Suspense>
-    </div>
-  )
-}
-```
-
-## 错误处理
-
-### ErrorBoundary 集成
-
-```typescript
-import { Suspense, ErrorBoundary } from 'essor'
-
-function App() {
-  return (
-    <ErrorBoundary fallback={(error) => <ErrorView error={error} />}>
-      <Suspense fallback={<Loading />}>
-        <AsyncContent />
-      </Suspense>
-    </ErrorBoundary>
-  )
-}
-```
-
-### 错误流式传输
-
-当异步边界中发生错误时，会发送错误替换脚本：
-
-```html
-<template id="suspense-1-error">
-  <div class="error">
-    <h2>Error</h2>
-    <p>Failed to load user data</p>
-  </div>
-</template>
-<script>
-  (function() {
-    const template = document.getElementById('suspense-1-error')
-    const target = document.querySelector('[data-suspense-id="suspense-1"]')
-    target.replaceWith(template.content.cloneNode(true))
-  })()
-</script>
-```
-
-## 高级用法
-
-### 手动刷新
-
-```typescript
-import { StreamingContext } from '@estjs/server'
-
-const context = new StreamingContext(ssrContext)
-
-// 注册边界
-const boundaryId = context.registerBoundary(asyncPromise)
-
-// 等待所有边界完成
-await context.waitForAll()
-
-// 获取待处理的边界
-const pending = context.getPendingBoundaries()
-
-// 获取已解析的边界
-const resolved = context.getResolvedBoundaries()
-```
-
-### 自定义替换脚本
-
-```typescript
-import { generateErrorScript, generateReplacementScript } from '@estjs/server'
-
-// 生成成功替换脚本
-const script = generateReplacementScript('suspense-1', '<div>Content</div>')
-
-// 生成错误替换脚本
-const errorScript = generateErrorScript('suspense-1', '<div>Error</div>')
-```
-
-### SSR 上下文集成
-
-```typescript
-import { SSRContext, renderToStream } from '@estjs/server'
-
-const ssrContext = new SSRContext()
-ssrContext.set('theme', 'dark')
-
-const stream = renderToStream(App, { ssrContext })
-```
-
-## 性能优化
-
-### 1. 优先级控制
-
-将重要内容放在 Suspense 外部，确保立即发送：
-
-```typescript
-function App() {
-  return (
-    <div>
-      {/* 关键内容，立即渲染 */}
-      <header>
-        <h1>My App</h1>
-        <nav>{/* ... */}</nav>
-      </header>
-      
-      {/* 次要内容，延迟加载 */}
-      <Suspense fallback={<Loading />}>
-        <SecondaryContent />
-      </Suspense>
-    </div>
-  )
-}
-```
-
-### 2. 粒度控制
-
-使用多个小的 Suspense 边界而不是一个大的：
-
-```typescript
-// ❌ 不好：一个大边界
-<Suspense fallback={<Loading />}>
-  <UserProfile />
-  <PostList />
-  <CommentList />
-</Suspense>
-
-// ✅ 好：多个小边界
-<Suspense fallback={<UserLoading />}>
-  <UserProfile />
-</Suspense>
-<Suspense fallback={<PostsLoading />}>
-  <PostList />
-</Suspense>
-<Suspense fallback={<CommentsLoading />}>
-  <CommentList />
-</Suspense>
-```
-
-### 3. 预加载关键资源
-
-```typescript
-function App() {
-  // 预加载关键资源
-  const [user] = createResource(() => fetchUser(), {
-    ssrLoad: true  // 在 SSR 时立即加载
-  })
-  
-  // 延迟加载次要资源
-  const [stats] = createResource(() => fetchStats(), {
-    ssrLoad: false  // 只在客户端加载
-  })
-  
-  return (
-    <div>
-      <Suspense fallback={<Loading />}>
-        <UserProfile user={user()} />
-      </Suspense>
-      
-      <Suspense fallback={<Loading />}>
-        <Stats stats={stats()} />
-      </Suspense>
-    </div>
-  )
-}
-```
-
-## 最佳实践
-
-### 1. 提供有意义的 Fallback
-
-```typescript
-// ❌ 不好
-<Suspense fallback={<div>Loading...</div>}>
-  <UserProfile />
-</Suspense>
-
-// ✅ 好
-<Suspense fallback={
-  <div class="skeleton">
-    <div class="skeleton-avatar" />
-    <div class="skeleton-text" />
-  </div>
-}>
-  <UserProfile />
-</Suspense>
-```
-
-### 2. 避免过度嵌套
-
-```typescript
-// ❌ 不好：过度嵌套
-<Suspense fallback={<Loading />}>
-  <Suspense fallback={<Loading />}>
-    <Suspense fallback={<Loading />}>
-      <Content />
-    </Suspense>
-  </Suspense>
-</Suspense>
-
-// ✅ 好：扁平结构
-<Suspense fallback={<Loading />}>
-  <Content />
-</Suspense>
-```
-
-### 3. 错误边界保护
-
-始终使用 ErrorBoundary 包裹 Suspense：
-
-```typescript
-<ErrorBoundary fallback={(error) => <ErrorView error={error} />}>
-  <Suspense fallback={<Loading />}>
-    <AsyncContent />
-  </Suspense>
-</ErrorBoundary>
-```
-
-### 4. 测试流式渲染
-
-```typescript
-import { renderToStream } from '@estjs/server'
-import { describe, expect, it } from 'vitest'
-
-describe('Streaming SSR', () => {
-  it('should stream content progressively', async () => {
-    const stream = renderToStream(App, {})
-    const reader = stream.getReader()
-    const decoder = new TextDecoder()
-    
-    let html = ''
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      html += decoder.decode(value, { stream: true })
-    }
-    
-    expect(html).toContain('<header>')
-    expect(html).toContain('data-suspense-id')
-  })
-})
-```
-
-## 浏览器兼容性
-
-流式渲染需要浏览器支持：
-
-- ReadableStream API
-- Template 元素
-- 现代 JavaScript
-
-支持的浏览器：
-- Chrome 52+
-- Firefox 65+
-- Safari 10.1+
-- Edge 79+
-
-## 服务器配置
-
-### Node.js
-
-```typescript
-import { createServer } from 'node:http'
-import { Readable } from 'node:stream'
-import { renderToStream } from '@estjs/server'
-
-createServer((req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'text/html',
-    'Transfer-Encoding': 'chunked'
-  })
-  
-  const stream = renderToStream(App, {})
-  const nodeStream = Readable.fromWeb(stream)
-  
-  nodeStream.pipe(res)
-}).listen(3000)
-```
-
-### Deno
-
-```typescript
-import { renderToStream } from '@estjs/server'
-
-Deno.serve((req) => {
-  const stream = renderToStream(App, {})
-  
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'text/html',
-      'Transfer-Encoding': 'chunked'
-    }
-  })
-})
-```
-
-### Cloudflare Workers
-
-```typescript
-import { renderToStream } from '@estjs/server'
-
-export default {
-  async fetch(request) {
-    const stream = renderToStream(App, {})
-    
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/html'
-      }
-    })
-  }
-}
-```
-
-## 注意事项
-
-1. **SEO**：搜索引擎爬虫可能不等待流式内容完成
-2. **缓存**：流式响应通常不应该被缓存
-3. **错误处理**：流开始后无法更改 HTTP 状态码
-4. **超时**：设置合理的超时时间避免流挂起
-5. **内存**：大量并发流可能消耗大量内存
-
-## 相关 API
-
-- [Suspense](../components/Suspense.md) - Suspense 组件
-- [createResource](./resources.md) - 同构资源
+`renderToStream` API——立即输出外壳、Suspense 边界内容 resolve 后乱序流式送达——已在规划中但**尚未实现**。不要在生产代码中引用 `renderToStream`；任何已发布版本中都不存在它。在其落地之前，`renderToStringAsync` 是服务端渲染异步组件树的受支持方式。

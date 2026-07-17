@@ -246,3 +246,109 @@ const user = reactive({ name: 'John', age: 30 });
 const name = computed(() => user.name);
 const age = computed(() => user.age);
 ```
+
+## Advanced
+
+The following APIs are low-level utilities for advanced use cases, debugging, and testing. Most application code will never need them.
+
+### untrack
+
+Runs a function without collecting any reactive dependencies. Reads performed inside the callback do **not** subscribe the surrounding `effect`/`computed` to those sources:
+
+```ts
+import { effect, reactive, untrack } from '@estjs/signals';
+
+const state = reactive({ tracked: 0, ignored: 0 });
+
+effect(() => {
+  // Establishes a dependency on `state.tracked`
+  const t = state.tracked;
+
+  // Reads inside untrack do NOT establish a dependency
+  const i = untrack(() => state.ignored);
+
+  console.log(`tracked=${t}, ignored=${i}`);
+});
+// Output: tracked=0, ignored=0
+
+state.ignored = 100; // No output — the effect never subscribed to `ignored`
+state.tracked = 1;   // Output: tracked=1, ignored=100
+```
+
+`untrack` returns the callback's return value and restores the previous tracking context even if the callback throws.
+
+### trigger
+
+Manually notifies all subscribers tracked for a `target`/`key` pair. This is a **debugging and advanced escape hatch** — the reactive proxy calls it automatically on every mutation, so normal code never needs it. It is useful when you mutate a raw object behind the proxy's back (e.g. via `toRaw`) and need to fire the corresponding effects yourself:
+
+```ts
+import { effect, reactive, toRaw, trigger } from '@estjs/signals';
+
+const state = reactive<Record<string, number>>({ a: 1 });
+
+effect(() => {
+  console.log('keys:', Object.keys(state).join(','));
+});
+// Output: keys: a
+
+// Adding a key on the raw object bypasses the proxy — no effect runs
+toRaw(state).b = 2;
+
+// Manually notify subscribers that a key was added
+trigger(toRaw(state), 'ADD', 'b', 2);
+// Output: keys: a,b
+```
+
+The `type` argument describes the mutation kind (`'SET'`, `'ADD'`, `'DELETE'`, `'CLEAR'`). For `'ADD'`, `'DELETE'`, and `'CLEAR'`, iteration-dependent effects (e.g. those reading `Object.keys`, array length, or `Map.size`) are also notified. `key` may be a single key or an array of keys to notify multiple deps in one deduplicated round.
+
+### toReactive
+
+Returns a reactive proxy for the given value if it is an object; otherwise returns the value unchanged. Handy for normalizing values that may or may not be objects:
+
+```ts
+import { isReactive, toReactive } from '@estjs/signals';
+
+const obj = toReactive({ count: 0 });
+console.log(isReactive(obj)); // true
+
+const num = toReactive(42);
+console.log(num); // 42 — primitives are returned as-is
+```
+
+### getTargetDepSize
+
+Counts the active effect subscribers on a specific property of a reactive object. Primarily intended for **tests** that assert effects are properly cleaned up. Accepts either the reactive proxy or the raw target:
+
+```ts
+import { effect, getTargetDepSize, reactive } from '@estjs/signals';
+
+const state = reactive({ count: 0 });
+
+console.log(getTargetDepSize(state, 'count')); // 0
+
+const runner = effect(() => {
+  state.count; // subscribes to `count`
+});
+
+console.log(getTargetDepSize(state, 'count')); // 1
+
+runner.stop();
+console.log(getTargetDepSize(state, 'count')); // 0 — subscriber cleaned up
+```
+
+### Type Definitions
+
+```ts
+function untrack<T>(fn: () => T): T;
+
+function trigger(
+  target: object,
+  type: string,
+  key?: string | symbol | (string | symbol)[],
+  newValue?: unknown,
+): void;
+
+function toReactive<T>(value: T): T;
+
+function getTargetDepSize(target: object, key: string | symbol): number;
+```

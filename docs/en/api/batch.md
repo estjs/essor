@@ -164,3 +164,82 @@ function nextTick(callback?: () => void): Promise<void>;
 ::: tip
 Whenever you mutate many signals at once, reach for `batch` first to avoid wasted work.
 :::
+
+## Advanced
+
+The following low-level APIs expose the batching machinery that `batch` is built on. Prefer `batch` — it handles pairing automatically. Reach for these only when the batch boundary cannot be expressed as a single synchronous callback.
+
+### startBatch / endBatch
+
+Open and close a manual batch boundary. `batch(fn)` is literally `startBatch()` + `fn()` + `endBatch()` in a `try/finally`. When you call them yourself, they **must be paired in a `try/finally`** — an unmatched `startBatch` would suppress flushes forever:
+
+```ts
+import { startBatch, endBatch, effect, signal } from '@estjs/signals';
+
+const x = signal(0);
+const y = signal(0);
+
+effect(() => {
+  console.log(`sum: ${x.value + y.value}`);
+});
+// logs: sum: 0
+
+startBatch();
+try {
+  x.value = 1;
+  y.value = 2;
+  // No effect has run yet — updates are queued.
+} finally {
+  endBatch();
+}
+// logs: sum: 3   (single flush when the outermost batch ends)
+```
+
+Nesting is supported: only the outermost `endBatch` flushes. Calling `endBatch()` without a matching `startBatch()` is a guarded no-op (with a dev-mode warning) — the depth never goes negative.
+
+### isBatching
+
+Returns `true` while at least one batch is open. Useful for utilities that behave differently inside a batch:
+
+```ts
+import { batch, isBatching } from '@estjs/signals';
+
+console.log(isBatching()); // false
+
+batch(() => {
+  console.log(isBatching()); // true
+});
+
+console.log(isBatching()); // false
+```
+
+### getBatchDepth
+
+Returns the current batch nesting depth. `0` means no batch is active:
+
+```ts
+import { batch, getBatchDepth } from '@estjs/signals';
+
+console.log(getBatchDepth()); // 0
+
+batch(() => {
+  console.log(getBatchDepth()); // 1
+
+  batch(() => {
+    console.log(getBatchDepth()); // 2
+  });
+
+  console.log(getBatchDepth()); // 1
+});
+
+console.log(getBatchDepth()); // 0
+```
+
+### Type Definitions
+
+```ts
+function startBatch(): void;
+function endBatch(): void;
+function isBatching(): boolean;
+function getBatchDepth(): number;
+```

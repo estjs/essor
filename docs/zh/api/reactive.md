@@ -246,3 +246,109 @@ const user = reactive({ name: '张三', age: 30 });
 const name = computed(() => user.name);
 const age = computed(() => user.age);
 ```
+
+## 进阶
+
+以下 API 是面向高级场景、调试与测试的底层工具，大多数应用代码永远不需要它们。
+
+### untrack
+
+在不收集任何响应式依赖的情况下运行函数。回调内部的读取**不会**让外层的 `effect`/`computed` 订阅这些数据源：
+
+```ts
+import { effect, reactive, untrack } from '@estjs/signals';
+
+const state = reactive({ tracked: 0, ignored: 0 });
+
+effect(() => {
+  // 建立对 `state.tracked` 的依赖
+  const t = state.tracked;
+
+  // untrack 内的读取不会建立依赖
+  const i = untrack(() => state.ignored);
+
+  console.log(`tracked=${t}, ignored=${i}`);
+});
+// 输出: tracked=0, ignored=0
+
+state.ignored = 100; // 无输出——effect 从未订阅 `ignored`
+state.tracked = 1;   // 输出: tracked=1, ignored=100
+```
+
+`untrack` 会返回回调的返回值，并且即使回调抛出异常也会恢复先前的追踪上下文。
+
+### trigger
+
+手动通知某个 `target`/`key` 的所有订阅者。这是一个**调试与高级逃生舱** API——响应式 proxy 会在每次变更时自动调用它，正常代码不需要使用。它的典型用途是：绕过 proxy 直接修改了原始对象（例如通过 `toRaw`）之后，需要手动触发对应的副作用：
+
+```ts
+import { effect, reactive, toRaw, trigger } from '@estjs/signals';
+
+const state = reactive<Record<string, number>>({ a: 1 });
+
+effect(() => {
+  console.log('keys:', Object.keys(state).join(','));
+});
+// 输出: keys: a
+
+// 在原始对象上新增 key 绕过了 proxy——不会触发副作用
+toRaw(state).b = 2;
+
+// 手动通知订阅者：新增了一个 key
+trigger(toRaw(state), 'ADD', 'b', 2);
+// 输出: keys: a,b
+```
+
+`type` 参数描述变更类型（`'SET'`、`'ADD'`、`'DELETE'`、`'CLEAR'`）。对于 `'ADD'`、`'DELETE'`、`'CLEAR'`，依赖迭代的副作用（例如读取 `Object.keys`、数组 length、`Map.size` 的副作用）也会被通知。`key` 可以是单个键，也可以是键数组，用于在一轮去重派发中通知多个依赖。
+
+### toReactive
+
+如果传入值是对象，则返回其响应式 proxy；否则原样返回。适合规范化"可能是对象、也可能不是"的值：
+
+```ts
+import { isReactive, toReactive } from '@estjs/signals';
+
+const obj = toReactive({ count: 0 });
+console.log(isReactive(obj)); // true
+
+const num = toReactive(42);
+console.log(num); // 42 —— 原始值原样返回
+```
+
+### getTargetDepSize
+
+统计响应式对象某个属性上处于活跃状态的副作用订阅者数量。主要面向**测试**，用于断言副作用被正确清理。参数可以传响应式 proxy，也可以传原始对象：
+
+```ts
+import { effect, getTargetDepSize, reactive } from '@estjs/signals';
+
+const state = reactive({ count: 0 });
+
+console.log(getTargetDepSize(state, 'count')); // 0
+
+const runner = effect(() => {
+  state.count; // 订阅 `count`
+});
+
+console.log(getTargetDepSize(state, 'count')); // 1
+
+runner.stop();
+console.log(getTargetDepSize(state, 'count')); // 0 —— 订阅者已清理
+```
+
+### 类型定义
+
+```ts
+function untrack<T>(fn: () => T): T;
+
+function trigger(
+  target: object,
+  type: string,
+  key?: string | symbol | (string | symbol)[],
+  newValue?: unknown,
+): void;
+
+function toReactive<T>(value: T): T;
+
+function getTargetDepSize(target: object, key: string | symbol): number;
+```

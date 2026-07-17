@@ -16,9 +16,9 @@
 
 ## 工具函数
 
-- [`batch`](./batch-updates.md) - 批量处理更新
+- [`batch`](./batch.md) - 批量处理更新
 - [`untrack`](./effect.md#untrack) - 在不追踪依赖的情况下执行函数
-- [`nextTick`](./batch-updates.md) - 在下一个微任务执行回调
+- [`nextTick`](./batch.md) - 在下一个微任务执行回调
 
 ## 运行时组件
 

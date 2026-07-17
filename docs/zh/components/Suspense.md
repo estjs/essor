@@ -33,8 +33,9 @@ Suspense 与 `createResource` 天然配合 —— 资源会把待处理的 Promi
 import { Suspense, createResource } from '@estjs/template';
 
 function UserProfile({ userId }: { userId: string }) {
-  const [user] = createResource(async () => {
-    const res = await fetch(`/api/users/${userId}`);
+  const [user] = createResource(async (signal) => {
+    const res = await fetch(`/api/users/${userId}`, { signal });
+    if (!res.ok) throw new Error('Failed to load user');
     return res.json();
   });
 
@@ -58,7 +59,7 @@ function App() {
 }
 ```
 
-`createResource` 返回 `[resource, actions]` 元组。`resource` 是可调用的 —— `user()` 返回当前值（pending 时为 `undefined`）。同时还能拿到 `actions.refetch()` 与 `actions.mutate(value)`。
+`createResource` 返回 `[resource, actions]` 元组。`resource` 是可调用的 —— `user()` 返回当前值（pending 时为 `undefined`）。同时还能拿到 `actions.refetch()` 与 `actions.mutate(value)`。把框架传入的 `AbortSignal` 传给 `fetch`，可以在 refetch 或组件卸载时取消过期请求。
 
 ## 嵌套 Suspense
 
@@ -87,10 +88,12 @@ function App() {
 
 ## 错误处理
 
-异步操作可能失败，配合错误边界可以优雅地恢复：
+异步操作可能失败。Essor **不内置** `ErrorBoundary` 组件——首选的错误处理手段是资源自身的 `error` / `state` 信号（见下文）。如果偏好边界式处理，可以自行编写包装组件：
 
 ```tsx
 import { Suspense } from '@estjs/template';
+// 注意:本例中的 ErrorBoundary 是用户自己编写的组件,
+// 不是 Essor 的导出。
 import { ErrorBoundary } from './ErrorBoundary';
 
 function App() {

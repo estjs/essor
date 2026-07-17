@@ -33,8 +33,9 @@ Suspense pairs naturally with `createResource`. The resource registers its pendi
 import { Suspense, createResource } from '@estjs/template';
 
 function UserProfile({ userId }: { userId: string }) {
-  const [user] = createResource(async () => {
-    const res = await fetch(`/api/users/${userId}`);
+  const [user] = createResource(async (signal) => {
+    const res = await fetch(`/api/users/${userId}`, { signal });
+    if (!res.ok) throw new Error('Failed to load user');
     return res.json();
   });
 
@@ -58,7 +59,7 @@ function App() {
 }
 ```
 
-`createResource` returns a tuple `[resource, actions]`. The `resource` is callable — `user()` returns the current value (or `undefined` while pending). `actions.refetch()` and `actions.mutate(value)` are also available.
+`createResource` returns a tuple `[resource, actions]`. The `resource` is callable — `user()` returns the current value (or `undefined` while pending). `actions.refetch()` and `actions.mutate(value)` are also available. Pass the provided `AbortSignal` to `fetch` so stale requests can be cancelled during refetches or unmounts.
 
 ## Nested Suspense
 
@@ -87,10 +88,12 @@ When `MainContent` is loading, only the inner main-content fallback is shown —
 
 ## Error Handling
 
-Async operations may fail. Combine Suspense with an error boundary to recover gracefully:
+Async operations may fail. Essor does **not** ship a built-in `ErrorBoundary` component — the primary error-handling tool is the resource's own `error` / `state` signals (shown below). If you prefer boundary-style handling, you can write your own wrapper component:
 
 ```tsx
 import { Suspense } from '@estjs/template';
+// Note: ErrorBoundary is a USER-WRITTEN component in this example,
+// not an Essor export.
 import { ErrorBoundary } from './ErrorBoundary';
 
 function App() {

@@ -28,16 +28,16 @@ Essor 的 API 分为响应式核心、运行时组件和工具函数三大类别
 - [`onMount`](./lifecycle.md#onmount) — 组件挂载钩子
 - [`onUpdate`](./lifecycle.md#onupdate) — 组件更新钩子
 - [`onDestroy`](./lifecycle.md#ondestroy) — 组件销毁钩子
-- [`onCleanup`](./lifecycle.md#oncleanup) — 注册清理函数
+- [`onScopeDispose`](./lifecycle.md#作用域清理) — 注册作用域清理函数
 - [`provide`](./provide-inject.md#provide) / [`inject`](./provide-inject.md#inject) — 跨层级依赖注入
 
 ## 工具函数
 
-- [`batch`](./batch-updates.md) — 批量更新信号
+- [`batch`](./batch.md) — 批量更新信号
 - [`untrack`](./effect.md#untrack) — 不追踪依赖地读取值
-- [`nextTick`](./batch-updates.md#nexttick) — 下一个微任务执行回调
+- [`nextTick`](./batch.md#nexttick) — 下一个微任务执行回调
 
 ## SSR / SSG (@estjs/server)
 
 - [`renderToString`](../server/ssr.md) — 将组件渲染为 HTML 字符串
-- [`createSSGComponent`](../server/ssg.md) — SSG 优化嵌套组件渲染
+- [`createSSRComponent`](../server/ssg.md) — 将组件子树渲染为品牌化 HTML 字符串

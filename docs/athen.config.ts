@@ -66,8 +66,8 @@ export default defineConfig({
                   link: '/zh/guide/transition',
                 },
                 {
-                  text: '迁移到同构 API',
-                  link: '/zh/guide/migration-to-isomorphic',
+                  text: '迁移指南',
+                  link: '/zh/guide/migration',
                 },
               ],
             },
@@ -85,12 +85,24 @@ export default defineConfig({
                   link: '/zh/server/ssg',
                 },
                 {
-                  text: '流式渲染 (Streaming)',
+                  text: '异步 SSR',
                   link: '/zh/server/streaming',
+                },
+                {
+                  text: 'SSR 上下文与请求隔离',
+                  link: '/zh/server/ssr-context',
+                },
+                {
+                  text: '安全与转义',
+                  link: '/zh/server/security',
                 },
                 {
                   text: '异步资源 (Resources)',
                   link: '/zh/server/resources',
+                },
+                {
+                  text: '编译产物 API',
+                  link: '/zh/server/compiler-output',
                 },
               ],
             },
@@ -133,7 +145,9 @@ export default defineConfig({
                 { text: 'effect', link: '/zh/api/effect' },
                 { text: 'watch', link: '/zh/api/watch' },
                 { text: 'reactive', link: '/zh/api/reactive' },
+                { text: 'ref', link: '/zh/api/ref' },
                 { text: 'store', link: '/zh/api/store' },
+                { text: 'effectScope', link: '/zh/api/effect-scope' },
               ],
             },
             {
@@ -142,7 +156,8 @@ export default defineConfig({
                 { text: '运行时 API', link: '/zh/api/runtime-api' },
                 { text: '生命周期', link: '/zh/api/lifecycle' },
                 { text: '依赖注入', link: '/zh/api/provide-inject' },
-                { text: '批量更新', link: '/zh/api/batch-updates' },
+                { text: '批量更新', link: '/zh/api/batch' },
+                { text: '调度器', link: '/zh/api/scheduler' },
               ],
             },
           ],
@@ -195,12 +210,17 @@ export default defineConfig({
         sidebar: {
           '/en/guide/': [
             {
-              text: 'Getting Started',
+              text: 'Introduction',
               items: [
                 {
                   text: 'Getting Started',
                   link: '/en/guide/getting-started',
                 },
+              ],
+            },
+            {
+              text: 'Advanced',
+              items: [
                 {
                   text: 'bind two-way binding',
                   link: '/en/guide/bind',
@@ -209,34 +229,9 @@ export default defineConfig({
                   text: 'Transition & TransitionGroup',
                   link: '/en/guide/transition',
                 },
-              ],
-            },
-            {
-              text: 'Basics',
-              items: [
                 {
-                  text: 'signal',
-                  link: '/en/api/signal',
-                },
-                {
-                  text: 'computed',
-                  link: '/en/api/computed',
-                },
-                {
-                  text: 'effect',
-                  link: '/en/api/effect',
-                },
-                {
-                  text: 'watch',
-                  link: '/en/api/watch',
-                },
-                {
-                  text: 'reactive',
-                  link: '/en/api/reactive',
-                },
-                {
-                  text: 'store',
-                  link: '/en/api/store',
+                  text: 'Migration Guide',
+                  link: '/en/guide/migration',
                 },
               ],
             },
@@ -254,12 +249,24 @@ export default defineConfig({
                   link: '/en/server/ssg',
                 },
                 {
-                  text: 'Streaming',
+                  text: 'Async SSR',
                   link: '/en/server/streaming',
+                },
+                {
+                  text: 'SSR Context & Isolation',
+                  link: '/en/server/ssr-context',
+                },
+                {
+                  text: 'Security & Escaping',
+                  link: '/en/server/security',
                 },
                 {
                   text: 'Async Resources',
                   link: '/en/server/resources',
+                },
+                {
+                  text: 'Compiler Output API',
+                  link: '/en/server/compiler-output',
                 },
               ],
             },
@@ -302,7 +309,9 @@ export default defineConfig({
                 { text: 'effect', link: '/en/api/effect' },
                 { text: 'watch', link: '/en/api/watch' },
                 { text: 'reactive', link: '/en/api/reactive' },
+                { text: 'ref', link: '/en/api/ref' },
                 { text: 'store', link: '/en/api/store' },
+                { text: 'effectScope', link: '/en/api/effect-scope' },
               ],
             },
             {
@@ -311,7 +320,8 @@ export default defineConfig({
                 { text: 'Runtime API', link: '/en/api/runtime-api' },
                 { text: 'Lifecycle', link: '/en/api/lifecycle' },
                 { text: 'Dependency Injection', link: '/en/api/provide-inject' },
-                { text: 'Batch Updates', link: '/en/api/batch-updates' },
+                { text: 'Batch Updates', link: '/en/api/batch' },
+                { text: 'Scheduler', link: '/en/api/scheduler' },
               ],
             },
           ],

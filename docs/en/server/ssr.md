@@ -38,16 +38,20 @@ Server-rendered HTML is static markup. To make the page interactive, client-side
 import { hydrate } from 'essor';
 
 // Client entry file
-hydrate(App, '#root', {
-  // Optional config
-  detectMismatches: true, // Detect server/client mismatch in development
-});
+hydrate(App, '#root');
 ```
 
-The `hydrate` function reuses server-generated DOM nodes and attaches event listeners to bring the page to life.
+The `hydrate` function takes the component and a target (a CSS selector string or an `Element`). It reuses server-generated DOM nodes and attaches event listeners to bring the page to life. In development mode, mismatches between server and client markup are reported as console warnings.
 
-## Streaming Rendering
+## Async Rendering
 
-In addition to `renderToString`, Essor supports streaming rendering, which progressively sends HTML content over the HTTP response stream. This is effective for reducing Time-To-First-Byte (TTFB).
+`renderToString` is synchronous and throws when a component returns a Promise. For `async` components and promise-returning expressions, use `renderToStringAsync` — it awaits the whole tree and resolves to the final HTML. See [Async SSR](/en/server/streaming) for details. True streaming output is on the roadmap but not implemented yet.
 
-For details, please refer to the [API documentation](../api/api).
+## Escaping & Security
+
+Bare strings returned from hand-written components are HTML-escaped by default; trusted raw markup must opt in via `unsafeHTML()`. See [Security & Escaping](/en/server/security).
+
+## Related pages
+
+- [SSR Context & Request Isolation](/en/server/ssr-context) — `createSSRContext`, Portal teleports, concurrent-render isolation
+- [SSG](/en/server/ssg) — build-time pre-rendering and `createSSRComponent`

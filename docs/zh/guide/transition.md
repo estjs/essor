@@ -26,11 +26,11 @@ Essor 内置两个动画组件:
 ### 基本用法
 
 ```tsx
-import { useSignal } from 'essor'
+import { signal } from 'essor'
 import { Transition } from 'essor'
 
 function Demo() {
-  const $show = useSignal(true)
+  const $show = signal(true)
 
   return (
     <>
@@ -320,11 +320,11 @@ Web Animations API、motion-one、anime.js、GSAP 等均可:
 ### 基本用法
 
 ```tsx
-import { useSignal } from 'essor'
+import { signal } from 'essor'
 import { TransitionGroup } from 'essor'
 
 function TodoList() {
-  const $items = useSignal([
+  const $items = signal([
     { id: 1, label: '买牛奶' },
     { id: 2, label: '遛狗' },
   ])
@@ -459,7 +459,7 @@ function TodoList() {
 ### 每行独立作用域
 
 每一行的渲染函数运行在**独立的响应式作用域**中(行为与 `<For>` 一致)。在
-`children(item, index)` 中创建的 signal、effect、`onCleanup` 等会在该行被
+`children(item, index)` 中创建的 signal、effect、`onScopeDispose` 等会在该行被
 移除时**自动清理** —— 不需要等整个 `<TransitionGroup>` 卸载。
 
 ### `css={false}`

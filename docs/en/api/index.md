@@ -16,9 +16,9 @@
 
 ## Utility Functions
 
-- [`batch`](./batch-updates.md) - Batch updates
+- [`batch`](./batch.md) - Batch updates
 - [`untrack`](./effect.md#untrack) - Execute a function without tracking dependencies
-- [`nextTick`](./batch-updates.md) - Execute a callback in the next microtask
+- [`nextTick`](./batch.md) - Execute a callback in the next microtask
 
 ## Runtime Components
 

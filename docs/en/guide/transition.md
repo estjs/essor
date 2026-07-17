@@ -28,11 +28,11 @@ Capabilities at a glance:
 ### Basic Usage
 
 ```tsx
-import { useSignal } from 'essor'
+import { signal } from 'essor'
 import { Transition } from 'essor'
 
 function Demo() {
-  const $show = useSignal(true)
+  const $show = signal(true)
 
   return (
     <>
@@ -330,11 +330,11 @@ duration, JS hooks, custom class overrides) plus a few list-specific props.
 ### Basic Usage
 
 ```tsx
-import { useSignal } from 'essor'
+import { signal } from 'essor'
 import { TransitionGroup } from 'essor'
 
 function TodoList() {
-  const $items = useSignal([
+  const $items = signal([
     { id: 1, label: 'Buy milk' },
     { id: 2, label: 'Walk dog' },
   ])
@@ -473,7 +473,7 @@ a `Component` instance. When it returns a Component:
 ### Per-Row Scope & Cleanup
 
 Each row's render function runs inside its **own reactive scope** (mirroring
-`<For>`). Signals, effects, and `onCleanup` callbacks created inside
+`<For>`). Signals, effects, and `onScopeDispose` callbacks created inside
 `children(item, index)` are torn down automatically when the row is removed —
 not when the surrounding `<TransitionGroup>` unmounts.
 

@@ -35,19 +35,23 @@ console.log(html);
 服务端渲染的 HTML 只是静态的标记。为了让页面具有交互性（例如响应点击事件），需要在客户端进行“激活” (Hydration)。
 
 ```typescript
-import { hydrate } from '@estjs/server';
+import { hydrate } from 'essor';
 
 // 客户端入口文件
-hydrate(App, '#root', {
-  // 可选配置
-  detectMismatches: true, // 开发环境下检测服务端和客户端渲染是否一致
-});
+hydrate(App, '#root');
 ```
 
-`hydrate` 函数会复用服务端生成的 DOM 节点，并附加事件监听器，使页面“活”起来。
+`hydrate` 函数接收组件和目标（CSS 选择器字符串或 `Element`）。它会复用服务端生成的 DOM 节点，并附加事件监听器，使页面“活”起来。开发模式下，服务端与客户端标记不一致会以控制台警告的形式报告。
 
-## 流式渲染 (Streaming)
+## 异步渲染
 
-除了 `renderToString`，Essor 还支持流式渲染，允许通过 HTTP 响应流渐进式发送 HTML 内容。这对于缩短 Time-To-First-Byte (TTFB) 非常有效。
+`renderToString` 是同步的，组件返回 Promise 时会抛错。`async` 组件与返回 Promise 的表达式请使用 `renderToStringAsync`——它 await 整棵树并 resolve 出最终 HTML。详见[异步 SSR](/zh/server/streaming)。真流式输出在路线图上，尚未实现。
 
-详细内容请参考 [API 文档](../api/api)。
+## 转义与安全
+
+手写组件返回的裸字符串默认会被 HTML 转义；可信的原始标记必须通过 `unsafeHTML()` 显式放行。详见[安全与转义](/zh/server/security)。
+
+## 相关页面
+
+- [SSR 上下文与请求隔离](/zh/server/ssr-context) —— `createSSRContext`、Portal 传送、并发渲染隔离
+- [SSG](/zh/server/ssg) —— 构建期预渲染与 `createSSRComponent`

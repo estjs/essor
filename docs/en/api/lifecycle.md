@@ -9,7 +9,8 @@ Lifecycle hooks are provided in the `@estjs/template` package and must be called
 - `onMount` — Executed after the component mounts
 - `onUpdate` — Executed after the component updates
 - `onDestroy` — Executed before the component destroys
-- `onCleanup` — Register a scope cleanup function (lower-level, more generic)
+
+For generic, non-component cleanup, see [Scope Cleanup](#scope-cleanup) below.
 
 ## onMount
 
@@ -86,30 +87,47 @@ function Subscriber() {
 }
 ```
 
-## onCleanup
+## Scope Cleanup
 
-`onCleanup` is a lower-level, generic cleanup registration function executed when the scope is disposed. The difference from `onDestroy`:
+There is no `onCleanup` hook in Essor. For cleanup outside the component destroy lifecycle, use one of these two patterns:
 
-- `onDestroy` is specifically for the component destroy lifecycle
-- `onCleanup` can be used in any scope (including non-component scopes), making it more generic
+### Effect-returned cleanup
+
+An `effect` callback can return a cleanup function. It runs exactly once before each re-execution and once on final disposal:
 
 ```tsx
-import { onCleanup } from '@estjs/template';
 import { effect } from '@estjs/signals';
 
 function ResourceLoader() {
-  const $url = '/api/data';
+  let $url = '/api/data';
 
   effect(() => {
     const controller = new AbortController();
     fetch($url, { signal: controller.signal });
 
-    // Called on each effect re-execution or scope disposal
-    onCleanup(() => controller.abort());
+    // Runs before each re-execution and on disposal
+    return () => controller.abort();
   });
 
   return <div>Loading...</div>;
 }
+```
+
+### onScopeDispose
+
+`onScopeDispose` (from `@estjs/signals`) registers a callback on the current effect scope, invoked when the scope is disposed. It works in any scope, including non-component scopes created via `effectScope()`:
+
+```tsx
+import { effectScope, onScopeDispose } from '@estjs/signals';
+
+const scope = effectScope();
+scope.run(() => {
+  const channel = new BroadcastChannel('app');
+  onScopeDispose(() => channel.close());
+});
+
+// Later:
+scope.stop(); // channel.close() runs here
 ```
 
 ## Execution Order
@@ -134,5 +152,4 @@ When a component is destroyed, cleanup logic executes in the following order:
 function onMount(hook: () => void | Promise<void>): void;
 function onUpdate(hook: () => void | Promise<void>): void;
 function onDestroy(hook: () => void | Promise<void>): void;
-function onCleanup(fn: () => void): void;
 ```

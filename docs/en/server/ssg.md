@@ -6,12 +6,12 @@ Static Site Generation (SSG) allows pages to be pre-rendered into static HTML fi
 
 Unlike SSR, which dynamically generates HTML on every request, SSG generates HTML at build time. The generated HTML files can be deployed to any static file server (e.g., Nginx, Vercel, Netlify).
 
-## createSSGComponent
+## createSSRComponent
 
-In SSG mode, Essor provides `createSSGComponent` to optimize nested component rendering.
+In SSG/SSR mode, Essor provides `createSSRComponent` to render a component subtree to an HTML string.
 
 ```typescript
-import { createSSGComponent } from '@estjs/server';
+import { createSSRComponent } from '@estjs/server';
 
 function Header() {
   return <header>My Site Header</header>;
@@ -21,36 +21,19 @@ function Layout({ children }) {
   return (
     <div>
       {/* Statically render Header */}
-      {createSSGComponent(Header, {})}
+      {createSSRComponent(Header, {})}
       <main>{children}</main>
     </div>
   );
 }
 ```
 
-`createSSGComponent` creates an independent rendering scope for a component, ensuring style and state isolation while generating efficient static HTML structures.
+`createSSRComponent` runs the component inside a child scope that inherits from the current active scope, so `inject()` resolves values from ancestor `provide()` calls while `provide()` inside the component stays scoped to it.
 
-## Selective Hydration
+The return value is a **branded SSR node**: its content has already been safely serialized (bare strings inside were HTML-escaped), so it can flow through a parent component boundary without being escaped a second time. `String()` yields the rendered HTML. See [Security & Escaping](/en/server/security) for details on the escaping contract.
 
-When using SSG, many parts of a page (e.g., article content, footer) are purely static and do not need JavaScript execution on the client. Essor supports **selective hydration**, skipping the hydration process for these static parts to reduce client-side JavaScript execution time and memory usage.
+> `ssrComponent` is an alias of `createSSRComponent` kept for compiled-output stability; prefer `createSSRComponent` in handwritten code.
 
-```typescript
-import { NoHydration } from '@estjs/server';
+## Roadmap: Selective Hydration
 
-function BlogPost() {
-  return (
-    <div>
-      <h1>Blog Title</h1>
-      {/* Content wrapped in NoHydration will not be hydrated on the client */}
-      <NoHydration>
-        <article>
-          <p>This is purely static content that does not need interactivity.</p>
-          <p>Essor skips virtual DOM generation and diffing for this part on the client.</p>
-        </article>
-      </NoHydration>
-    </div>
-  );
-}
-```
-
-This provides significant performance benefits for content-heavy applications like blogs and documentation sites.
+Skipping client hydration for purely static regions (e.g., article bodies, footers) is on the roadmap but **not implemented yet** — there is currently no `NoHydration` component or equivalent API. Today the entire pre-rendered tree is hydrated by `hydrate()`.

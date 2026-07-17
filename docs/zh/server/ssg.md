@@ -6,12 +6,12 @@
 
 与 SSR 在每次请求时动态生成 HTML 不同，SSG 是在构建阶段（Build Time）生成 HTML。生成的 HTML 文件可以部署到任何静态文件服务器（如 Nginx, Vercel, Netlify）。
 
-## createSSGComponent
+## createSSRComponent
 
-在 SSG 模式下，Essor 提供了 `createSSGComponent` 来优化嵌套组件的渲染。
+在 SSG/SSR 模式下，Essor 提供了 `createSSRComponent` 将组件子树渲染为 HTML 字符串。
 
 ```typescript
-import { createSSGComponent } from '@estjs/server';
+import { createSSRComponent } from '@estjs/server';
 
 function Header() {
   return <header>My Site Header</header>;
@@ -21,36 +21,19 @@ function Layout({ children }) {
   return (
     <div>
       {/* 静态渲染 Header */}
-      {createSSGComponent(Header, {})}
+      {createSSRComponent(Header, {})}
       <main>{children}</main>
     </div>
   );
 }
 ```
 
-`createSSGComponent` 会为组件创建一个独立的渲染作用域，确保样式和状态隔离，同时生成高效的静态 HTML 结构。
+`createSSRComponent` 会在继承当前活动作用域的子作用域中执行组件，因此组件内的 `inject()` 可以取到祖先 `provide()` 的值，而组件内部的 `provide()` 只作用于自身子树。
 
-## 选择性水合 (Selective Hydration)
+其返回值是一个**品牌化的 SSR 节点**：内容已经过安全序列化（内部的裸字符串已被 HTML 转义），因此穿越父组件边界时不会被二次转义。对其调用 `String()` 即可得到渲染后的 HTML。转义契约详见[安全与转义](/zh/server/security)。
 
-在使用 SSG 时，页面中的很多部分（如文章内容、页脚）通常是纯静态的，不需要在客户端执行 JavaScript。 Essor 支持**选择性水合**，跳过这些静态部分的 Hydration 过程，从而减少客户端 JavaScript 的执行时间和内存占用。
+> `ssrComponent` 是 `createSSRComponent` 的别名，仅为编译产物的稳定性而保留；手写代码请使用 `createSSRComponent`。
 
-```typescript
-import { NoHydration } from '@estjs/server';
+## 路线图：选择性水合 (Selective Hydration)
 
-function BlogPost() {
-  return (
-    <div>
-      <h1>Blog Title</h1>
-      {/* 包裹在 NoHydration 中的内容将不会在客户端进行水合 */}
-      <NoHydration>
-        <article>
-          <p>这是一段纯静态的内容，不需要交互。</p>
-          <p>Essor 会在客户端跳过这部分的虚拟 DOM 生成和比对。</p>
-        </article>
-      </NoHydration>
-    </div>
-  );
-}
-```
-
-这对于像博客、文档站点这样以内容为主的应用性能提升非常显著。
+跳过纯静态区域（如文章正文、页脚）的客户端水合在路线图上，但**尚未实现**——当前没有 `NoHydration` 组件或等价 API。目前整棵预渲染树都会由 `hydrate()` 完成水合。

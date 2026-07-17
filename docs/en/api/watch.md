@@ -147,6 +147,7 @@ user.age = 31;
 > returns one**, the `newValue` and `oldValue` passed to your callback are the
 > **same reference** (`newValue === oldValue`), and reading `oldValue.foo`
 > returns the already-mutated value — there is no previous snapshot.
+>
 > To get a real previous value, watch a **derived primitive** instead:
 >
 > ```ts

@@ -28,16 +28,16 @@ Essor APIs are organized into three categories: reactive core, runtime component
 - [`onMount`](./lifecycle.md#onmount) — Component mount hook
 - [`onUpdate`](./lifecycle.md#onupdate) — Component update hook
 - [`onDestroy`](./lifecycle.md#ondestroy) — Component destroy hook
-- [`onCleanup`](./lifecycle.md#oncleanup) — Register cleanup functions
+- [`onScopeDispose`](./lifecycle.md#scope-cleanup) — Register scope cleanup functions
 - [`provide`](./provide-inject.md#provide) / [`inject`](./provide-inject.md#inject) — Cross-level dependency injection
 
 ## Utilities
 
-- [`batch`](./batch-updates.md) — Batch signal updates
+- [`batch`](./batch.md) — Batch signal updates
 - [`untrack`](./effect.md#untrack) — Read values without tracking dependencies
-- [`nextTick`](./batch-updates.md#nexttick) — Execute callback in next microtask
+- [`nextTick`](./batch.md#nexttick) — Execute callback in next microtask
 
 ## SSR / SSG (@estjs/server)
 
 - [`renderToString`](../server/ssr.md) — Render a component to an HTML string
-- [`createSSGComponent`](../server/ssg.md) — Optimize nested component rendering for SSG
+- [`createSSRComponent`](../server/ssg.md) — Render a component subtree to a branded HTML string

@@ -173,3 +173,82 @@ function nextTick(callback?: () => void): Promise<void>;
 ::: tip
 当你需要一次性修改大量信号时，优先考虑 `batch` 以避免无谓的重复计算。
 :::
+
+## 进阶
+
+以下底层 API 暴露了 `batch` 所依赖的批处理机制。请优先使用 `batch`——它会自动处理配对。只有当批处理边界无法表达为单个同步回调时，才需要使用这些 API。
+
+### startBatch / endBatch
+
+手动开启与关闭批处理边界。`batch(fn)` 本质上就是 `try/finally` 中的 `startBatch()` + `fn()` + `endBatch()`。当你自己调用它们时，**必须在 `try/finally` 中配对**——未配对的 `startBatch` 会导致 flush 被永久抑制：
+
+```ts
+import { startBatch, endBatch, effect, signal } from '@estjs/signals';
+
+const x = signal(0);
+const y = signal(0);
+
+effect(() => {
+  console.log(`sum: ${x.value + y.value}`);
+});
+// 输出: sum: 0
+
+startBatch();
+try {
+  x.value = 1;
+  y.value = 2;
+  // 副作用尚未运行——更新已入队。
+} finally {
+  endBatch();
+}
+// 输出: sum: 3   （最外层批次结束时一次性 flush）
+```
+
+支持嵌套：只有最外层的 `endBatch` 会触发 flush。在没有匹配 `startBatch()` 的情况下调用 `endBatch()` 是受保护的 no-op（开发模式下会警告）——深度永远不会变为负数。
+
+### isBatching
+
+只要有至少一个批次处于开启状态就返回 `true`。适用于需要在批处理内外表现不同的工具函数：
+
+```ts
+import { batch, isBatching } from '@estjs/signals';
+
+console.log(isBatching()); // false
+
+batch(() => {
+  console.log(isBatching()); // true
+});
+
+console.log(isBatching()); // false
+```
+
+### getBatchDepth
+
+返回当前批处理的嵌套深度。`0` 表示没有活跃的批次：
+
+```ts
+import { batch, getBatchDepth } from '@estjs/signals';
+
+console.log(getBatchDepth()); // 0
+
+batch(() => {
+  console.log(getBatchDepth()); // 1
+
+  batch(() => {
+    console.log(getBatchDepth()); // 2
+  });
+
+  console.log(getBatchDepth()); // 1
+});
+
+console.log(getBatchDepth()); // 0
+```
+
+### 类型定义
+
+```ts
+function startBatch(): void;
+function endBatch(): void;
+function isBatching(): boolean;
+function getBatchDepth(): number;
+```
