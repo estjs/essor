@@ -1,4 +1,3 @@
-import { describe, expect, it, vi } from 'vitest';
 import {
   computed,
   effect,
@@ -1445,9 +1444,11 @@ describe('reactive - edge cases', () => {
       const date = new Date('2024-01-01');
       const state = reactive({ date, timestamp: date.getTime() });
 
-      // Date objects become reactive proxies, which can break their methods
-      // So we test that the reference is reactive, not the Date methods
+      // Dates stay raw so methods keep working through reactive parents
       expect(state.date).toBeInstanceOf(Date);
+      expect(state.date).toBe(date);
+      expect(isReactive(state.date)).toBe(false);
+      expect(state.date.toISOString()).toBe(date.toISOString());
 
       // Changing the date reference should trigger effects
       const mockFn = vi.fn(() => state.timestamp);
@@ -1458,15 +1459,18 @@ describe('reactive - edge cases', () => {
       state.date = newDate;
       state.timestamp = newDate.getTime();
       expect(mockFn).toHaveBeenCalledTimes(2);
+      expect(state.date.toISOString()).toBe(newDate.toISOString());
     });
 
     it('should handle RegExp objects', () => {
       const regex = /test/gi;
       const state = reactive({ pattern: regex, source: regex.source });
 
-      // RegExp objects become reactive proxies, which can break their methods
-      // So we test that the reference is reactive
+      // RegExp stays raw so methods keep working
       expect(state.pattern).toBeInstanceOf(RegExp);
+      expect(state.pattern).toBe(regex);
+      expect(isReactive(state.pattern)).toBe(false);
+      expect(state.pattern.test('TEST')).toBe(true);
 
       // Changing the regex reference should trigger effects
       const mockFn = vi.fn(() => state.source);

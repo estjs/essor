@@ -1,5 +1,5 @@
 import { type Signal, effect, isSignal, untrack } from '@estjs/signals';
-import { isArray, isFunction, warn } from '@estjs/shared';
+import { isArray, isFunction } from '@estjs/shared';
 import {
   type Scope,
   createScope,
@@ -74,36 +74,6 @@ export function For<T>(props: ForProps<T>): Node {
   };
 
   const getKey = (item: T, index: number): unknown => (keyFn ? keyFn(item, index) : item);
-
-  const formatKeyForWarning = (key: unknown): string => {
-    if (typeof key === 'string') return JSON.stringify(key);
-    return String(key);
-  };
-
-  const getKeys = (items: T[]): unknown[] => {
-    const keys = new Array<unknown>(items.length);
-
-    if (__DEV__) {
-      const seen = new Set<unknown>();
-      for (const [i, item] of items.entries()) {
-        const key = getKey(item, i);
-        keys[i] = key;
-        if (seen.has(key)) {
-          warn(
-            `[For] duplicate key ${formatKeyForWarning(key)} detected. Duplicate keys may cause rows to remount or lose state.`,
-          );
-        } else {
-          seen.add(key);
-        }
-      }
-      return keys;
-    }
-
-    for (const [i, item] of items.entries()) {
-      keys[i] = getKey(item, i);
-    }
-    return keys;
-  };
 
   // Resolve whatever `children(item, index)` returned into actual DOM nodes
   // and insert them at `before`. Accepts arrays (recursed), Components
@@ -208,9 +178,10 @@ export function For<T>(props: ForProps<T>): Node {
         mountFallback(fragment, marker);
       } else {
         entries = new Array(newItems.length);
-        const newKeys = getKeys(newItems);
-        for (const [i, newItem] of newItems.entries()) {
-          entries[i] = renderItem(newItem, i, fragment, marker, newKeys[i]);
+        let idx = 0;
+        for (const newItem of newItems) {
+          entries[idx] = renderItem(newItem, idx, fragment, marker);
+          idx++;
         }
       }
       // Skip reconcile on initial mount — entries are already created
@@ -259,11 +230,10 @@ export function For<T>(props: ForProps<T>): Node {
 
       // Batch creation in fragment
       const batchFragment = document.createDocumentFragment();
-      const newKeys = getKeys(newItems);
 
       for (let i = 0; i < newLen; i++) {
         // Render to batchFragment, append to end (before=null)
-        entries[i] = renderItem(newItems[i], i, batchFragment, null, newKeys[i]);
+        entries[i] = renderItem(newItems[i], i, batchFragment, null);
       }
 
       untrack(() => {
@@ -303,7 +273,10 @@ export function For<T>(props: ForProps<T>): Node {
     let maxOldSeen = 0;
 
     // Pre-compute keys for all new items to avoid redundant getKey calls
-    const newKeys = getKeys(newItems);
+    const newKeys = new Array<unknown>(newLen);
+    for (let i = 0; i < newLen; i++) {
+      newKeys[i] = getKey(newItems[i], i);
+    }
 
     for (let i = 0; i < newLen; i++) {
       const item = newItems[i];
