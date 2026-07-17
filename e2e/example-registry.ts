@@ -10,6 +10,11 @@ export const EXAMPLE_REGISTRY = {
   'hydrate': { port: 4109 },
   'transition': { port: 4110 },
   'todo-server': { port: 4111, serverMode: true },
+  'watch-effect': { port: 4112 },
+  'store': { port: 4113 },
+  'for-list': { port: 4114 },
+  'async-ssr': { port: 4115, serverMode: true },
+  'error-handling': { port: 4116 },
 } as const;
 
 export const E2E_READY_PORT = 4199;

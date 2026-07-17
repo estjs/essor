@@ -100,7 +100,9 @@ async function getFreePort() {
   return port;
 }
 
-async function waitForUrl(url: string, timeoutMs = 45_000) {
+const SERVER_START_TIMEOUT = process.env.CI ? 45_000 * 3 : 45_000;
+
+async function waitForUrl(url: string, timeoutMs = SERVER_START_TIMEOUT) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
     try {
@@ -221,7 +223,11 @@ async function startRspackFixture(
 
 async function stopRspackFixture(fixture: RspackFixture) {
   await terminateChild(fixture.child);
-  await rm(fixture.dir, { recursive: true, force: true });
+  try {
+    await rm(fixture.dir, { recursive: true, force: true });
+  } catch {
+    // Best-effort cleanup; CI temp dirs are ephemeral (mirrors hmr.spec.ts)
+  }
 }
 
 async function gotoRspackFixture(page: Page, fixture: RspackFixture) {

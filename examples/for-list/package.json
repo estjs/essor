@@ -1,0 +1,20 @@
+{
+  "name": "essor-example-for-list",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "essor": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "unplugin-essor": "workspace:*",
+    "vite": "^8.1.5"
+  }
+}

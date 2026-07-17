@@ -2,7 +2,7 @@ import { execSync, spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cpSync, existsSync, rmSync } from 'node:fs';
-import { type Page, expect, test } from './test-utils';
+import { type Page, expect, expectHydrated, markServerRenderedNode, test } from './test-utils';
 import type { Locator } from '@playwright/test';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -14,7 +14,7 @@ async function waitForServer(port: number) {
     try {
       const res = await fetch(url);
       if (res.ok) return;
-    } catch { }
+    } catch {}
     await new Promise((r) => setTimeout(r, 100));
   }
   throw new Error(`Server at ${url} failed to start`);
@@ -100,31 +100,18 @@ test.describe('todo-server (SSR + hydration)', () => {
 
   // -- Hydration ------------------------------------------------------------
 
-  test('hydrates without console errors and reuses DOM nodes', async ({ page, assertNoConsoleErrors }) => {
-    // Add init script to mark the SSR element during parser stage
-    await page.addInitScript(() => {
-      const observer = new MutationObserver(() => {
-        const el = document.querySelector('[data-test="todo-title"]');
-        if (el) {
-          (el as any).__ssr_reused = true;
-          observer.disconnect();
-        }
-      });
-      observer.observe(document, {
-        childList: true,
-        subtree: true,
-      });
-    });
+  test('hydrates without console errors and reuses DOM nodes', async ({
+    page,
+    assertNoConsoleErrors,
+  }) => {
+    // Mark the SSR element during parser stage; verified via expectHydrated.
+    await markServerRenderedNode(page, '[data-test="todo-title"]');
 
     await page.reload();
     await expect(page.locator('[data-test="example-root"]')).toBeVisible();
 
     // Verify that the element was hydrated (reused) instead of recreated from scratch
-    const isReused = await page.evaluate(() => {
-      const el = document.querySelector('[data-test="todo-title"]');
-      return el ? (el as any).__ssr_reused === true : false;
-    });
-    expect(isReused).toBe(true);
+    await expectHydrated(page, '[data-test="todo-title"]');
 
     await assertNoConsoleErrors();
   });
@@ -273,7 +260,7 @@ test.describe('todo-server (SSR + hydration)', () => {
 test.describe('todo-server production tests', () => {
   test.describe.configure({ mode: 'serial' });
 
-  test.beforeAll(async () => {
+  test.beforeAll(() => {
     const rootDir = resolve(__dirname, '..');
     // Build the project once to avoid parallel write/delete race conditions in Vite dist folder
     execSync('pnpm --filter essor-example-todo-mvc-server run build', {
@@ -327,32 +314,19 @@ test.describe('todo-server production tests', () => {
       }
     });
 
-    test('serves dynamic SSR output and hydrates successfully (reusing DOM nodes)', async ({ page }) => {
-      // Add init script to mark the SSR element during parser stage
-      await page.addInitScript(() => {
-        const observer = new MutationObserver(() => {
-          const el = document.querySelector('[data-test="todo-title"]');
-          if (el) {
-            (el as any).__ssr_reused = true;
-            observer.disconnect();
-          }
-        });
-        observer.observe(document, {
-          childList: true,
-          subtree: true,
-        });
-      });
+    test('serves dynamic SSR output and hydrates successfully (reusing DOM nodes)', async ({
+      page,
+      assertNoConsoleErrors,
+    }) => {
+      // Mark the SSR element during parser stage; verified via expectHydrated.
+      await markServerRenderedNode(page, '[data-test="todo-title"]');
 
       await page.goto('http://localhost:4122');
       await expect(page.locator('[data-test="example-root"]')).toBeVisible();
       await expect(todoItems(page)).toHaveCount(3);
 
       // Verify that the element was hydrated (reused) instead of recreated from scratch
-      const isReused = await page.evaluate(() => {
-        const el = document.querySelector('[data-test="todo-title"]');
-        return el ? (el as any).__ssr_reused === true : false;
-      });
-      expect(isReused).toBe(true);
+      await expectHydrated(page, '[data-test="todo-title"]');
 
       // Verify it is interactive
       await addTodo(page, 'Test SSR Production');
@@ -360,6 +334,9 @@ test.describe('todo-server production tests', () => {
 
       // Verify that the server logged an SSR request
       expect(serverOutput).toContain('[SSR] rendered');
+
+      // Hydration in production must be clean: no mismatch errors on console
+      await assertNoConsoleErrors();
     });
   });
 
@@ -407,32 +384,19 @@ test.describe('todo-server production tests', () => {
       }
     });
 
-    test('serves pre-rendered SSG output and hydrates successfully (reusing DOM nodes)', async ({ page }) => {
-      // Add init script to mark the SSR element during parser stage
-      await page.addInitScript(() => {
-        const observer = new MutationObserver(() => {
-          const el = document.querySelector('[data-test="todo-title"]');
-          if (el) {
-            (el as any).__ssr_reused = true;
-            observer.disconnect();
-          }
-        });
-        observer.observe(document, {
-          childList: true,
-          subtree: true,
-        });
-      });
+    test('serves pre-rendered SSG output and hydrates successfully (reusing DOM nodes)', async ({
+      page,
+      assertNoConsoleErrors,
+    }) => {
+      // Mark the SSR element during parser stage; verified via expectHydrated.
+      await markServerRenderedNode(page, '[data-test="todo-title"]');
 
       await page.goto('http://localhost:4123');
       await expect(page.locator('[data-test="example-root"]')).toBeVisible();
       await expect(todoItems(page)).toHaveCount(3);
 
       // Verify that the element was hydrated (reused) instead of recreated from scratch
-      const isReused = await page.evaluate(() => {
-        const el = document.querySelector('[data-test="todo-title"]');
-        return el ? (el as any).__ssr_reused === true : false;
-      });
-      expect(isReused).toBe(true);
+      await expectHydrated(page, '[data-test="todo-title"]');
 
       // Verify it is interactive after hydration
       await addTodo(page, 'Test SSG Production');
@@ -440,6 +404,9 @@ test.describe('todo-server production tests', () => {
 
       // Verify that the server logged an SSG static shell response
       expect(serverOutput).toContain('[SSG] static shell');
+
+      // Hydration in production must be clean: no mismatch errors on console
+      await assertNoConsoleErrors();
     });
   });
 });

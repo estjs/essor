@@ -21,10 +21,10 @@ test.describe('transition example', () => {
     await page.locator('[data-test="fade-toggle"]').click();
     // Class should land at some point during the transition
     await expect(box).toBeVisible();
-    // After enter completes, neither -from nor -to should remain
-    await page.waitForTimeout(400);
+    // After enter completes, neither -from nor -active should remain.
+    // toHaveClass/not.toHaveClass auto-retry, so no fixed sleep is needed.
     await expect(box).toHaveClass(/fade-box/);
-    await expect(box).not.toHaveClass(/fade-enter-from/);
+    await expect(box).not.toHaveClass(/fade-enter-from|fade-enter-active/);
 
     // Hide — element should stay in DOM until transition completes
     await page.locator('[data-test="fade-toggle"]').click();
@@ -38,7 +38,9 @@ test.describe('transition example', () => {
     const box = page.locator('[data-test="scale-box"]');
     await page.locator('[data-test="scale-toggle"]').click();
     await expect(box).toBeVisible();
-    await page.waitForTimeout(300);
+    // Wait for the enter transition to fully settle (class polling, no sleep)
+    // so the elapsed measurement below only covers the leave phase.
+    await expect(box).not.toHaveClass(/scale-enter-active/);
 
     const start = Date.now();
     await page.locator('[data-test="scale-toggle"]').click();
@@ -62,8 +64,7 @@ test.describe('transition example', () => {
     // By the time the test starts, the enter should have completed.
     const box = page.locator('[data-test="appear-box"]');
     await expect(box).toBeVisible();
-    // Box exists and animation classes have been cleaned up
-    await page.waitForTimeout(400);
+    // Box exists and animation classes have been cleaned up (auto-retried).
     await expect(box).not.toHaveClass(/fade-enter-from|fade-enter-to|fade-enter-active/);
   });
 
@@ -72,27 +73,28 @@ test.describe('transition example', () => {
     await expect(count).toHaveText(/hook calls: 0/);
 
     await page.locator('[data-test="hooks-toggle"]').click();
-    await page.waitForTimeout(400);
-    // onBeforeEnter + onAfterEnter = 2
+    // onBeforeEnter + onAfterEnter = 2 (toHaveText auto-retries until the
+    // enter animation completes and the hook fires)
     await expect(count).toHaveText(/hook calls: 2/);
 
     await page.locator('[data-test="hooks-toggle"]').click();
-    await page.waitForTimeout(400);
     // +onBeforeLeave +onAfterLeave = 4
     await expect(count).toHaveText(/hook calls: 4/);
   });
 
   test('no console errors during interaction', async ({ page, assertNoConsoleErrors }) => {
+    // Each interaction waits for its transition to settle via class/text
+    // polling — deterministic overlap-free sequencing without fixed sleeps.
     await page.locator('[data-test="fade-toggle"]').click();
-    await page.waitForTimeout(300);
+    await expect(page.locator('[data-test="fade-box"]')).toBeVisible();
     await page.locator('[data-test="slide-toggle"]').click();
-    await page.waitForTimeout(300);
+    await expect(page.locator('[data-test="slide-box"]')).toBeVisible();
     await page.locator('[data-test="scale-toggle"]').click();
-    await page.waitForTimeout(300);
+    await expect(page.locator('[data-test="scale-box"]')).toBeVisible();
     await page.locator('[data-test="hooks-toggle"]').click();
-    await page.waitForTimeout(300);
+    await expect(page.locator('[data-test="hook-count"]')).toHaveText(/hook calls: 2/);
     await page.locator('[data-test="hooks-toggle"]').click();
-    await page.waitForTimeout(500);
+    await expect(page.locator('[data-test="hook-count"]')).toHaveText(/hook calls: 4/);
     await assertNoConsoleErrors();
   });
 
@@ -122,8 +124,7 @@ test.describe('transition example', () => {
     // The enter-active class should be observable while the animation runs
     // (~300ms in the example CSS). Give it generous slack to catch it.
     await expect(added).toHaveClass(/list-enter-active/, { timeout: 200 });
-    // After the animation, the active class is gone.
-    await page.waitForTimeout(500);
+    // After the animation, the active class is gone (auto-retried).
     await expect(added).not.toHaveClass(/list-enter-active|list-enter-from|list-enter-to/);
   });
 
@@ -155,9 +156,9 @@ test.describe('transition example', () => {
       els.map((el) => el.dataset.test),
     );
     expect(order).toEqual(['group-item-3', 'group-item-1', 'group-item-2']);
-    // After ~500ms the move class is gone.
-    await page.waitForTimeout(600);
-    await expect(page.locator('.list-move')).toHaveCount(0);
+    // After the FLIP animation (~500ms) the move class is gone — poll instead
+    // of sleeping so slow CI machines don't race the animation end.
+    await expect(page.locator('.list-move')).toHaveCount(0, { timeout: 2000 });
   });
 
   test('group scenario: Clear removes every item (after leave animation)', async ({ page }) => {
@@ -169,28 +170,29 @@ test.describe('transition example', () => {
 
   test('group scenario: rapid Add/Remove sequence ends in a consistent state', async ({ page }) => {
     // Drive the list quickly to flush several enter/leave overlaps. The end
-    // state must reflect a deterministic +3 / -2 net result.
+    // state must reflect a deterministic +3 / -2 net result. toHaveCount
+    // auto-retries past the overlapping ~300ms enter/leave animations.
     for (let i = 0; i < 3; i++) await page.locator('[data-test="group-add"]').click();
     await page.locator('[data-test="group-remove"]').click();
     await page.locator('[data-test="group-remove"]').click();
-    // Let pending animations finish.
-    await page.waitForTimeout(800);
     // 3 seed + 3 add - 2 remove = 4 items
-    await expect(page.locator('[data-test^="group-item-"]')).toHaveCount(4);
+    await expect(page.locator('[data-test^="group-item-"]')).toHaveCount(4, { timeout: 2000 });
   });
 
   test('group scenario: no console errors during list interactions', async ({
     page,
     assertNoConsoleErrors,
   }) => {
+    // Sequence interactions by polling for each transition's end state
+    // instead of fixed sleeps.
     await page.locator('[data-test="group-add"]').click();
-    await page.waitForTimeout(150);
+    await expect(page.locator('[data-test="group-item-4"]')).toBeVisible();
     await page.locator('[data-test="group-shuffle"]').click();
-    await page.waitForTimeout(450);
+    await expect(page.locator('.list-move')).toHaveCount(0, { timeout: 2000 });
     await page.locator('[data-test="group-remove"]').click();
-    await page.waitForTimeout(450);
+    await expect(page.locator('[data-test^="group-item-"]')).toHaveCount(3, { timeout: 2000 });
     await page.locator('[data-test="group-clear"]').click();
-    await page.waitForTimeout(450);
+    await expect(page.locator('[data-test^="group-item-"]')).toHaveCount(0, { timeout: 2000 });
     await assertNoConsoleErrors();
   });
 });
