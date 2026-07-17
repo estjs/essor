@@ -54,6 +54,74 @@ describe('should work with jsx client transform', () => {
 
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
+
+  it.each(['title', 'textarea', 'style'])(
+    'lowers dynamic <%s> children to one whole-text writer without template anchors',
+    (tag) => {
+      const output = transformCode(`const element = <${tag}>A{first}B{second}</${tag}>;`);
+
+      expect(output.match(/_insertTextContent\$\(/g)).toHaveLength(1);
+      expect(output).not.toContain('<!>');
+      expect(output).not.toContain('_insert$(');
+    },
+  );
+
+  it('rejects dynamic executable script children', () => {
+    expect(() => transformCode('const element = <script>{source}</script>;')).toThrow(
+      /dynamic <script>/i,
+    );
+  });
+
+  it.each([
+    ['native JSX', () => transformCode('const element = <title><span /></title>;')],
+    ['component JSX', () => transformCode('const element = <textarea><Widget /></textarea>;')],
+    [
+      'For-lowered JSX',
+      () =>
+        transformCodeWithFor(
+          'const element = <style>{items.map(item => <span>{item}</span>)}</style>;',
+        ),
+    ],
+  ])('rejects %s children inside text-only elements', (_label, compile) => {
+    expect(compile).toThrow(/only text and primitive expressions/i);
+  });
+
+  it.each([
+    'const element = <title>{ok ? <span /> : text}</title>;',
+    'const element = <style>{[<Widget />]}</style>;',
+  ])('rejects JSX nested inside a text-only expression', (source) => {
+    expect(() => transformCode(source)).toThrow(/only text and primitive expressions/i);
+  });
+
+  it.each([
+    'let value = ""; const element = <textarea bind:value={value}>fallback</textarea>;',
+    'let value = ""; const element = <textarea bind:value={value}>{fallback}</textarea>;',
+  ])('rejects textarea bind:value combined with children', (source) => {
+    expect(() => transformCode(source)).toThrow(/cannot combine bind:value with children/i);
+  });
+
+  it.each(['style', 'script'])(
+    'preserves static <%s> raw text without HTML entity rewriting',
+    (tag) => {
+      const output = transformCode(`const element = <${tag}>{'a&b < c'}</${tag}>;`);
+
+      expect(output).toContain(`_template$("<${tag}>a&b < c`);
+      expect(output).not.toContain('a&amp;b &lt; c');
+    },
+  );
+
+  it('duplicates a static leading textarea LF for parser round-trip', () => {
+    const output = transformCode("const element = <textarea>{'\\nline'}</textarea>;");
+
+    expect(output).toContain('_template$("<textarea>\\n\\nline");');
+  });
+
+  it.each([
+    "const element = <style>{'</StYlE><script>alert(1)</script>'}</style>;",
+    "const element = <script>{'</ScRiPt><img src=x>'}</script>;",
+  ])('rejects static raw-text end-tag breakout tokens', (source) => {
+    expect(() => transformCode(source)).toThrow(/unsafe <\/(?:style|script)>/i);
+  });
   it('transforms client JSX element with multiple dynamic expressions', () => {
     const inputCode = `
       const name = 'John';
@@ -108,6 +176,18 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('preserves interleaved Component prop and spread override order', () => {
+    const inputCode = `
+      const spread = { b: 1 };
+      const element = <Component a={1} {...spread} b={2} />;
+    `;
+    const output = transformCode(inputCode);
+
+    expect(output).toMatch(
+      /Object\.assign\(\{\},\s*\{\s*a:\s*1\s*\},\s*spread,\s*\{\s*b:\s*2\s*\}\)/,
+    );
   });
 
   it('transforms JSX element with conditional attributes', () => {
@@ -239,6 +319,21 @@ describe('should work with jsx client transform', () => {
     const output = transformCode(inputCode);
     expect(output).not.toContain('_memoEffect$');
     expect(output).toContain('style=\\"color:red;font-size:16px\\"');
+  });
+
+  it('normalizes nested static style bindings before serializing', () => {
+    const inputCode = `
+      const style = {
+        color: 'red',
+        nested: { fontSize: '14px' },
+        more: ['margin: 0;', { padding: '4px' }]
+      };
+      const element = <div style={style}>Hello, World!</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).not.toContain('[object Object]');
+    expect(output).toContain('style=\\"color:red;font-size:14px;margin:0;padding:4px\\"');
   });
 
   it('transforms JSX element with class and style attributes', () => {
@@ -457,6 +552,32 @@ describe('should work with jsx client transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('threads isSVG flag into patchClass for nested SVG children', () => {
+    const inputCode = `
+      const p = {};
+      const element = (
+        <svg>
+          <line class={p.c} x1="5" />
+        </svg>
+      );
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toMatch(/_patchClass\$\([^)]*,\s*true\)/);
+  });
+
+  it('does not add isSVG flag to patchClass for HTML elements', () => {
+    const inputCode = `
+      const p = {};
+      const element = <div class={p.c}>Hello</div>;
+    `;
+
+    const output = transformCode(inputCode);
+    // HTML class patches stay 3-arg — no trailing isSVG flag.
+    expect(output).not.toMatch(/_patchClass\$\([^)]*,\s*true\)/);
+    expect(output).toContain('_patchClass$');
   });
 
   it('should work with bind api', () => {
@@ -1142,6 +1263,19 @@ describe('should work with jsx client transform', () => {
     expect(output).not.toContain('_patchAttr$(_root$, "key"');
   });
 
+  it('extracts keys from single-child fragment map bodies', () => {
+    const code = `
+      <tbody>
+        {items.map(item => <><Row key={item.id} item={item} /></>)}
+      </tbody>
+    `;
+    const output = transformCodeWithFor(code);
+
+    expect(output).toContain('Fragment as _Fragment$');
+    expect(output).toContain('key: item => item.id');
+    expect(output).not.toContain('"key": item.id');
+  });
+
   it('compiles <Transition> as a built-in import from essor', () => {
     const inputCode = `
     let $show = true
@@ -1150,5 +1284,49 @@ describe('should work with jsx client transform', () => {
     const output = transformCode(inputCode);
     expect(output).toMatch(/Transition as _Transition\$/);
     expect(output).not.toMatch(/typeof Transition[^$]/);
+  });
+
+  // ── Behavior assertions (no snapshots) ──────────────────────────────
+  // Explicit toContain checks for load-bearing codegen decisions, so a
+  // regression fails with a readable diff instead of a snapshot churn.
+
+  it('threads the isSVG flag into patchClass for dynamic SVG class', () => {
+    const output = transformCode(`
+      let $cls = 'a';
+      const el = <svg class={$cls}><circle cx="5"/></svg>;
+    `);
+    // 4th argument `true` = isSVG (SVG className is an SVGAnimatedString;
+    // patchClass must use setAttribute, not el.className).
+    expect(output).toContain('_patchClass$(_root$, _p$.c0, _p$.c0 = _v$, true)');
+  });
+
+  it('registers delegated events via the _$<name> slot + delegateEvents', () => {
+    const output = transformCode(`const el = <button onClick={() => 1}>go</button>;`);
+    expect(output).toContain('_root$["_$click"] = () => 1;');
+    expect(output).toContain('_delegateEvents$(["click"]);');
+  });
+
+  it('compiles bind:value into a getter/setter pair through bindElement', () => {
+    const output = transformCode(`let $v = 1; const el = <input bind:value={$v} />;`);
+    expect(output).toContain(
+      '_bindElement$(_root$, "value", () => $v.value, _v$ => $v.value = _v$)',
+    );
+  });
+
+  it('preserves literal prop value types for components (CMP-04)', () => {
+    const output = transformCode(`const el = <Foo count={42} enabled={true} />;`);
+    // Numbers/booleans must reach the component as their original types,
+    // not the HTML-attr strings "42"/"true".
+    expect(output).toContain('count: 42');
+    expect(output).toContain('enabled: true');
+    expect(output).not.toContain('count: "42"');
+  });
+
+  it('omits static boolean-attr false and keeps aria strings (CMP-03)', () => {
+    const output = transformCode(`const el = <input disabled={false} aria-hidden={false} />;`);
+    // `disabled="false"` would be truthy in HTML → omitted entirely;
+    // aria-* keeps the literal string per the ARIA tri-state contract.
+    expect(output).not.toContain('disabled');
+    expect(output).toContain('aria-hidden=\\"false\\"');
   });
 });

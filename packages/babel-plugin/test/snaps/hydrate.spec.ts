@@ -36,6 +36,66 @@ describe('jsx hydrate transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it.each(['title', 'textarea', 'style'])(
+    'hydrates dynamic <%s> children through one whole-text writer without range lookups',
+    (tag) => {
+      const output = transformCode(`const element = <${tag}>A{first}B{second}</${tag}>;`);
+
+      expect(output.match(/_insertTextContent\$\(/g)).toHaveLength(1);
+      expect(output).not.toContain('<!>');
+      expect(output).not.toContain('_hydrationMarker$(');
+      expect(output).not.toContain('_hydrationRange$(');
+      expect(output).not.toContain('_insert$(');
+    },
+  );
+
+  it('rejects dynamic executable script children during hydration compilation', () => {
+    expect(() => transformCode('const element = <script>{source}</script>;')).toThrow(
+      /dynamic <script>/i,
+    );
+  });
+
+  it('passes matching range ownership for comment, element, and tail boundaries', () => {
+    const comment = transformCode('const element = <div>{value}text</div>');
+    const element = transformCode('const element = <div>{value}<span>right</span></div>');
+    const tail = transformCode('const element = <div><span>left</span>{value}</div>');
+
+    expect(comment).toContain('_hydrationRange$(_root$, 0, "comment")');
+    expect(comment).toMatch(/_insert\$\(_root\$, \(\) => value, _hk\$, _hr\$\d*\)/);
+    expect(element).toContain('_hydrationRange$(_root$, 0, "element")');
+    expect(element).toMatch(/_insert\$\(_root\$, \(\) => value, _hk\$, _hr\$\d*\)/);
+    expect(tail).toContain('_hydrationRange$(_root$, 0, "tail")');
+    expect(tail).toMatch(/_insert\$\(_root\$, \(\) => value, undefined, _hr\$\d*\)/);
+  });
+
+  it('looks up range ownership from the dynamic child actual parent', () => {
+    const output = transformCode('const element = <main><section>{value}text</section></main>');
+
+    expect(output).toContain('_hydrationRange$(_n$, 0, "comment")');
+    expect(output).not.toContain('_hydrationRange$(_root$, 0, "comment")');
+  });
+
+  it('keeps range ownership slots distinct within one parent', () => {
+    const output = transformCode('const element = <div>{first}x{second}y</div>');
+
+    expect(output).toContain('_hydrationRange$(_root$, 0, "comment")');
+    expect(output).toContain('_hydrationRange$(_root$, 1, "comment")');
+    expect(output).toMatch(/_insert\$\(_root\$, \(\) => first, _hk\$, _hr\$\)/);
+    expect(output).toMatch(/_insert\$\(_root\$, \(\) => second, _hk\$2, _hr\$2\)/);
+  });
+
+  it('passes tail range ownership through the IRFor insert branch', () => {
+    const output = transformCodeWithFor(
+      'const element = <ul>{items.map(item => <li>{item}</li>)}</ul>',
+    );
+
+    expect(output).toContain('For as _For$');
+    expect(output).toContain('_hydrationRange$(_root$, 0, "tail")');
+    expect(output).toMatch(
+      /_insert\$\(_root\$, _createComponent\$\(_For\$,[\s\S]*?\}\), undefined, _hr\$\);/,
+    );
+  });
+
   it('transforms JSX element with boolean attribute', () => {
     const inputCode = `
       const element = <input disabled />;
@@ -270,7 +330,8 @@ describe('jsx hydrate transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('_insert$(_root$, () => footer)');
+    expect(output).toContain('_hydrationRange$(_root$, 0, "tail")');
+    expect(output).toContain('_insert$(_root$, () => footer, undefined, _hr$)');
     expect(output).not.toContain('_hydrationMarker$(_root$, 0)');
     expect(output).not.toContain('<!></div>');
   });
@@ -354,6 +415,20 @@ describe('jsx hydrate transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('threads isSVG flag into patchClassHydrate for dynamic SVG class', () => {
+    // Hydrate shares the client emitter, so SVG class updates must also carry
+    // the trailing isSVG flag — the post-hydration reactive path calls
+    // patchClass(el, ...) which throws on an SVG element's read-only className.
+    const inputCode = `
+      const p = {};
+      const element = <svg class={p.c}><line x1="5" /></svg>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('patchClassHydrate');
+    expect(output).toMatch(/_patchClassHydrate\$\([^)]*,\s*true\)/);
   });
 
   it('should work with bind api', () => {
@@ -849,5 +924,21 @@ describe('jsx hydrate transform', () => {
       const element = <DataComponent data={{ key: 'value' }} />;
     `;
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  // ── Behavior assertions (no snapshots) ──────────────────────────────
+
+  it('claims server-rendered DOM via getRenderedElement instead of template', () => {
+    const output = transformCode(`const el = <div><button onClick={() => 1}>go</button></div>;`);
+    // Hydrate mode must adopt existing DOM (registry lookup), never build
+    // fresh nodes from an HTML template string.
+    expect(output).toContain('_getRenderedElement$(');
+    expect(output).not.toContain('_template$(');
+  });
+
+  it('still delegates events on hydrated roots', () => {
+    const output = transformCode(`const el = <div><button onClick={() => 1}>go</button></div>;`);
+    expect(output).toContain('["_$click"] = () => 1;');
+    expect(output).toContain('_delegateEvents$(["click"]);');
   });
 });

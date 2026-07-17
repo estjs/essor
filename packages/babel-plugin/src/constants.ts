@@ -21,6 +21,7 @@ export const IMPORTS_MAPS = [
 
   // binding related
   'insert',
+  'insertTextContent',
   'patchStyle',
   'patchClass',
   'patchAttr',
@@ -34,6 +35,7 @@ export const IMPORTS_MAPS = [
   'getHydrationKey',
   'hydrationAnchor',
   'hydrationMarker',
+  'hydrationRange',
   // server attr helpers
   'ssrAttr',
   'ssrBind',
@@ -42,6 +44,7 @@ export const IMPORTS_MAPS = [
   'ssrStyle',
   'ssrSpread',
   'ssrTextValue',
+  'ssrTextContent',
   // DOM navigation helpers
   'child',
   'next',

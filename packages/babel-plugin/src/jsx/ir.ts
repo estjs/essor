@@ -7,19 +7,19 @@ import {
   startsWith,
 } from '@estjs/shared';
 import { type NodePath, types as t } from '@babel/core';
-import { TRANSFORM_PROPERTY_NAME } from '../constants';
 import { type CompileContext, addDelegatedEvent, useImport } from '../context';
 import {
   type DynamicAttr,
   getTagName,
-  isAnyFunctionPath,
   isComponentTag,
   isFunctionLikeExpressionPath,
   normalizeEventName,
   parseAttributes,
   textTrim,
 } from '../ast-utils';
-import { createBindingSetter } from './emitters';
+import { createBindingSetter, unwrapBindTuple } from './emitters';
+import { hasRawTextEndTag, isWholeTextTag } from './text-content';
+import type { RenderMode } from '../options';
 
 // ─── IR Types ──────────────────────────────
 
@@ -40,6 +40,25 @@ export function hasDynamicBoundary(children: IRNode[], index: number): boolean {
   return isText(prev) || isText(next) || isDynamic(prev) || isDynamic(next);
 }
 
+export type DynamicAnchorKind = 'comment' | 'element' | 'tail';
+
+export function getDynamicAnchorKind(
+  children: IRNode[],
+  index: number,
+  mode: RenderMode,
+): DynamicAnchorKind {
+  if (!hasDynamicBoundary(children, index)) {
+    const next = children[index + 1];
+    if ((mode === 'hydrate' || mode === 'server') && next?.type === IRType.ELEMENT) {
+      return 'element';
+    }
+    if (!next) {
+      return 'tail';
+    }
+  }
+  return 'comment';
+}
+
 export interface IRStaticAttr {
   name: string;
   value: string | boolean;
@@ -49,28 +68,38 @@ export interface IRDynamicAttr {
   name: string;
   value: t.Expression;
   kind: 'static' | 'dynamic';
+  /** Source position among the element's attributes. */
+  order: number;
 }
 
 export interface IREvent {
   name: string;
   handler: t.Expression;
   delegated: boolean;
+  /** Source position among the element's attributes. */
+  order: number;
   loc?: t.SourceLocation | null;
 }
 
 export interface IRSpread {
   value: t.Expression;
   kind: 'static' | 'dynamic';
+  /** Source position among the element's attributes. */
+  order: number;
 }
 
 export interface IRRef {
   value: t.Expression;
+  /** Source position among the element's attributes. */
+  order: number;
   loc?: t.SourceLocation | null;
 }
 
 export interface IRBind {
   name: string;
   value: t.Expression;
+  /** Source position among the element's attributes. */
+  order: number;
   loc?: t.SourceLocation | null;
 }
 
@@ -87,6 +116,7 @@ export interface IRElement {
   ref?: IRRef;
   binds: IRBind[];
   children: IRNode[];
+  wholeTextParts?: IRWholeTextPart[];
   selfClosing: boolean;
   loc?: t.SourceLocation | null;
 }
@@ -109,7 +139,6 @@ export interface IRText {
 export interface IRExpression {
   type: IRType.EXPRESSION;
   value: t.Expression;
-  asRawChildren?: boolean;
   loc?: t.SourceLocation | null;
 }
 
@@ -125,6 +154,21 @@ export interface IRFor {
 }
 
 export type IRNode = IRElement | IRComponent | IRText | IRExpression | IRFor;
+export type IRWholeTextPart = IRText | IRExpression;
+
+export function getDynamicWholeTextParts(element: IRElement): IRWholeTextPart[] | undefined {
+  const parts = element.wholeTextParts;
+  return parts?.some((part) => part.type === IRType.EXPRESSION) ? parts : undefined;
+}
+
+/** Join the static text of a whole-text element's parts. */
+export function getStaticWholeText(parts: IRWholeTextPart[]): string {
+  let text = '';
+  for (const part of parts) {
+    if (part.type === IRType.TEXT) text += part.value;
+  }
+  return text;
+}
 
 // ─── JSX AST type aliases ──────────────────
 
@@ -172,7 +216,11 @@ function buildElementIR(tag: string, path: NodePath<t.JSXElement>, ctx: CompileC
     staticAttrs,
     dynamicAttrs: [],
     events: [],
-    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind })),
+    spreads: spreadAttrs.map((s) => ({
+      value: s.value,
+      kind: s.effectKind,
+      order: s.order,
+    })),
     binds: [],
     children: [],
     selfClosing: isSelfClosingTag(tag),
@@ -189,7 +237,66 @@ function buildElementIR(tag: string, path: NodePath<t.JSXElement>, ctx: CompileC
     node.children = buildChildren(path, ctx);
   }
 
+  validateWholeTextElement(path, node);
+
   return node;
+}
+
+function validateWholeTextElement(path: NodePath<t.JSXElement>, node: IRElement): void {
+  if (!isWholeTextTag(node.tag)) return;
+
+  const parts: IRWholeTextPart[] = [];
+  for (const child of node.children) {
+    if (child.type !== IRType.TEXT && child.type !== IRType.EXPRESSION) {
+      throw path.buildCodeFrameError(
+        `Only text and primitive expressions are supported inside <${node.tag}>.`,
+      );
+    }
+    parts.push(child);
+  }
+
+  const hasNestedJSX = parts.some((part) => {
+    if (part.type !== IRType.EXPRESSION) return false;
+    let found = false;
+    t.traverseFast(part.value, (descendant) => {
+      if (t.isJSXElement(descendant) || t.isJSXFragment(descendant)) {
+        found = true;
+        return t.traverseFast.stop;
+      }
+    });
+    return found;
+  });
+  if (hasNestedJSX) {
+    throw path.buildCodeFrameError(
+      `Only text and primitive expressions are supported inside <${node.tag}>.`,
+    );
+  }
+
+  node.wholeTextParts = parts;
+
+  const staticText = parts
+    .filter((part): part is IRText => part.type === IRType.TEXT)
+    .map((part) => part.value)
+    .join('');
+  if (hasRawTextEndTag(node.tag, staticText)) {
+    throw path.buildCodeFrameError(`Unsafe </${node.tag}> token in static <${node.tag}> text.`);
+  }
+
+  if (
+    node.tag === 'textarea' &&
+    parts.length > 0 &&
+    node.binds.some((bind) => bind.name === 'value')
+  ) {
+    throw path.buildCodeFrameError(
+      '<textarea> cannot combine bind:value with children because both write its text value.',
+    );
+  }
+
+  if (node.tag === 'script' && parts.some((part) => part.type === IRType.EXPRESSION)) {
+    throw path.buildCodeFrameError(
+      'Dynamic <script> children are not supported because server execution and client template cloning cannot share a safe execution contract.',
+    );
+  }
 }
 
 // ─── Component IR ──────────────────────────
@@ -202,8 +309,11 @@ function buildComponentIR(
   path: NodePath<t.JSXElement | t.JSXFragment>,
   ctx: CompileContext,
 ): IRComponent {
+  // Component props keep their ORIGINAL value type: `value={42}`
+  // must reach the component as the number 42, not the attr string "42".
   const { staticAttrs, dynamicAttrs, spreadAttrs } = parseAttributes(
     path as NodePath<t.JSXElement>,
+    { preserveValueTypes: true },
   );
 
   const props: IRDynamicAttr[] = [];
@@ -214,6 +324,7 @@ function buildComponentIR(
       name: attr.name,
       value: isString(attr.value) ? t.stringLiteral(attr.value) : t.booleanLiteral(attr.value),
       kind: 'static',
+      order: attr.order,
     });
   }
 
@@ -226,6 +337,7 @@ function buildComponentIR(
         name: attr.name,
         value: attr.value,
         kind: attr.effectKind,
+        order: attr.order,
       });
     } else if (startsWith(attr.name, 'bind:')) {
       const binding = attr.name.slice('bind:'.length);
@@ -233,20 +345,13 @@ function buildComponentIR(
       // `x={$v}` (the current value) + `update:x={(_v$) => $v = _v$}` (the
       // setter callback). Modifiers on the tuple form are dropped at the
       // component boundary — they belong to the DOM leaf, not the component
-      // contract.
-      let valueExpr = attr.value;
-      if (
-        t.isArrayExpression(attr.value) &&
-        attr.value.elements.length === 2 &&
-        attr.value.elements[0] != null &&
-        !t.isSpreadElement(attr.value.elements[0])
-      ) {
-        valueExpr = attr.value.elements[0] as t.Expression;
-      }
+      // contract. The shared unwrap still validates modifier keys.
+      const { value: valueExpr } = unwrapBindTuple(attr.value, binding);
       props.push({
         name: binding,
         value: t.cloneNode(valueExpr),
         kind: attr.effectKind,
+        order: attr.order,
       });
       // The setter is a static arrow function — it captures the assignment
       // target by reference and never reads reactive state itself. Marking
@@ -254,14 +359,16 @@ function buildComponentIR(
       // of allocating a fresh closure on every prop access via a getter.
       props.push({
         name: `update:${binding}`,
-        value: createBindingSetter(valueExpr),
+        value: createBindingSetter(valueExpr, binding),
         kind: 'static',
+        order: attr.order,
       });
     } else {
       props.push({
         name: attr.name,
         value: attr.value,
         kind: attr.effectKind,
+        order: attr.order,
       });
     }
   }
@@ -270,7 +377,11 @@ function buildComponentIR(
     type: IRType.COMPONENT,
     tag,
     props,
-    spreads: spreadAttrs.map((s) => ({ value: s.value, kind: s.effectKind })),
+    spreads: spreadAttrs.map((s) => ({
+      value: s.value,
+      kind: s.effectKind,
+      order: s.order,
+    })),
     children: buildChildren(path as NodePath<t.JSXElement>, ctx),
     loc: path.node.loc,
   };
@@ -282,7 +393,7 @@ function buildComponentIR(
  * Routes a dynamic attribute into the correct IR bucket for an element.
  */
 function applyDynamicAttr(node: IRElement, attr: DynamicAttr, ctx: CompileContext): void {
-  const { name, value, effectKind, path } = attr;
+  const { name, value, effectKind, path, order } = attr;
 
   // Event: onXxx
   const eventName = normalizeEventName(name);
@@ -292,6 +403,7 @@ function applyDynamicAttr(node: IRElement, attr: DynamicAttr, ctx: CompileContex
       name: eventName,
       handler: value,
       delegated,
+      order,
       loc: path.node.loc,
     });
     if (delegated) {
@@ -302,7 +414,7 @@ function applyDynamicAttr(node: IRElement, attr: DynamicAttr, ctx: CompileContex
 
   // ref
   if (name === 'ref') {
-    node.ref = { value, loc: path.node.loc };
+    node.ref = { value, order, loc: path.node.loc };
     return;
   }
 
@@ -311,13 +423,15 @@ function applyDynamicAttr(node: IRElement, attr: DynamicAttr, ctx: CompileContex
     node.binds.push({
       name: name.slice('bind:'.length),
       value,
+      order,
       loc: path.node.loc,
     });
     return;
   }
 
-  // Regular dynamic attribute (class, style, or generic)
-  node.dynamicAttrs.push({ name, value, kind: effectKind });
+  // Regular dynamic attribute (class, style, or generic). Keep the source
+  // order so codegen can emit operations in author order.
+  node.dynamicAttrs.push({ name, value, kind: effectKind, order });
 }
 
 // ─── Children Processing ───────────────────
@@ -375,7 +489,6 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
     return {
       type: IRType.EXPRESSION,
       value: expression.node,
-      asRawChildren: isPropsChildrenExpression(expression),
       loc: node.loc,
     };
   }
@@ -395,58 +508,6 @@ function processChild(child: NodePath<JSXChild>, ctx: CompileContext): IRNode | 
   }
 
   return null;
-}
-
-function isPropsChildrenExpression(expression: NodePath<t.Expression>): boolean {
-  const node = expression.node;
-
-  // The props pass uses `scope.rename(name, '__props.children')`, so what
-  // started as an identifier gets stamped with a dotted string name and Babel
-  // prints it verbatim. Treat it as a member expression for raw-children
-  // detection purposes.
-  if (isRenamedPropsChildrenIdentifier(node)) return true;
-
-  if (!t.isMemberExpression(node) || !isChildrenProperty(node)) return false;
-  if (!t.isIdentifier(node.object)) return false;
-  if (node.object.name === TRANSFORM_PROPERTY_NAME) return true;
-
-  // User-written `props.children` access. Confirm `props` is the first
-  // parameter of an enclosing component-like function.
-  const binding = expression.scope.getBinding(node.object.name);
-  const bindingPath = binding?.path;
-  if (!bindingPath?.isIdentifier()) return false;
-
-  const owner = bindingPath.findParent((p) => isAnyFunctionPath(p));
-  if (!owner) return false;
-
-  const fn = owner.node as t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
-  const componentName = getEnclosingFunctionName(owner);
-  return fn.params[0] === bindingPath.node && /^[A-Z]/.test(componentName);
-}
-
-function isRenamedPropsChildrenIdentifier(node: t.Node): boolean {
-  return t.isIdentifier(node) && node.name === `${TRANSFORM_PROPERTY_NAME}.children`;
-}
-
-function getEnclosingFunctionName(owner: NodePath): string {
-  const fn = owner.node as t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression;
-
-  if (t.isFunctionDeclaration(fn) && fn.id) return fn.id.name;
-
-  const parent = owner.parentPath;
-  if (parent?.isVariableDeclarator() && t.isIdentifier(parent.node.id)) {
-    return parent.node.id.name;
-  }
-  if (parent?.isAssignmentExpression() && t.isIdentifier(parent.node.left)) {
-    return parent.node.left.name;
-  }
-  return '';
-}
-
-function isChildrenProperty(expression: t.MemberExpression): boolean {
-  return expression.computed
-    ? t.isStringLiteral(expression.property, { value: 'children' })
-    : t.isIdentifier(expression.property, { name: 'children' });
 }
 
 /**
@@ -504,6 +565,7 @@ function buildForIR(expression: NodePath<t.Expression>, ctx: CompileContext): IR
  * Extracts key expression.
  */
 function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
+  if (path.isJSXFragment()) return extractFragmentKeyExpression(path);
   if (!path.isJSXElement()) return null;
 
   for (const attrPath of path.get('openingElement.attributes')) {
@@ -532,6 +594,15 @@ function extractKeyExpression(path: NodePath<JSXElement>): t.Expression | null {
   }
 
   return null;
+}
+
+function extractFragmentKeyExpression(path: NodePath<t.JSXFragment>): t.Expression | null {
+  const children = (path.get('children') as NodePath<JSXChild>[]).filter(isValidChild);
+  if (children.length !== 1) return null;
+
+  const child = children[0];
+  if (!child.isJSXElement() && !child.isJSXFragment()) return null;
+  return extractKeyExpression(child as NodePath<JSXElement>);
 }
 
 /**

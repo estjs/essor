@@ -31,6 +31,52 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
+  it.each(['title', 'textarea', 'style'])(
+    'serializes dynamic <%s> children through one marker-free whole-text slot',
+    (tag) => {
+      const output = transformCode(`const element = <${tag}>A{first}B{second}</${tag}>;`);
+
+      expect(output.match(/_ssrTextContent\$\(/g)).toHaveLength(1);
+      expect(output).not.toContain('@essor:start');
+      expect(output).not.toContain('<!--0-->');
+    },
+  );
+
+  it('rejects dynamic executable script children on the server', () => {
+    expect(() => transformCode('const element = <script>{source}</script>;')).toThrow(
+      /dynamic <script>/i,
+    );
+  });
+
+  it.each(['style', 'script'])(
+    'preserves static <%s> raw text without HTML entity rewriting',
+    (tag) => {
+      const output = transformCode(`const element = <${tag}>{'a&b < c'}</${tag}>;`);
+
+      expect(output).toContain(`["<${tag}>a&b < c</${tag}>"]`);
+      expect(output).not.toContain('a&amp;b &lt; c');
+    },
+  );
+
+  it('duplicates a static leading textarea LF for parser round-trip', () => {
+    const output = transformCode("const element = <textarea>{'\\nline'}</textarea>;");
+
+    expect(output).toContain('["<textarea>\\n\\nline</textarea>"]');
+  });
+
+  it('emits a boundary-typed range start before every dynamic child slot', () => {
+    const comment = transformCode('const element = <div>{value}text</div>');
+    const element = transformCode('const element = <div>{null}<span>right</span></div>');
+    const tail = transformCode('const element = <div><span>left</span>{value}</div>');
+
+    expect(comment).toContain('"<div><!--@essor:start:c:0-->"');
+    expect(comment).toContain('"<!--0-->text</div>"');
+    expect(element).toContain('"<div><!--@essor:start:e:0-->"');
+    expect(element).toContain('"<span data-hk-idx=\\"0\\">right</span></div>"');
+    expect(tail).toContain('"<div><span>left</span><!--@essor:start:t:0-->"');
+    expect(tail).toContain('", "</div>"');
+  });
+
   it('transforms JSX element with boolean attribute', () => {
     const inputCode = `
       const element = <input disabled />;
@@ -218,7 +264,7 @@ describe('jsx server transform', () => {
     expect(transformCode(inputCode)).toMatchSnapshot();
   });
 
-  it('treats component children props as raw SSR children content', () => {
+  it('escapes component children props in SSR output', () => {
     const inputCode = `
       const Layout = (ctx) => <main>{ctx.children}</main>;
       const ComputedLayout = (ctx) => <main>{ctx["children"]}</main>;
@@ -233,15 +279,28 @@ describe('jsx server transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    // `props.children` is the component-passthrough channel: the value is
-    // already-safe HTML from a child render(), so it flows in verbatim (no
-    // escape() wrapper).
-    expect(output).toContain('ctx.children');
-    expect(output).toContain('ctx["children"]');
-    expect(output).toContain('__props.children');
-    expect(output).not.toContain('_escape$(ctx.children)');
-    expect(output).not.toContain('_escape$(ctx["children"])');
-    expect(output).not.toContain('_escape$(__props.children)');
+    // SEC-P0-01: `props.children` is NOT trusted by position — a caller can
+    // pass an arbitrary string via `<Layout children={userInput}/>`. The
+    // consumption site wraps it in escape(); compiled children arrive as
+    // WeakSet-branded SSR nodes, which escape() passes through verbatim, so
+    // legitimate nested JSX is not double-escaped.
+    expect(output).toContain('_escape$(ctx.children)');
+    expect(output).toContain('_escape$(ctx["children"])');
+    expect(output).toContain('_escape$(__props.children)');
+  });
+
+  it('defers expression-child escaping to the receiving component', () => {
+    const output = transformCode(`
+      const Layout = p => <main>{p.children}</main>;
+      const el = <Layout>{payload}</Layout>;
+      const fallback = <Layout>{payload || <strong>fallback</strong>}</Layout>;
+    `);
+
+    expect(output).toContain('_escape$(p.children)');
+    expect(output).toContain('"children": [payload]');
+    expect(output).not.toContain('"children": [_escape$(payload)]');
+    expect(output).toContain('"children": [payload || _ssr$(');
+    expect(output).not.toContain('"children": [_escape$(payload ||');
   });
 
   it('keeps local children variables escaped in SSR text nodes', () => {
@@ -382,7 +441,7 @@ describe('jsx server transform', () => {
     const output = transformCode(inputCode);
 
     expect(output).toContain(
-      '"<div>", "<form data-hk-idx=\\"0\\"><button>Save</button></form></div>"',
+      '"<div><!--@essor:start:e:0-->", "<form data-hk-idx=\\"0\\"><button>Save</button></form></div>"',
     );
     expect(output).not.toContain('<!--0--><form>');
   });
@@ -415,7 +474,7 @@ describe('jsx server transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('"<div><header>Title</header>", "</div>"');
+    expect(output).toContain('"<div><header>Title</header><!--@essor:start:t:0-->", "</div>"');
     expect(output).not.toContain('<!--0--></div>');
   });
 
@@ -443,6 +502,21 @@ describe('jsx server transform', () => {
     `;
 
     expect(transformCode(inputCode)).toMatchSnapshot();
+  });
+
+  it('renders dynamic SVG class via ssrClass (string, no isSVG flag needed)', () => {
+    // Server mode builds an HTML string and never touches el.className, so SVG
+    // needs no special handling — `class` compiles to the same ssrClass slot as
+    // for HTML elements.
+    const inputCode = `
+      const p = {};
+      const element = <svg class={p.c}><line x1="5" /></svg>;
+    `;
+
+    const output = transformCode(inputCode);
+    expect(output).toContain('_ssrClass$(p.c)');
+    expect(output).not.toContain('patchClass');
+    expect(output).toMatchSnapshot();
   });
 
   it('should work with bind api', () => {
@@ -1089,5 +1163,34 @@ describe('jsx server transform', () => {
     expect(out).not.toMatch(/fade-enter-from|fade-enter-active|fade-enter-to/);
     expect(out).not.toMatch(/fade-leave-from|fade-leave-active|fade-leave-to/);
     expect(out).toContain('Transition');
+  });
+
+  // ── Behavior assertions (no snapshots) ──────────────────────────────
+
+  it('escapes dynamic child expressions through escape()', () => {
+    const output = transformCode(`const name = 'x'; const el = <div>{name}</div>;`);
+    // Bare interpolations go through the child-text escaping channel —
+    // this is the XSS default-escape contract (see server/security docs).
+    expect(output).toContain('_escape$(name)');
+    expect(output).toContain('_ssr$(_tmpl$, _getHydrationKey$(), _escape$(name))');
+  });
+
+  it('wraps component children in lazy thunks for ssrComponent', () => {
+    const output = transformCode(`function App(){ return <Foo><span>x</span></Foo>; }`);
+    // Children compile to deferred thunks so they evaluate inside the
+    // component's scope (provide/inject correctness during serialization).
+    expect(output).toContain('_ssrComponent$(Foo,');
+    expect(output).toContain('"children": [() => _ssr$(_tmpl$, _getHydrationKey$())]');
+  });
+
+  it('emits ssrBind with the element tag for bind:value', () => {
+    const output = transformCode(`let $v = 1; const el = <input bind:value={$v} />;`);
+    expect(output).toContain('_ssrBind$("value", $v.value');
+    expect(output).toContain('tag: "input"');
+  });
+
+  it('omits static boolean-attr false from the SSR template (CMP-03)', () => {
+    const output = transformCode(`const el = <input disabled={false} />;`);
+    expect(output).not.toContain('disabled');
   });
 });

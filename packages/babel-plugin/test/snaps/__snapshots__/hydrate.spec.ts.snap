@@ -1,8 +1,8 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`jsx hydrate transform > should work with CSS-in-JS in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, patchClassHydrate as _patchClassHydrate$, memoEffect as _memoEffect$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _getRenderedElement$("<div data-styled>");
+"import { getRenderedElement as _getRenderedElement$, patchClassHydrate as _patchClassHydrate$, memoEffect as _memoEffect$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _getRenderedElement$("<div data-styled=\\"true\\">");
 const StyledComponent = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
@@ -12,7 +12,8 @@ const StyledComponent = __props => (() => {
   }, {
     c0: undefined
   });
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StyledComponent, {
@@ -24,13 +25,14 @@ const element = _createComponent$(StyledComponent, {
 `;
 
 exports[`jsx hydrate transform > should work with async data in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _getRenderedElement$("<div>");
 const AsyncComponent = async __props => {
   const result = await __props.data;
   return (() => {
     const _root$ = _t$();
-    _insert$(_root$, () => result);
+    const _hr$ = _hydrationRange$(_root$, 0, "tail");
+    _insert$(_root$, () => result, undefined, _hr$);
     return _root$;
   })();
 };
@@ -66,7 +68,7 @@ const value = 1;
 `;
 
 exports[`jsx hydrate transform > should work with conditional rendering in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, insert as _insert$ } from "essor";
 const _t$4 = _getRenderedElement$("<span>False");
 const _t$3 = _getRenderedElement$("<span>True");
 const _t$2 = _getRenderedElement$("<p>Visible Content");
@@ -76,8 +78,10 @@ const element = (() => {
   const _root$ = _t$();
   const _hk$ = _hydrationMarker$(_root$, 0);
   const _hk$2 = _hydrationMarker$(_root$, 1);
-  _insert$(_root$, () => isVisible && _t$2(), _hk$);
-  _insert$(_root$, () => isVisible ? _t$3() : _t$4(), _hk$2);
+  const _hr$ = _hydrationRange$(_root$, 0, "comment");
+  _insert$(_root$, () => isVisible && _t$2(), _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_root$, 1, "comment");
+  _insert$(_root$, () => isVisible ? _t$3() : _t$4(), _hk$2, _hr$2);
   return _root$;
 })();"
 `;
@@ -100,11 +104,12 @@ const element = _createComponent$(ThemeContext.Provider, {
 `;
 
 exports[`jsx hydrate transform > should work with data fetching in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _getRenderedElement$("<div data-ssr-data>");
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _getRenderedElement$("<div data-ssr-data=\\"true\\">");
 const DataComponent = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => JSON.stringify(__props.data));
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => JSON.stringify(__props.data), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(DataComponent, {
@@ -153,13 +158,14 @@ _delegateEvents$(["click"]);"
 `;
 
 exports[`jsx hydrate transform > should work with head management in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$3 = _getRenderedElement$("<meta name=\\"description\\" content=\\"Page description\\" />");
 const _t$2 = _getRenderedElement$("<title>Page Title");
-const _t$ = _getRenderedElement$("<head data-ssr>");
+const _t$ = _getRenderedElement$("<head data-ssr=\\"true\\">");
 const Head = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(Head, {
@@ -176,60 +182,67 @@ const element = _t$();"
 `;
 
 exports[`jsx hydrate transform > should work with list rendering in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
 const _t$2 = _getRenderedElement$("<li>");
 const _t$ = _getRenderedElement$("<ul>");
 const items = ['Item 1', 'Item 2', 'Item 3'];
 const element = (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(_For$, {
     get each() {
       return items;
     },
     children: (item, index) => (() => {
       const _root$2 = _t$2();
-      _insert$(_root$2, () => item);
+      const _hr$2 = _hydrationRange$(_root$2, 0, "tail");
+      _insert$(_root$2, () => item, undefined, _hr$2);
       return _root$2;
     })(),
     key: (item, index) => index
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();"
 `;
 
 exports[`jsx hydrate transform > should work with nested components and props in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _getRenderedElement$("<div><!><!>");
 const _t$ = _getRenderedElement$("<div>Name: <!>, Age: <!>");
 const Child = __props => (() => {
   const _root$ = _t$();
   const _hk$ = _hydrationMarker$(_root$, 0);
   const _hk$2 = _hydrationMarker$(_root$, 1);
-  _insert$(_root$, () => __props.name, _hk$);
-  _insert$(_root$, () => __props.age, _hk$2);
+  const _hr$ = _hydrationRange$(_root$, 0, "comment");
+  _insert$(_root$, () => __props.name, _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_root$, 1, "comment");
+  _insert$(_root$, () => __props.age, _hk$2, _hr$2);
   return _root$;
 })();
 const Parent = () => (() => {
   const _root$2 = _t$2();
   const _hk$3 = _hydrationMarker$(_root$2, 0);
   const _hk$4 = _hydrationMarker$(_root$2, 1);
+  const _hr$3 = _hydrationRange$(_root$2, 0, "comment");
   _insert$(_root$2, _createComponent$(Child, {
     name: "John",
-    age: "25"
-  }), _hk$3);
+    age: 25
+  }), _hk$3, _hr$3);
+  const _hr$4 = _hydrationRange$(_root$2, 1, "comment");
   _insert$(_root$2, _createComponent$(Child, {
     name: "Jane",
-    age: "23"
-  }), _hk$4);
+    age: 23
+  }), _hk$4, _hr$4);
   return _root$2;
 })();"
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$, createComponent as _createComponent$, For as _For$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$, createComponent as _createComponent$, For as _For$ } from "essor";
 const _t$ = _getRenderedElement$("<div>");
 const StreamingComponent = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(_For$, {
     get each() {
       return __props.chunks;
@@ -243,11 +256,12 @@ const StreamingComponent = __props => (() => {
       }, {
         a0: undefined
       });
-      _insert$(_root$2, () => chunk);
+      const _hr$2 = _hydrationRange$(_root$2, 0, "tail");
+      _insert$(_root$2, () => chunk, undefined, _hr$2);
       return _root$2;
     })(),
     key: (chunk, index) => index
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingComponent, {
@@ -258,11 +272,12 @@ const element = _createComponent$(StreamingComponent, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and context 1`] = `
-"import { getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Streaming Context Content");
-const _t$ = _getRenderedElement$("<div data-streaming-context>");
+const _t$ = _getRenderedElement$("<div data-streaming-context=\\"true\\">");
 const StreamingContext = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(ThemeContext.Provider, {
     get value() {
       return __props.value;
@@ -270,7 +285,7 @@ const StreamingContext = __props => (() => {
     get children() {
       return [__props.children];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingContext, {
@@ -282,8 +297,8 @@ const element = _createComponent$(StreamingContext, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and custom hooks 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _getRenderedElement$("<div data-streaming-hook>");
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _getRenderedElement$("<div data-streaming-hook=\\"true\\">");
 const useStreamingHook = () => ({
   value: 'streaming'
 });
@@ -293,7 +308,8 @@ const StreamingHook = () => {
   } = useStreamingHook();
   return (() => {
     const _root$ = _t$();
-    _insert$(_root$, () => value);
+    const _hr$ = _hydrationRange$(_root$, 0, "tail");
+    _insert$(_root$, () => value, undefined, _hr$);
     return _root$;
   })();
 };
@@ -301,13 +317,14 @@ const element = _createComponent$(StreamingHook, {});"
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and data fetching 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Data Content");
 const _t$2 = _getRenderedElement$("<div>Loading data...");
-const _t$ = _getRenderedElement$("<div data-streaming-data>");
+const _t$ = _getRenderedElement$("<div data-streaming-data=\\"true\\">");
 const StreamingData = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.data ? __props.children : _t$2());
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.data ? __props.children : _t$2(), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingData, {
@@ -323,12 +340,13 @@ const element = _createComponent$(StreamingData, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and dynamic imports 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Loading...");
-const _t$ = _getRenderedElement$("<div data-streaming-dynamic>");
+const _t$ = _getRenderedElement$("<div data-streaming-dynamic=\\"true\\">");
 const StreamingDynamic = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(_Suspense$, {
@@ -346,12 +364,13 @@ const element = _createComponent$(_Suspense$, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and error boundaries 1`] = `
-"import { getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Error occurred!");
 const _t$2 = _getRenderedElement$("<div>Protected Streaming Content");
-const _t$ = _getRenderedElement$("<div data-streaming-error>");
+const _t$ = _getRenderedElement$("<div data-streaming-error=\\"true\\">");
 const StreamingErrorBoundary = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(ErrorBoundary, {
     get fallback() {
       return __props.fallback;
@@ -359,7 +378,7 @@ const StreamingErrorBoundary = __props => (() => {
     get children() {
       return [__props.children];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingErrorBoundary, {
@@ -373,18 +392,20 @@ const element = _createComponent$(StreamingErrorBoundary, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and error handling 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, hydrationMarker as _hydrationMarker$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, hydrationMarker as _hydrationMarker$, createComponent as _createComponent$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Streaming Content");
 const _t$2 = _getRenderedElement$("<div>Error: <!>");
-const _t$ = _getRenderedElement$("<div data-streaming-error>");
+const _t$ = _getRenderedElement$("<div data-streaming-error=\\"true\\">");
 const StreamingError = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, () => __props.error ? (() => {
     const _root$2 = _t$2();
     const _hk$ = _hydrationMarker$(_root$2, 0);
-    _insert$(_root$2, () => __props.error.message, _hk$);
+    const _hr$2 = _hydrationRange$(_root$2, 0, "comment");
+    _insert$(_root$2, () => __props.error.message, _hk$, _hr$2);
     return _root$2;
-  })() : __props.children);
+  })() : __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingError, {
@@ -396,13 +417,14 @@ const element = _createComponent$(StreamingError, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and forwardRef 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Streaming Forward Ref Content");
-const _t$ = _getRenderedElement$("<div data-streaming-forward>");
+const _t$ = _getRenderedElement$("<div data-streaming-forward=\\"true\\">");
 const StreamingForwardRef = React.forwardRef((props, ref) => (() => {
   const _root$ = _t$();
   (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
-  _insert$(_root$, () => props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => props.children, undefined, _hr$);
   return _root$;
 })());
 const element = _createComponent$(StreamingForwardRef, {
@@ -416,12 +438,13 @@ const element = _createComponent$(StreamingForwardRef, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and hydration 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _getRenderedElement$("<div data-hydrate=\\"true\\">Hydration Content");
-const _t$ = _getRenderedElement$("<div data-streaming-hydration>");
+const _t$ = _getRenderedElement$("<div data-streaming-hydration=\\"true\\">");
 const StreamingHydration = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingHydration, {
@@ -432,12 +455,13 @@ const element = _createComponent$(StreamingHydration, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and lazy loading 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Loading...");
-const _t$ = _getRenderedElement$("<div data-streaming-lazy>");
+const _t$ = _getRenderedElement$("<div data-streaming-lazy=\\"true\\">");
 const StreamingLazy = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 StreamingLazy._lazy = true;
@@ -456,13 +480,14 @@ const element = _createComponent$(_Suspense$, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and loading states 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Loaded Content");
 const _t$2 = _getRenderedElement$("<div>Loading...");
-const _t$ = _getRenderedElement$("<div data-streaming-loading>");
+const _t$ = _getRenderedElement$("<div data-streaming-loading=\\"true\\">");
 const StreamingLoading = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.isLoading ? _t$2() : __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.isLoading ? _t$2() : __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingLoading, {
@@ -474,11 +499,12 @@ const element = _createComponent$(StreamingLoading, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and memo 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _getRenderedElement$("<div data-streaming-memo>");
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+const _t$ = _getRenderedElement$("<div data-streaming-memo=\\"true\\">");
 const StreamingMemo = __props => (() => {
   const _root$ = _t$();
-  _insert$(_root$, () => __props.value);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.value, undefined, _hr$);
   return _root$;
 })();
 StreamingMemo._memo = true;
@@ -488,11 +514,12 @@ const element = _createComponent$(StreamingMemo, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and multiple contexts 1`] = `
-"import { getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Multiple Contexts Content");
-const _t$ = _getRenderedElement$("<div data-streaming-contexts>");
+const _t$ = _getRenderedElement$("<div data-streaming-contexts=\\"true\\">");
 const StreamingContexts = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(ThemeContext.Provider, {
     get value() {
       return __props.theme;
@@ -507,7 +534,7 @@ const StreamingContexts = __props => (() => {
         }
       })];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingContexts, {
@@ -524,9 +551,9 @@ const element = _createComponent$(StreamingContexts, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and portals 1`] = `
-"import { getRenderedElement as _getRenderedElement$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Streaming Portal Content");
-const _t$ = _getRenderedElement$("<div data-streaming-portal>");
+const _t$ = _getRenderedElement$("<div data-streaming-portal=\\"true\\">");
 const StreamingPortal = __props => (() => {
   const _root$ = _t$();
   _memoEffect$(_p$ => {
@@ -536,7 +563,8 @@ const StreamingPortal = __props => (() => {
   }, {
     a0: undefined
   });
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingPortal, {
@@ -548,13 +576,14 @@ const element = _createComponent$(StreamingPortal, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and refs 1`] = `
-"import { getRenderedElement as _getRenderedElement$, insert as _insert$, createComponent as _createComponent$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _getRenderedElement$("<div>Streaming Ref Content");
-const _t$ = _getRenderedElement$("<div data-streaming-ref>");
+const _t$ = _getRenderedElement$("<div data-streaming-ref=\\"true\\">");
 const StreamingRef = (__props, ref) => (() => {
   const _root$ = _t$();
   (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
-  _insert$(_root$, () => __props.children);
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
+  _insert$(_root$, () => __props.children, undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingRef, {
@@ -568,12 +597,13 @@ const element = _createComponent$(StreamingRef, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and suspense 1`] = `
-"import { getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, Suspense as _Suspense$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, Suspense as _Suspense$, insert as _insert$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Loading...");
 const _t$2 = _getRenderedElement$("<div>Streaming Content");
-const _t$ = _getRenderedElement$("<div data-streaming>");
+const _t$ = _getRenderedElement$("<div data-streaming=\\"true\\">");
 const StreamingSuspense = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(_Suspense$, {
     get fallback() {
       return __props.fallback;
@@ -581,7 +611,7 @@ const StreamingSuspense = __props => (() => {
     get children() {
       return [__props.children];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingSuspense, {
@@ -595,12 +625,13 @@ const element = _createComponent$(StreamingSuspense, {
 `;
 
 exports[`jsx hydrate transform > should work with streaming hydrate and suspense boundaries 1`] = `
-"import { getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, Suspense as _Suspense$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, Suspense as _Suspense$, insert as _insert$ } from "essor";
 const _t$3 = _getRenderedElement$("<div>Loading...");
 const _t$2 = _getRenderedElement$("<div>Suspense Content");
-const _t$ = _getRenderedElement$("<div data-streaming-suspense>");
+const _t$ = _getRenderedElement$("<div data-streaming-suspense=\\"true\\">");
 const StreamingSuspenseBoundary = __props => (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(_Suspense$, {
     get fallback() {
       return __props.fallback;
@@ -608,7 +639,7 @@ const StreamingSuspenseBoundary = __props => (() => {
     get children() {
       return [__props.children];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();
 const element = _createComponent$(StreamingSuspenseBoundary, {
@@ -633,17 +664,18 @@ const element = _createComponent$(_Fragment$, {
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with JSX fragment as children 1`] = `
-"import { Fragment as _Fragment$, getRenderedElement as _getRenderedElement$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { Fragment as _Fragment$, getRenderedElement as _getRenderedElement$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$3 = _getRenderedElement$("<p>Paragraph 2");
 const _t$2 = _getRenderedElement$("<p>Paragraph 1");
 const _t$ = _getRenderedElement$("<div>");
 const element = (() => {
   const _root$ = _t$();
+  const _hr$ = _hydrationRange$(_root$, 0, "tail");
   _insert$(_root$, _createComponent$(_Fragment$, {
     get children() {
       return [_t$2(), _t$3()];
     }
-  }));
+  }), undefined, _hr$);
   return _root$;
 })();"
 `;
@@ -691,36 +723,39 @@ const element = _t$();"
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with dynamic expressions 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, insert as _insert$ } from "essor";
 const _t$ = _getRenderedElement$("<div>Hello, <!>!");
 const name = 'John';
 const element = (() => {
   const _root$ = _t$();
   const _hk$ = _hydrationMarker$(_root$, 0);
-  _insert$(_root$, () => name, _hk$);
+  const _hr$ = _hydrationRange$(_root$, 0, "comment");
+  _insert$(_root$, () => name, _hk$, _hr$);
   return _root$;
 })();"
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with function components 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$ = _getRenderedElement$("<div><!><!>");
 const element = (() => {
   const _root$ = _t$();
   const _hk$ = _hydrationMarker$(_root$, 0);
   const _hk$2 = _hydrationMarker$(_root$, 1);
+  const _hr$ = _hydrationRange$(_root$, 0, "comment");
   _insert$(_root$, _createComponent$(MyComponent, {
     text: "Component 1"
-  }), _hk$);
+  }), _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_root$, 1, "comment");
   _insert$(_root$, _createComponent$(MyComponent, {
     text: "Component 2"
-  }), _hk$2);
+  }), _hk$2, _hr$2);
   return _root$;
 })();"
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with nested expressions and children 1`] = `
-"import { getRenderedElement as _getRenderedElement$, child as _child$, hydrationMarker as _hydrationMarker$, next as _next$, insert as _insert$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, child as _child$, hydrationMarker as _hydrationMarker$, next as _next$, hydrationRange as _hydrationRange$, insert as _insert$, patchAttrHydrate as _patchAttrHydrate$, memoEffect as _memoEffect$ } from "essor";
 const _t$2 = _getRenderedElement$("<li>Item <!>");
 const _t$ = _getRenderedElement$("<div><p><!>'s Profile</p><ul>");
 const name = 'John';
@@ -729,7 +764,9 @@ const element = (() => {
   const _n$ = _child$(_root$);
   const _hk$ = _hydrationMarker$(_n$, 0);
   const _n$2 = _next$(_n$, 1);
-  _insert$(_n$, () => name, _hk$);
+  const _hr$ = _hydrationRange$(_n$, 0, "comment");
+  _insert$(_n$, () => name, _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_n$2, 0, "tail");
   _insert$(_n$2, () => Array.from({
     length: 3
   }, (_, i) => (() => {
@@ -742,9 +779,10 @@ const element = (() => {
     }, {
       a0: undefined
     });
-    _insert$(_root$2, () => i + 1, _hk$2);
+    const _hr$3 = _hydrationRange$(_root$2, 0, "comment");
+    _insert$(_root$2, () => i + 1, _hk$2, _hr$3);
     return _root$2;
-  })()));
+  })()), undefined, _hr$2);
   return _root$;
 })();"
 `;
@@ -761,22 +799,25 @@ const element = (() => {
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with null and undefined children 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationAnchor as _hydrationAnchor$, hydrationMarker as _hydrationMarker$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationAnchor as _hydrationAnchor$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, insert as _insert$ } from "essor";
 const _t$ = _getRenderedElement$("<div><p data-hk-idx=\\"0\\">Paragraph 1</p><!><!><p>Paragraph 2");
 const element = (() => {
   const _root$ = _t$();
   const _hk$ = _hydrationAnchor$(_root$, 0);
   const _hk$2 = _hydrationMarker$(_root$, 1);
   const _hk$3 = _hydrationMarker$(_root$, 2);
-  _insert$(_root$, () => null, _hk$);
-  _insert$(_root$, () => undefined, _hk$2);
-  _insert$(_root$, () => false, _hk$3);
+  const _hr$ = _hydrationRange$(_root$, 0, "element");
+  _insert$(_root$, () => null, _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_root$, 1, "comment");
+  _insert$(_root$, () => undefined, _hk$2, _hr$2);
+  const _hr$3 = _hydrationRange$(_root$, 2, "comment");
+  _insert$(_root$, () => false, _hk$3, _hr$3);
   return _root$;
 })();"
 `;
 
 exports[`jsx hydrate transform > transforms JSX element with null and undefined in expressions 1`] = `
-"import { getRenderedElement as _getRenderedElement$, child as _child$, hydrationMarker as _hydrationMarker$, hydrationAnchor as _hydrationAnchor$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, child as _child$, hydrationMarker as _hydrationMarker$, hydrationAnchor as _hydrationAnchor$, hydrationRange as _hydrationRange$, insert as _insert$ } from "essor";
 const _t$ = _getRenderedElement$("<div><p><!>'s Profile</p><p data-hk-idx=\\"0\\">Paragraph 2");
 const name = null;
 const element = (() => {
@@ -784,8 +825,10 @@ const element = (() => {
   const _n$ = _child$(_root$);
   const _hk$ = _hydrationMarker$(_n$, 0);
   const _hk$2 = _hydrationAnchor$(_root$, 0);
-  _insert$(_n$, () => name, _hk$);
-  _insert$(_root$, () => undefined, _hk$2);
+  const _hr$ = _hydrationRange$(_n$, 0, "comment");
+  _insert$(_n$, () => name, _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_root$, 0, "element");
+  _insert$(_root$, () => undefined, _hk$2, _hr$2);
   return _root$;
 })();"
 `;
@@ -833,7 +876,7 @@ const element = _t$();"
 `;
 
 exports[`jsx hydrate transform > uses static sibling anchors instead of comment markers for later static nodes 1`] = `
-"import { getRenderedElement as _getRenderedElement$, hydrationAnchor as _hydrationAnchor$, next as _next$, child as _child$, hydrationMarker as _hydrationMarker$, createComponent as _createComponent$, insert as _insert$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, hydrationAnchor as _hydrationAnchor$, next as _next$, child as _child$, hydrationMarker as _hydrationMarker$, hydrationRange as _hydrationRange$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$ = _getRenderedElement$("<div><form data-hk-idx=\\"0\\"><button>Save</button></form><section><p>Pending: <!>");
 const element = (() => {
   const _root$ = _t$();
@@ -841,12 +884,14 @@ const element = (() => {
   const _n$ = _next$(_hk$, 1);
   const _n$2 = _child$(_n$);
   const _hk$2 = _hydrationMarker$(_n$2, 0);
+  const _hr$ = _hydrationRange$(_root$, 0, "element");
   _insert$(_root$, _createComponent$(Feedback, {
     get result() {
       return result;
     }
-  }), _hk$);
-  _insert$(_n$2, () => String(status.pending), _hk$2);
+  }), _hk$, _hr$);
+  const _hr$2 = _hydrationRange$(_n$2, 0, "comment");
+  _insert$(_n$2, () => String(status.pending), _hk$2, _hr$2);
   return _root$;
 })();"
 `;

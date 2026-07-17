@@ -11,10 +11,13 @@ import {
   isArray,
   isBigint,
   isBoolean,
+  isBooleanAttr,
   isNull,
   isNumber,
   isPlainObject,
   isString,
+  kebabCase,
+  normalizeStyle,
   propsToAttrMap,
   startsWith,
 } from '@estjs/shared';
@@ -127,18 +130,42 @@ export function textTrim(node: t.JSXText): string {
 
 /**
  * Serializes static JSX attributes into template HTML.
+ *
+ * Type-aware serialization:
+ * - boolean attrs (`disabled`, `checked`, …): `true` → bare attr, `false` →
+ *   OMITTED (`disabled="false"` would be truthy in HTML);
+ * - `aria-*` / `data-*`: booleans serialize as the strings "true"/"false"
+ *   (ARIA's tri-state contract needs the literal string);
+ * - other attrs: `true` → bare attr, `false` → `="false"` (string form);
+ * - duplicate static attrs: last write wins (matches JS object semantics).
+ *
+ * These rules must stay in sync with the runtime patcher `patchAttr` in
+ * `packages/template/src/operations/attr.ts` (boolean attrs go through
+ * `isBooleanAttr`/`includeBooleanAttr`; aria-/data- fall through to the
+ * generic path which stringifies booleans) — drift between the two shows up
+ * as hydration/update mismatches.
  */
 export function serializeStaticAttrs(
   attrs: Array<{ name: string; value: string | boolean }>,
 ): string {
   // Merge className + class into a single class attribute
   const merged: Array<{ name: string; value: string | boolean }> = [];
+  // Maps attr name → its merged slot (first occurrence); later duplicates
+  // overwrite that slot in place.
+  const mergedIndexByName = new Map<string, number>();
   let classValue: string | undefined;
   for (const attr of attrs) {
     const name = propsToAttrMap[attr.name] ?? attr.name;
     if (name === 'class') {
       classValue = classValue ? `${classValue} ${attr.value}` : String(attr.value);
+      continue;
+    }
+    // All-static duplicate: later value replaces the earlier one.
+    const existing = mergedIndexByName.get(name);
+    if (existing !== undefined) {
+      merged[existing] = { name, value: attr.value };
     } else {
+      mergedIndexByName.set(name, merged.length);
       merged.push({ name, value: attr.value });
     }
   }
@@ -146,8 +173,18 @@ export function serializeStaticAttrs(
 
   return merged
     .map((attr) => {
-      if (attr.value === true) return ` ${attr.name}`;
-      return ` ${attr.name}="${escapeHTML(attr.value as string)}"`;
+      const { name, value } = attr;
+      if (isBoolean(value)) {
+        const isAriaOrData = startsWith(name, 'aria-') || startsWith(name, 'data-');
+        if (isAriaOrData) {
+          return ` ${name}="${value}"`;
+        }
+        if (isBooleanAttr(name)) {
+          return value ? ` ${name}` : '';
+        }
+        return value ? ` ${name}` : ` ${name}="false"`;
+      }
+      return ` ${name}="${escapeHTML(value)}"`;
     })
     .join('');
 }
@@ -183,16 +220,26 @@ export interface DynamicAttr {
   name: string;
   value: t.Expression;
   effectKind: 'static' | 'dynamic';
+  order: number;
+}
+
+export interface StaticAttr {
+  name: string;
+  value: string | boolean;
+  order: number;
+}
+
+export interface SpreadAttr {
+  value: t.Expression;
+  effectKind: 'static' | 'dynamic';
+  order: number;
 }
 
 export interface ParsedAttributes {
-  staticAttrs: Array<{ name: string; value: string | boolean }>;
+  staticAttrs: StaticAttr[];
   dynamicAttrs: DynamicAttr[];
-  spreadAttrs: Array<{ value: t.Expression; effectKind: 'static' | 'dynamic' }>;
+  spreadAttrs: SpreadAttr[];
 }
-
-type StaticAttr = ParsedAttributes['staticAttrs'][number];
-type SpreadAttr = ParsedAttributes['spreadAttrs'][number];
 
 interface OrderedAttribute<T> {
   attr: T;
@@ -244,13 +291,20 @@ function isSerializableStaticValue(
 /**
  * Serializes a static JSX style object into an inline CSS string.
  */
-function styleToString(style: Record<string, string | number>): string {
-  return Object.entries(style)
-    .map(([key, value]) => {
-      const kebabKey = key.replaceAll(/[A-Z]/g, (m) => `-${m.toLowerCase()}`);
-      return `${kebabKey}:${value}`;
-    })
-    .join(';');
+function styleToString(style: unknown): string | undefined {
+  const normalized = normalizeStyle(style);
+  if (!normalized) return undefined;
+  if (isString(normalized)) return normalized;
+
+  const parts: string[] = [];
+  for (const key in normalized) {
+    const value = normalized[key];
+    if (isString(value) || isNumber(value)) {
+      const prop = startsWith(key, '--') ? key : kebabCase(key);
+      parts.push(`${prop}:${value}`);
+    }
+  }
+  return parts.join(';');
 }
 
 /**
@@ -270,7 +324,7 @@ function createStaticAttr(
   order: number,
 ): OrderedAttribute<StaticAttr> {
   return {
-    attr: { name: attrName, value },
+    attr: { name: attrName, value, order },
     order,
     templateName: normalizeTemplateAttrName(attrName),
   };
@@ -289,6 +343,7 @@ function createDynamicAttr(
       name: attrName,
       value,
       effectKind,
+      order,
     },
     order,
     templateName: normalizeTemplateAttrName(attrName),
@@ -309,8 +364,10 @@ function resolveStaticExpressionValue(
   }
 
   let value = evaluated.value;
-  if (attrName === 'style' && isPlainObject(value)) {
-    value = styleToString(value as Record<string, string | number>);
+  if (attrName === 'style') {
+    const style = styleToString(value);
+    if (style === undefined) return undefined;
+    value = style;
   }
 
   if (isString(value) || isBoolean(value)) {
@@ -331,13 +388,19 @@ function parseExpressionAttribute(
   order: number,
   staticAttrs: Array<OrderedAttribute<StaticAttr>>,
   dynamicAttrs: Array<OrderedAttribute<DynamicAttr>>,
+  preserveValueTypes: boolean,
 ): void {
-  const expressionPath = attrPath.get('value.expression') as NodePath<t.Expression>;
-  const staticValue = resolveStaticExpressionValue(attrName, expressionPath);
+  // Component props must keep their ORIGINAL value type: folding
+  // `count={3}` into the HTML-attr string "3" changes what the component
+  // receives. Only native elements serialize to template HTML strings.
+  if (!preserveValueTypes) {
+    const expressionPath = attrPath.get('value.expression') as NodePath<t.Expression>;
+    const staticValue = resolveStaticExpressionValue(attrName, expressionPath);
 
-  if (staticValue !== undefined) {
-    staticAttrs.push(createStaticAttr(attrName, staticValue, order));
-    return;
+    if (staticValue !== undefined) {
+      staticAttrs.push(createStaticAttr(attrName, staticValue, order));
+      return;
+    }
   }
 
   const classified = classifyAttrValue(expression);
@@ -385,7 +448,11 @@ function finalizeParsedAttributes(
 /**
  * Splits JSX attributes into static, dynamic, and spread buckets.
  */
-export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes {
+export function parseAttributes(
+  path: NodePath<t.JSXElement>,
+  options: { preserveValueTypes?: boolean } = {},
+): ParsedAttributes {
+  const preserveValueTypes = options.preserveValueTypes === true;
   const staticAttrs: Array<OrderedAttribute<StaticAttr>> = [];
   const dynamicAttrs: Array<OrderedAttribute<DynamicAttr>> = [];
   const spreadAttrs: SpreadAttr[] = [];
@@ -401,6 +468,7 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
       spreadAttrs.push({
         value: attrPath.node.argument,
         effectKind: classifyAttrValue(attrPath.node.argument).kind,
+        order,
       });
       continue;
     }
@@ -428,7 +496,15 @@ export function parseAttributes(path: NodePath<t.JSXElement>): ParsedAttributes 
         continue;
       }
 
-      parseExpressionAttribute(attrPath, attrName, expression, order, staticAttrs, dynamicAttrs);
+      parseExpressionAttribute(
+        attrPath,
+        attrName,
+        expression,
+        order,
+        staticAttrs,
+        dynamicAttrs,
+        preserveValueTypes,
+      );
     }
   }
 

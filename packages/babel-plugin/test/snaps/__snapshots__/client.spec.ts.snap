@@ -233,8 +233,8 @@ const _t$ = _template$("<tbody>");
       return data.value;
     },
     children: item => Row(Object.assign({}, {
-      "other": "1",
-      "item": item
+      "item": item,
+      "other": 1
     }, {
       other: 2
     })),
@@ -253,7 +253,7 @@ const element = _t$();"
 exports[`should work with jsx client transform > should work with concurrent mode 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _template$("<div>Concurrent Mode Content");
-const _t$ = _template$("<div data-concurrent>");
+const _t$ = _template$("<div data-concurrent=\\"true\\">");
 const ConcurrentMode = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -439,7 +439,7 @@ exports[`should work with jsx client transform > should work with error boundari
 "import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$3 = _template$("<div>Error occurred!");
 const _t$2 = _template$("<div>Protected Content");
-const _t$ = _template$("<div data-error-boundary><!><!>");
+const _t$ = _template$("<div data-error-boundary=\\"true\\"><!><!>");
 const ErrorBoundary = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -474,7 +474,7 @@ exports[`should work with jsx client transform > should work with forwardRef and
 "import { createComponent as _createComponent$ } from "essor";
 const ref = useRef();
 const element = _createComponent$(ForwardRefComponent, {
-  value: "42",
+  value: 42,
   get ref() {
     return ref;
   }
@@ -539,7 +539,7 @@ const element = _createComponent$(Head, {
 
 exports[`should work with jsx client transform > should work with lazy components 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _template$("<div data-lazy>");
+const _t$ = _template$("<div data-lazy=\\"true\\">");
 const LazyComponent = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -590,7 +590,7 @@ const MemoComponent = __props => (() => {
 MemoComponent._memo = true;
 MemoComponent._compare = (prev, next) => prev.value === next.value;
 const element = _createComponent$(MemoComponent, {
-  value: "42"
+  value: 42
 });"
 `;
 
@@ -620,11 +620,6 @@ const element = _createComponent$(ThemeContext.Provider, {
   value: "dark",
   get children() {
     return [_createComponent$(UserContext.Provider, {
-      v3: true,
-      v4: false,
-      v5: "1",
-      v6: "1.1",
-      v7: "1",
       get value() {
         return {
           name: 'John'
@@ -632,6 +627,11 @@ const element = _createComponent$(ThemeContext.Provider, {
       },
       v1: undefined,
       v2: null,
+      v3: true,
+      v4: false,
+      v5: 1,
+      v6: 1.1,
+      v7: '1',
       get v8() {
         return Symbol('1');
       },
@@ -680,11 +680,11 @@ const Parent = () => (() => {
   const _n$4 = _next$(_n$3, 1);
   _insert$(_root$2, _createComponent$(Child, {
     name: "John",
-    age: "25"
+    age: 25
   }), _n$3);
   _insert$(_root$2, _createComponent$(Child, {
     name: "Jane",
-    age: "23"
+    age: 23
   }), _n$4);
   return _root$2;
 })();"
@@ -769,7 +769,7 @@ const element = _t$();"
 exports[`should work with jsx client transform > should work with strict mode 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$2 = _template$("<div>Strict Mode Content");
-const _t$ = _template$("<div data-strict>");
+const _t$ = _template$("<div data-strict=\\"true\\">");
 const StrictMode = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -826,7 +826,7 @@ const element = _createComponent$(ErrorBoundary, {
 exports[`should work with jsx client transform > should work with suspense and lazy loading 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
 const _t$2 = _template$("<div>Loading...");
-const _t$ = _template$("<div data-lazy>");
+const _t$ = _template$("<div data-lazy=\\"true\\">");
 const LazyComponent = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -852,7 +852,7 @@ exports[`should work with jsx client transform > should work with suspense bound
 "import { template as _template$, child as _child$, next as _next$, insert as _insert$, createComponent as _createComponent$, Suspense as _Suspense$ } from "essor";
 const _t$3 = _template$("<div>Loading...");
 const _t$2 = _template$("<div>Content");
-const _t$ = _template$("<div data-suspense><!><!>");
+const _t$ = _template$("<div data-suspense=\\"true\\"><!><!>");
 const Suspense = __props => (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
@@ -880,9 +880,9 @@ const props = {
 const otherProps = {
   props: "other"
 };
-const element = _createComponent$(Component, Object.assign({}, {
+const element = _createComponent$(Component, Object.assign({}, props, {
   other: "other"
-}, props, otherProps));"
+}, otherProps));"
 `;
 
 exports[`should work with jsx client transform > transforms JSX element with JSX fragment 1`] = `

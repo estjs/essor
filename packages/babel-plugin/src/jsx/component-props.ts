@@ -11,6 +11,9 @@ export interface BuildComponentPropsOptions {
 }
 
 type ComponentPropNode = t.ObjectMethod | t.ObjectProperty;
+type OrderedPart =
+  | { type: 'prop'; order: number; sequence: number; prop: IRDynamicAttr }
+  | { type: 'spread'; order: number; sequence: number; spread: IRSpread };
 
 /**
  * Creates the object key used for a component prop.
@@ -70,20 +73,44 @@ function composePropsExpression(
     return t.objectExpression(props.map((p) => createPropNode(p.name, p.value, p.kind, options)));
   }
 
-  // With spreads: interleave props and spreads in order
-  // We create Object.assign({}, propsObj, spread1, propsObj2, spread2, ...)
-  // For simplicity, put all props first then spreads
+  const ordered: OrderedPart[] = [
+    ...props.map((prop, sequence) => ({
+      type: 'prop' as const,
+      order: prop.order,
+      sequence,
+      prop,
+    })),
+    ...spreads.map((spread, sequence) => ({
+      type: 'spread' as const,
+      order: spread.order,
+      sequence,
+      spread,
+    })),
+  ].sort((a, b) => a.order - b.order || a.sequence - b.sequence);
+
   const parts: t.Expression[] = [];
-  const propNodes = props.map((p) => createPropNode(p.name, p.value, p.kind, options));
+  let propNodes: ComponentPropNode[] = [];
 
-  if (propNodes.length > 0) {
+  const flushProps = (): void => {
+    if (propNodes.length === 0) return;
     parts.push(t.objectExpression(propNodes));
-  }
+    propNodes = [];
+  };
 
-  for (const spread of spreads) {
-    parts.push(cloneValue(spread.value, options.cloneValues));
+  for (const entry of ordered) {
+    if (entry.type === 'prop') {
+      propNodes.push(createPropNode(entry.prop.name, entry.prop.value, entry.prop.kind, options));
+      continue;
+    }
+    flushProps();
+    parts.push(cloneValue(entry.spread.value, options.cloneValues));
   }
+  flushProps();
 
+  return composeAssignParts(parts);
+}
+
+function composeAssignParts(parts: t.Expression[]): t.Expression {
   if (parts.length === 0) return t.objectExpression([]);
   if (parts.length === 1) return parts[0];
 

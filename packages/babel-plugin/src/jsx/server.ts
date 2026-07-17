@@ -1,16 +1,28 @@
 import { types as t } from '@babel/core';
-import { HYDRATION_ANCHOR_ATTR, isNull, isString } from '@estjs/shared';
+import {
+  HYDRATION_ANCHOR_ATTR,
+  HYDRATION_RANGE_START_PREFIX,
+  isNull,
+  isString,
+} from '@estjs/shared';
 import { type CompileContext, getCompileContext, registerDeclaration, useImport } from '../context';
 import { serializeStaticAttrs } from '../ast-utils';
 import {
+  type IRBind,
   type IRComponent,
+  type IRDynamicAttr,
   type IRElement,
   type IRFor,
   type IRNode,
+  type IRSpread,
   IRType,
-  hasDynamicBoundary,
+  getDynamicAnchorKind,
+  getDynamicWholeTextParts,
+  getStaticWholeText,
 } from './ir';
 import { buildComponentInvocation, buildForCall, renderChildExpressions } from './shared';
+import { serializeStaticWholeText } from './text-content';
+import { type BindTuple, unwrapBindTuple } from './emitters';
 
 const SERVER_TEXT_ESCAPES: Record<string, string> = {
   '&': '&amp;',
@@ -24,11 +36,6 @@ interface SSRBindElementContext {
   type?: t.Expression | null;
 }
 
-interface ServerBindExpression {
-  value: t.Expression;
-  modifiers: t.Expression | null;
-}
-
 interface ServerElementOptions {
   prependAttrExprs?: t.Expression[];
 }
@@ -40,24 +47,9 @@ function escapeServerTemplateText(value: string): string {
   return value.replaceAll(serverTextEscapeRE, (char) => SERVER_TEXT_ESCAPES[char] ?? char);
 }
 
-function unwrapServerBindValue(value: t.Expression): ServerBindExpression {
-  if (
-    t.isArrayExpression(value) &&
-    value.elements.length === 2 &&
-    value.elements[0] != null &&
-    !t.isSpreadElement(value.elements[0])
-  ) {
-    return {
-      value: value.elements[0] as t.Expression,
-      modifiers: value.elements[1] as t.Expression,
-    };
-  }
-  return { value, modifiers: null };
-}
-
-function findBind(node: IRElement, name: string): ServerBindExpression | null {
+function findBind(node: IRElement, name: string): BindTuple | null {
   const bind = node.binds.find((entry) => entry.name === name);
-  return bind ? unwrapServerBindValue(bind.value) : null;
+  return bind ? unwrapBindTuple(bind.value, name) : null;
 }
 
 function getStaticStringAttr(node: IRElement, name: string): string | null {
@@ -219,16 +211,9 @@ function generateServerNode(
     case IRType.TEXT:
       return t.stringLiteral(node.value);
     case IRType.EXPRESSION: {
-      // `props.children` passthrough: already-safe HTML from a child render(),
-      // so it flows in verbatim (no escape).
-      if (node.asRawChildren) {
-        return t.cloneNode(node.value, true);
-      }
-      // Untrusted child text → escape(). But nested JSX inside the expression
-      // has already been compiled to ssr()/ssrComponent() calls, which
-      // return already-safe SSR nodes/HTML; escaping those would double-escape
-      // valid markup. `&&` keeps its condition raw; other expressions are
-      // escaped as a whole so JS short-circuit semantics stay intact.
+      // Native child text is escaped at its rendering position. Component
+      // expression children take a separate path below so the receiving
+      // component owns this escape boundary.
       return escapeChildExpression(t.cloneNode(node.value, true));
     }
     case IRType.COMPONENT:
@@ -238,6 +223,23 @@ function generateServerNode(
     case IRType.ELEMENT:
       return generateServerElement(node, ctx, withHydrationKey);
   }
+}
+
+function hydrationRangeStart(kind: 'comment' | 'element' | 'tail', slotIndex: number): string {
+  const boundaryCode = kind === 'comment' ? 'c' : kind === 'element' ? 'e' : 't';
+  return `<!--${HYDRATION_RANGE_START_PREFIX}:${boundaryCode}:${slotIndex}-->`;
+}
+
+/**
+ * Component expression children cross the props boundary unescaped. Their
+ * receiving `{props.children}` position applies escape(), while nested JSX is
+ * still compiled to a trusted SSR node (and non-leaf children are thunked by
+ * renderChildExpressions).
+ */
+function generateServerComponentChild(node: IRNode, ctx: CompileContext): t.Expression {
+  return node.type === IRType.EXPRESSION
+    ? t.cloneNode(node.value, true)
+    : generateServerNode(node, ctx);
 }
 
 /**
@@ -250,7 +252,7 @@ function generateServerNode(
 function generateServerComponent(node: IRComponent, ctx: CompileContext): t.Expression {
   const renderedChildren = renderChildExpressions(
     node.children,
-    (child) => generateServerNode(child, ctx),
+    (child) => generateServerComponentChild(child, ctx),
     { thunkWrapNonLeaf: true },
   );
   return buildComponentInvocation(node.tag, node, {
@@ -281,33 +283,53 @@ function generateServerElement(
   options: ServerElementOptions = {},
 ): t.Expression {
   const dynamicAttrExprs: t.Expression[] = [...(options.prependAttrExprs ?? [])];
+
+  // Emit attr/spread/bind serializer calls in SOURCE order so the last write
+  // for a colliding attribute matches the client runtime.
+  type ServerAttrOperation =
+    | { kind: 'attr'; order: number; attr: IRDynamicAttr }
+    | { kind: 'spread'; order: number; spread: IRSpread }
+    | { kind: 'bind'; order: number; bind: IRBind };
+
+  const attrOperations: ServerAttrOperation[] = [];
   for (const attr of node.dynamicAttrs) {
-    let expr: t.Expression;
-    if (attr.name === 'class') {
-      expr = t.callExpression(useImport('ssrClass'), [t.cloneNode(attr.value, true)]);
-    } else if (attr.name === 'style') {
-      expr = t.callExpression(useImport('ssrStyle'), [t.cloneNode(attr.value, true)]);
-    } else {
-      expr = t.callExpression(useImport('ssrAttr'), [
-        t.stringLiteral(attr.name),
-        t.cloneNode(attr.value, true),
-      ]);
-    }
-    dynamicAttrExprs.push(expr);
+    attrOperations.push({ kind: 'attr', order: attr.order, attr });
   }
   for (const spread of node.spreads) {
-    dynamicAttrExprs.push(
-      t.callExpression(useImport('ssrSpread'), [t.cloneNode(spread.value, true)]),
-    );
+    attrOperations.push({ kind: 'spread', order: spread.order, spread });
   }
-
-  // bind:* — render initial value into HTML so the markup matches what the
-  // client will eventually show after hydration. Unwraps the tuple form
-  // `[signal, modifiers]` so modifiers like { trim } are honoured server-side.
   for (const bind of node.binds) {
-    const { value, modifiers } = unwrapServerBindValue(bind.value);
-    const expr = createSSRBindExpression(node, bind.name, value, modifiers);
-    if (expr) dynamicAttrExprs.push(expr);
+    attrOperations.push({ kind: 'bind', order: bind.order, bind });
+  }
+  attrOperations.sort((a, b) => a.order - b.order);
+
+  for (const op of attrOperations) {
+    if (op.kind === 'attr') {
+      const attr = op.attr;
+      let expr: t.Expression;
+      if (attr.name === 'class') {
+        expr = t.callExpression(useImport('ssrClass'), [t.cloneNode(attr.value, true)]);
+      } else if (attr.name === 'style') {
+        expr = t.callExpression(useImport('ssrStyle'), [t.cloneNode(attr.value, true)]);
+      } else {
+        expr = t.callExpression(useImport('ssrAttr'), [
+          t.stringLiteral(attr.name),
+          t.cloneNode(attr.value, true),
+        ]);
+      }
+      dynamicAttrExprs.push(expr);
+    } else if (op.kind === 'spread') {
+      dynamicAttrExprs.push(
+        t.callExpression(useImport('ssrSpread'), [t.cloneNode(op.spread.value, true)]),
+      );
+    } else {
+      // bind:* — render initial value into HTML so the markup matches what
+      // the client will eventually show after hydration. Unwraps the tuple
+      // form `[signal, modifiers]`.
+      const { value, modifiers } = unwrapBindTuple(op.bind.value, op.bind.name);
+      const expr = createSSRBindExpression(node, op.bind.name, value, modifiers);
+      if (expr) dynamicAttrExprs.push(expr);
+    }
   }
 
   const templates: string[] = [];
@@ -318,6 +340,7 @@ function generateServerElement(
       : [...node.staticAttrs, { name: HYDRATION_ANCHOR_ATTR, value: String(staticIndex) }];
   const attrs = serializeStaticAttrs(staticAttrs);
   const textareaValueBind = node.tag === 'textarea' ? findBind(node, 'value') : null;
+  const wholeTextParts = getDynamicWholeTextParts(node);
 
   let currentStr = `<${node.tag}`;
 
@@ -341,6 +364,22 @@ function generateServerElement(
         args.push(t.cloneNode(textareaValueBind.modifiers, true));
       }
       expressions.push(t.callExpression(useImport('ssrTextValue'), args));
+    } else if (wholeTextParts) {
+      templates.push(currentStr);
+      currentStr = '';
+      const values = wholeTextParts.map((part) => {
+        if (part.type === IRType.TEXT) return t.stringLiteral(part.value);
+        return t.cloneNode(part.value, true);
+      });
+      expressions.push(
+        t.callExpression(useImport('ssrTextContent'), [
+          t.stringLiteral(node.tag),
+          t.arrayExpression(values),
+        ]),
+      );
+    } else if (node.wholeTextParts) {
+      const text = getStaticWholeText(node.wholeTextParts);
+      currentStr += serializeStaticWholeText(node.tag, text);
     } else {
       let markerIndex = 0;
       let pendingAnchorIndex: number | undefined;
@@ -354,11 +393,12 @@ function generateServerElement(
           child.type === IRType.COMPONENT ||
           child.type === IRType.FOR
         ) {
-          const marker = hasDynamicBoundary(node.children, i);
+          const anchorKind = getDynamicAnchorKind(node.children, i, 'server');
           const slotIndex = markerIndex++;
+          currentStr += hydrationRangeStart(anchorKind, slotIndex);
           templates.push(currentStr);
-          currentStr = marker ? `<!--${slotIndex}-->` : '';
-          if (!marker && node.children[i + 1]?.type === IRType.ELEMENT) {
+          currentStr = anchorKind === 'comment' ? `<!--${slotIndex}-->` : '';
+          if (anchorKind === 'element') {
             pendingAnchorIndex = slotIndex;
           }
           expressions.push(generateServerNode(child, ctx));
@@ -424,7 +464,7 @@ function generateServerForBody(node: IRNode, ctx: CompileContext): t.Expression 
 function generateServerInlineComponent(node: IRComponent, ctx: CompileContext): t.Expression {
   const renderedChildren = renderChildExpressions(
     node.children,
-    (child) => generateServerNode(child, ctx),
+    (child) => generateServerComponentChild(child, ctx),
     { thunkWrapNonLeaf: true },
   );
   return buildComponentInvocation(node.tag, node, {
@@ -454,6 +494,11 @@ function buildStaticServerHTML(node: IRElement, staticIndex?: number): string | 
   }
 
   let html = `<${node.tag}${attrs}>`;
+  if (node.wholeTextParts) {
+    if (node.wholeTextParts.some((part) => part.type !== IRType.TEXT)) return null;
+    const text = getStaticWholeText(node.wholeTextParts);
+    return `${html}${serializeStaticWholeText(node.tag, text)}</${node.tag}>`;
+  }
   for (const child of node.children) {
     if (child.type === IRType.TEXT) {
       html += escapeServerTemplateText(child.value);

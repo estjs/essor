@@ -17,9 +17,13 @@ import {
   type IRExpression,
   type IRFor,
   type IRNode,
+  type IRRef,
   type IRSpread,
   IRType,
-  hasDynamicBoundary,
+  type IRWholeTextPart,
+  getDynamicAnchorKind,
+  getDynamicWholeTextParts,
+  getStaticWholeText,
 } from './ir';
 import {
   createBindingSetter,
@@ -27,8 +31,10 @@ import {
   createPatchCall,
   createRefExpression,
   createSpreadEffectKey,
+  unwrapBindTuple,
 } from './emitters';
 import { buildComponentInvocation, buildForCall, renderChildExpressions } from './shared';
+import { serializeStaticWholeText } from './text-content';
 import type { RenderMode } from '../options';
 
 // ─── Internal Constants ───────────────────
@@ -53,6 +59,7 @@ interface FlatNode {
   childIndex: number; // position in parent's DOM children (0-based)
   domChildIndex: number; // logical DOM position used for sibling navigation
   needsRef: boolean;
+  wholeTextChildren?: IRWholeTextPart[];
 }
 
 interface TemplateOptions {
@@ -110,23 +117,6 @@ function closeTag(
     : '';
 }
 
-function getDynamicAnchorKind(
-  children: IRNode[],
-  index: number,
-  mode: RenderMode,
-): 'comment' | 'element' | 'tail' {
-  if ((mode === 'client' || mode === 'hydrate') && !hasDynamicBoundary(children, index)) {
-    const next = children[index + 1];
-    if (mode === 'hydrate' && next?.type === IRType.ELEMENT) {
-      return 'element';
-    }
-    if (!next) {
-      return 'tail';
-    }
-  }
-  return 'comment';
-}
-
 // Scans from the end to find the last element whose closing tag can be omitted.
 // A trailing dynamic node is skippable only when getDynamicAnchorKind returns
 // 'tail' (i.e. it is the last child and has no following sibling that would
@@ -170,7 +160,6 @@ function buildTemplateAndFlatten(
     element: IRElement,
     parentId: number,
     childIndex: number,
-    domChildIndexParam = childIndex,
     forcedStaticIndex?: number,
     isLastElement = false,
     hasClosingParent = false,
@@ -194,7 +183,7 @@ function buildTemplateAndFlatten(
         staticIndex: forcedStaticIndex,
         parentId,
         childIndex,
-        domChildIndex: domChildIndexParam,
+        domChildIndex: childIndex,
         needsRef: hasOwnEffects(element),
       });
       return;
@@ -204,6 +193,7 @@ function buildTemplateAndFlatten(
     template += openTag(element, attrs);
 
     const hasDynamicChildren = element.children.some(isDynamicChild);
+    const wholeTextChildren = getDynamicWholeTextParts(element);
 
     nodes.push({
       id: myId,
@@ -212,15 +202,27 @@ function buildTemplateAndFlatten(
       staticIndex: forcedStaticIndex,
       parentId,
       childIndex,
-      domChildIndex: domChildIndexParam,
+      domChildIndex: childIndex,
       needsRef: hasOwnEffects(element) || hasDynamicChildren,
+      wholeTextChildren,
     });
+
+    if (wholeTextChildren) {
+      template += closeTag(element, isLastElement, hasClosingParent, options);
+      return;
+    }
+
+    if (element.wholeTextParts) {
+      const text = getStaticWholeText(element.wholeTextParts);
+      template += serializeStaticWholeText(element.tag, text);
+      template += closeTag(element, isLastElement, hasClosingParent, options);
+      return;
+    }
 
     let templateChildIndex = 0;
     let domChildIndex = 0;
     let markerIndex = 0;
     let pendingAnchorIndex: number | undefined;
-    let pendingAnchorNode: FlatNode | undefined;
     const lastElementIndex = findLastOmittableElementIndex(element.children, mode);
     for (let i = 0; i < element.children.length; i++) {
       const child = element.children[i];
@@ -237,34 +239,28 @@ function buildTemplateAndFlatten(
           });
           break;
         case IRType.ELEMENT:
-          if (pendingAnchorNode) {
-            pendingAnchorNode.domChildIndex = domChildIndex;
-          }
           visit(
             child,
             myId,
             templateChildIndex++,
-            domChildIndex,
             pendingAnchorIndex,
             i === lastElementIndex,
             closes,
           );
           domChildIndex++;
           pendingAnchorIndex = undefined;
-          pendingAnchorNode = undefined;
           break;
         case IRType.EXPRESSION:
         case IRType.COMPONENT:
         case IRType.FOR: {
           const anchorKind = getDynamicAnchorKind(element.children, i, mode);
           const index = markerIndex++;
-          let anchorNode: FlatNode | undefined;
           if (anchorKind === 'comment') {
             template += '<!>';
           } else if (anchorKind === 'element') {
             pendingAnchorIndex = index;
           }
-          anchorNode = {
+          nodes.push({
             id: nextId++,
             kind: 'anchor',
             dynamicChild: child,
@@ -274,15 +270,11 @@ function buildTemplateAndFlatten(
             childIndex: templateChildIndex,
             domChildIndex,
             needsRef: true,
-          };
-          nodes.push(anchorNode);
+          });
           if (anchorKind === 'comment') {
             templateChildIndex++;
             domChildIndex++;
           } else {
-            if (anchorKind === 'element') {
-              pendingAnchorNode = anchorNode;
-            }
             domChildIndex++;
           }
           break;
@@ -293,7 +285,7 @@ function buildTemplateAndFlatten(
     template += closeTag(element, isLastElement, hasClosingParent, options);
   }
 
-  visit(root, -1, 0, 0, undefined, true, false);
+  visit(root, -1, 0, undefined, true, false);
   return { template, nodes };
 }
 
@@ -329,6 +321,14 @@ function buildStaticTemplateString(node: IRNode, mode: RenderMode): string {
         if (current.selfClosing) return selfClosingTag(current, attrs);
         let html = openTag(current, attrs);
         const closes = shouldCloseTag(current, isLastElement, hasClosingParent, options);
+        if (current.wholeTextParts) {
+          const text = getStaticWholeText(current.wholeTextParts);
+          return (
+            html +
+            serializeStaticWholeText(current.tag, text) +
+            closeTag(current, isLastElement, hasClosingParent, options)
+          );
+        }
         const lastElementIndex = findLastOmittableElementIndex(current.children, mode);
         for (let i = 0; i < current.children.length; i++) {
           const child = current.children[i];
@@ -536,6 +536,7 @@ interface PendingMemoPatch {
   target: t.Expression;
   attrName: string;
   value: t.Expression;
+  isSVG?: boolean;
 }
 
 type NodeVarMap = Map<number, t.Identifier>;
@@ -619,6 +620,14 @@ function emitElementEffects(
   }
 }
 
+/** One element operation tagged with its source order for author-order emission. */
+type ElementOperation =
+  | { kind: 'event'; order: number; event: IREvent }
+  | { kind: 'ref'; order: number; ref: IRRef }
+  | { kind: 'bind'; order: number; bind: IRBind }
+  | { kind: 'attr'; order: number; attr: IRDynamicAttr }
+  | { kind: 'spread'; order: number; spread: IRSpread };
+
 function emitElementEffect(
   element: IRElement,
   target: t.Expression,
@@ -626,24 +635,56 @@ function emitElementEffect(
   body: t.Statement[],
   pendingMemoPatches: PendingMemoPatch[],
 ): void {
+  // Emit operations in author (source) order: the attribute order decides who
+  // wins when a spread and an explicit attr collide, and it must match the SSR
+  // serializer's order. Known boundary: static attrs patch the
+  // element in place here, while dynamic attrs are batched into the merged
+  // memoEffect below — when a static write comes AFTER a dynamic one for the
+  // same attr in source order, the first frame may still apply them in the
+  // reverse order.
+  const operations: ElementOperation[] = [];
+
   for (const event of element.events) {
-    emitEvent(event, target, body);
+    operations.push({ kind: 'event', order: event.order, event });
   }
-
   if (element.ref) {
-    body.push(t.expressionStatement(createRefExpression(target, element.ref.value)));
+    operations.push({
+      kind: 'ref',
+      order: element.ref.order,
+      ref: element.ref,
+    });
   }
-
   for (const bind of element.binds) {
-    emitBind(bind, target, body);
+    operations.push({ kind: 'bind', order: bind.order, bind });
   }
-
   for (const attr of element.dynamicAttrs) {
-    emitDynamicAttr(attr, target, body, state, pendingMemoPatches);
+    operations.push({ kind: 'attr', order: attr.order, attr });
+  }
+  for (const spread of element.spreads) {
+    operations.push({ kind: 'spread', order: spread.order, spread });
   }
 
-  for (const spread of element.spreads) {
-    emitSpread(spread, target, body, state, pendingMemoPatches);
+  // Stable sort keeps same-order entries in push order.
+  operations.sort((a, b) => a.order - b.order);
+
+  for (const op of operations) {
+    switch (op.kind) {
+      case 'event':
+        emitEvent(op.event, target, body);
+        break;
+      case 'ref':
+        body.push(t.expressionStatement(createRefExpression(target, op.ref.value)));
+        break;
+      case 'bind':
+        emitBind(op.bind, target, body);
+        break;
+      case 'attr':
+        emitDynamicAttr(op.attr, target, body, state, pendingMemoPatches, element.isSVG);
+        break;
+      case 'spread':
+        emitSpread(op.spread, target, body, state, pendingMemoPatches, element.isSVG);
+        break;
+    }
   }
 }
 
@@ -654,6 +695,24 @@ function emitDynamicChildInserts(
   body: t.Statement[],
 ): void {
   for (const flatNode of flatNodes) {
+    if (flatNode.kind === 'element' && flatNode.wholeTextChildren) {
+      const parent = varMap.get(flatNode.id);
+      if (!parent) continue;
+      const values = flatNode.wholeTextChildren.map((child) => {
+        if (child.type === IRType.TEXT) return t.stringLiteral(child.value);
+        return t.cloneNode(child.value, true);
+      });
+      body.push(
+        t.expressionStatement(
+          t.callExpression(useImport('insertTextContent'), [
+            parent,
+            t.arrowFunctionExpression([], t.arrayExpression(values)),
+          ]),
+        ),
+      );
+      continue;
+    }
+
     if (flatNode.kind !== 'anchor' || !flatNode.dynamicChild) continue;
 
     const parent = varMap.get(flatNode.parentId);
@@ -661,8 +720,25 @@ function emitDynamicChildInserts(
     if (!parent) continue;
     if (flatNode.anchorKind !== 'tail' && !anchor) continue;
 
+    let range: t.Identifier | undefined;
+    if (state.mode === 'hydrate' && flatNode.anchorKind) {
+      range = genUid('hr$');
+      body.push(
+        t.variableDeclaration('const', [
+          t.variableDeclarator(
+            range,
+            t.callExpression(useImport('hydrationRange'), [
+              parent,
+              t.numericLiteral(flatNode.markerIndex ?? 0),
+              t.stringLiteral(flatNode.anchorKind),
+            ]),
+          ),
+        ]),
+      );
+    }
+
     body.push(
-      t.expressionStatement(createInsertCall(parent, flatNode.dynamicChild, anchor, state)),
+      t.expressionStatement(createInsertCall(parent, flatNode.dynamicChild, anchor, state, range)),
     );
   }
 }
@@ -672,17 +748,20 @@ function createInsertCall(
   child: IRExpression | IRComponent | IRFor,
   anchor: t.Expression | undefined,
   state: GenState,
+  range?: t.Expression,
 ): t.CallExpression {
   if (child.type === IRType.FOR) {
     const insert = useImport('insert');
-    const args = [parent, generateFor(child, state)];
-    if (anchor) args.push(anchor);
+    const args: t.Expression[] = [parent, generateFor(child, state)];
+    if (range) args.push(anchor ?? t.identifier('undefined'), range);
+    else if (anchor) args.push(anchor);
     return t.callExpression(insert, args);
   }
 
   const childExpression = createDynamicChildExpression(child, state);
-  const args = [parent, childExpression];
-  if (anchor) args.push(anchor);
+  const args: t.Expression[] = [parent, childExpression];
+  if (range) args.push(anchor ?? t.identifier('undefined'), range);
+  else if (anchor) args.push(anchor);
   return t.callExpression(useImport('insert'), args);
 }
 
@@ -729,54 +808,19 @@ function emitEvent(event: IREvent, target: t.Expression, body: t.Statement[]): v
   }
 }
 
-// Modifier whitelist — keep in sync with `BindModifiers` in `packages/template/src/binding.ts`.
-const ALLOWED_BIND_MODIFIERS = new Set(['trim', 'number', 'lazy']);
-
-/**
- * Validates a tuple `bind:` modifier object literal. Unknown keys → throw at
- * compile time so typos like `{ trimm: true }` are caught instead of silently
- * ignored.
- */
-function validateBindModifiers(modifiers: t.Expression, bindName: string): void {
-  if (!t.isObjectExpression(modifiers)) return; // dynamic — can't validate
-  for (const prop of modifiers.properties) {
-    if (!t.isObjectProperty(prop) || prop.computed) continue;
-    const key = t.isIdentifier(prop.key)
-      ? prop.key.name
-      : t.isStringLiteral(prop.key)
-        ? prop.key.value
-        : null;
-    if (key && !ALLOWED_BIND_MODIFIERS.has(key)) {
-      throw new Error(
-        `[essor] Unknown bind:${bindName} modifier "${key}". Allowed: ${[...ALLOWED_BIND_MODIFIERS].join(', ')}.`,
-      );
-    }
-  }
-}
-
 /**
  * Emits bind.
  */
 function emitBind(bind: IRBind, target: t.Expression, body: t.Statement[]): void {
-  // Tuple syntax: bind:value={[signal, { trim: true }]}
-  let valueExpr = bind.value;
-  let modifiersArg: t.Expression | null = null;
-  if (
-    t.isArrayExpression(bind.value) &&
-    bind.value.elements.length === 2 &&
-    bind.value.elements[0] != null &&
-    !t.isSpreadElement(bind.value.elements[0])
-  ) {
-    valueExpr = bind.value.elements[0] as t.Expression;
-    modifiersArg = bind.value.elements[1] as t.Expression;
-    validateBindModifiers(modifiersArg, bind.name);
-  }
+  // Tuple syntax: bind:value={[signal, { trim: true }]} — shared unwrap also
+  // validates modifier keys.
+  const { value: valueExpr, modifiers: modifiersArg } = unwrapBindTuple(bind.value, bind.name);
 
   const args: t.Expression[] = [
     target,
     t.stringLiteral(bind.name),
     t.arrowFunctionExpression([], t.cloneNode(valueExpr)),
-    createBindingSetter(valueExpr, '_v$'),
+    createBindingSetter(valueExpr, bind.name),
   ];
   if (modifiersArg) args.push(t.cloneNode(modifiersArg));
 
@@ -792,6 +836,7 @@ function emitDynamicAttr(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -801,6 +846,7 @@ function emitDynamicAttr(
     body,
     () => createEffectKey(attr.name, state.effectIndex++),
     pendingMemoPatches,
+    isSVG,
   );
 }
 
@@ -813,6 +859,7 @@ function emitSpread(
   body: t.Statement[],
   state: GenState,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   emitPatchOrEffect(
     target,
@@ -822,11 +869,17 @@ function emitSpread(
     body,
     () => createSpreadEffectKey(state.effectIndex++),
     pendingMemoPatches,
+    isSVG,
   );
 }
 
 /**
  * Emits patch or effect.
+ *
+ * Static-kind values patch the element immediately (in emission order);
+ * dynamic-kind values are deferred into the merged memoEffect batch. This
+ * split means static and dynamic writes to the SAME attribute do not fully
+ * interleave by source order on the first frame (see emitElementEffect).
  */
 function emitPatchOrEffect(
   target: t.Expression,
@@ -836,9 +889,12 @@ function emitPatchOrEffect(
   body: t.Statement[],
   getEffectKey: () => string,
   pendingMemoPatches: PendingMemoPatch[],
+  isSVG: boolean,
 ): void {
   if (kind === 'static') {
-    body.push(t.expressionStatement(createPatchCall(useImport, target, attrName, value)));
+    body.push(
+      t.expressionStatement(createPatchCall(useImport, target, attrName, value, { isSVG })),
+    );
     return;
   }
 
@@ -847,6 +903,7 @@ function emitPatchOrEffect(
     target,
     attrName,
     value,
+    isSVG,
   });
 }
 
@@ -879,6 +936,7 @@ function createMemoPatchStatements(
   const updateCall = createPatchCall(useImport, patch.target, patch.attrName, valueId, {
     previousValue: effectState,
     nextValue: t.assignmentExpression('=', effectState, valueId),
+    isSVG: patch.isSVG,
   });
 
   return [
