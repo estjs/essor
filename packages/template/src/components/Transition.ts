@@ -200,6 +200,30 @@ export function resolveDuration(
   return d[dir];
 }
 
+/**
+ * Element → owning Component for component slot children (TR-02). When a
+ * Component child is mounted just to pluck its root Element, removal of that
+ * element must go through `Component.destroy()` — a bare `removeChild` would
+ * leak the component's scope, effects, refs and listeners.
+ *
+ * Single-owner assumption: each root Element maps to at most ONE owning
+ * Component. That holds because validateSlot only registers elements it just
+ * mounted itself; if two Transitions ever shared a slot Component the later
+ * registration would silently overwrite the earlier one.
+ */
+const slotComponentOwners = new WeakMap<Element, Component>();
+
+/** Remove a transition slot element, destroying its owning Component if any. */
+function removeSlotElement(el: Element): void {
+  const owner = slotComponentOwners.get(el);
+  if (owner) {
+    slotComponentOwners.delete(el);
+    owner.destroy();
+    return;
+  }
+  if (el.parentNode) el.parentNode.removeChild(el);
+}
+
 function validateSlot(value: unknown): Element | null {
   if (value == null || value === false) return null;
   if (isArray(value)) {
@@ -213,9 +237,8 @@ function validateSlot(value: unknown): Element | null {
   if (value instanceof Element) return value;
   // A Component instance was passed (e.g. `<Transition><EFoo/></Transition>`):
   // mount it into a detached fragment so we can pluck its rendered root
-  // Element, then return that. The Component owns its scope/cleanup, so
-  // its disposal will happen via the outer mount tree just like a normal
-  // child. We only need the DOM node for class manipulation / events.
+  // Element, then return that. The Component is registered as the element's
+  // owner (see slotComponentOwners) so removal destroys it properly.
   //
   // Note: Transition can only animate a SINGLE root element. If the child
   // component renders multiple roots (fragment-style return), only the
@@ -235,7 +258,10 @@ function validateSlot(value: unknown): Element | null {
       );
     }
     const first = comp.firstChild;
-    if (first instanceof Element) return first;
+    if (first instanceof Element) {
+      slotComponentOwners.set(first, comp);
+      return first;
+    }
     if (__DEV__) {
       warn('[Transition] child component did not render an Element root.');
     }
@@ -477,7 +503,7 @@ export function Transition(props: TransitionProps): Node {
       leavingEl = outgoing;
       const captured = outgoing;
       leave(captured, () => {
-        if (captured.parentNode) captured.parentNode.removeChild(captured);
+        removeSlotElement(captured);
         if (leavingEl === captured) leavingEl = null;
       });
     }
@@ -550,7 +576,7 @@ export function Transition(props: TransitionProps): Node {
       const lc = (el as unknown as Record<symbol, CancelCb>)[LEAVE_CB];
       ec?.(true);
       lc?.(true);
-      if (el.parentNode) el.parentNode.removeChild(el);
+      removeSlotElement(el);
     }
     currentEl = null;
     leavingEl = null;

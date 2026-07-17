@@ -63,7 +63,11 @@ function eventHandler(e: Event): void {
     }
   };
 
-  // simulate currentTarget
+  // simulate currentTarget. Save the pre-existing own descriptor (normally
+  // none — currentTarget lives on the Event prototype) so it can be restored
+  // after dispatch: leaving the getter installed would corrupt
+  // currentTarget for every later listener on the same event object.
+  const prevCurrentTargetDescriptor = Object.getOwnPropertyDescriptor(e, 'currentTarget');
   Object.defineProperty(e, 'currentTarget', {
     configurable: true,
     /**
@@ -100,6 +104,14 @@ function eventHandler(e: Event): void {
     // listener that reads e.target. Mixing portals and shadow DOM can also lead
     // to a nonstandard target, so reset here unconditionally.
     reTargetEvent(e, oriTarget!);
+
+    // Restore currentTarget: remove our own getter so the prototype's native
+    // getter takes over again (or reinstate a pre-existing own descriptor).
+    if (prevCurrentTargetDescriptor) {
+      Object.defineProperty(e, 'currentTarget', prevCurrentTargetDescriptor);
+    } else {
+      delete (e as any).currentTarget;
+    }
   }
 }
 
@@ -153,17 +165,29 @@ export function clearDelegatedEvents(document: Document = globalThis.document): 
  * @param event - The event name.
  * @param handler - The event handler.
  * @param options - Optional event listener options.
- * @returns {void}
+ * @returns {() => void} Idempotent disposer that removes the listener. With
+ *   an active scope the disposer is ALSO registered via onCleanup, so most
+ *   callers can ignore it; standalone callers (no scope) must invoke it to
+ *   avoid leaking the listener.
  */
 export function addEventListener(
   element: Element,
   event: string,
   handler: EventListener,
   options?: AddEventListenerOptions,
-): void {
+): () => void {
   const cleanup = addEvent(element, event, handler, options);
 
+  let disposed = false;
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    cleanup();
+  };
+
   if (getActiveScope()) {
-    onCleanup(cleanup);
+    onCleanup(dispose);
   }
+
+  return dispose;
 }

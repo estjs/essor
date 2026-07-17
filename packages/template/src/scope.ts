@@ -1,7 +1,7 @@
 import { error } from '@estjs/shared';
 import { type EffectScope, effectScope, setCurrentScope } from '@estjs/signals';
+import { requestSlotProviders } from './request-slots';
 import type { InjectionKey } from './provide';
-import { getSSRExecutionState } from './ssr-execution';
 
 /**
  * Scope represents an execution context in the component tree.
@@ -42,11 +42,49 @@ export interface Scope {
   isDestroyed: boolean;
 }
 
-/** Document-local active scope (CSR/hydrate). SSR uses execution-state scope. */
-let documentActiveScope: Scope | null = null;
+/** Currently active scope */
+let activeScope: Scope | null = null;
 
 /** Scope ID counter for unique identification */
 let scopeId = 0;
+
+/**
+ * Host-injectable storage slot for the active scope.
+ *
+ * On the client the active scope lives in the module-global `activeScope`
+ * above. During SSR, `@estjs/server` installs a provider backed by
+ * AsyncLocalStorage so that concurrent requests interleaving `await`s do not
+ * clobber each other's scope. A provider returning `undefined` (or no
+ * provider at all) falls back to the module global — the browser path pays
+ * only a single optional-call check.
+ */
+export interface ActiveScopeSlot {
+  scope: Scope | null;
+}
+
+type ActiveScopeSlotProvider = () => ActiveScopeSlot | undefined;
+
+/**
+ * Install (or clear) the request-local active-scope slot provider.
+ *
+ * Internal: consumed by `@estjs/server` via `@estjs/template/internal`.
+ *
+ * Stored in the cross-bundle `requestSlotProviders()` registry (NOT a module
+ * variable): the CJS build inlines a separate copy of this module into each
+ * entry bundle, and a module-level provider variable would be written by one
+ * copy and read by the other. See request-slots.ts.
+ *
+ * @param provider - Returns the current request's slot, or `undefined` to
+ *   fall back to the module-global active scope.
+ */
+export function setActiveScopeSlotProvider(provider: ActiveScopeSlotProvider | undefined): void {
+  requestSlotProviders().activeScope = provider;
+}
+
+function activeScopeSlot(): ActiveScopeSlot | undefined {
+  const provider = requestSlotProviders().activeScope as ActiveScopeSlotProvider | undefined;
+  return provider?.();
+}
 
 /**
  * Get the currently active scope.
@@ -54,9 +92,8 @@ let scopeId = 0;
  * @returns The active scope or null if none is active.
  */
 export function getActiveScope(): Scope | null {
-  const ssr = getSSRExecutionState();
-  if (ssr) return ssr.activeScope;
-  return documentActiveScope;
+  const slot = activeScopeSlot();
+  return slot ? slot.scope : activeScope;
 }
 
 /**
@@ -66,13 +103,34 @@ export function getActiveScope(): Scope | null {
  * @returns {void}
  */
 export function setActiveScope(scope: Scope | null): void {
-  const ssr = getSSRExecutionState();
-  if (ssr) {
-    ssr.activeScope = scope;
+  const slot = activeScopeSlot();
+  if (slot) {
+    slot.scope = scope;
   } else {
-    documentActiveScope = scope;
+    activeScope = scope;
   }
   setCurrentScope(scope?.effectScope);
+}
+
+/**
+ * Activate only the reactive effect scope associated with a template scope.
+ *
+ * Hosts that provide request-local template state use this narrow adapter to
+ * bracket one synchronous execution segment without changing the active
+ * template scope itself.
+ *
+ * @param scope - The template scope whose reactive effects should be active.
+ * @returns An idempotent function that restores the previous effect scope.
+ */
+export function activateScopeEffects(scope: Scope): () => void {
+  const previousScope = setCurrentScope(scope.effectScope);
+  let restored = false;
+
+  return () => {
+    if (restored) return;
+    restored = true;
+    setCurrentScope(previousScope);
+  };
 }
 
 /**
@@ -144,29 +202,23 @@ export function disposeScope(scope: Scope): void {
   // (e.g. an onDestroy hook that accidentally disposes the same scope again).
   scope.isDestroyed = true;
 
-  // Detach from parent BEFORE running destroy hooks so the scope hierarchy
-  // is consistent if a destroy hook walks the scope tree or disposes the parent.
-  if (scope.parent?.children) {
-    scope.parent.children.delete(scope);
-  }
-  // Break parent reference early to prevent any hook from accidentally
-  // re-traversing up to an already-disposing ancestor.
-  scope.parent = null;
-
-  // Dispose children first (depth-first). Null each child's parent before
-  // recursing so the child's own detach step is a no-op — otherwise it would
-  // delete itself from this Set while we're iterating it.
+  // Dispose children first (depth-first). Iterate a snapshot so each child's
+  // own detach step (which deletes it from this Set) cannot corrupt the loop.
+  // The child's parent link stays intact during its hooks so inject() inside
+  // child destroy callbacks can still see ancestors.
   if (scope.children && scope.children.size > 0) {
-    for (const child of scope.children) {
+    for (const child of [...scope.children]) {
       if (child) {
-        child.parent = null;
         disposeScope(child);
       }
     }
     scope.children.clear();
   }
 
-  // Execute destroy hooks with this scope active so inject/provide work in callbacks.
+  // Execute destroy hooks and cleanups with this scope active — and with the
+  // parent link still intact — so inject()/provide() lookups inside the
+  // callbacks can resolve ancestor scopes. Detaching happens only
+  // after all user callbacks have run.
   const prevScope = getActiveScope();
   setActiveScope(scope);
   if (scope.onDestroy) {
@@ -192,6 +244,12 @@ export function disposeScope(scope: Scope): void {
   setActiveScope(prevScope);
 
   scope.effectScope.stop();
+
+  // Detach from parent LAST — hooks/cleanups above may still walk the tree.
+  if (scope.parent?.children) {
+    scope.parent.children.delete(scope);
+  }
+  scope.parent = null;
 
   // Clear all internal collections to prevent memory leaks
   if (scope.provides) {

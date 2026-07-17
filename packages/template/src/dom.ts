@@ -2,9 +2,21 @@ import { coerceArray, error, isFunction, isObject, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import { claimHydratedNodes, isHydrating } from './hydration';
+import {
+  claimHydrationNode,
+  claimHydratedNodes,
+  hasActiveHydrationRange,
+  isHydrationNodeClaimed,
+  isHydrating,
+  isNodeHydrated,
+  runWithHydrationRange,
+  runWithoutHydration,
+} from './hydration';
 import { reconcileArrays } from './reconcile';
 import type { AnyNode } from './types';
+
+// Preserve fragment ordering without detaching an already-connected SSR node.
+const hydrationFragmentPlaceholders = new WeakMap<Comment, Node>();
 
 /**
  * Remove node from its parent
@@ -37,14 +49,28 @@ export function removeNode(node: AnyNode): void {
  * @param child Child node
  * @param before Reference node for insertion
  */
-export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): void {
+export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): Node | undefined {
   if (!parent || !child) return;
 
   const beforeNode = isComponent(before) ? before.firstChild : (before as Node);
 
   if (isComponent(child)) {
     child.mount(parent, beforeNode);
-    return;
+    return child.firstChild;
+  }
+
+  if (
+    parent instanceof DocumentFragment &&
+    child instanceof Node &&
+    child.parentNode !== null &&
+    child.parentNode !== parent &&
+    isHydrationNodeClaimed(child)
+  ) {
+    const placeholder = document.createComment('');
+    hydrationFragmentPlaceholders.set(placeholder, child);
+    if (beforeNode) parent.insertBefore(placeholder, beforeNode);
+    else parent.appendChild(placeholder);
+    return placeholder;
   }
 
   if (beforeNode) {
@@ -57,6 +83,7 @@ export function insertNode(parent: Node, child: AnyNode, before?: AnyNode): void
     }
     parent.appendChild(child as Node);
   }
+  return child as Node;
 }
 
 /**
@@ -85,7 +112,7 @@ export function replaceNode(parent: Node, newNode: AnyNode, oldNode: AnyNode): v
  */
 export function normalizeNode(node: unknown): Node {
   // Fast path: already a DOM Node (covers Element, Text, Comment, etc.)
-  if (node instanceof Node) return node;
+  if (node instanceof Node) return claimHydrationNode(node);
 
   // Component instances must pass through as-is — the reconciler and
   // insertNode/removeNode handle them via isComponent() checks.
@@ -94,7 +121,9 @@ export function normalizeNode(node: unknown): Node {
   // Primitives → text node (inlined for speed)
   const t = typeof node;
   if (node == null || t === 'string' || t === 'number' || t === 'boolean' || t === 'symbol') {
-    return document.createTextNode(node === false || node == null ? '' : String(node));
+    return claimHydrationNode(
+      document.createTextNode(node === false || node == null ? '' : String(node)),
+    );
   }
 
   // Plain objects should not be rendered directly — convert to text and warn
@@ -105,8 +134,58 @@ export function normalizeNode(node: unknown): Node {
       node,
     );
   }
-  return document.createTextNode(String(node));
+  return claimHydrationNode(document.createTextNode(String(node)));
 }
+/**
+ * Expand a DocumentFragment into its children — after insertion the fragment
+ * empties, so keeping the fragment itself in renderedNodes would leave an
+ * empty shell that no longer represents the mounted range. Non-fragments are
+ * normalized as usual.
+ */
+function expandFragment(item: unknown): Node[] {
+  if (!(item instanceof DocumentFragment)) return [normalizeNode(item)];
+
+  const children = Array.from(item.childNodes);
+  return children.map((node) => {
+    if (node.nodeType === Node.COMMENT_NODE) {
+      const hydratedNode = hydrationFragmentPlaceholders.get(node as Comment);
+      if (hydratedNode) {
+        hydrationFragmentPlaceholders.delete(node as Comment);
+        (node as ChildNode).remove();
+        return hydratedNode;
+      }
+    }
+    return claimHydrationNode(node);
+  });
+}
+
+function collectRenderedDomNodes(renderedNodes: Node[], output: Node[], seen: Set<object>): void {
+  for (const renderedNode of renderedNodes) {
+    if (isComponent(renderedNode)) {
+      if (seen.has(renderedNode)) continue;
+      seen.add(renderedNode);
+      collectRenderedDomNodes(renderedNode.renderedNodes, output, seen);
+    } else if (renderedNode instanceof Node) {
+      output.push(renderedNode);
+    }
+  }
+}
+
+function placeHydrationNodes(parent: Node, logicalNodes: Node[], before?: Node): void {
+  const nodes: Node[] = [];
+  collectRenderedDomNodes(logicalNodes, nodes, new Set());
+  let anchor: Node | null = before?.parentNode === parent ? before : null;
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (node.parentNode === parent) {
+      anchor = node;
+      continue;
+    }
+    const placed = insertNode(parent, node, anchor ?? undefined);
+    if (placed?.parentNode === parent) anchor = placed;
+  }
+}
+
 /**
  * Reactive node insertion with binding support
  *
@@ -120,15 +199,30 @@ export function normalizeNode(node: unknown): Node {
  * insert(container, "Hello World", null); // Direct string support
  * ```
  */
-export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
+export function insert(
+  parent: Node,
+  nodeFactory: AnyNode,
+  before?: Node,
+  hydrationStart?: Comment,
+) {
   if (!parent) return;
   // Use a mutable reference so cleanup can release it for GC.
   // The scope is only needed while the effect is active — after cleanup,
   // holding it would prevent the entire ancestor scope chain from being collected.
   let parentScope: Scope | null = getActiveScope();
 
-  let renderedNodes: Node[] = [];
+  // LIVE array: updates mutate this array in place (never reassign), so the
+  // reference returned to the caller (e.g. Component.renderedNodes) always
+  // reflects the current DOM range — a first-run snapshot would go stale on
+  // the first reactive replacement (OWN-03).
+  const renderedNodes: Node[] = [];
   let isFirstRun = true;
+
+  /** Replace the live array's contents without changing its identity. */
+  const commitNodes = (next: Node[]): void => {
+    renderedNodes.length = 0;
+    for (const node of next) renderedNodes.push(node);
+  };
 
   /**
    * Resolves a raw node value into a flat array of DOM Nodes.
@@ -136,8 +230,13 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
    * intermediate array allocations.
    */
   const resolveNodes = (raw: unknown): Node[] => {
+    // DocumentFragment: expand to its children (see expandFragment).
+    if (raw instanceof DocumentFragment) {
+      return expandFragment(raw);
+    }
+
     // Fast path: already a DOM Node
-    if (raw instanceof Node) return [raw];
+    if (raw instanceof Node) return [normalizeNode(raw)];
 
     // Fast path: Component instance (skip normalizeNode entirely)
     if (isComponent(raw)) return [raw as unknown as Node];
@@ -152,7 +251,35 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
     return coerceArray(raw)
       .map((item) => (isFunction(item) ? item() : item))
       .flatMap((i) => i)
-      .map(normalizeNode) as Node[];
+      .flatMap(expandFragment) as Node[];
+  };
+
+  const resolveHydrationNodes = (raw: unknown, output: Node[] = []): Node[] => {
+    if (raw instanceof DocumentFragment) {
+      output.push(...expandFragment(raw));
+      return output;
+    }
+    if (raw instanceof Node) {
+      output.push(normalizeNode(raw));
+      return output;
+    }
+    if (isComponent(raw)) {
+      raw.mount(parent, before);
+      output.push(raw as unknown as Node);
+      return output;
+    }
+    if (isFunction(raw)) {
+      return resolveHydrationNodes(raw(), output);
+    }
+
+    const values = coerceArray(raw);
+    if (values.length !== 1 || values[0] !== raw) {
+      for (const value of values) resolveHydrationNodes(value, output);
+      return output;
+    }
+
+    output.push(normalizeNode(raw));
+    return output;
   };
 
   // Create effect for reactive updates
@@ -166,7 +293,14 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
         rawType === 'number' ||
         rawType === 'boolean' ||
         rawType === 'symbol';
-      const nodes = resolveNodes(rawNodes);
+      const cursorPass = isFirstRun && isHydrating() && hasActiveHydrationRange();
+      const nodes = cursorPass ? resolveHydrationNodes(rawNodes) : resolveNodes(rawNodes);
+      if (cursorPass) {
+        placeHydrationNodes(parent, nodes, before);
+        commitNodes(nodes);
+        isFirstRun = false;
+        return;
+      }
       // Hydration mode: skip DOM operations on first run only when every
       // node already exists under the target parent. Component instances and
       // fallback CSR nodes still need the normal reconcile path.
@@ -175,14 +309,14 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
         isHydrating() &&
         nodes.every((node) => node instanceof Node && node.parentNode === parent)
       ) {
-        renderedNodes = nodes;
+        commitNodes(nodes);
         isFirstRun = false;
         return;
       }
-      if (isFirstRun && isHydrating()) {
+      if (isFirstRun && isHydrating() && !nodes.some(isComponent)) {
         const hydratedNodes = claimHydratedNodes(parent, nodes, before);
         if (hydratedNodes) {
-          renderedNodes = hydratedNodes;
+          commitNodes(hydratedNodes);
           isFirstRun = false;
           return;
         }
@@ -200,27 +334,97 @@ export function insert(parent: Node, nodeFactory: AnyNode, before?: Node) {
         isFirstRun = false;
         return;
       }
-      renderedNodes = reconcileArrays(parent, renderedNodes as Node[], nodes, before) as Node[];
+      // Pass a snapshot of the live array: reconcileArrays removes/mounts
+      // nodes as it diffs, and Component mount/destroy inside that loop can
+      // re-enter insert() and mutate `renderedNodes` mid-reconcile.
+      commitNodes(reconcileArrays(parent, renderedNodes.slice(), nodes, before) as Node[]);
       isFirstRun = false;
     };
 
+    const runUpdate = () =>
+      isFirstRun && isHydrating() && hydrationStart
+        ? runWithHydrationRange(parent, before, hydrationStart, executeUpdate, () => {
+            // Partial mismatch: components that adopted SSR nodes may hold
+            // stale content. Re-render them as pure CSR with hydration
+            // suspended so the fallback cannot consume a sibling range's
+            // hydration keys. Components that rendered fresh client nodes
+            // (or nothing) are already correct.
+            runWithoutHydration(() => {
+              for (const node of renderedNodes) {
+                if (isComponent(node) && node.renderedNodes.some((n) => isNodeHydrated(n))) {
+                  node.forceUpdate();
+                }
+              }
+            });
+          })
+        : executeUpdate();
+
     // If we have a parent scope, run within it to maintain context hierarchy
     if (parentScope && !parentScope.isDestroyed) {
-      runWithScope(parentScope, executeUpdate);
+      runWithScope(parentScope, runUpdate);
     } else {
-      executeUpdate();
+      runUpdate();
     }
   });
 
   onCleanup(() => {
     effectRunner.stop();
     for (const node of renderedNodes) removeNode(node);
-    renderedNodes = [];
+    renderedNodes.length = 0;
     // Release scope reference so GC can reclaim the ancestor scope chain
     parentScope = null;
   });
 
   return renderedNodes;
+}
+
+function normalizeTextContent(value: unknown): string {
+  if (value == null || value === false) return '';
+  if (isFunction(value)) return normalizeTextContent(value());
+  if (Array.isArray(value)) {
+    let text = '';
+    for (const item of value) text += normalizeTextContent(item);
+    return text;
+  }
+  return String(value);
+}
+
+export function insertTextContent(parent: Element, valueFactory: unknown): Text {
+  let textNode!: Text;
+  let isFirstRun = true;
+
+  const effectRunner = effect(() => {
+    const text = normalizeTextContent(valueFactory);
+    if (isFirstRun) {
+      const existing = parent.firstChild;
+      if (
+        isHydrating() &&
+        isNodeHydrated(parent) &&
+        existing instanceof Text &&
+        existing === parent.lastChild &&
+        existing.data === text
+      ) {
+        textNode = existing;
+      } else {
+        textNode = document.createTextNode(text);
+        parent.replaceChildren(textNode);
+      }
+      isFirstRun = false;
+      return;
+    }
+
+    if (parent.firstChild !== textNode || parent.lastChild !== textNode) {
+      parent.replaceChildren(textNode);
+    }
+    if (textNode.data !== text) textNode.data = text;
+  });
+
+  onCleanup(() => {
+    effectRunner.stop();
+    if (textNode.parentNode === parent) textNode.remove();
+  });
+
+  return textNode;
 }
 /**
  * Returns the first child of a node.

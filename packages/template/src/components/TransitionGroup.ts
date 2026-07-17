@@ -262,15 +262,34 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     if (entry.el.parentNode === wrapper) wrapper.removeChild(entry.el);
   };
 
+  /**
+   * Terminal teardown for a row, in a unified order: finalize the Component
+   * first (it owns refs/listeners on the row DOM), then detach the DOM, then
+   * dispose the row scope.
+   */
+  const teardownEntry = (entry: Entry): void => {
+    if (entry.comp) entry.comp.destroy();
+    detachEntryDom(entry);
+    disposeScope(entry.scope);
+  };
+
   const disposeEntry = (entry: Entry): void => {
     entry.cancelEnter?.(true);
     entry.cancelLeave?.(true);
     entry.cancelEnterWait?.();
     entry.cancelLeaveWait?.();
     entry.cancelMoveWait?.();
-    if (entry.comp) entry.comp.destroy();
-    detachEntryDom(entry);
-    disposeScope(entry.scope);
+    teardownEntry(entry);
+  };
+
+  /**
+   * Remove a finished-leaving entry from `entries` so a later re-add of the
+   * same key creates a FRESH entry instead of resurrecting the disposed
+   * scope/component.
+   */
+  const evictEntry = (entry: Entry): void => {
+    const idx = entries.indexOf(entry);
+    if (idx !== -1) entries.splice(idx, 1);
   };
 
   const runEnter = (entry: Entry): void => {
@@ -347,11 +366,10 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     el.style.height = `${prevRect.height}px`;
 
     if (!useCss) {
-      // No-animation contract: tear down immediately.
+      // No-animation: tear down immediately; update() reassigns `entries`
+      // right after with a `!isDestroyed` filter, so no evictEntry needed.
       if (entry.savedStyles) restoreStyles(el, entry.savedStyles);
-      detachEntryDom(entry);
-      disposeScope(entry.scope);
-      if (entry.comp) entry.comp.destroy();
+      teardownEntry(entry);
       props.onAfterLeave?.(el);
       return;
     }
@@ -381,9 +399,11 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
 
       if (entry.savedStyles) restoreStyles(el, entry.savedStyles);
       entry.savedStyles = undefined;
-      detachEntryDom(entry);
-      disposeScope(entry.scope);
-      if (entry.comp) entry.comp.destroy();
+      // Terminal teardown (unified order) + atomic eviction from `entries`
+      // so a later re-add of the same key cannot resurrect this disposed
+      // scope/component.
+      teardownEntry(entry);
+      evictEntry(entry);
       props.onAfterLeave?.(el);
     };
     entry.cancelLeave = done;
@@ -477,6 +497,23 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
       const reused = byKey.get(key);
       if (reused) {
         byKey.delete(key);
+        // Same key, DIFFERENT item identity: the row was rendered from the
+        // old item, so its DOM would show stale data. Rebuild the
+        // row; reactive in-place mutations (same reference) keep the fast
+        // path and full FLIP continuity. This applies to `leaving` entries
+        // too: resurrecting a mid-leave row with a new identity would revive
+        // stale DOM — disposeEntry cancels the pending leave (restoring
+        // styles and firing onLeaveCancelled) before teardown, and the fresh
+        // entry plays enter. Same-identity re-entry still takes the
+        // resurrection path below. Deliberate behavior: the rebuilt row is a
+        // NEW element, so it plays the enter animation (the caller runs
+        // runEnter for every non-`present` entry).
+        if (!Object.is(reused.item, item)) {
+          disposeEntry(reused);
+          const rebuilt = renderEntry(item, i);
+          if (rebuilt) next.push(rebuilt);
+          continue;
+        }
         reused.item = item;
         next.push(reused);
       } else {
@@ -559,7 +596,10 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
     }
 
     // Stash leaving entries alongside the next set so cleanup can find them.
-    entries = next.concat(leaving);
+    // Skip entries whose leave already completed synchronously (css: false
+    // disposes inside runLeave above) — re-adding them would resurrect a
+    // disposed scope on the next same-key add.
+    entries = next.concat(leaving.filter((entry) => !entry.scope.isDestroyed));
   };
 
   // -----------------------------------------------------------------------

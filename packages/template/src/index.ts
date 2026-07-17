@@ -12,7 +12,7 @@ export { delegateEvents, clearDelegatedEvents, addEventListener } from './events
 
 export { omitProps } from './utils';
 
-export { insert, next, child, nthChild } from './dom';
+export { insert, insertTextContent, next, child, nthChild } from './dom';
 
 export {
   isHydrating,
@@ -26,9 +26,12 @@ export {
   patchStyleHydrate,
   hydrationAnchor,
   hydrationMarker,
+  hydrationRange,
   consumeTeleportAnchor,
   consumeTeleportBlock,
 } from './hydration';
+
+export type { HydrationBoundaryKind } from './hydration';
 
 export {
   patchClass,
@@ -47,8 +50,6 @@ export {
   Suspense,
   isSuspense,
   createResource,
-  setHydrateResources,
-  clearHydrateResources,
   defineAsyncComponent,
   type AsyncComponentOptions,
   For,

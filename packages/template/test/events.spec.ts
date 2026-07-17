@@ -155,4 +155,73 @@ describe('event delegation', () => {
     button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(handler).toHaveBeenCalledTimes(1);
   });
+
+  it('addEventListener returns an idempotent disposer (no scope) (BIND-04)', () => {
+    const el = document.createElement('button');
+    document.body.appendChild(el);
+    let hits = 0;
+
+    const dispose = addEventListener(el, 'click', () => {
+      hits++;
+    });
+    el.dispatchEvent(new Event('click'));
+    expect(hits).toBe(1);
+
+    dispose();
+    dispose(); // idempotent
+    el.dispatchEvent(new Event('click'));
+    expect(hits).toBe(1);
+  });
+
+  describe('evt-01: delegated dispatch restores currentTarget', () => {
+    it('removes the simulated currentTarget getter once dispatch completes', () => {
+      const container = document.createElement('div');
+      const button = document.createElement('button');
+      (button as any)._$click = () => {};
+      container.appendChild(button);
+      document.body.appendChild(container);
+      delegateEvents(['click']);
+
+      let duringDispatch: EventTarget | null = null;
+      let capturedEvent: Event | null = null;
+      (button as any)._$click = (e: Event) => {
+        duringDispatch = e.currentTarget;
+        capturedEvent = e;
+      };
+
+      button.dispatchEvent(new Event('click', { bubbles: true }));
+
+      // Inside the handler the simulated currentTarget pointed at the node.
+      expect(duringDispatch).toBe(button);
+      // After dispatch the own-property getter must be gone — no stale own
+      // descriptor shadowing the Event prototype (EVT-01).
+      expect(Object.getOwnPropertyDescriptor(capturedEvent!, 'currentTarget')).toBeUndefined();
+      // Prototype getter answers again (null outside dispatch, per DOM spec).
+      expect(capturedEvent!.currentTarget).toBeNull();
+    });
+
+    it('later non-delegated listeners on the same event see the real currentTarget', () => {
+      const container = document.createElement('div');
+      const button = document.createElement('button');
+      (button as any)._$click = () => {};
+      container.appendChild(button);
+      document.body.appendChild(container);
+      delegateEvents(['click']);
+
+      // A second native listener on document — runs after the delegated
+      // handler for the same event object.
+      let seen: EventTarget | null = null;
+      const onDocClick = (e: Event): void => {
+        seen = e.currentTarget;
+      };
+      document.addEventListener('click', onDocClick);
+
+      button.dispatchEvent(new Event('click', { bubbles: true }));
+      document.removeEventListener('click', onDocClick);
+
+      // Without the restore, the leaked getter would report the last walked
+      // node (or null→document fallback) instead of the true currentTarget.
+      expect(seen).toBe(document);
+    });
+  });
 });

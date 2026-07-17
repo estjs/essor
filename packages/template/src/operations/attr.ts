@@ -1,10 +1,12 @@
 import {
   includeBooleanAttr,
   isBooleanAttr,
+  isFunction,
   isObject,
   isSpecialBooleanAttr,
-  isString,
   isSymbol,
+  isUnsafeUrl,
+  isUrlAttribute,
   startsWith,
   warn,
 } from '@estjs/shared';
@@ -15,22 +17,15 @@ import {
   XLINK_NAMESPACE,
   XMLNS_NAMESPACE,
 } from '../constants';
+import { patchClass } from './class';
+import { patchStyle } from './style';
+import { addEvent } from './event';
 
 /**
- * Supported value types for the attribute patch layer.
- *
- * In addition to primitive values, spread objects are also accepted, so the
- * type keeps `Record<string, unknown>`.
+ * Attribute values are normalized at runtime according to their target, so
+ * compiled JSX and spread attributes may pass any JavaScript value.
  */
-export type AttrValue = string | boolean | number | null | undefined | Record<string, unknown>;
-
-/**
- * MIME types that can carry executable / markup payloads inside a `data:` URL.
- * These are the only `data:` URLs we block — inline images, fonts, audio,
- * video, etc. (e.g. `data:image/png;base64,...`) are legitimate and allowed.
- */
-const DANGEROUS_DATA_MIME_RE =
-  /^data:\s*(?:text\/html|text\/xml|application\/xhtml\+xml|image\/svg\+xml|application\/xml)/;
+export type AttrValue = unknown;
 
 const BOOLEAN_PROPERTY_ALIASES: Record<string, string> = {
   allowfullscreen: 'allowFullscreen',
@@ -53,30 +48,67 @@ function syncBooleanProperty(el: Element, key: string, value: boolean): void {
 }
 
 /**
- * Returns true when a URL-bearing attribute value uses a protocol/payload that
- * could execute script in the document.
- *
- * Blocked:
- * - `javascript:` / `vbscript:` pseudo-protocols
- * - `data:` URLs whose MIME type can carry markup or script
- *   (`text/html`, `image/svg+xml`, `*xml`)
- *
- * Allowed:
- * - All other `data:` URLs (images, fonts, audio, video, …)
- * - Ordinary http(s)/relative/mailto/tel URLs
- *
- * Note: leading control characters / whitespace are stripped before matching
- * so that `java\tscript:` style obfuscation cannot slip through.
+ * Per-element registry of listeners installed by spread objects, keyed by
+ * event name, so a changed/removed handler in a later spread value can be
+ * detached (diffed by function identity).
  */
-function isUnsafeUrl(value: string): boolean {
-  // Strip ASCII whitespace and control chars (incl. NUL, tab, newline) that
-  // browsers ignore when resolving the protocol, then lowercase for matching.
-  // eslint-disable-next-line no-control-regex
-  const v = value.replaceAll(/[\u0000-\u0020]+/g, '').toLowerCase();
-  if (startsWith(v, 'javascript:') || startsWith(v, 'vbscript:')) {
-    return true;
+const spreadListeners = new WeakMap<
+  Element,
+  Map<string, { handler: EventListener; cleanup: () => void }>
+>();
+
+const SPREAD_EVENT_RE = /^on[A-Z]/;
+
+/**
+ * Route ONE spread key to the correct patch layer:
+ * - `class` / `style` → patchClass / patchStyle (objects/arrays normalize
+ *   instead of stringifying to "[object Object]");
+ * - `onXxx` functions → real event listeners (diffed against the previous
+ *   spread value; removed when dropped);
+ * - `ref` / `bind:*` → unsupported inside spreads (dev warn);
+ * - everything else → patchAttr.
+ */
+function patchSpreadKey(el: Element, key: string, prev: unknown, next: unknown): void {
+  if (key === 'class' || key === 'className') {
+    patchClass(el, prev, next, el.namespaceURI === SVG_NAMESPACE);
+    return;
   }
-  return DANGEROUS_DATA_MIME_RE.test(v);
+  if (key === 'style') {
+    patchStyle(el as HTMLElement, prev, next);
+    return;
+  }
+  // Take the event branch whenever either side is a function: a non-function
+  // `next` (string, null, ...) must still detach the previously installed
+  // listener instead of falling through to patchAttr and leaking it.
+  if (SPREAD_EVENT_RE.test(key) && (isFunction(next) || isFunction(prev))) {
+    const eventName = key.slice(2).toLowerCase();
+    let listeners = spreadListeners.get(el);
+    const existing = listeners?.get(eventName);
+    if (existing && existing.handler === next) return;
+    if (existing) {
+      existing.cleanup();
+      listeners!.delete(eventName);
+    }
+    if (isFunction(next)) {
+      const handler = next as EventListener;
+      const cleanup = addEvent(el, eventName, handler);
+      if (!listeners) {
+        listeners = new Map();
+        spreadListeners.set(el, listeners);
+      }
+      listeners.set(eventName, { handler, cleanup });
+    }
+    return;
+  }
+  if (key === 'ref' || startsWith(key, 'bind:')) {
+    // Not supported inside spreads in any build — must not fall through to
+    // patchAttr, which would serialize the value into a DOM attribute.
+    if (__DEV__) {
+      warn(`"${key}" is not supported inside a spread; apply it as a direct JSX attribute.`);
+    }
+    return;
+  }
+  patchAttr(el, key, prev, next);
 }
 
 /**
@@ -124,7 +156,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
           continue;
         }
         if (!nextObj || !(attrKey in nextObj)) {
-          patchAttr(el, attrKey, prevObj[attrKey] as AttrValue, null);
+          patchSpreadKey(el, attrKey, prevObj[attrKey], null);
         }
       }
     }
@@ -137,17 +169,33 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
           }
           continue;
         }
-        patchAttr(el, attrKey, prevObj?.[attrKey] as AttrValue, nextObj[attrKey] as AttrValue);
+        patchSpreadKey(el, attrKey, prevObj?.[attrKey], nextObj[attrKey]);
       }
     }
     return;
   }
 
+  const normalizedKey = key.toLowerCase();
   const elementIsSVG = el?.namespaceURI === SVG_NAMESPACE;
-  const isXlink = elementIsSVG && startsWith(key, 'xlink:');
+  const isUrlAttr = isUrlAttribute(normalizedKey);
+  const isXlink = elementIsSVG && startsWith(normalizedKey, 'xlink:');
   const isXmlns = elementIsSVG && startsWith(key, 'xmlns:');
+  const attributeKey = elementIsSVG && isUrlAttr ? normalizedKey : key;
 
   const isBoolean = isSpecialBooleanAttr(key) || isBooleanAttr(key);
+  let normalizedUrlValue: string | undefined;
+
+  if (isUrlAttr && next != null) {
+    normalizedUrlValue = String(next);
+    if (isUnsafeUrl(normalizedUrlValue)) {
+      if (isXlink) {
+        el.removeAttributeNS(XLINK_NAMESPACE, normalizedKey.slice(6));
+      } else {
+        el.removeAttribute(attributeKey);
+      }
+      return;
+    }
+  }
 
   // Early return if values are the same
   if (prev === next) {
@@ -159,10 +207,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     return;
   }
 
-  // Lowercase only after early returns, since it is only needed for specific checks like href.
-  const lowerKey = key.toLowerCase();
-
-  if (lowerKey === 'innerhtml' || lowerKey === 'srcdoc') {
+  if (normalizedKey === 'innerhtml' || normalizedKey === 'srcdoc') {
     if (__DEV__) {
       warn(`${key} updates are ignored by patchAttr`);
     }
@@ -171,14 +216,14 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
 
   if (next == null) {
     if (isXlink) {
-      el.removeAttributeNS(XLINK_NAMESPACE, key.slice(6));
+      el.removeAttributeNS(XLINK_NAMESPACE, normalizedKey.slice(6));
     } else if (isXmlns) {
       const localName = key.slice(6);
       el.removeAttributeNS(XMLNS_NAMESPACE, localName);
     } else {
-      el.removeAttribute(key);
+      el.removeAttribute(attributeKey);
     }
-    if (isBoolean || lowerKey === 'indeterminate') {
+    if (isBoolean || normalizedKey === 'indeterminate') {
       syncBooleanProperty(el, key, false);
     }
     return;
@@ -195,22 +240,10 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
     return;
   }
 
-  const attrValue = isSymbol(next) ? String(next) : next;
-
-  // Basic safety guard: block dangerous protocols on common URL attributes.
-  const isUrlAttr =
-    lowerKey === 'href' ||
-    lowerKey === 'src' ||
-    lowerKey === 'xlink:href' ||
-    lowerKey === 'action' ||
-    lowerKey === 'formaction' ||
-    lowerKey === 'poster';
-  if (isUrlAttr && isString(attrValue) && isUnsafeUrl(attrValue)) {
-    return;
-  }
+  const attrValue = normalizedUrlValue ?? (isSymbol(next) ? String(next) : next);
 
   if (isXlink) {
-    el.setAttributeNS(XLINK_NAMESPACE, key, String(attrValue));
+    el.setAttributeNS(XLINK_NAMESPACE, normalizedKey, String(attrValue));
     return;
   }
 
@@ -220,7 +253,7 @@ export function patchAttr(el: Element, key: string, prev: AttrValue, next: AttrV
   }
 
   if (elementIsSVG) {
-    el.setAttribute(key, String(attrValue));
+    el.setAttribute(attributeKey, String(attrValue));
   } else {
     if (key in el) {
       try {

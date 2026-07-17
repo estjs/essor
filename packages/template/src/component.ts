@@ -1,9 +1,9 @@
-import { type Signal, isComputed, isSignal, shallowReactive } from '@estjs/signals';
+import { type Signal, isComputed, isSignal, shallowReactive, toRaw } from '@estjs/signals';
 import { isFunction, isOn, isString } from '@estjs/shared';
 
 import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
 import { insert, insertNode, removeNode } from './dom';
-import { createScope, disposeScope, getActiveScope, runWithScope } from './scope';
+import { createScope, disposeScope, getActiveScope, onCleanup, runWithScope } from './scope';
 import { type EventCleanup, addEvent } from './operations/event';
 import { triggerMountHooks, triggerUpdateHooks } from './lifecycle';
 import type { AnyNode, ComponentFn, ComponentProps } from './types';
@@ -45,7 +45,15 @@ export class Component<P extends ComponentProps = {}> {
   public state: COMPONENT_STATE = COMPONENT_STATE.INITIAL;
   public beforeNode: Node | undefined = undefined;
   public renderedNodes: Node[] = [];
-  public firstChild: Node | undefined = undefined;
+
+  /**
+   * First node of the mounted range. Derived from the LIVE renderedNodes
+   * array (insert() mutates it in place on reactive updates), so it never
+   * goes stale the way a mount-time snapshot would (OWN-03).
+   */
+  get firstChild(): Node | undefined {
+    return this.renderedNodes[0];
+  }
 
   protected parentNode: Node | undefined = undefined;
 
@@ -53,6 +61,12 @@ export class Component<P extends ComponentProps = {}> {
   private readonly reactiveProps: P;
   private rootEventCleanups: EventCleanup[] = [];
   private rootRefCleanup?: () => void;
+
+  /**
+   * Exactly-once guard for finalize(). Reset on (re)mount so a destroyed
+   * component can be mounted again.
+   */
+  private finalized = false;
 
   constructor(
     public readonly component: ComponentFn<P>,
@@ -72,19 +86,20 @@ export class Component<P extends ComponentProps = {}> {
   mount(parentNode: Node, beforeNode?: Node): AnyNode[] {
     this.parentNode = parentNode;
     this.beforeNode = beforeNode;
-    this.state = COMPONENT_STATE.MOUNTING;
 
-    // Fast path: already rendered — just move the nodes.
-    if (this.renderedNodes.length > 0) {
+    // Fast path: an already-mounted component may legitimately render no
+    // nodes. Scope/state, rather than output length, owns mount identity.
+    if (this.state === COMPONENT_STATE.MOUNTED && this.scope !== null && !this.scope.isDestroyed) {
       for (const node of this.renderedNodes) {
         insertNode(parentNode, node, beforeNode);
       }
-      this.state = COMPONENT_STATE.MOUNTED;
       return this.renderedNodes;
     }
 
+    this.state = COMPONENT_STATE.MOUNTING;
     const scope = createScope(this.parentScope ?? getActiveScope());
     this.scope = scope;
+    this.finalized = false;
 
     const renderedNodes = runWithScope(scope, () => {
       let result: unknown = this.component(this.reactiveProps);
@@ -106,7 +121,13 @@ export class Component<P extends ComponentProps = {}> {
     });
 
     this.renderedNodes = renderedNodes;
-    this.firstChild = renderedNodes[0];
+
+    // If this component's scope is destroyed by an ANCESTOR scope disposal
+    // (never reaching Component.destroy()), the finalizer must still run
+    // exactly once — otherwise refs/listeners/DOM/props leak (OWN-01).
+    runWithScope(scope, () => {
+      onCleanup(() => this.finalize());
+    });
 
     // Wire refs/events only after renderedNodes/firstChild are set.
     this.syncSpecialProps(this.props);
@@ -154,20 +175,51 @@ export class Component<P extends ComponentProps = {}> {
   /**
    * Dispose the scope, remove all rendered nodes, and clear bookkeeping.
    * Idempotent: subsequent calls are no-ops.
+   *
+   * Finalization (ref/event release, DOM removal, prop clearing) is decoupled
+   * from scope liveness: when an ancestor scope disposal already destroyed
+   * this component's scope, destroy() still finalizes — the scope-registered
+   * onCleanup (see mount) and the `finalized` guard make it exactly-once.
    */
   destroy(): void {
+    // Never mounted: there is nothing to finalize, and running finalize()
+    // here would strip the reactiveProps descriptors — a later mount() would
+    // then render with empty props. Keep destroy() a no-op for this state
+    // (state is already INITIAL, matching the post-destroy contract).
+    if (!this.scope && this.state === COMPONENT_STATE.INITIAL) return;
+
     const scope = this.scope;
-    if (!scope || scope.isDestroyed) return;
     this.scope = null;
+    if (scope && !scope.isDestroyed) {
+      // disposeScope triggers the scope cleanup registered at mount, which
+      // calls finalize(); nothing more to do afterwards.
+      disposeScope(scope);
+    }
+    this.finalize();
+  }
+
+  /**
+   * Release everything owned by this component EXCEPT the scope: root
+   * ref/event bindings, rendered DOM, prop descriptors, state. Runs exactly
+   * once per mount (guarded by `finalized`); safe to call with the scope
+   * already destroyed.
+   */
+  private finalize(): void {
+    if (this.finalized) return;
+    this.finalized = true;
+
     this.releaseSpecialProps();
-    disposeScope(scope);
     for (const node of this.renderedNodes) removeNode(node);
     this.renderedNodes = [];
-    this.firstChild = undefined;
     this.parentNode = undefined;
-    // Clear all descriptors to release signal getter references
-    for (const key of Reflect.ownKeys(this.reactiveProps)) {
-      delete (this.reactiveProps as Record<PropertyKey, unknown>)[key];
+    // Clear all descriptors to release signal getter references. Deleted on
+    // the RAW target: when finalize runs from the scope-cleanup path the
+    // component's effects are not stopped yet (effectScope.stop() comes after
+    // cleanups), and a proxied delete would TRIGGER them into re-reading
+    // already-cleared props.
+    const rawProps = toRaw(this.reactiveProps) as Record<PropertyKey, unknown>;
+    for (const key of Reflect.ownKeys(rawProps)) {
+      delete rawProps[key];
     }
     this.state = COMPONENT_STATE.INITIAL;
   }

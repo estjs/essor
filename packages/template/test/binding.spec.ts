@@ -1,7 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
 import { bindElement } from '../src/binding';
 import { addEventListener } from '../src/events';
+import { beginHydration, endHydration, markNodeHydrated } from '../src/hydration';
 import {
   cleanupContext,
   createContext,
@@ -62,8 +63,13 @@ describe('binding utilities', () => {
   describe('bindElement', () => {
     it('is a no-op when node is null', () => {
       const setter = vi.fn();
-      expect(() => bindElement(null, 'value', '', setter)).not.toThrow();
+      let dispose!: () => void;
+      expect(() => {
+        dispose = bindElement(null, 'value', '', setter);
+      }).not.toThrow();
       expect(setter).not.toHaveBeenCalled();
+      // The returned disposer is a callable no-op (BIND-04).
+      expect(() => dispose()).not.toThrow();
     });
 
     describe('checkbox', () => {
@@ -585,6 +591,343 @@ describe('binding utilities', () => {
         s.value = 'c';
         // Effect was disposed -> DOM no longer reacts.
         expect(input.value).toBe('b');
+
+        // Listeners removed too: DOM input no longer reaches the model.
+        input.value = 'typed';
+        input.dispatchEvent(new Event('input'));
+        expect(s.value).toBe('c');
+      });
+
+      it('bindElement returns a disposer that stops the effect and listeners (BIND-04)', () => {
+        const el = document.createElement('input');
+        const model = signal('a');
+
+        const dispose = bindElement(
+          el,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+        expect(el.value).toBe('a');
+
+        // Model → DOM live before dispose.
+        model.value = 'b';
+        expect(el.value).toBe('b');
+
+        dispose();
+        dispose(); // idempotent
+
+        // Effect stopped: model writes no longer touch the DOM.
+        model.value = 'c';
+        expect(el.value).toBe('b');
+
+        // Listeners removed: DOM input no longer reaches the model.
+        el.value = 'typed';
+        el.dispatchEvent(new Event('input'));
+        expect(model.value).toBe('c');
+      });
+    });
+
+    describe('unsafe sinks (BIND-05)', () => {
+      it.each(['innerHTML', 'outerHTML', 'srcdoc'])('does not write through bind:%s', (prop) => {
+        const el = document.createElement('div');
+        el.textContent = 'safe';
+        document.body.appendChild(el);
+        const payload = signal('<img src=x onerror=alert(1)>');
+
+        const dispose = bindElement(
+          el,
+          prop,
+          () => payload.value,
+          () => {},
+        );
+
+        // The sink must be untouched — no markup injected.
+        expect(el.innerHTML).toBe('safe');
+        expect(document.querySelector('img')).toBeNull();
+        dispose();
+      });
+
+      it('allows bind:textContent (plain-text assignment, not an HTML sink)', () => {
+        const el = document.createElement('div');
+        el.textContent = 'before';
+        document.body.appendChild(el);
+        const payload = signal('<img src=x onerror=alert(1)>');
+
+        const dispose = bindElement(
+          el,
+          'textContent',
+          () => payload.value,
+          () => {},
+        );
+
+        // textContent assigns plain text — the markup is rendered inert.
+        expect(el.textContent).toBe('<img src=x onerror=alert(1)>');
+        expect(document.querySelector('img')).toBeNull();
+        dispose();
+      });
+
+      it('two-way binds textContent on a contenteditable host', () => {
+        const el = document.createElement('div');
+        el.contentEditable = 'true';
+        document.body.appendChild(el);
+        const model = signal('hello');
+
+        const dispose = bindElement(
+          el,
+          'textContent',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+
+        // Model → DOM on bind and on updates.
+        expect(el.textContent).toBe('hello');
+        model.value = 'world';
+        expect(el.textContent).toBe('world');
+
+        // DOM → model via the input event (contenteditable edit).
+        el.textContent = 'typed';
+        el.dispatchEvent(new Event('input'));
+        expect(model.value).toBe('typed');
+
+        dispose();
+      });
+
+      it('does not install inline on* handlers via bind', () => {
+        const el = document.createElement('div');
+        document.body.appendChild(el);
+        const handler = signal(() => {});
+
+        const dispose = bindElement(
+          el,
+          'onclick',
+          () => handler.value,
+          () => {},
+        );
+        expect((el as any).onclick).toBeNull();
+        dispose();
+      });
+
+      it('still allows benign custom element properties', () => {
+        const el = document.createElement('my-widget');
+        document.body.appendChild(el);
+        const model = signal('hello');
+
+        const dispose = bindElement(
+          el,
+          'customValue',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+        expect((el as any).customValue).toBe('hello');
+
+        model.value = 'world';
+        expect((el as any).customValue).toBe('world');
+        dispose();
+      });
+    });
+
+    describe('hydration (BIND-02)', () => {
+      // Regression tests: the initial model→DOM effect must not clobber
+      // pre-hydration user input / autofill.
+      //
+      // Policy:
+      // - Control is CLEAN (value === defaultValue, not focused) → skip the
+      //   first write; the SSR markup already shows the model value.
+      // - Control is DIRTY (user typed / autofill before the bundle attached)
+      //   → adopt the DOM value into the model instead (DOM → model once).
+      // - After hydration ends, normal model→DOM behaviour resumes.
+      let container: HTMLElement;
+
+      beforeEach(() => {
+        container = document.createElement('div');
+        document.body.appendChild(container);
+      });
+
+      afterEach(() => {
+        endHydration();
+        container.remove();
+      });
+
+      /**
+       * Simulate an SSR-rendered input: value attribute → defaultValue.
+       * Marks the node as SSR-adopted — in a real hydration pass
+       * claimHydratedNodes / getRenderedElement does this for every node
+       * reused from server markup, and the BIND-02 first-write skip only
+       * applies to adopted nodes.
+       */
+      function ssrInput(defaultValue: string): HTMLInputElement {
+        container.innerHTML = `<input value="${defaultValue}">`;
+        const input = container.querySelector('input')!;
+        markNodeHydrated(input);
+        return input;
+      }
+
+      it('clean control: skips the first write during hydration', () => {
+        const input = ssrInput('ssr-value');
+        // SSR rendered from the model; input.value === defaultValue.
+        const model = signal('ssr-value');
+        beginHydration(container);
+
+        let writes = 0;
+        const origSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!;
+        Object.defineProperty(input, 'value', {
+          get: origSetter.get,
+          set(v) {
+            writes++;
+            origSetter.set!.call(this, v);
+          },
+          configurable: true,
+        });
+
+        const dispose = bindElement(
+          input,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+
+        // No write happened during the hydration first run.
+        expect(writes).toBe(0);
+        endHydration();
+
+        // Normal reactivity after hydration.
+        model.value = 'updated';
+        expect(input.value).toBe('updated');
+        dispose();
+      });
+
+      it('dirty control: adopts pre-hydration user input into the model', () => {
+        const input = ssrInput('ssr-value');
+        // User typed before hydration: value differs from defaultValue.
+        input.value = 'user-typed';
+        const model = signal('ssr-value');
+        beginHydration(container);
+
+        const dispose = bindElement(
+          input,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+
+        // The user's input was NOT clobbered and flowed into the model.
+        expect(input.value).toBe('user-typed');
+        expect(model.value).toBe('user-typed');
+        endHydration();
+        dispose();
+      });
+
+      it('dirty checkbox: adopts pre-hydration checked state', () => {
+        container.innerHTML = `<input type="checkbox">`;
+        const box = container.querySelector('input')!;
+        markNodeHydrated(box); // SSR-adopted, like ssrInput()
+        // User checked it before hydration (defaultChecked stays false).
+        box.checked = true;
+        const model = signal(false);
+        beginHydration(container);
+
+        const dispose = bindElement(
+          box,
+          'checked',
+          () => model.value,
+          (v) => {
+            model.value = v as boolean;
+          },
+        );
+
+        expect(box.checked).toBe(true);
+        expect(model.value).toBe(true);
+        endHydration();
+        dispose();
+      });
+
+      it('model changes after a skipped hydration write still propagate', () => {
+        const input = ssrInput('same');
+        const model = signal('same');
+        beginHydration(container);
+
+        const dispose = bindElement(
+          input,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+        endHydration();
+
+        model.value = 'later';
+        expect(input.value).toBe('later');
+        dispose();
+      });
+
+      it('csr-created node during hydration: first write executes (not skipped)', () => {
+        // A claim mismatch makes reconcile create FRESH nodes while
+        // isHydrating() is still true. Those controls carry no SSR markup —
+        // skipping the first model→DOM write leaves them blank.
+        beginHydration(container);
+        const input = document.createElement('input');
+        container.appendChild(input); // created client-side, never claimed
+        const model = signal('model-value');
+
+        const dispose = bindElement(
+          input,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+
+        expect(input.value).toBe('model-value');
+        endHydration();
+        dispose();
+      });
+
+      it('bind target inside a claimed SSR subtree still skips the first write', () => {
+        // The claimed node is the ANCESTOR; the bound control is a
+        // descendant. isNodeHydrated must find the marked ancestor.
+        container.innerHTML = `<form><input value="ssr-value"></form>`;
+        const form = container.querySelector('form')!;
+        const input = container.querySelector('input')!;
+        const model = signal('ssr-value');
+        beginHydration(container);
+        markNodeHydrated(form);
+
+        let writes = 0;
+        const origSetter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!;
+        Object.defineProperty(input, 'value', {
+          get: origSetter.get,
+          set(v) {
+            writes++;
+            origSetter.set!.call(this, v);
+          },
+          configurable: true,
+        });
+
+        const dispose = bindElement(
+          input,
+          'value',
+          () => model.value,
+          (v) => {
+            model.value = v as string;
+          },
+        );
+
+        expect(writes).toBe(0);
+        endHydration();
+        dispose();
       });
     });
   });

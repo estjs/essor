@@ -7,20 +7,15 @@
  * are unstable and may change without notice.
  */
 
-export type { Scope } from './scope';
+export type { ActiveScopeSlot, Scope } from './scope';
 export {
+  activateScopeEffects,
   createScope,
   disposeScope,
   getActiveScope,
-  onCleanup,
   runWithScope,
   setActiveScope,
+  setActiveScopeSlotProvider,
 } from './scope';
-
-export {
-  SSR_ASYNC_CONTEXT_ERROR,
-  createSSRExecutionState,
-  getSSRExecutionCarrier,
-  getSSRExecutionState,
-  setSSRExecutionCarrier,
-} from './ssr-execution';
+export type { HydrationKeySlot } from './hydration';
+export { setHydrationKeySlotProvider } from './hydration';

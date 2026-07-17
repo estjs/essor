@@ -818,4 +818,151 @@ describe('transitionGroup', () => {
     popContextStack();
     cleanupContext(ctx);
   });
+
+  describe('tg-01: same key with new item identity rebuilds the row', () => {
+    it('shows the new item data after a keyed replace', () => {
+      const items = signal([{ id: 1, label: 'old' }]);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const wrapper = TransitionGroup({
+        css: false,
+        each: () => items.value,
+        key: (it: any) => it.id,
+        children: (it: any) => {
+          const li = document.createElement('li');
+          li.textContent = it.label;
+          return li;
+        },
+      });
+      mountGroup(wrapper);
+      flushMount(ctx);
+      popContextStack();
+
+      expect(wrapper.querySelector('li')?.textContent).toBe('old');
+
+      // Same key (1), new object identity with different data.
+      items.value = [{ id: 1, label: 'new' }];
+
+      expect(wrapper.querySelector('li')?.textContent).toBe('new');
+      expect(wrapper.querySelectorAll('li')).toHaveLength(1);
+
+      cleanupContext(ctx);
+    });
+
+    it('keeps the row (fast path) when the item reference is unchanged', () => {
+      const itemA = { id: 1, label: 'stable' };
+      const items = signal([itemA]);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      let renders = 0;
+      const wrapper = TransitionGroup({
+        css: false,
+        each: () => items.value,
+        key: (it: any) => it.id,
+        children: (it: any) => {
+          renders++;
+          const li = document.createElement('li');
+          li.textContent = it.label;
+          return li;
+        },
+      });
+      mountGroup(wrapper);
+      flushMount(ctx);
+      popContextStack();
+      expect(renders).toBe(1);
+
+      // New array, SAME item reference → row must be reused, not re-rendered.
+      items.value = [itemA];
+      expect(renders).toBe(1);
+      expect(wrapper.querySelectorAll('li')).toHaveLength(1);
+
+      cleanupContext(ctx);
+    });
+
+    it('rebuilds a LEAVING row when the same key re-enters with a new item identity', async () => {
+      const items = signal([{ id: 1, label: 'old' }]);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      const wrapper = TransitionGroup({
+        each: () => items.value,
+        key: (it: any) => it.id,
+        name: 'fade',
+        // Block leave completion so the entry stays in the 'leaving' state.
+        onLeave: () => {
+          /* intentionally never call done */
+        },
+        children: (it: any) => {
+          const li = document.createElement('li');
+          li.textContent = it.label;
+          li.dataset.key = String(it.id);
+          return li;
+        },
+      });
+      mountGroup(wrapper);
+      flushMount(ctx);
+      popContextStack();
+      expect(wrapper.querySelector('li')?.textContent).toBe('old');
+
+      // Remove key 1 → leave starts and never completes.
+      items.value = [];
+      await Promise.resolve();
+      const leaving = wrapper.querySelector('[data-key="1"]') as HTMLElement;
+      expect(leaving.style.position).toBe('absolute');
+
+      // Re-add key 1 with a NEW item object mid-leave. Resurrecting the old
+      // DOM would display stale data — the row must be rebuilt from the new
+      // item (TG-01 leaving-path).
+      items.value = [{ id: 1, label: 'new' }];
+      await Promise.resolve();
+
+      const rows = wrapper.querySelectorAll('[data-key="1"]');
+      expect(rows).toHaveLength(1);
+      expect(rows[0].textContent).toBe('new');
+      // The rebuilt row is laid out normally, not pinned by the stale leave.
+      expect((rows[0] as HTMLElement).style.position).toBe('');
+
+      cleanupContext(ctx);
+    });
+  });
+
+  describe('tg-02: finished-leaving entries are evicted', () => {
+    it('re-adding a removed key creates a fresh row (css disabled)', () => {
+      const items = signal([1, 2]);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      let renders = 0;
+      const wrapper = TransitionGroup({
+        css: false,
+        each: () => items.value,
+        key: (n: number) => n,
+        children: (n: number) => {
+          renders++;
+          const li = document.createElement('li');
+          li.textContent = `row-${n}`;
+          li.dataset.gen = String(renders);
+          return li;
+        },
+      });
+      mountGroup(wrapper);
+      flushMount(ctx);
+      popContextStack();
+      expect(renders).toBe(2);
+
+      // Remove key 2 — with css:false the leave completes synchronously and
+      // the entry must be evicted from the internal list.
+      items.value = [1];
+      expect(wrapper.querySelectorAll('li')).toHaveLength(1);
+
+      // Re-add key 2 — must render a FRESH row (gen bumps), not resurrect
+      // the disposed one.
+      items.value = [1, 2];
+      const rows = wrapper.querySelectorAll('li');
+      expect(rows).toHaveLength(2);
+      const row2 = [...rows].find((r) => r.textContent === 'row-2')! as HTMLElement;
+      expect(row2.dataset.gen).toBe('3');
+      expect(renders).toBe(3);
+
+      cleanupContext(ctx);
+    });
+  });
 });

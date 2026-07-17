@@ -1,7 +1,8 @@
-import { isArray, isFunction, isString } from '@estjs/shared';
+import { isArray, isFunction, isString, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { addEventListener } from './events';
 import { getActiveScope, onCleanup } from './scope';
+import { isHydrating, isNodeHydrated } from './hydration';
 
 /**
  * Modifiers for `bind:*` two-way bindings.
@@ -39,6 +40,7 @@ interface Strategy {
 }
 
 const IDENTITY = <T>(v: T): T => v;
+const NOOP_DISPOSE = (): void => {};
 const EMPTY_FILES = ((): FileList => {
   if (typeof DataTransfer !== 'undefined') return new DataTransfer().files;
   return [] as unknown as FileList;
@@ -118,8 +120,34 @@ const SELECT: Strategy = {
   },
 };
 
+/**
+ * Property names that must never be writable through the generic custom-prop
+ * binding: raw HTML sinks (`innerHTML` / `srcdoc`) that would bypass the
+ * attribute-layer safety policy (operations/attr.ts refuses the same sinks),
+ * the subtree-destroying `outerHTML`, plus inline `on*` event handlers.
+ * `textContent` is deliberately allowed — it is a plain-text assignment, not
+ * an HTML sink, and is the documented channel for contenteditable hosts.
+ * Compared lowercase.
+ */
+const FORBIDDEN_CUSTOM_PROPS = new Set(['innerhtml', 'outerhtml', 'srcdoc']);
+
+function isForbiddenCustomProp(prop: string): boolean {
+  const lower = prop.toLowerCase();
+  return FORBIDDEN_CUSTOM_PROPS.has(lower) || lower.startsWith('on');
+}
+
 /** Fallback for custom elements / contenteditable hosts — closes over `prop`. */
-function customStrategy(prop: string): Strategy {
+function customStrategy(prop: string): Strategy | null {
+  // Security guard: refuse HTML sinks and inline handlers — an arbitrary
+  // `bind:innerHTML` would be a direct XSS channel around the attr policy.
+  // Returning null makes bindElement bail out before wiring any listener,
+  // effect or disposer.
+  if (isForbiddenCustomProp(prop)) {
+    if (__DEV__) {
+      warn(`[bind] property "${prop}" is not bindable (unsafe sink); the binding is a no-op.`);
+    }
+    return null;
+  }
   return {
     event: 'input',
     read: (el) => (el as any)[prop],
@@ -129,7 +157,7 @@ function customStrategy(prop: string): Strategy {
   };
 }
 
-function resolve(node: Element, prop: string): Strategy {
+function resolve(node: Element, prop: string): Strategy | null {
   switch (node.nodeName) {
     case 'INPUT':
       if (prop === 'checked') return (node as HTMLInputElement).type === 'radio' ? RADIO : CHECKBOX;
@@ -188,6 +216,32 @@ function shouldAutoCoerceNumber(node: Element, prop: string): boolean {
 // ── Public API ──────────────────────────────────────────────
 
 /**
+ * Whether a form control has been touched before hydration attached: user
+ * typing / browser autofill / password managers change `value` away from the
+ * SSR-rendered `defaultValue` (same for `checked` vs `defaultChecked`), and a
+ * focused control is being interacted with right now.
+ */
+function isDirtyBeforeHydration(node: Element, prop: string): boolean {
+  if (isFocused(node)) return true;
+  if (node.nodeName === 'INPUT') {
+    const input = node as HTMLInputElement;
+    if (prop === 'checked') return input.checked !== input.defaultChecked;
+    if (prop === 'value') return input.value !== input.defaultValue;
+    return false;
+  }
+  if (node.nodeName === 'TEXTAREA') {
+    const area = node as HTMLTextAreaElement;
+    return area.value !== area.defaultValue;
+  }
+  if (node.nodeName === 'SELECT') {
+    for (const option of (node as HTMLSelectElement).options) {
+      if (option.selected !== option.defaultSelected) return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Creates a two-way binding between a DOM element property and a reactive model.
  *
  * - Model → DOM via a reactive `effect()`.
@@ -198,6 +252,9 @@ function shouldAutoCoerceNumber(node: Element, prop: string): boolean {
  * @param getter    Reactive getter, or a static initial value.
  * @param setter    Called with the (optionally transformed) DOM value on user input.
  * @param modifiers Optional `{ trim, number, lazy }`.
+ * @returns Idempotent disposer that stops the effect and removes all
+ *   listeners. With an active scope, cleanup is also automatic; standalone
+ *   callers must invoke the disposer to release the binding.
  */
 export function bindElement(
   node: Element | null,
@@ -205,11 +262,15 @@ export function bindElement(
   getter: (() => unknown) | unknown,
   setter: (v: unknown) => void,
   modifiers: BindModifiers = {},
-): void {
-  if (!node) return;
+): () => void {
+  if (!node) return NOOP_DISPOSE;
 
-  // 1. Resolve strategy & pre-compute flags
-  const { event, read, write, forceChange, ime, checkboxArray } = resolve(node, prop);
+  // 1. Resolve strategy & pre-compute flags. A null strategy means the prop
+  // is a forbidden sink — bail before installing any listener,
+  // effect or disposer.
+  const strategy = resolve(node, prop);
+  if (!strategy) return NOOP_DISPOSE;
+  const { event, read, write, forceChange, ime, checkboxArray } = strategy;
   const trim = modifiers.trim === true;
   const toNum = modifiers.number === true || shouldAutoCoerceNumber(node, prop);
   const lazy = modifiers.lazy === true;
@@ -219,6 +280,9 @@ export function bindElement(
   const cast: (v: unknown) => unknown = shouldCast
     ? (v) => applyModifiers(v, trim, toNum)
     : IDENTITY;
+
+  // Collect every resource this binding creates so dispose() can release them.
+  const disposers: Array<() => void> = [];
 
   // Checkbox group: when a non-radio checkbox is bound to an array model,
   // toggle `el.value` in the array on each change. Decided lazily per-event
@@ -250,41 +314,72 @@ export function bindElement(
     if (!Object.is(getModel(), next)) setter(next);
   };
 
-  addEventListener(node, eventName, syncToModel);
+  disposers.push(addEventListener(node, eventName, syncToModel));
 
   // Normalize the displayed value on blur when modifiers are active.
   if (!lazy && shouldCast && eventName !== 'change') {
-    addEventListener(node, 'change', () => write(node, cast(read(node))));
+    disposers.push(addEventListener(node, 'change', () => write(node, cast(read(node)))));
   }
 
   // 3. IME composition guard — track state whenever the strategy is IME-aware,
   // even in `lazy` mode, otherwise an external model write during composition
   // would clobber pending input. `lazy` only controls the commit event.
   if (ime) {
-    addEventListener(node, 'compositionstart', () => {
-      composing = true;
-    });
-    addEventListener(node, 'compositionend', () => {
-      composing = false;
-      // Lazy waits for blur; eager commits the composed text now.
-      if (!lazy) syncToModel();
-    });
+    disposers.push(
+      addEventListener(node, 'compositionstart', () => {
+        composing = true;
+      }),
+    );
+    disposers.push(
+      addEventListener(node, 'compositionend', () => {
+        composing = false;
+        // Lazy waits for blur; eager commits the composed text now.
+        if (!lazy) syncToModel();
+      }),
+    );
   }
 
   // 4. Model → DOM — skip the write when (a) inside an IME composition or
   // (b) the focused input already shows the canonical value (avoids caret jump).
+  //
+  // Hydration policy: during the FIRST run while hydrating, do not
+  // clobber the DOM. If the control is untouched, the SSR markup already
+  // shows the model value — skip the write. If the user (or autofill) already
+  // changed it before the bundle attached, adopt the DOM value into the model
+  // instead of overwriting the user's input. Only applies to nodes adopted
+  // from SSR markup — a control freshly created on the client during a
+  // claim-mismatch fallback has no SSR value and needs its first write.
+  let hydrationFirstRun = isHydrating() && isNodeHydrated(node);
   const runner = effect(() => {
     const value = getModel();
     if (checkboxArray) {
       if (isArray(value)) checkboxArraySnapshots.set(value, [...value]);
+    }
+    if (hydrationFirstRun) {
+      hydrationFirstRun = false;
+      if (isDirtyBeforeHydration(node, prop)) {
+        syncToModel(); // user input wins — DOM → model once
+      }
+      return; // clean control: SSR markup already matches the model
     }
     if (ime && composing) return;
     if (ime && !lazy && isFocused(node) && Object.is(cast(read(node)), value)) return;
     write(node, value);
   });
 
-  // 5. Lifecycle cleanup
+  // 5. Lifecycle cleanup — idempotent disposer; auto-registered with a scope.
+  let disposed = false;
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    runner.stop();
+    for (const d of disposers) d();
+    disposers.length = 0;
+  };
+
   if (getActiveScope()) {
-    onCleanup(() => runner.stop());
+    onCleanup(dispose);
   }
+
+  return dispose;
 }

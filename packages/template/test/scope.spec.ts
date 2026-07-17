@@ -80,6 +80,18 @@ describe('scope effectScope bridge', () => {
     expect(childComputedRuns).toBeGreaterThan(0);
   });
 
+  it('parent link is severed after disposal completes (SCOPE-01)', () => {
+    const parent = createScope(null);
+    let scopedChild!: Scope;
+    runWithScope(parent, () => {
+      scopedChild = createScope();
+    });
+    disposeScope(scopedChild);
+    expect(scopedChild.parent).toBeNull();
+    expect(scopedChild.isDestroyed).toBe(true);
+    disposeScope(parent);
+  });
+
   it('syncs setActiveScope with the active effectScope for direct stack manipulation', () => {
     const scope = createScope(null);
     const count = signal(0);

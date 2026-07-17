@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { signal } from '@estjs/signals';
-import { createComponent, isComponent } from '../src/component';
+import { type Component, createComponent, isComponent } from '../src/component';
 import { onDestroy, onMount, onUpdate } from '../src/lifecycle';
 import { COMPONENT_STATE, COMPONENT_TYPE } from '../src/constants';
+import { type Scope, createScope, disposeScope, runWithScope } from '../src/scope';
 import { createTestRoot, resetEnvironment } from './test-utils';
 
 describe('component', () => {
@@ -279,7 +280,7 @@ describe('component', () => {
       expect(ref.value).toBe(button);
     });
 
-    it('overrides a JSX-bound delegated handler in the `_$<event>` slot', async () => {
+    it('overrides a JSX-bound delegated handler in the `_$<event>` slot (Solid-style)', async () => {
       const root = createTestRoot();
       const internal = vi.fn();
       const parent = vi.fn();
@@ -808,6 +809,150 @@ describe('component', () => {
     it('is a no-op when never mounted', () => {
       const instance = createComponent(() => document.createElement('div')) as any;
       expect(() => instance.destroy()).not.toThrow();
+    });
+
+    it('keeps props intact when destroy() is called before the first mount', () => {
+      const root = createTestRoot();
+      const Comp = (props: any) => {
+        const div = document.createElement('div');
+        div.textContent = props.text || '';
+        return div;
+      };
+      const instance = createComponent(Comp, { text: 'kept' } as any) as any;
+
+      // destroy() before any mount must not strip reactiveProps descriptors.
+      instance.destroy();
+      instance.mount(root);
+
+      expect(root.textContent).toBe('kept');
+      instance.destroy();
+    });
+  });
+
+  // ── own-01: finalizers run when an ancestor disposes the scope ────
+  describe('own-01: component finalizers run when an ancestor disposes the scope', () => {
+    function mountChildInParentScope(root: HTMLElement): {
+      parentScope: Scope;
+      comp: Component;
+      refSignal: ReturnType<typeof signal<Element | null>>;
+      clicks: () => number;
+    } {
+      const parentScope = createScope(null);
+      const refSignal = signal<Element | null>(null);
+      let clicks = 0;
+
+      const Child = () => {
+        const el = document.createElement('button');
+        el.textContent = 'child';
+        return el;
+      };
+
+      let comp!: Component;
+      runWithScope(parentScope, () => {
+        comp = createComponent(Child, {
+          ref: refSignal,
+          onClick: () => {
+            clicks++;
+          },
+        } as any);
+        comp.mount(root);
+      });
+
+      return { parentScope, comp, refSignal, clicks: () => clicks };
+    }
+
+    it('removes the DOM when only the ancestor scope is disposed', () => {
+      const root = createTestRoot();
+      const { parentScope } = mountChildInParentScope(root);
+      expect(root.querySelector('button')).not.toBeNull();
+
+      // Ancestor disposal — Component.destroy() is never called by anyone.
+      disposeScope(parentScope);
+
+      expect(root.querySelector('button')).toBeNull();
+    });
+
+    it('restores the root ref when the ancestor scope is disposed', () => {
+      const root = createTestRoot();
+      const { parentScope, refSignal } = mountChildInParentScope(root);
+      expect(refSignal.value).toBeInstanceOf(Element);
+
+      disposeScope(parentScope);
+
+      expect(refSignal.value).toBeNull();
+    });
+
+    it('releases root event listeners when the ancestor scope is disposed', () => {
+      const root = createTestRoot();
+      const { parentScope, clicks } = mountChildInParentScope(root);
+      const button = root.querySelector('button')!;
+      button.dispatchEvent(new Event('click', { bubbles: true }));
+      expect(clicks()).toBe(1);
+
+      disposeScope(parentScope);
+
+      // Element is detached; re-attach it manually and click — the handler
+      // must be gone.
+      root.appendChild(button);
+      button.dispatchEvent(new Event('click', { bubbles: true }));
+      expect(clicks()).toBe(1);
+    });
+
+    it('finalizes exactly once even when destroy() is called after ancestor disposal', () => {
+      const root = createTestRoot();
+      const { parentScope, comp } = mountChildInParentScope(root);
+      const removeSpy = vi.spyOn(Element.prototype, 'remove');
+
+      disposeScope(parentScope);
+      const callsAfterDisposal = removeSpy.mock.calls.length;
+      expect(callsAfterDisposal).toBeGreaterThan(0);
+
+      // Second entry point — must be a no-op.
+      comp.destroy();
+      comp.destroy();
+      expect(removeSpy.mock.calls.length).toBe(callsAfterDisposal);
+      removeSpy.mockRestore();
+    });
+
+    it('a destroyed component can be re-mounted', () => {
+      const root = createTestRoot();
+      const Child = () => {
+        const el = document.createElement('span');
+        el.textContent = 'remount';
+        return el;
+      };
+      const comp = createComponent(Child, {});
+      comp.mount(root);
+      comp.destroy();
+      expect(root.querySelector('span')).toBeNull();
+
+      comp.mount(root);
+      expect(root.querySelector('span')?.textContent).toBe('remount');
+      comp.destroy();
+    });
+  });
+
+  // ── own-03: firstChild tracks the live insert() array ─────────────
+  describe('own-03: Component.firstChild stays in sync with reactive roots', () => {
+    it('keeps Component.firstChild in sync with reactive root replacement', () => {
+      const root = createTestRoot();
+      const which = signal(true);
+      // mount() unwraps ONE function level (render-function pattern); the inner
+      // factory is what insert() re-runs reactively on signal change.
+      const Child = () => () => () => {
+        const el = document.createElement(which.value ? 'p' : 'h1');
+        el.textContent = which.value ? 'p-root' : 'h1-root';
+        return el;
+      };
+
+      const comp = createComponent(Child, {});
+      comp.mount(root);
+      expect((comp.firstChild as Element).tagName).toBe('P');
+
+      which.value = false;
+      expect((comp.firstChild as Element).tagName).toBe('H1');
+
+      comp.destroy();
     });
   });
 });

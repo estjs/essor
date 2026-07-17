@@ -59,21 +59,54 @@ function evalDisabled(props: PortalProps): boolean {
  * ```
  */
 export function Portal(props: PortalProps): Comment {
-  // Hydration: adopt SSR-emitted anchors + target block.
-  if (isHydrating()) {
-    const adopted = tryHydratePortal(props);
-    if (adopted) return adopted;
-  }
+  // Hydration: adopt SSR-emitted anchors + target block. Adoption only claims
+  // the markers here — ownership (scope/effect/cleanup) is wired below through
+  // the SAME path as CSR, so reactive `target`/`disabled` changes and unmount
+  // teardown keep working for hydrated portals.
+  const adopted = isHydrating() ? tryHydratePortal(props) : null;
 
-  const placeholder = document.createComment('portal');
+  const placeholder = adopted?.anchor ?? document.createComment('portal');
   placeholder[PORTAL_COMPONENT] = true;
 
   const { children } = props;
-  if (children == null) return placeholder;
+  if (children == null) {
+    // No client children: an adopted SSR block would otherwise leak its
+    // markers/nodes in the target forever — discard it before bailing out.
+    if (adopted?.block) {
+      for (const node of adopted.block.nodes) {
+        if (node.parentNode) (node as ChildNode).remove();
+      }
+      adopted.block.start.remove();
+      adopted.block.end.remove();
+    }
+    return placeholder;
+  }
 
   const parentScope = getActiveScope();
   let innerScope: Scope | null = null;
   let disposed = false;
+
+  // Pending SSR block (start/end markers + inner nodes) claimed during
+  // hydration; consumed by the first mount so insert()'s claim path adopts
+  // the SSR children instead of re-creating them.
+  let adoptedBlock = adopted?.block ?? null;
+  const adoptedTarget = adopted?.target ?? null;
+
+  /** Remove an SSR block's start/end comment markers. */
+  const removeMarkers = (block: { start: Comment; end: Comment }): void => {
+    block.start.remove();
+    block.end.remove();
+  };
+
+  /** Remove an unconsumed adopted SSR block (nodes + markers). */
+  const discardAdoptedBlock = (): void => {
+    if (!adoptedBlock) return;
+    for (const node of adoptedBlock.nodes) {
+      if (node.parentNode) (node as ChildNode).remove();
+    }
+    removeMarkers(adoptedBlock);
+    adoptedBlock = null;
+  };
 
   /**
    * Mount children into the given parent, inside a fresh inner scope
@@ -109,6 +142,7 @@ export function Portal(props: PortalProps): Comment {
     teardown();
 
     if (disabled) {
+      discardAdoptedBlock();
       const parent = placeholder.parentNode;
       if (!parent) return;
       mountAt(parent, placeholder);
@@ -120,6 +154,34 @@ export function Portal(props: PortalProps): Comment {
         warn(`[Portal] Target element not found: ${String(props.target)}`);
       }
       return;
+    }
+
+    // First mount of a hydrated portal: mount before the SSR end marker so
+    // insert()'s hydration claim re-uses the SSR children in place, and tie
+    // the markers' removal to the inner scope's lifetime.
+    if (adoptedBlock) {
+      if (target === adoptedTarget && isHydrating()) {
+        const block = adoptedBlock;
+        adoptedBlock = null;
+        mountAt(target, block.end);
+        if (innerScope) {
+          runWithScope(innerScope, () => {
+            onCleanup(() => removeMarkers(block));
+          });
+        } else {
+          // mountAt bailed silently (disposed / parent scope destroyed):
+          // nothing owns the adopted SSR children now, so remove them along
+          // with the markers — otherwise they'd linger in the DOM forever.
+          for (const node of block.nodes) {
+            if (node.parentNode) (node as ChildNode).remove();
+          }
+          removeMarkers(block);
+        }
+        return;
+      }
+      // Target changed (or hydration already ended) — the SSR block cannot
+      // be reused; remove it so content is not duplicated.
+      discardAdoptedBlock();
     }
     mountAt(target);
   };
@@ -171,13 +233,21 @@ export function Portal(props: PortalProps): Comment {
 
 Portal[PORTAL_COMPONENT] = true;
 
+/** Result of a successful Portal hydration claim. */
+interface AdoptedPortal {
+  anchor: Comment;
+  target: Element;
+  block: { start: Comment; end: Comment; nodes: Node[] };
+}
+
 /**
  * Hydration adoption for Portal.
  *
- * Returns the SSR call-site anchor as placeholder on match, `null` on mismatch
- * (falls back to CSR mount path).
+ * Claims the SSR call-site anchor and the target's teleport block. Returns
+ * the claim on match, `null` on mismatch (falls back to the CSR mount path).
+ * Ownership wiring (scope/effect/cleanup) happens in Portal() itself.
  */
-function tryHydratePortal(props: PortalProps): Comment | null {
+function tryHydratePortal(props: PortalProps): AdoptedPortal | null {
   if (evalDisabled(props)) return null;
 
   const anchor = consumeTeleportAnchor();
@@ -206,8 +276,8 @@ function tryHydratePortal(props: PortalProps): Comment | null {
     return null;
   }
 
-  anchor[PORTAL_COMPONENT] = true;
-  return anchor;
+  // Portal() marks the adopted anchor with PORTAL_COMPONENT itself.
+  return { anchor, target, block };
 }
 
 /**

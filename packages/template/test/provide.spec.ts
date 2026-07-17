@@ -4,7 +4,7 @@ import { createComponent, isComponent } from '../src/component';
 import { template } from '../src/renderer';
 import { insert } from '../src/dom';
 import { inject, provide } from '../src/provide';
-import { createScope, runWithScope } from '../src/scope';
+import { createScope, disposeScope, onCleanup, runWithScope } from '../src/scope';
 
 function expectComponent(node: ReturnType<typeof createComponent>) {
   if (!isComponent(node)) {
@@ -256,5 +256,48 @@ describe('provide/Inject Update Regression', () => {
     expect(errorSpy).toHaveBeenCalledTimes(2);
     expect(errorSpy.mock.calls[0]?.[0]).toContain('provide() must be called within a scope');
     expect(errorSpy.mock.calls[1]?.[0]).toContain('inject() must be called within a scope');
+  });
+
+  // scope-01: destroy hooks / cleanups still see ancestor scopes via inject()
+  // — the parent link is severed only after user callbacks run.
+  it('onCleanup sees ancestor provides (SCOPE-01)', () => {
+    const key = Symbol('theme');
+    const parent = createScope(null);
+    let observed: string | undefined;
+
+    runWithScope(parent, () => {
+      provide(key, 'dark');
+      const child = createScope();
+      runWithScope(child, () => {
+        onCleanup(() => {
+          observed = inject(key, 'missing');
+        });
+      });
+      disposeScope(child);
+    });
+
+    expect(observed).toBe('dark');
+    disposeScope(parent);
+  });
+
+  it('ancestor-driven disposal also preserves inject() during child cleanup (SCOPE-01)', () => {
+    const key = Symbol('lang');
+    const parent = createScope(null);
+    let observed: string | undefined;
+
+    runWithScope(parent, () => {
+      provide(key, 'zh');
+      const child = createScope();
+      runWithScope(child, () => {
+        onCleanup(() => {
+          observed = inject(key, 'missing');
+        });
+      });
+    });
+
+    // Dispose the PARENT — the child's cleanup runs during the recursive
+    // child disposal, before the child is detached from the parent.
+    disposeScope(parent);
+    expect(observed).toBe('zh');
   });
 });

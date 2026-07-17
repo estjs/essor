@@ -2,6 +2,68 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { patchAttr } from '../../src/operations/attr';
 import { SPREAD_NAME, XLINK_NAMESPACE, XMLNS_NAMESPACE } from '../../src/constants';
 
+const CLIENT_URL_ATTRIBUTES = [
+  {
+    name: 'href',
+    create: () => document.createElement('a'),
+    read: (element: Element) => element.getAttribute('href'),
+  },
+  {
+    name: 'SRC',
+    create: () => document.createElement('img'),
+    read: (element: Element) => element.getAttribute('src'),
+  },
+  {
+    name: 'xlink:href',
+    create: () => document.createElementNS('http://www.w3.org/2000/svg', 'use'),
+    read: (element: Element) => element.getAttributeNS(XLINK_NAMESPACE, 'href'),
+  },
+  {
+    name: 'ACTION',
+    create: () => document.createElement('form'),
+    read: (element: Element) => element.getAttribute('action'),
+  },
+  {
+    name: 'formAction',
+    create: () => document.createElement('button'),
+    read: (element: Element) => element.getAttribute('formaction'),
+  },
+  {
+    name: 'PoStEr',
+    create: () => document.createElement('video'),
+    read: (element: Element) => element.getAttribute('poster'),
+  },
+] as const;
+
+const UNSAFE_URLS = [
+  ['mixed-case javascript protocol', 'JaVaScRiPt:alert(1)'],
+  ['leading ASCII whitespace and controls', '\u0000\t\n  javascript:alert(1)'],
+  ['interspersed ASCII controls including DEL', 'java\u0000\u001F\u007Fscript:alert(1)'],
+  ['vbscript protocol', 'Vb\u000BScRiPt:msgbox(1)'],
+  ['text/html data URL', 'data:text/html,<script>alert(1)</script>'],
+  ['text/xml data URL', 'data:text/xml,<root/>'],
+  ['application/xml data URL', 'data:application/xml,<root/>'],
+  ['application/xhtml+xml data URL', 'data:application/xhtml+xml,<html/>'],
+  ['image/svg+xml data URL', 'data:image/svg+xml,<svg onload="alert(1)"/>'],
+  ['generic +xml data URL', 'DATA:application/atom+xml,<feed/>'],
+] as const;
+
+const SAFE_URLS = [
+  '/docs/getting-started',
+  'http://example.com/page',
+  'https://example.com/page',
+  'mailto:hello@example.com',
+  'tel:+123456789',
+  'data:image/png;base64,iVBORw0KGgo=',
+  'data:font/woff2;base64,d09GMg==',
+  'data:audio/ogg;base64,T2dnUw==',
+] as const;
+
+const COERCIBLE_UNSAFE_URLS = [
+  ['boxed string', new Object('javascript:alert(1)')],
+  ['custom toString', { toString: () => 'javascript:alert(1)' }],
+] as const;
+
 describe('attributes module', () => {
   let element: HTMLElement;
   let svgElement: SVGElement;
@@ -51,7 +113,7 @@ describe('attributes module', () => {
 
     it('should handle symbol values', () => {
       const symbol = Symbol('test');
-      patchAttr(element, 'data-test', null, symbol as unknown as string);
+      patchAttr(element, 'data-test', null, symbol);
       expect(element.dataset.test).toBe('Symbol(test)');
     });
 
@@ -96,6 +158,37 @@ describe('attributes module', () => {
       it('should block dangerous protocols on xlink:href', () => {
         patchAttr(svgElement, 'xlink:href', null, 'javascript:alert(1)');
         expect(svgElement.getAttribute('xlink:href')).toBeNull();
+      });
+
+      it('routes mixed-case xlink URL attributes through the xlink namespace', () => {
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+
+        patchAttr(use, 'XLink:Href', null, '#safe-symbol');
+        expect.soft(use.getAttributeNS(XLINK_NAMESPACE, 'href')).toBe('#safe-symbol');
+
+        const unsafeUrl = 'javascript:alert(1)';
+        use.setAttributeNS(XLINK_NAMESPACE, 'xlink:href', unsafeUrl);
+        patchAttr(use, 'XLink:Href', unsafeUrl, unsafeUrl);
+
+        expect(use.getAttributeNS(XLINK_NAMESPACE, 'href')).toBeNull();
+      });
+
+      it('canonicalizes mixed-case SVG URL names without changing non-URL attribute casing', () => {
+        const image = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+
+        patchAttr(image, 'HREF', null, '/safe.svg');
+        patchAttr(image, 'viewBox', null, '0 0 10 10');
+
+        expect.soft(image.getAttribute('href')).toBe('/safe.svg');
+        expect.soft(image.getAttribute('HREF')).toBeNull();
+        expect.soft(image.getAttribute('viewBox')).toBe('0 0 10 10');
+        expect.soft(image.getAttribute('viewbox')).toBeNull();
+
+        const unsafeUrl = 'javascript:alert(1)';
+        image.setAttribute('href', unsafeUrl);
+        patchAttr(image, 'HREF', unsafeUrl, unsafeUrl);
+
+        expect(image.getAttribute('href')).toBeNull();
       });
 
       it('should set and remove xmlns attributes with the XMLNS namespace', () => {
@@ -188,6 +281,79 @@ describe('attributes module', () => {
     });
 
     describe('dangerous sinks', () => {
+      it.each(CLIENT_URL_ATTRIBUTES)(
+        'drops unsafe URL values for $name',
+        ({ create, name, read }) => {
+          for (const [, value] of UNSAFE_URLS) {
+            const element = create();
+            patchAttr(element, name, null, value);
+            expect(read(element)).toBeNull();
+          }
+        },
+      );
+
+      it.each(CLIENT_URL_ATTRIBUTES)(
+        'preserves safe URL values for $name',
+        ({ create, name, read }) => {
+          for (const value of SAFE_URLS) {
+            const element = create();
+            patchAttr(element, name, null, value);
+            expect(read(element)).toBe(value);
+          }
+        },
+      );
+
+      it('removes a namespaced URL attribute when an update becomes unsafe', () => {
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+
+        patchAttr(use, 'xlink:href', null, '#safe-symbol');
+        patchAttr(use, 'xlink:href', '#safe-symbol', 'java\u007Fscript:alert(1)');
+
+        expect(use.getAttributeNS(XLINK_NAMESPACE, 'href')).toBeNull();
+      });
+
+      it('removes an existing unsafe URL even when patch values are unchanged', () => {
+        const anchor = document.createElement('a');
+        const unsafeUrl = 'javascript:alert(1)';
+        anchor.setAttribute('href', unsafeUrl);
+
+        patchAttr(anchor, 'href', unsafeUrl, unsafeUrl);
+
+        expect(anchor.getAttribute('href')).toBeNull();
+      });
+
+      it.each(COERCIBLE_UNSAFE_URLS)('drops unsafe URL values from %s', (_, value) => {
+        const anchor = document.createElement('a');
+
+        patchAttr(anchor, 'href', null, value);
+
+        expect(anchor.getAttribute('href')).toBeNull();
+      });
+
+      it('coerces a URL value once and writes the checked string', () => {
+        const anchor = document.createElement('a');
+        let calls = 0;
+        const value = {
+          toString() {
+            calls += 1;
+            return calls === 1 ? '/safe' : 'javascript:alert(1)';
+          },
+        };
+
+        patchAttr(anchor, 'href', null, value);
+
+        expect(anchor.getAttribute('href')).toBe('/safe');
+        expect(calls).toBe(1);
+      });
+
+      it('safely stringifies symbols in URL attributes', () => {
+        const anchor = document.createElement('a');
+
+        patchAttr(anchor, 'href', null, Symbol('safe'));
+
+        expect(anchor.getAttribute('href')).toBe('Symbol(safe)');
+      });
+
       it('should block dangerous protocols on common URL attributes', () => {
         const anchor = document.createElement('a');
         const image = document.createElement('img');
@@ -290,7 +456,7 @@ describe('attributes module', () => {
       it('should ignore event attributes because the event layer handles them', () => {
         const setSpy = vi.spyOn(element, 'setAttribute');
 
-        patchAttr(element, 'onClick', null, 'alert(1)' as unknown as string);
+        patchAttr(element, 'onClick', null, 'alert(1)');
 
         expect(setSpy).not.toHaveBeenCalled();
         expect(element.hasAttribute('onClick')).toBe(false);
@@ -329,6 +495,23 @@ describe('attributes module', () => {
         expect(warnSpy).toHaveBeenCalledWith(
           expect.stringContaining('[Essor warn]: nested spread attributes are ignored'),
         );
+      });
+
+      it('should remove the old spread listener when onClick changes to a non-function', () => {
+        // Regression: with the old `next == null && isFunction(prev)` guard, a
+        // function → string transition skipped the event branch entirely and
+        // the stale listener kept firing.
+        const handler = vi.fn();
+        const prev = { onClick: handler };
+        const next = { onClick: 'not-a-function' };
+
+        patchAttr(element, SPREAD_NAME, null, prev);
+        element.dispatchEvent(new Event('click'));
+        expect(handler).toHaveBeenCalledTimes(1);
+
+        patchAttr(element, SPREAD_NAME, prev, next);
+        element.dispatchEvent(new Event('click'));
+        expect(handler).toHaveBeenCalledTimes(1);
       });
     });
 

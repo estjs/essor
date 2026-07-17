@@ -1019,6 +1019,38 @@ describe('transition validation (T16)', () => {
     popContextStack();
     cleanupContext(ctx);
   });
+
+  // tr-02: a Component slot child mounted just to pluck its root Element is
+  // destroyed (not bare-removeChild'd) on replacement and unmount.
+  it('destroys the slot Component on unmount instead of orphaning it (TR-02)', () => {
+    let destroyed = 0;
+    const Child = () => {
+      const el = document.createElement('div');
+      el.textContent = 'slot';
+      return el;
+    };
+
+    const ctx = createContext(null);
+    pushContextStack(ctx);
+    const comp = createComponent(Child, {});
+    const origDestroy = comp.destroy.bind(comp);
+    comp.destroy = () => {
+      destroyed++;
+      origDestroy();
+    };
+
+    const anchor = Transition({ css: false, children: comp as any });
+    container.appendChild(anchor);
+    flushMount(ctx);
+    popContextStack();
+
+    expect(container.querySelector('div')?.textContent).toBe('slot');
+
+    cleanupContext(ctx);
+
+    expect(destroyed).toBeGreaterThanOrEqual(1);
+    expect(container.querySelector('div')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

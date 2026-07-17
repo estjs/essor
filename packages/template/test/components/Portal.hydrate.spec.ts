@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { signal } from '@estjs/signals';
 import { Portal, isPortal } from '../../src/components/Portal';
+import { onCleanup } from '../../src/scope';
 import {
   beginHydration,
   consumeTeleportAnchor,
@@ -312,6 +314,183 @@ describe('portal — hydration', () => {
         },
       );
       warnSpy.mockRestore();
+    });
+  });
+
+  // --- HYD-01: hydrated Portal ownership ---
+  //
+  // A hydrated Portal must have a real owner — scope, reactive effect and
+  // cleanup — not just claim the SSR markers and bail. Unmount must remove
+  // the teleported DOM; reactive `target`/`disabled` changes must re-mount.
+
+  describe('hyd-01: hydrated Portal ownership', () => {
+    function ssrBlock(content: string): string {
+      return `<!--teleport-start-->${content}<!--teleport-end-->`;
+    }
+
+    /** Run `fn` inside a scope with hydration active; returns the scope. */
+    function hydratePortal(html: string, fn: () => void) {
+      document.body.innerHTML = html;
+      beginHydration(document.body);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      try {
+        fn();
+        // Flush onMount hooks the way createApp would.
+        ctx.onMount?.forEach((cb) => cb());
+      } finally {
+        popContextStack();
+        endHydration();
+      }
+      return ctx;
+    }
+
+    it('adopts SSR children in place (no duplication) and keeps them after mount', () => {
+      const child = document.createElement('p');
+      child.textContent = 'modal';
+
+      hydratePortal(
+        `<section><!--teleport-anchor--></section><div id="t">${ssrBlock('<p>modal</p>')}</div>`,
+        () => {
+          Portal({ target: '#t', children: child });
+        },
+      );
+
+      const t = document.querySelector('#t')!;
+      expect(t.querySelectorAll('p')).toHaveLength(1);
+    });
+
+    it('removes the teleported DOM when the owning scope is disposed (no leak)', () => {
+      const child = document.createElement('p');
+      child.textContent = 'modal';
+
+      const ctx = hydratePortal(
+        `<section><!--teleport-anchor--></section><div id="t">${ssrBlock('<p>modal</p>')}</div>`,
+        () => {
+          Portal({ target: '#t', children: child });
+        },
+      );
+
+      const t = document.querySelector('#t')!;
+      expect(t.querySelectorAll('p')).toHaveLength(1);
+
+      // Unmount — before the fix, the adopted SSR children stayed forever.
+      cleanupContext(ctx);
+
+      expect(t.querySelectorAll('p')).toHaveLength(0);
+      // The SSR block markers are cleaned up too.
+      expect(t.innerHTML).not.toContain('teleport-start');
+      expect(t.innerHTML).not.toContain('teleport-end');
+    });
+
+    it('reacts to a target change after hydration', () => {
+      const child = document.createElement('p');
+      child.textContent = 'movable';
+      const target = signal('#t1');
+
+      const ctx = hydratePortal(
+        `<section><!--teleport-anchor--></section>` +
+          `<div id="t1">${ssrBlock('<p>movable</p>')}</div><div id="t2"></div>`,
+        () => {
+          Portal({ target: () => target.value, children: child });
+        },
+      );
+
+      expect(document.querySelector('#t1 p')).not.toBeNull();
+      expect(document.querySelector('#t2 p')).toBeNull();
+
+      // Reactive target change — before the fix this was silently ignored.
+      target.value = '#t2';
+
+      expect(document.querySelector('#t1 p')).toBeNull();
+      expect(document.querySelector('#t2 p')).not.toBeNull();
+
+      cleanupContext(ctx);
+      expect(document.querySelector('#t2 p')).toBeNull();
+    });
+
+    it('reacts to disabled toggling after hydration', () => {
+      const child = document.createElement('p');
+      child.textContent = 'toggle';
+      const disabled = signal(false);
+
+      const ctx = hydratePortal(
+        `<section id="origin"><!--teleport-anchor--></section>` +
+          `<div id="t">${ssrBlock('<p>toggle</p>')}</div>`,
+        () => {
+          const anchor = Portal({ target: '#t', children: child });
+          // Re-parent check needs the anchor connected — it already is (SSR).
+          expect(anchor.isConnected).toBe(true);
+          return anchor;
+        },
+      );
+
+      expect(document.querySelector('#t p')).not.toBeNull();
+
+      // This Portal has a static disabled — verify the effect exists by moving
+      // to a reactive one below.
+      cleanupContext(ctx);
+
+      // Reactive disabled portal.
+      const child2 = document.createElement('p');
+      child2.textContent = 'toggle2';
+      const ctx2 = hydratePortal(
+        `<section id="origin2"><!--teleport-anchor--></section>` +
+          `<div id="t2">${ssrBlock('<p>toggle2</p>')}</div>`,
+        () => {
+          Portal({ target: '#t2', disabled: () => disabled.value, children: child2 });
+        },
+      );
+
+      expect(document.querySelector('#t2 p')).not.toBeNull();
+
+      disabled.value = true;
+      // Children move inline to the call site.
+      expect(document.querySelector('#t2 p')).toBeNull();
+      expect(document.querySelector('#origin2 p')).not.toBeNull();
+
+      cleanupContext(ctx2);
+    });
+
+    it('removes the SSR children when mountAt bails during ancestor disposal', () => {
+      // Reaches apply()'s adopted-block else branch: the parent scope is
+      // already marked destroyed, an earlier-registered cleanup re-triggers
+      // the Portal's still-live effect, apply() consumes the block, and
+      // mountAt() silently bails — the SSR child nodes must be removed along
+      // with the markers, not left orphaned in the DOM.
+      const child = document.createElement('p');
+      child.textContent = 'orphan';
+      const target = signal<string | undefined>('#t');
+
+      document.body.innerHTML =
+        `<section><!--teleport-anchor--></section>` +
+        `<div id="t">${'<!--teleport-start--><p>orphan</p><!--teleport-end-->'}</div>`;
+      beginHydration(document.body);
+      const ctx = createContext(null);
+      pushContextStack(ctx);
+      try {
+        // Registered BEFORE Portal → runs first during disposal, while the
+        // Portal's effect is still live and its `disposed` flag still false.
+        onCleanup(() => {
+          target.value = '#t';
+        });
+        Portal({ target: () => target.value, children: child });
+        // Make the target unresolvable so the mount pass leaves the adopted
+        // block unconsumed (defers to a microtask that never wins the race).
+        target.value = undefined;
+        ctx.onMount?.forEach((cb) => cb());
+        // Dispose the owning scope: isDestroyed flips first, then the early
+        // cleanup restores the target → effect → apply → mountAt bails.
+        cleanupContext(ctx);
+      } finally {
+        popContextStack();
+        endHydration();
+      }
+
+      const t = document.querySelector('#t')!;
+      expect(t.querySelectorAll('p')).toHaveLength(0);
+      expect(t.innerHTML).not.toContain('teleport-start');
+      expect(t.innerHTML).not.toContain('teleport-end');
     });
   });
 });
