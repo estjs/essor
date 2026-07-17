@@ -41,8 +41,8 @@
     "@estjs/shared": "workspace:*"
   },
   "devDependencies": {
-    "@babel/traverse": "^8.0.0",
-    "@babel/types": "^8.0.0"
+    "@babel/traverse": "^8.0.4",
+    "@babel/types": "^8.0.4"
   },
   "engines": {
     "node": "^22.18.0 || >=24.11.0"
