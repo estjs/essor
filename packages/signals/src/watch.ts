@@ -37,77 +37,58 @@ type OnCleanup = (cleanupFn: () => void) => void;
 type WatchCallback<T = any> = (newValue: T, oldValue: T | undefined, onCleanup: OnCleanup) => void;
 
 /**
- * Module-level Set reused across top-level traverse() calls to avoid per-call
- * allocation. The fast path clears and reuses it; a `_traverseBusy` guard makes
- * the rare re-entrant call (a getter/computed reached during traversal that
- * itself triggers another traversal) fall back to a fresh Set so the shared one
- * is never clobbered mid-walk.
- */
-const _traverseSeen = new Set<any>();
-let _traverseBusy = false;
-
-/**
- * Recursive worker: access every nested property of `value` so the active effect
- * tracks them. `seen` provides cycle detection.
- */
-function traverseValue(value: any, seen: Set<any>): any {
-  // If not an object or already traversed, stop.
-  if (!isObject(value) || seen.has(value)) {
-    return value;
-  }
-
-  seen.add(value);
-  // If it's a signal or computed, traverse its .value.
-  if (isSignal(value) || isComputed(value)) {
-    traverseValue(value.value, seen);
-    // If it's an array, traverse all its elements.
-  } else if (isArray(value)) {
-    for (const element of value) {
-      traverseValue(element, seen);
-    }
-    // If it's a Map, traverse all its values, and access keys and values to track changes.
-  } else if (isMap(value)) {
-    value.forEach((v: any) => {
-      traverseValue(v, seen);
-    });
-    value.keys();
-    value.values();
-    // If it's a Set, traverse all its values to track changes.
-  } else if (isSet(value)) {
-    value.forEach((v: any) => {
-      traverseValue(v, seen);
-    });
-    value.values();
-    // If it's a plain object, traverse all its keys.
-  } else {
-    for (const key of Object.keys(value)) {
-      traverseValue(value[key], seen);
-    }
-  }
-
-  return value;
-}
-
-/**
- * Recursively traverse a value, accessing all its properties to trigger
+ * Iteratively traverse a value, accessing all its properties to trigger
  * dependency tracking. Returns the original value.
  *
- * @param value - The value to traverse.
- * @returns The original value.
+ * Uses an explicit stack instead of recursion so deeply nested chains cannot
+ * overflow the call stack, and a per-call `seen` Set for cycle detection so no
+ * object graph is retained after the walk completes (a module-level Set would
+ * pin the entire last-traversed graph in memory). Per-call state also makes
+ * re-entrant traversal (a computed read during the walk triggering another
+ * traverse) safe with no extra guards.
  */
 function traverse(value: any): any {
-  // Re-entrant top-level call (e.g. a computed read during traversal triggered
-  // another traverse): use a throwaway Set so we don't corrupt the shared one.
-  if (_traverseBusy) {
-    return traverseValue(value, new Set());
+  if (!isObject(value)) {
+    return value;
   }
-  _traverseBusy = true;
-  _traverseSeen.clear();
-  try {
-    return traverseValue(value, _traverseSeen);
-  } finally {
-    _traverseBusy = false;
+  const seen = new Set<any>();
+  const stack: any[] = [value];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    // If not an object or already traversed, skip.
+    if (!isObject(current) || seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    // If it's a signal or computed, traverse its .value.
+    if (isSignal(current) || isComputed(current)) {
+      stack.push(current.value);
+      // If it's an array, traverse all its elements.
+    } else if (isArray(current)) {
+      for (const element of current) {
+        stack.push(element);
+      }
+      // If it's a Map, traverse all its values, and access keys and values to track changes.
+    } else if (isMap(current)) {
+      current.forEach((v: any) => {
+        stack.push(v);
+      });
+      current.keys();
+      current.values();
+      // If it's a Set, traverse all its values to track changes.
+    } else if (isSet(current)) {
+      current.forEach((v: any) => {
+        stack.push(v);
+      });
+      current.values();
+      // If it's a plain object, traverse all its keys.
+    } else {
+      for (const key of Object.keys(current)) {
+        stack.push(current[key]);
+      }
+    }
   }
+  return value;
 }
 
 /**
@@ -154,7 +135,9 @@ function resolveSingleSource<T>(source: WatchSource<T>): () => T {
  * @returns A getter function that returns the current source value.
  */
 function resolveSource<T>(source: WatchSource<T>): () => T {
-  if (isArray(source)) {
+  // A reactive array is a single reactive source (deep-traversed), not a
+  // multi-source list — check reactivity BEFORE isArray (SIG-15).
+  if (isArray(source) && !isReactive(source)) {
     // Pre-build per-element getters; call sites only allocate the output array.
     const getters = (source as WatchSource[]).map((s) => resolveSingleSource(s));
     return () => getters.map((g) => g()) as unknown as T;
@@ -214,8 +197,24 @@ export function watch<T = any>(
   // (resolveSingleSource), so the effect body must NOT traverse it again —
   // that was the old double-walk for `watch(reactiveObj, cb, { deep: true })`.
   // For every other source, an explicit `deep: true` triggers the body traverse.
-  const isSingleReactive = !isArray(source) && isReactive(source);
+  //
+  // Order matters: a reactive ARRAY is also `isArray`, but it is a single
+  // reactive source (watch its contents), not a multi-source list (SIG-15).
+  const isSingleReactive = isReactive(source);
+  const isMultiSource = !isSingleReactive && isArray(source);
   const needTraverse = deep && !isSingleReactive;
+  // Reactive sources in a multi-source array yield the same proxy reference on
+  // every run, so element-wise comparison can never observe their in-place
+  // mutations — such arrays must keep the always-fire path (mirroring the
+  // single-reactive `isObject(newValue)` branch below).
+  //
+  // Known limitation: this only detects DIRECT reactive elements. A getter
+  // element that returns a stable reactive reference (e.g.
+  // `watch([() => state.obj])`) still goes through the element-wise comparison
+  // — the reference never changes, so in-place mutations of `state.obj` do not
+  // fire the callback. Watch `state.obj` directly (or a derived primitive)
+  // instead.
+  const forceMultiTrigger = isMultiSource && (source as WatchSource[]).some((s) => isReactive(s));
 
   // Resolve source to a getter function.
   const getter = resolveSource(source);
@@ -236,15 +235,35 @@ export function watch<T = any>(
     if (cleanup) cleanup();
   };
 
+  // Guards `once` against double-firing when the callback throws or
+  // re-triggers the watcher synchronously (sync flush re-entrancy).
+  let onceFired = false;
+
   /**
    * Invoke the user callback with proper cleanup/oldValue bookkeeping.
    */
   const invoke = (newValue: T): void => {
-    runCleanup();
-    callback(newValue, oldValue === INITIAL_WATCHER_VALUE ? undefined : (oldValue as T), onCleanup);
-    // Update oldValue for the next comparison (identity — see cloneValue).
+    if (once) {
+      if (onceFired) return;
+      onceFired = true;
+    }
+    const prevValue: any = oldValue;
+    // Commit the newValue → oldValue snapshot BEFORE running the callback so a
+    // re-entrant write from a sync-flush callback sees the up-to-date oldValue
+    // instead of the uncommitted previous one.
     oldValue = cloneValue(newValue);
-    if (once) stop();
+    runCleanup();
+    try {
+      callback(
+        newValue,
+        prevValue === INITIAL_WATCHER_VALUE ? undefined : (prevValue as T),
+        onCleanup,
+      );
+    } finally {
+      // Stop after the callback so an onCleanup registered inside it still
+      // runs; `onceFired` already prevents any re-entrant second invocation.
+      if (once) stop();
+    }
   };
 
   /**
@@ -257,6 +276,23 @@ export function watch<T = any>(
 
     // Run effect to get new value.
     const newValue = currentEffect.run();
+
+    if (isMultiSource && !deep && !forceMultiTrigger) {
+      // The multi-source getter allocates a fresh array every run, so the
+      // generic isObject check below would fire the callback even when every
+      // source is unchanged. Compare element-wise against the previous
+      // snapshot instead. With `deep: true` (or a reactive element, see
+      // `forceMultiTrigger`) we keep the always-fire path — nested mutations
+      // cannot be detected cheaply by comparing snapshots.
+      if (
+        oldValue !== INITIAL_WATCHER_VALUE &&
+        (newValue as any[]).every((v, i) => !hasChanged(v, (oldValue as any[])[i]))
+      ) {
+        return;
+      }
+      invoke(newValue);
+      return;
+    }
 
     if (deep || isObject(newValue) || hasChanged(newValue, oldValue)) {
       invoke(newValue);
@@ -278,6 +314,9 @@ export function watch<T = any>(
     },
     {
       scheduler: createScheduler(job, flush),
+      // The getter's return value is the watched data — a function value
+      // must not be captured as an effect cleanup.
+      captureCleanup: false,
     },
   );
   // `effect()` already ran the body once on creation, so `lastValue` holds the
@@ -295,7 +334,14 @@ export function watch<T = any>(
 
   if (immediate) {
     // First callback: oldValue is still INITIAL → reported as undefined.
-    invoke(lastValue!);
+    // If the callback throws we have not yet returned the stop handle, so the
+    // caller could never tear the watcher down — stop it here before rethrowing.
+    try {
+      invoke(lastValue!);
+    } catch (error) {
+      stop();
+      throw error;
+    }
   } else {
     // Seed oldValue from the eager run for the first real comparison.
     oldValue = cloneValue(lastValue!);

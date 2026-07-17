@@ -58,21 +58,29 @@ export function startBatch(): void {
  * @returns {void}
  */
 export function endBatch(): void {
-  // Development mode: Check for unbalanced batch calls
-  if (__DEV__ && batchDepth === 0) {
-    warn(
-      '[Batch] endBatch() called without matching startBatch(). ' +
-        'This indicates unbalanced batch calls in your code. ' +
-        'Make sure every startBatch() has a corresponding endBatch(), ' +
-        'or use the batch() function which handles this automatically.',
-    );
+  // Guard against unbalanced batch calls in all modes: an extra endBatch()
+  // must never push batchDepth negative, otherwise a single later startBatch()
+  // would "close" the batch and trigger an unexpected flush.
+  if (batchDepth === 0) {
+    // Development mode: warn about the unbalanced call
+    if (__DEV__) {
+      warn(
+        '[Batch] endBatch() called without matching startBatch(). ' +
+          'This indicates unbalanced batch calls in your code. ' +
+          'Make sure every startBatch() has a corresponding endBatch(), ' +
+          'or use the batch() function which handles this automatically.',
+      );
+    }
     return;
   }
 
   // Decrement batch depth
   batchDepth--;
 
-  // When outermost batch ends, flush all queued effects
+  // When outermost batch ends, flush all queued effects.
+  // flushJobs is re-entrancy-safe: if a flush is already running (i.e. this
+  // batch ended inside a flushing job), the call is a no-op and the outer
+  // flush loop picks up any newly queued jobs.
   if (batchDepth === 0) {
     flushJobs();
   }

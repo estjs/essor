@@ -1,4 +1,14 @@
-import { batch, effect, endBatch, getBatchDepth, isBatching, reactive, signal } from '../src';
+import {
+  batch,
+  effect,
+  endBatch,
+  getBatchDepth,
+  isBatching,
+  nextTick,
+  reactive,
+  signal,
+  startBatch,
+} from '../src';
 
 describe('useBatch', () => {
   it('should useBatch multiple updates', () => {
@@ -102,6 +112,64 @@ describe('useBatch', () => {
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('[Batch] endBatch() called without matching startBatch()'),
+    );
+    warnSpy.mockRestore();
+  });
+
+  // SIG-24: unbalanced endBatch must not push batchDepth negative
+  it('should not let an extra endBatch() make a later startBatch() flush early', async () => {
+    // Silence the DEV-only unbalanced-batch warning.
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const count = signal(0);
+    const effectFn = vi.fn();
+
+    effect(() => effectFn(count.value));
+    effectFn.mockClear();
+
+    // Extra endBatch() — must be a no-op, not push batchDepth negative.
+    endBatch();
+
+    startBatch();
+    count.value = 1;
+    // Still inside the batch: the effect must not have flushed early.
+    expect(effectFn).not.toHaveBeenCalled();
+    endBatch();
+    await nextTick();
+
+    expect(effectFn).toHaveBeenCalledTimes(1);
+    expect(effectFn).toHaveBeenCalledWith(1);
+    warnSpy.mockRestore();
+  });
+
+  // SIG-18: batch inside a flushing job
+  it('should not recursively flush when a job uses batch()', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const a = signal(0);
+    const b = signal(0);
+    const order: string[] = [];
+
+    effect(() => {
+      order.push(`A:${a.value}`);
+      if (a.value === 1) {
+        // Ending this batch inside the running flush must not re-enter
+        // flushJobs — the outer flush picks up effect B in the same cycle.
+        batch(() => {
+          b.value = 1;
+        });
+      }
+    });
+    effect(() => {
+      order.push(`B:${b.value}`);
+    });
+
+    order.length = 0;
+    a.value = 1;
+    await nextTick();
+
+    // Each effect ran exactly once for the update, in stable queue order.
+    expect(order).toEqual(['A:1', 'B:1']);
+    expect(warnSpy.mock.calls.some(args => String(args[0]).includes('Maximum recursive'))).toBe(
+      false,
     );
     warnSpy.mockRestore();
   });

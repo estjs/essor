@@ -439,6 +439,31 @@ describe('watch', () => {
       await nextTick();
       expect(cb).toHaveBeenCalledTimes(1);
     });
+
+    // SIG-14: once fires exactly once under sync re-entrancy
+    it('should run a once watcher exactly once even when the callback writes the source', () => {
+      const source = signal(0);
+      const callback = vi.fn((newValue: number) => {
+        // Re-triggers the watcher synchronously before stop() runs; the fired
+        // guard must swallow the second invocation.
+        if (newValue === 1) {
+          source.value = 2;
+        }
+      });
+
+      const stop = watch(source, callback, { once: true, flush: 'sync' });
+
+      source.value = 1;
+
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenCalledWith(1, 0, expect.any(Function));
+
+      // Watcher is stopped — further writes are ignored.
+      source.value = 3;
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      stop();
+    });
   });
 
   describe('flush timing', () => {
@@ -452,6 +477,34 @@ describe('watch', () => {
       // No await — sync watchers fire immediately.
       expect(cb).toHaveBeenCalledTimes(1);
       expect(cb).toHaveBeenLastCalledWith(1, 0, expect.any(Function));
+
+      stop();
+    });
+
+    // SIG-14: sync flush re-entrancy
+    it('should expose the committed oldValue to a re-entrant sync callback', () => {
+      const source = signal(0);
+      const calls: Array<[number, number | undefined]> = [];
+
+      const stop = watch(
+        source,
+        (newValue, oldValue) => {
+          calls.push([newValue, oldValue]);
+          // Re-entrant write from inside a sync callback: the inner invocation
+          // must see this run's newValue as its oldValue, not the stale one.
+          if (newValue === 1) {
+            source.value = 2;
+          }
+        },
+        { flush: 'sync' },
+      );
+
+      source.value = 1;
+
+      expect(calls).toEqual([
+        [1, 0],
+        [2, 1],
+      ]);
 
       stop();
     });
@@ -470,6 +523,153 @@ describe('watch', () => {
       await nextTick();
       expect(cb).toHaveBeenCalledTimes(1);
       expect(cb).toHaveBeenLastCalledWith(2, 0, expect.any(Function));
+
+      stop();
+    });
+  });
+
+  describe('watch(reactiveArray) is a single deep source (SIG-15)', () => {
+    it('fires when an element object is mutated in place', () => {
+      const list = reactive([{ n: 1 }, { n: 2 }]);
+      let calls = 0;
+      watch(
+        list,
+        () => {
+          calls++;
+        },
+        { flush: 'sync' },
+      );
+
+      list[0].n = 10;
+      expect(calls).toBe(1);
+    });
+
+    it('fires when elements are pushed', () => {
+      const list = reactive<number[]>([1]);
+      let calls = 0;
+      watch(
+        list,
+        () => {
+          calls++;
+        },
+        { flush: 'sync' },
+      );
+
+      list.push(2);
+      expect(calls).toBe(1);
+    });
+  });
+
+  describe('traverse robustness (SIG-12/16)', () => {
+    // SIG-16: iterative traverse
+    it('should deep watch a 50k-deep nested chain without a RangeError', () => {
+      // Build the chain with a loop — a literal this deep is not expressible,
+      // and recursion in the builder would itself overflow.
+      const root: any = {};
+      let current = root;
+      for (let i = 0; i < 50_000; i++) {
+        current.child = {};
+        current = current.child;
+      }
+
+      const callback = vi.fn();
+      let stop!: () => void;
+      // The eager effect run traverses the whole chain synchronously; the old
+      // recursive traverse threw RangeError here.
+      expect(() => {
+        stop = watch(() => root, callback, { deep: true });
+      }).not.toThrow();
+
+      stop();
+    });
+
+    // SIG-12: no cross-watch traverse state
+    it('should keep independent deep watches isolated from each other', async () => {
+      // The retention bug (module-level `seen` Set pinning the last-traversed
+      // graph) cannot be asserted directly without WeakRef/GC control, so this
+      // is a weaker behavioral check: two deep watches created back-to-back
+      // must track and fire independently, proving traverse state is per-call.
+      const objA = reactive({ nested: { count: 1 } });
+      const objB = reactive({ nested: { count: 10 } });
+      const callbackA = vi.fn();
+      const callbackB = vi.fn();
+
+      const stopA = watch(objA, callbackA, { deep: true });
+      const stopB = watch(objB, callbackB, { deep: true });
+
+      objA.nested.count = 2;
+      await nextTick();
+      expect(callbackA).toHaveBeenCalledTimes(1);
+      expect(callbackB).not.toHaveBeenCalled();
+
+      objB.nested.count = 20;
+      await nextTick();
+      expect(callbackA).toHaveBeenCalledTimes(1);
+      expect(callbackB).toHaveBeenCalledTimes(1);
+
+      stopA();
+      stopB();
+    });
+  });
+
+  describe('immediate callback errors (SIG-13)', () => {
+    it('should stop the watcher when an immediate callback throws', async () => {
+      const source = signal(1);
+      const callback = vi.fn(() => {
+        throw new Error('immediate boom');
+      });
+
+      // watch() rethrows — the caller never receives a stop handle, so the
+      // runner must already be torn down at this point.
+      expect(() => watch(source, callback, { immediate: true })).toThrow('immediate boom');
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      // A later source change must not reach the callback.
+      source.value = 2;
+      await nextTick();
+      expect(callback).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('multi-source element-wise comparison (SIG-32)', () => {
+    it('should not fire a multi-source watcher when all sources are unchanged', async () => {
+      const a = signal(1);
+      const b = signal(2);
+      const callback = vi.fn();
+
+      const stop = watch([a, b], callback);
+
+      // Same-value write: no observable change.
+      a.value = a.peek();
+      await nextTick();
+      expect(callback).not.toHaveBeenCalled();
+
+      // Change-and-revert within one flush: the job may be scheduled, but the
+      // element-wise snapshot comparison sees identical values and skips.
+      a.value = 5;
+      a.value = 1;
+      await nextTick();
+      expect(callback).not.toHaveBeenCalled();
+
+      stop();
+    });
+
+    it('should fire a multi-source watcher with element-wise correct values on real change', async () => {
+      const a = signal(1);
+      const b = signal(2);
+      const callback = vi.fn();
+
+      const stop = watch([a, b], callback);
+
+      a.value = 5;
+      await nextTick();
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(callback).toHaveBeenLastCalledWith([5, 2], [1, 2], expect.any(Function));
+
+      b.value = 7;
+      await nextTick();
+      expect(callback).toHaveBeenCalledTimes(2);
+      expect(callback).toHaveBeenLastCalledWith([5, 7], [5, 2], expect.any(Function));
 
       stop();
     });

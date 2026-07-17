@@ -209,4 +209,6 @@ export const isDelegatedEvent: (key: string) => boolean = /*@__PURE__*/ makeMap(
 
 export const HYDRATION_ANCHOR_ATTR = 'data-hk-idx' as const;
 
+export const HYDRATION_RANGE_START_PREFIX = '@essor:start' as const;
+
 export const SPREAD_NAME = '_$spread$' as const;

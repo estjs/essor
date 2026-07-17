@@ -43,6 +43,12 @@ const p = Promise.resolve();
 // Flag to prevent duplicate flush scheduling, ensuring only one schedule per event loop
 let isFlushPending = false;
 
+// Flag indicating a flush cycle is currently executing. Guards against
+// re-entrant flushJobs calls (e.g. endBatch() firing inside a running job),
+// which would otherwise run post-flush callbacks before the remaining main
+// jobs of the outer flush.
+let isFlushing = false;
+
 /**
  * Maximum number of times the job queue may be drained within a single
  * {@link flushJobs} call before we assume a job is synchronously re-queuing
@@ -108,59 +114,104 @@ export function queuePostFlushJob(cb: PostFlushCallback): void {
 }
 
 /**
- * Executes all enqueued jobs and pre-flush callbacks.
+ * Executes all enqueued jobs and pre/post-flush callbacks.
+ *
+ * Each round maintains the `pre → main → post` invariant:
+ * - all pending pre-flush callbacks run before the next main job,
+ * - post-flush callbacks only run once pre and main queues are fully drained,
+ * - jobs queued by post-flush callbacks trigger a new round, and post waits again.
+ *
+ * Re-entrant calls (e.g. `endBatch()` firing inside a running job) return
+ * immediately — the outer flush loop picks up any newly queued jobs, so a
+ * nested flush can never run post-flush callbacks ahead of remaining main jobs.
  *
  * @returns {void}
  */
 export function flushJobs(): void {
+  if (isFlushing) {
+    return;
+  }
+  isFlushing = true;
+  // Allow re-scheduling during the flush: a job queued from inside this cycle
+  // after the queues were snapshotted may need a fresh microtask flush.
   isFlushPending = false;
 
-  // Execute pre-flush callbacks first
-  flushPreFlushCbs();
+  try {
+    // Shared across all rounds of this flush cycle (main↔post included) on
+    // purpose: post-flush callbacks that re-queue main jobs which in turn
+    // re-queue post callbacks would otherwise ping-pong forever without ever
+    // tripping a per-round counter.
+    let drainCount = 0;
 
-  // Process jobs until queue is empty.
-  //
-  // Each drain snapshots the currently-queued jobs into an array and clears the
-  // live Set *before* running them. This is deliberate: iterating a Set with
-  // `for…of` would also visit entries appended during iteration, so a job that
-  // re-queues itself would spin inside a single pass and never hit the
-  // recursion guard below. Snapshotting means jobs queued during a drain are
-  // deferred to the next while-iteration, where `drainCount` can catch a
-  // runaway loop.
-  let drainCount = 0;
-  while (queue.size > 0) {
-    if (++drainCount > RECURSION_LIMIT) {
-      queue.clear();
-      if (__DEV__) {
-        warn(
-          `[Scheduler] Maximum recursive flush count (${RECURSION_LIMIT}) exceeded. ` +
-            'This usually means an effect or watch callback is mutating a reactive ' +
-            'dependency it also reads, causing an infinite update loop. ' +
-            'The remaining queued jobs have been dropped to keep the app responsive.',
-        );
-      }
-      // Break (not return) so post-flush callbacks still run — Suspense
-      // onResolved and similar "after-all-effects" hooks must fire even after a
-      // runaway loop is aborted.
-      break;
-    }
+    do {
+      // Process pre-flush callbacks and jobs until both queues are empty.
+      //
+      // Each drain snapshots the currently-queued jobs into an array and clears
+      // the live Set *before* running them. This is deliberate: iterating a Set
+      // with `for…of` would also visit entries appended during iteration, so a
+      // job that re-queues itself would spin inside a single pass and never hit
+      // the recursion guard below. Snapshotting means jobs queued during a
+      // drain are deferred to the next while-iteration, where `drainCount` can
+      // catch a runaway loop.
+      while (queue.size > 0 || activePreFlushCbs.size > 0) {
+        if (++drainCount > RECURSION_LIMIT) {
+          queue.clear();
+          activePreFlushCbs.clear();
+          // Deliberately NOT gated on __DEV__: dropping queued jobs is a
+          // data-loss level event, so production must get a signal too. The
+          // one-time console cost is negligible next to the silent truncation.
+          warn(
+            `[Scheduler] Maximum recursive flush count (${RECURSION_LIMIT}) exceeded. ` +
+              'This usually means an effect or watch callback is mutating a reactive ' +
+              'dependency it also reads, causing an infinite update loop. ' +
+              'The remaining queued jobs have been dropped to keep the app responsive.',
+          );
+          // Break (not return) so post-flush callbacks still run — Suspense
+          // onResolved and similar "after-all-effects" hooks must fire even
+          // after a runaway loop is aborted.
+          break;
+        }
 
-    const jobs = [...queue];
-    queue.clear();
-    for (const job of jobs) {
-      try {
-        job();
-      } catch (_error) {
-        if (__DEV__) {
-          error('Error executing queued job:', _error);
+        // Pre-flush callbacks always run before the next batch of main jobs.
+        flushPreFlushCbs();
+
+        const jobs = [...queue];
+        queue.clear();
+        for (const job of jobs) {
+          try {
+            job();
+          } catch (_error) {
+            if (__DEV__) {
+              error('Error executing queued job:', _error);
+            }
+          }
+          // A main job may queue pre-flush callbacks (e.g. `flush: 'pre'`
+          // effects); they must run before the next main job.
+          if (activePreFlushCbs.size > 0) {
+            flushPreFlushCbs();
+          }
         }
       }
-    }
-  }
 
-  // Execute post-flush callbacks after the main queue is completely drained.
-  // These are used by Suspense onResolved and similar "after-all-effects" hooks.
-  flushPostFlushCbs();
+      // Execute post-flush callbacks after pre and main queues are completely
+      // drained. These are used by Suspense onResolved and similar
+      // "after-all-effects" hooks.
+      flushPostFlushCbs();
+
+      // Don't start another round after a runaway loop was aborted.
+      if (drainCount > RECURSION_LIMIT) {
+        break;
+      }
+
+      // Post-flush callbacks may have queued new pre/main jobs (or new post
+      // callbacks) — loop for another full round so the invariant holds.
+    } while (queue.size > 0 || activePreFlushCbs.size > 0 || activePostFlushCbs.size > 0);
+  } finally {
+    isFlushing = false;
+    // Safety net: if an unexpected throw escaped the loop after queueFlush()
+    // set the flag, leaving it true would block every future flush.
+    isFlushPending = false;
+  }
 }
 
 /**
@@ -169,6 +220,8 @@ export function flushJobs(): void {
  * @returns {void}
  */
 function flushPreFlushCbs(): void {
+  if (activePreFlushCbs.size === 0) return;
+
   // Convert Set to array and clear the Set immediately
   // This allows new callbacks to be queued during execution
   const callbacks = Array.from(activePreFlushCbs);

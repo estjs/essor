@@ -504,27 +504,24 @@ describe('shallowSignal', () => {
     expect(triggerCount).toBe(12);
   });
 
-  // skip this testcase because too slow
-  it.todo('should work with set method ant function calls', () => {
+  it('should work with set method and function calls', () => {
     const value1 = shallowSignal<any>(new Set([1, 2, 3]));
     const value2 = signal<any>(1);
     const value3 = signal<any>({});
 
     let triggerCount = 0;
 
-    effect(() => {
-      // trigger value
-      //@ts-ignore
-      value1();
+    effect(
+      () => {
+        // trigger value
+        value1.value;
+        value2.value;
+        value3.value;
 
-      //@ts-ignore
-      value2();
-
-      //@ts-ignore
-      value3();
-
-      triggerCount++;
-    });
+        triggerCount++;
+      },
+      { flush: 'sync' },
+    );
 
     expect(triggerCount).toBe(1);
     value1.set(1);
@@ -533,11 +530,17 @@ describe('shallowSignal', () => {
 
     expect(triggerCount).toBe(4);
 
+    // Same-shape but new-identity values still trigger (reference change).
     value1.set(new Set([1, 2, 3, 4]));
     value2.set(new Map([['a', 1]]));
     value3.set({ a: 2 });
 
     expect(triggerCount).toBe(7);
+
+    // set() with an identical primitive does NOT trigger.
+    value1.set(1);
+    value1.set(1);
+    expect(triggerCount).toBe(8);
   });
 
   it('should work with update', () => {

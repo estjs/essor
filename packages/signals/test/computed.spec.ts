@@ -229,6 +229,32 @@ describe('computed', () => {
       shouldError.value = false;
       expect(comp.value).toBe(42); // Should successfully recompute
     });
+
+    // peek freshness (SIG-26)
+    it('should compute on first peek when there is no cached value', () => {
+      const s = signal(2);
+      const c = computed(() => s.value * 3);
+
+      expect(c.peek()).toBe(6);
+    });
+
+    // peek freshness (SIG-26)
+    it('should handle the pending state by verifying dependencies actually changed', () => {
+      const s = signal(1);
+      const inner = computed(() => s.value % 2);
+      const outer = computed(() => inner.value * 10);
+
+      expect(outer.value).toBe(10);
+
+      // 1 -> 3 keeps inner (s % 2) unchanged: outer becomes pending but is
+      // not actually dirty, so peek keeps the cached value
+      s.value = 3;
+      expect(outer.peek()).toBe(10);
+
+      // 3 -> 4 flips inner: peek must return the fresh value
+      s.value = 4;
+      expect(outer.peek()).toBe(0);
+    });
   });
 
   describe('error handling', () => {
@@ -238,6 +264,55 @@ describe('computed', () => {
       });
 
       expect(() => comp.value).toThrow('Test error');
+    });
+
+    // circular dependency detection (SIG-07)
+    it('should throw a stable error instead of stack overflow on self-referencing computed', () => {
+      const c: any = computed(() => c.value);
+
+      expect(() => c.value).toThrow(/circular/i);
+      // Must be a stable Error, not a RangeError from stack exhaustion
+      try {
+        c.value;
+      } catch (err) {
+        expect(err).toBeInstanceOf(Error);
+        expect(err).not.toBeInstanceOf(RangeError);
+        expect((err as Error).message).toMatch(/circular/i);
+      }
+    });
+
+    // circular dependency detection (SIG-07)
+    it('should not leave a self-referencing computed in a stuck state after throwing', () => {
+      const c: any = computed(() => c.value);
+
+      expect(() => c.value).toThrow(/circular/i);
+
+      // After the error, the evaluation guard must be reset and the cache
+      // invalidated (NO_VALUE). Since the getter is inherently circular,
+      // subsequent reads re-attempt evaluation and throw the same circular
+      // error again — they must NOT silently return undefined or hang.
+      expect(() => c.value).toThrow(/circular/i);
+      expect(() => c.value).toThrow(/circular/i);
+    });
+
+    // circular dependency detection (SIG-07)
+    it('should throw a circular error for mutually referencing computeds', () => {
+      const a: any = computed(() => b.value);
+      const b: any = computed(() => a.value);
+
+      expect(() => a.value).toThrow(/circular/i);
+      expect(() => b.value).toThrow(/circular/i);
+    });
+
+    // circular dependency detection (SIG-07)
+    it('should not affect normal non-circular computeds', () => {
+      const s = signal(1);
+      const double = computed(() => s.value * 2);
+      const quadruple = computed(() => double.value * 2);
+
+      expect(quadruple.value).toBe(4);
+      s.value = 3;
+      expect(quadruple.value).toBe(12);
     });
 
     it('should clear DIRTY and PENDING flags after error', () => {
@@ -456,9 +531,9 @@ describe('computed', () => {
       count.value = 1;
       // Effect should not trigger because peek doesn't track
       expect(effectCount).toBe(1);
-      // peek() returns cached value without recomputing when dirty
-      expect(comp.peek()).toBe(0);
-      // Accessing .value will recompute
+      // peek() is an untracked FRESH read: dirty computeds recompute (SIG-26)
+      expect(comp.peek()).toBe(2);
+      // Accessing .value returns the same fresh value
       expect(comp.value).toBe(2);
     });
 

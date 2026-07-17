@@ -2,6 +2,7 @@ import {
   hasChanged,
   hasOwn,
   isArray,
+  isFunction,
   isMap,
   isObject,
   isSet,
@@ -68,13 +69,17 @@ export class ReactiveProperty implements ReactiveNode {
    * IS the depNode, so linkReactiveNode connects the active subscriber directly
    * to this node's subLink chain.
    *
+   * The read goes through `Reflect.get(target, key, receiver)` so an own
+   * accessor property (getter) executes with the reactive proxy as `this` —
+   * its `this.x` reads re-enter the proxy and are tracked (SIG-08).
+   *
    * Nested proxy wrapping and signal auto-unwrapping are handled by the caller
    * (the reactive proxy get trap), keeping this method self-contained and free
    * of a circular dependency on the rest of reactive.ts.
    */
-  getValue(): any {
+  getValue(receiver: object = this._target): any {
     trackNode(this);
-    return (this._target as any)[this._key];
+    return Reflect.get(this._target, this._key, receiver);
   }
 
   /**
@@ -90,14 +95,6 @@ export class ReactiveProperty implements ReactiveNode {
     if (Object.is(oldValue, rawValue)) {
       return;
     }
-    triggerNode(this);
-  }
-
-  /**
-   * Invalidate this property (called on delete).
-   * Notifies subscribers that the value is gone.
-   */
-  invalidate(): void {
     triggerNode(this);
   }
 }
@@ -138,6 +135,19 @@ export function toRaw<T>(value: T): T {
 const arrayInstrumentations = createArrayInstrumentations();
 
 /**
+ * Wrap a value in a reactive proxy when it is a wrappable object; return it
+ * unchanged otherwise. Centralizes the ubiquitous
+ * `isObject(v) ? reactiveImpl(v) : v` pattern used when handing values back to
+ * user code (callbacks, iterator results, removed elements, nested reads).
+ *
+ * @param value - The value to wrap.
+ * @param shallow - Wrap at shallow reactivity depth (defaults to deep).
+ */
+function wrapReactive<T>(value: T, shallow = false): T {
+  return isObject(value) ? (reactiveImpl(value, shallow) as T) : value;
+}
+
+/**
  * Create enhanced versions of array methods that include dependency tracking.
  * Includes search, modification, and iteration methods.
  *
@@ -167,16 +177,32 @@ function createArrayInstrumentations() {
     };
   });
 
-  // Search methods that return elements: track iteration and maintain reactivity
+  // Search methods that return elements: track iteration and maintain reactivity.
+  // The user callback must observe REACTIVE elements (mirrors Vue's wrapped
+  // apply()): reads/writes on the callback argument go through the proxy, so
+  // `list.find(el => el.id === wanted).x = 1` stays reactive.
   ['find', 'findIndex', 'findLast', 'findLastIndex'].forEach((key) => {
-    instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
+    instrumentations[key] = function (
+      this: unknown[],
+      fn: (item: unknown, index: number, array: unknown[]) => unknown,
+      thisArg?: unknown,
+    ) {
       const arr = toRaw(this) as any[];
       const isShallowMode = isShallow(this);
+      const self = this;
 
       // Track iteration access to the entire array
       track(arr, ARRAY_ITERATE_KEY);
 
-      const res = arr[key as keyof typeof arr](...args);
+      // Non-function predicate: pass through untouched so the native method
+      // throws its own TypeError instead of a confusing wrapper-internal one.
+      const wrappedFn =
+        isShallowMode || !isFunction(fn)
+          ? fn
+          : function (this: unknown, item: unknown, index: number) {
+              return fn.call(this, wrapReactive(item), index, self);
+            };
+      const res = arr[key as keyof typeof arr](wrappedFn, thisArg);
 
       // For find/findLast, make result reactive if needed
       if ((key === 'find' || key === 'findLast') && isObject(res) && !isShallowMode) {
@@ -187,42 +213,69 @@ function createArrayInstrumentations() {
     };
   });
 
-  // Mutation methods: trigger array changes
+  // Mutation methods: trigger array changes.
+  // Raw/proxy identity policy (mirrors Vue's noTracking + toRaw):
+  // - inserted values are unwrapped so a proxy never leaks into raw storage;
+  // - chainable mutators (sort/reverse/fill/copyWithin) return the RECEIVER
+  //   proxy, not the raw array;
+  // - removed elements (pop/shift/splice) are wrapped like reads are, so the
+  //   caller sees the same identity it would get from `arr[i]`.
   ['push', 'pop', 'shift', 'unshift', 'splice', 'sort', 'reverse', 'fill', 'copyWithin'].forEach(
     (key) => {
       instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-        const arr = toRaw(this);
+        const arr = toRaw(this) as unknown[];
+        const isShallowMode = isShallow(this);
+
+        // Unwrap inserted values (numbers/counts/comparators pass through
+        // toRaw unchanged). A sort comparator still receives raw elements —
+        // wrap it in deep mode so user code observes reactive items.
+        let callArgs = args.map((arg) => toRaw(arg));
+        if (key === 'sort' && !isShallowMode && isFunction(callArgs[0])) {
+          const comparator = callArgs[0] as (a: unknown, b: unknown) => number;
+          callArgs = [(a: unknown, b: unknown) => comparator(wrapReactive(a), wrapReactive(b))];
+        }
+
         // Call the method using Array.prototype to ensure it works correctly
-        const res = Array.prototype[key].apply(arr, args);
+        const res = Array.prototype[key].apply(arr, callArgs);
         // Trigger both array content and iteration watchers in a single pass
         trigger(arr, TriggerOpTypes.SET, [ARRAY_KEY, ARRAY_ITERATE_KEY]);
+
+        // Chainable mutators return the array itself → return the proxy.
+        if (res === arr) {
+          return this;
+        }
+        // Removed elements keep read-identity (reactive in deep mode).
+        if (!isShallowMode) {
+          if (key === 'splice' && isArray(res)) {
+            return (res as unknown[]).map((item) => wrapReactive(item));
+          }
+          if ((key === 'pop' || key === 'shift') && isObject(res)) {
+            return reactiveImpl(res);
+          }
+        }
         return res;
       };
     },
   );
 
-  // ES2023 methods that return new arrays: track access and maintain reactivity
+  // ES2023 methods that return new arrays: track access and maintain reactivity.
+  // Mirrors Vue's reactiveReadArray: materialize a reactive-element view FIRST
+  // so a toSorted comparator observes reactive elements, then run the native
+  // method on that plain view — the result already contains reactive items.
   ['toReversed', 'toSorted', 'toSpliced'].forEach((key) => {
     instrumentations[key] = function (this: unknown[], ...args: unknown[]) {
-      const arr = toRaw(this);
+      const arr = toRaw(this) as unknown[];
       const isShallowMode = isShallow(this);
 
       // Track iteration access to the entire array.
-      // Note: for toSpliced we previously tracked every individual index here
-      // (O(n)) but ARRAY_ITERATE_KEY already establishes a full-array dependency,
-      // so per-index tracking was redundant and expensive on large arrays.
       track(arr, ARRAY_ITERATE_KEY);
 
-      // Call the native method
-      const res = Array.prototype[key].apply(arr, args);
+      // Elements are wrapped at the parent's reactivity depth (deep → deep
+      // proxies, shallow → shallow proxies), so both the comparator and the
+      // returned array observe reactive elements.
+      const view = arr.map((item) => wrapReactive(item, isShallowMode));
 
-      // Return directly if result is not an array
-      if (!isArray(res)) {
-        return res;
-      }
-
-      // Make object elements reactive (deep or shallow based on parent mode)
-      return res.map((item) => (isObject(item) ? reactiveImpl(item, isShallowMode) : item));
+      return Array.prototype[key].apply(view, args);
     };
   });
 
@@ -281,14 +334,14 @@ function createArrayInstrumentations() {
           // Handle entries (returns [index, value] or [value, value] for Set)
           if (isArray(value)) {
             return {
-              value: value.map((v) => (isObject(v) ? reactiveImpl(v, isShallowMode) : v)),
+              value: value.map((v) => wrapReactive(v, isShallowMode)),
               done,
             };
           }
 
           // Handle values and keys - make objects reactive
           return {
-            value: isObject(value) ? reactiveImpl(value, isShallowMode) : value,
+            value: wrapReactive(value, isShallowMode),
             done,
           };
         },
@@ -357,7 +410,8 @@ const arrayHandlers = (shallow: boolean) => ({
     const oldValue = Reflect.get(target, key, receiver);
     const rawValue = toRaw(value);
     const result = Reflect.set(target, key, rawValue, receiver);
-    if (hasStoredValueChanged(rawValue, oldValue)) {
+    // A failed set (frozen array, non-writable index) must not notify.
+    if (result && hasStoredValueChanged(rawValue, oldValue)) {
       // For numeric indices, we need to trigger multiple dependencies
       if (isStringNumber(key)) {
         trigger(target, TriggerOpTypes.SET, [key, ARRAY_ITERATE_KEY, ARRAY_KEY]);
@@ -590,8 +644,8 @@ const collectionInstrumentations = {
 
     // Wrap callback to provide reactive values in deep mode
     target.forEach((value: unknown, key: unknown) => {
-      const wrappedValue = isShallowMode || !isObject(value) ? value : reactiveImpl(value);
-      const wrappedKey = isShallowMode || !isObject(key) ? key : reactiveImpl(key);
+      const wrappedValue = isShallowMode ? value : wrapReactive(value);
+      const wrappedKey = isShallowMode ? key : wrapReactive(key);
 
       callback.call(thisArg, wrappedValue, wrappedKey, this);
     });
@@ -627,14 +681,14 @@ const collectionInstrumentations = {
         // For Map entries [key, value], wrap both if they're objects
         if (isArray(value)) {
           return {
-            value: value.map((v) => (isObject(v) ? reactiveImpl(v) : v)),
+            value: value.map((v) => wrapReactive(v)),
             done,
           };
         }
 
         // For Set values, wrap if object
         return {
-          value: isObject(value) ? reactiveImpl(value) : value,
+          value: wrapReactive(value),
           done,
         };
       },
@@ -680,7 +734,7 @@ const collectionInstrumentations = {
 
         // Wrap keys if they're objects and in deep mode
         return {
-          value: isShallowMode || !isObject(value) ? value : reactiveImpl(value),
+          value: isShallowMode ? value : wrapReactive(value),
           done,
         };
       },
@@ -717,7 +771,7 @@ const collectionInstrumentations = {
 
         // Wrap values if they're objects and in deep mode
         return {
-          value: isShallowMode || !isObject(value) ? value : reactiveImpl(value),
+          value: isShallowMode ? value : wrapReactive(value),
           done,
         };
       },
@@ -759,7 +813,7 @@ const collectionInstrumentations = {
 
         // Wrap both key and value if they're objects
         return {
-          value: value.map((v: unknown) => (isObject(v) ? reactiveImpl(v) : v)),
+          value: value.map((v: unknown) => wrapReactive(v)),
           done,
         };
       },
@@ -930,9 +984,9 @@ function getPropertyMap(target: object): Map<string | symbol, ReactiveProperty> 
  * Map and ReactiveProperty entirely and just read the value live. This keeps
  * untracked reads — event handlers, one-off lookups — allocation-free.
  */
-function trackProperty(target: object, key: string | symbol): any {
+function trackProperty(target: object, key: string | symbol, receiver: object = target): any {
   if (!activeSub) {
-    return (target as any)[key];
+    return Reflect.get(target, key, receiver);
   }
   const pm = getPropertyMap(target);
   let prop = pm.get(key);
@@ -940,7 +994,7 @@ function trackProperty(target: object, key: string | symbol): any {
     prop = new ReactiveProperty(target, key);
     pm.set(key, prop);
   }
-  return prop.getValue(); // trackNode fast path
+  return prop.getValue(receiver); // trackNode fast path
 }
 
 const objectHandlers = (shallow: boolean) => ({
@@ -968,7 +1022,7 @@ const objectHandlers = (shallow: boolean) => ({
     // machinery entirely to remain allocation-free.
     // Prototype properties (toString, hasOwnProperty, etc.) go through the standard track() path.
     if (activeSub && hasOwn(target, key)) {
-      const result = trackProperty(target, key);
+      const result = trackProperty(target, key, receiver);
 
       // Auto-unwrap signals. Read via `.value` (not `.peek()`) so a nested
       // signal stored as a property value is also tracked — matching the
@@ -1004,6 +1058,12 @@ const objectHandlers = (shallow: boolean) => ({
     const rawValue = toRaw(value);
     const result = Reflect.set(target, key, rawValue, receiver);
 
+    // A failed set (frozen/sealed target, non-writable property, setter
+    // returning false) must not notify — the stored value did not change.
+    if (!result) {
+      return result;
+    }
+
     // ── Per-property signal fast path ─────────────────────────────────
     if (hadKey) {
       const pm = targetPropertyMaps.get(target);
@@ -1027,13 +1087,17 @@ const objectHandlers = (shallow: boolean) => ({
     const result = Reflect.deleteProperty(target, key);
     if (hadKey && result) {
       // ── Per-property signal fast path ────────────────────────────────
+      // Merge the ReactiveProperty subscribers into the SAME trigger round as
+      // the targetMap DELETE dispatch. A synchronous effect subscribed via the
+      // property node would otherwise run once for invalidate() (re-subscribing
+      // to the targetMap Dep, since the key no longer exists) and a second
+      // time for the DELETE trigger. Single-round version dedup runs it once.
       const pm = targetPropertyMaps.get(target);
       const prop = pm?.get(key);
       if (prop) {
         pm!.delete(key);
-        prop.invalidate();
       }
-      trigger(target, TriggerOpTypes.DELETE, key, undefined);
+      trigger(target, TriggerOpTypes.DELETE, key, undefined, prop);
     }
     return result;
   },
@@ -1067,6 +1131,17 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
     return target;
   }
 
+  // Only plain objects, arrays and (weak) collections can be observed.
+  // Exotic built-ins (Date, Promise, RegExp, class instances with internal
+  // slots, DOM nodes, …) would break under a generic object proxy — their
+  // prototype methods reject a Proxy receiver ("incompatible receiver") — so
+  // they are returned as-is (mirrors Vue's TargetType.INVALID). Non-extensible
+  // (frozen/sealed) objects are also skipped: a proxy over them violates
+  // Proxy invariants for non-configurable properties.
+  if (!isObservableType(target) || !Object.isExtensible(target)) {
+    return target;
+  }
+
   // Check if proxy already exists in the cache for this reactivity depth.
   const cache = shallow ? shallowReactiveCaches : reactiveCaches;
   const existingProxy = cache.get(target);
@@ -1090,6 +1165,26 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   const proxy = new Proxy(target, handler);
   cache.set(target, proxy);
   return proxy;
+}
+
+const _objectToString = Object.prototype.toString;
+
+/**
+ * Whether a value's type can be wrapped by one of the reactive proxy handlers.
+ * Mirrors Vue's targetTypeMap: Object / Array / Map / Set / WeakMap / WeakSet.
+ */
+function isObservableType(target: object): boolean {
+  switch (_objectToString.call(target)) {
+    case '[object Object]':
+    case '[object Array]':
+    case '[object Map]':
+    case '[object Set]':
+    case '[object WeakMap]':
+    case '[object WeakSet]':
+      return true;
+    default:
+      return false;
+  }
 }
 
 /**

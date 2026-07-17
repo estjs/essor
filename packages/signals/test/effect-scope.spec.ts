@@ -103,4 +103,19 @@ describe('effectScope', () => {
       errorSpy.mockRestore();
     }
   });
+
+  // SIG-30: disposed scopes reject new cleanups (they would never run)
+  it('does not retain or silently accept cleanups after stop()', () => {
+    const scope = effectScope();
+    let ran = false;
+    scope.run(() => {});
+    scope.stop();
+
+    // Registering after disposal must not schedule anything.
+    (scope as any)._pushCleanup?.(() => {
+      ran = true;
+    });
+    scope.stop();
+    expect(ran).toBe(false);
+  });
 });

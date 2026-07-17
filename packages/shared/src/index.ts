@@ -46,6 +46,8 @@ export { camelCase, kebabCase, capitalize, startsWith } from './string';
 
 export { warn, info, error } from './logger';
 
+export { isUrlAttribute, isUnsafeUrl } from './url';
+
 export { escapeHTML, escapeHTMLComment, getEscapedCssVarName } from './escape';
 export {
   isHTMLTag,
@@ -53,6 +55,7 @@ export {
   isMathMLTag,
   isSelfClosingTag,
   HYDRATION_ANCHOR_ATTR,
+  HYDRATION_RANGE_START_PREFIX,
   SPREAD_NAME,
 } from './dom';
 export {

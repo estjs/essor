@@ -1,3 +1,4 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   computed,
   effect,
@@ -140,6 +141,113 @@ describe('reactive - basic reactivity tests', () => {
 
     expect(state.count).toBe(1);
     expect(mockFn).toHaveBeenCalledTimes(2);
+  });
+
+  describe('own getters track via receiver (SIG-08)', () => {
+    it('re-runs an effect when a getter dependency changes', () => {
+      const state = reactive({
+        first: 'a',
+        last: 'b',
+        get full() {
+          return `${this.first} ${this.last}`;
+        },
+      });
+
+      let seen = '';
+      let runs = 0;
+      effect(
+        () => {
+          runs++;
+          seen = state.full;
+        },
+        { flush: 'sync' },
+      );
+      expect(seen).toBe('a b');
+      expect(runs).toBe(1);
+
+      state.first = 'x';
+      expect(seen).toBe('x b');
+      expect(runs).toBe(2);
+    });
+
+    it('tracks getter deps inside computed', () => {
+      const state = reactive({
+        n: 1,
+        get double() {
+          return this.n * 2;
+        },
+      });
+      const c = computed(() => state.double);
+      expect(c.value).toBe(2);
+      state.n = 3;
+      expect(c.value).toBe(6);
+    });
+  });
+
+  describe('exotic objects are not proxied (SIG-17)', () => {
+    it('returns Date instances as-is', () => {
+      const d = new Date();
+      const state = reactive({ d });
+      // Reading through the proxy must return a working Date (not a proxy
+      // whose method calls throw "incompatible receiver").
+      expect(() => state.d.getTime()).not.toThrow();
+      expect(state.d.getTime()).toBe(d.getTime());
+      expect(reactive(d)).toBe(d);
+    });
+
+    it('returns Promise instances as-is', async () => {
+      const p = Promise.resolve(42);
+      const state = reactive({ p });
+      // .then on a proxied promise breaks the internal-slot check.
+      await expect(state.p).resolves.toBe(42);
+      expect(reactive(p)).toBe(p);
+    });
+
+    it('returns RegExp instances as-is', () => {
+      const r = /x/g;
+      expect(reactive(r)).toBe(r);
+    });
+
+    it('returns non-extensible objects as-is', () => {
+      const frozen = Object.freeze({ a: 1 });
+      expect(reactive(frozen)).toBe(frozen);
+      const sealed = Object.seal({ a: 1 });
+      expect(reactive(sealed)).toBe(sealed);
+    });
+
+    it('does not break frozen objects stored inside reactive state', () => {
+      const frozen = Object.freeze({ a: 1 });
+      const state = reactive<{ f: { a: number } }>({ f: frozen });
+      // Reading a frozen nested object must not create a proxy that violates
+      // the Proxy invariant for non-configurable/non-writable properties.
+      expect(() => state.f.a).not.toThrow();
+      expect(state.f.a).toBe(1);
+    });
+  });
+
+  describe('failed sets do not notify (SIG-19)', () => {
+    it('does not re-run effects when assignment to a frozen nested target fails', () => {
+      const inner = { a: 1 };
+      const state = reactive({ inner });
+      Object.freeze(inner);
+
+      let runs = 0;
+      effect(
+        () => {
+          runs++;
+          void state.inner.a;
+        },
+        { flush: 'sync' },
+      );
+      expect(runs).toBe(1);
+
+      try {
+        state.inner.a = 2; // Reflect.set fails on the frozen raw target
+      } catch {
+        // strict-mode TypeError is acceptable; silence is too
+      }
+      expect(runs).toBe(1);
+    });
   });
 });
 describe('reactive - nested objects and arrays', () => {
@@ -397,7 +505,9 @@ describe('reactive - nested objects and arrays', () => {
     expect(isReactive(result.value[0])).toBe(true);
 
     deep[0].val = 4;
-    expect(result.value.map((x) => x.val)).toStrictEqual([1, 4, 3]);
+    // The comparator observes reactive elements (SIG-11), so `val` is tracked
+    // and the computed re-sorts with the updated values: [4,1,3] → [1,3,4].
+    expect(result.value.map((x) => x.val)).toStrictEqual([1, 3, 4]);
   });
 
   // Node 20+
@@ -617,13 +727,18 @@ describe('reactive & shallowReactive - Non-object and primitive values', () => {
 describe('reactive Arrays with Effects', () => {
   let state: any;
   let effectFn;
+  let runner: ReturnType<typeof effect>;
 
   beforeEach(() => {
     state = reactive([1, 2, 3]);
     effectFn = vi.fn(() => {
       state[0];
     });
-    effect(effectFn, { flush: 'sync' });
+    runner = effect(effectFn, { flush: 'sync' });
+  });
+
+  afterEach(() => {
+    runner.stop();
   });
 
   it('should handle add array item trigger effect', () => {
@@ -836,6 +951,72 @@ describe('reactive Arrays - element identity after non-mutating methods', () => 
     // auto-wrapped — that matches native concat semantics.
   });
 });
+
+describe('reactive Arrays - raw/proxy identity (SIG-10/11)', () => {
+  it('does not leak proxies into raw storage via push', () => {
+    const item = reactive({ id: 1 });
+    const list = reactive<Array<{ id: number }>>([]);
+    list.push(item);
+
+    const raw = toRaw(list);
+    // The stored element must be the raw object, not the proxy.
+    expect(raw[0]).toBe(toRaw(item));
+  });
+
+  it('sort/reverse return the receiver so chaining stays reactive', () => {
+    const list = reactive([3, 1, 2]);
+    expect(list.sort()).toBe(list);
+    expect(list.reverse()).toBe(list);
+  });
+
+  it('find callback receives reactive elements', () => {
+    const list = reactive([{ id: 1, tag: 'a' }]);
+    let sawReactive = false;
+    list.find((el) => {
+      // Mutating through the callback element must trigger effects.
+      sawReactive = el === list[0];
+      return el.id === 1;
+    });
+    expect(sawReactive).toBe(true);
+
+    let runs = 0;
+    effect(
+      () => {
+        runs++;
+        void list[0].tag;
+      },
+      { flush: 'sync' },
+    );
+    expect(runs).toBe(1);
+
+    list.find((el) => {
+      el.tag = 'b';
+      return true;
+    });
+    expect(runs).toBe(2);
+  });
+
+  it('toSorted comparator receives reactive elements and result items are reactive', () => {
+    const list = reactive([{ n: 2 }, { n: 1 }]);
+    const sorted = list.toSorted((a, b) => a.n - b.n);
+    expect(sorted.map((e) => e.n)).toEqual([1, 2]);
+
+    let runs = 0;
+    effect(
+      () => {
+        runs++;
+        void sorted[0].n;
+      },
+      { flush: 'sync' },
+    );
+    expect(runs).toBe(1);
+    // Mutating via the returned wrapper must notify (elements are proxies
+    // of the same raw objects).
+    sorted[0].n = 10;
+    expect(runs).toBe(2);
+    expect(list.find((e) => e.n === 10)).toBeTruthy();
+  });
+});
 describe('reactive Arrays - has/delete/ownKeys traps', () => {
   it('re-runs an effect that uses `index in array` when the index is deleted', () => {
     const state = reactive([1, 2, 3]);
@@ -876,13 +1057,18 @@ describe('reactive Arrays - has/delete/ownKeys traps', () => {
 describe('reactive Set with Effects', () => {
   let state: Set<number>;
   let effectFn;
+  let runner: ReturnType<typeof effect>;
 
   beforeEach(() => {
     state = reactive(new Set([1, 2, 3]));
     effectFn = vi.fn(() => {
       state.has(1);
     });
-    effect(effectFn, { flush: 'sync' });
+    runner = effect(effectFn, { flush: 'sync' });
+  });
+
+  afterEach(() => {
+    runner.stop();
   });
 
   it('should handle add and trigger effect', () => {
@@ -1002,6 +1188,7 @@ describe('reactive Set with Effects', () => {
 describe('reactive Map with Effects', () => {
   let state: Map<string, number>;
   let effectFn;
+  let runner: ReturnType<typeof effect>;
 
   beforeEach(() => {
     state = reactive(
@@ -1014,7 +1201,11 @@ describe('reactive Map with Effects', () => {
     effectFn = vi.fn(() => {
       state.get('key1');
     });
-    effect(effectFn, { flush: 'sync' });
+    runner = effect(effectFn, { flush: 'sync' });
+  });
+
+  afterEach(() => {
+    runner.stop();
   });
 
   it('should handle set and trigger effect', () => {
@@ -1117,6 +1308,7 @@ describe('reactive Map with Effects', () => {
 describe('reactive WeakSet with Effects', () => {
   let state: WeakSet<object>;
   let effectFn;
+  let runner: ReturnType<typeof effect>;
   const obj1 = {};
   const obj2 = {};
 
@@ -1125,7 +1317,11 @@ describe('reactive WeakSet with Effects', () => {
     effectFn = vi.fn(() => {
       state.has(obj1);
     });
-    effect(effectFn, { flush: 'sync' });
+    runner = effect(effectFn, { flush: 'sync' });
+  });
+
+  afterEach(() => {
+    runner.stop();
   });
 
   it('should handle add and trigger effect', () => {
@@ -1156,6 +1352,7 @@ describe('reactive WeakSet with Effects', () => {
 describe('reactive WeakMap with Effects', () => {
   let state: WeakMap<object, number>;
   let effectFn;
+  let runner: ReturnType<typeof effect>;
   const obj1 = {};
   const obj2 = {};
 
@@ -1169,7 +1366,11 @@ describe('reactive WeakMap with Effects', () => {
     effectFn = vi.fn(() => {
       state.get(obj1);
     });
-    effect(effectFn, { flush: 'sync' });
+    runner = effect(effectFn, { flush: 'sync' });
+  });
+
+  afterEach(() => {
+    runner.stop();
   });
 
   it('should handle set and trigger effect', () => {
@@ -1740,6 +1941,41 @@ describe('reactivity fixes', () => {
 
       delete state.a;
       expect(spy).toHaveBeenLastCalledWith(undefined);
+    });
+
+    // SIG-06: delete dispatches each subscriber exactly once even when the
+    // effect is subscribed via both the per-property node and the targetMap Dep.
+    it('runs a sync effect once per property delete (SIG-06)', () => {
+      const state = reactive<{ a?: number }>({ a: 1 });
+      let runs = 0;
+      effect(
+        () => {
+          runs++;
+          void state.a;
+        },
+        { flush: 'sync' },
+      );
+      expect(runs).toBe(1);
+
+      delete state.a;
+      expect(runs).toBe(2);
+    });
+
+    it('runs a sync effect once when it reads both the key and Object.keys() (SIG-06)', () => {
+      const state = reactive<{ a?: number; b: number }>({ a: 1, b: 2 });
+      let runs = 0;
+      effect(
+        () => {
+          runs++;
+          void state.a;
+          void Object.keys(state);
+        },
+        { flush: 'sync' },
+      );
+      expect(runs).toBe(1);
+
+      delete state.a;
+      expect(runs).toBe(2);
     });
 
     it('does not re-run when setting a property to an equal value', () => {

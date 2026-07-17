@@ -1,6 +1,13 @@
 import { error, isFunction } from '@estjs/shared';
 import { EffectFlags, ReactiveFlags, SignalFlags } from './constants';
-import { checkDirty, endTracking, startTracking, unlinkReactiveNode } from './system';
+import {
+  checkDirty,
+  clearPropagationFlags,
+  endTracking,
+  setActiveSub,
+  startTracking,
+  unlinkReactiveNode,
+} from './system';
 import { isBatching } from './batch';
 import {
   type EffectScope,
@@ -69,6 +76,14 @@ export interface EffectOptions {
    * Useful for cleanup operations
    */
   onStop?: () => void;
+
+  /**
+   * Whether a function returned by the effect function is captured as a
+   * cleanup handler (invoked before the next run and on stop).
+   * Defaults to true. watch() disables this because its getter's return
+   * value is data, not a cleanup.
+   */
+  captureCleanup?: boolean;
 
   /**
    * Debug callback invoked when a dependency is tracked
@@ -146,6 +161,8 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
   readonly fn: EffectFunction<T>;
   readonly options?: EffectOptions;
   private _flushScheduler?: () => void | Promise<void>;
+  /** Resolved once in the constructor: `options.flush` aliases `options.scheduler`. */
+  private readonly _scheduler?: EffectScheduler | FlushTiming;
 
   // Debug callbacks (only in development)
   onTrack?: (event: DebuggerEvent) => void;
@@ -154,6 +171,12 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
   //  State management
   private _active = true;
   scope?: EffectScope;
+
+  /**
+   * Cleanup function returned by the previous execution of `fn`.
+   * Invoked exactly once — before the next run, or on stop().
+   */
+  private _cleanup?: () => void;
 
   /**
    * Create an Effect instance.
@@ -168,9 +191,10 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
       this.options = options;
       // Use flush as an alias for scheduler if provided
       const scheduler = options.flush || options.scheduler;
+      this._scheduler = scheduler;
 
       if (scheduler && !isFunction(scheduler)) {
-        this._flushScheduler = createScheduler(() => this.run(), scheduler);
+        this._flushScheduler = createScheduler(() => this._guardedRun(), scheduler);
       }
 
       // For development debugging hooks, we assign them directly to the instance
@@ -246,7 +270,7 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
    * When an effect is resumed:
    * - The PAUSED flag is cleared.
    * - If dependencies changed during pause (DIRTY or PENDING flags set),
-   *   the effect executes immediately via notify().
+   *   the effect re-executes according to its scheduling strategy.
    * - If no changes occurred, the effect simply becomes active again.
    *
    * State management:
@@ -257,17 +281,19 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
    * @returns {void}
    */
   resume(): void {
-    const flags = this.flag;
-    const nextFlags = flags & ~EffectFlags.PAUSED;
+    if (!this._active) {
+      return;
+    }
 
-    this.flag = nextFlags;
+    this.flag &= ~EffectFlags.PAUSED;
 
-    // Check if there are pending updates that accumulated during pause
-    const wasDirty = (nextFlags & ReactiveFlags.DIRTY) !== 0;
-    const wasPending = (nextFlags & ReactiveFlags.PENDING) !== 0;
-
-    if (wasDirty || wasPending) {
-      this.notify();
+    // Check for updates that accumulated during pause. The `dirty` getter
+    // validates a bare PENDING via checkDirty(), so an effect whose deps did
+    // not actually change is NOT re-run on resume.
+    if (this.dirty) {
+      // Dispatch directly instead of going through notify(), whose
+      // early-exit would swallow the call when DIRTY is already set.
+      this._scheduleRun();
     }
   }
 
@@ -276,10 +302,11 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
    *
    * Core execution flow:
    * 1. Check if active
-   * 2. Clear dirty flag
-   * 3. Start tracking dependencies
-   * 4. Execute user function
-   * 5. End tracking, clean up stale dependencies
+   * 2. Run the cleanup returned by the previous execution
+   * 3. Clear dirty flag
+   * 4. Start tracking dependencies
+   * 5. Execute user function, capture returned cleanup
+   * 6. End tracking, clean up stale dependencies
    *
    * @returns {T} The return value of the effect function.
    */
@@ -294,15 +321,33 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
     // Clear DIRTY/PENDING flags and set RUNNING to block concurrent notify() calls.
     this.flag = (flags & ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING)) | EffectFlags.RUNNING;
 
+    // Run the previous cleanup before re-executing. RUNNING is already set,
+    // so a reactive write inside the cleanup cannot re-enter run(); the
+    // cleanup itself executes untracked (see _runCleanup).
+    this._runCleanup();
+
     // Start dependency tracking
     const prevSub = startTracking(this);
 
+    // Whether fn threw — the finally must not undo the catch's DIRTY restore.
+    let threw = false;
+
     try {
       // Execute the effect function
-      return this.fn();
+      const result = this.fn();
+
+      // The effect function may return a cleanup function, invoked exactly
+      // once before the next run or on stop(). Consumers whose fn returns
+      // data (e.g. watch getters) opt out via `captureCleanup: false`.
+      if (this.options?.captureCleanup !== false && isFunction(result)) {
+        this._cleanup = result as () => void;
+      }
+
+      return result;
     } catch (error) {
       // Execution error, restore dirty flag
       this.flag |= ReactiveFlags.DIRTY;
+      threw = true;
 
       throw error;
     } finally {
@@ -310,10 +355,47 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
       this.flag &= ~EffectFlags.RUNNING;
       // End tracking, clean up stale dependencies
       endTracking(this, prevSub);
+
+      // Any write notification that arrived while RUNNING was set left stale
+      // PENDING/RECURSED bits behind (and DIRTY, if a dep was re-read
+      // afterwards): propagate() marked us, but notify() ignored the call
+      // because RUNNING was set. Left in place, those bits make later
+      // propagations take the "already notified" branch and the effect goes
+      // permanently silent. Clearing them here (plus DIRTY below) means EVERY
+      // notification delivered during this run — self-writes and external
+      // writes alike — is deliberately discarded for this round.
+      clearPropagationFlags(this);
+      if (!threw) {
+        this.flag &= ~ReactiveFlags.DIRTY;
+      }
+
+      // stop() was called from inside fn: any reads after that point
+      // re-linked dependencies through activeSub, and stop() ran too early
+      // to see the cleanup fn just returned. Run that cleanup and sever the
+      // re-created links so the stopped effect holds no live subscriptions.
+      if (!this._active) {
+        this._runCleanup();
+        this._unlinkDeps();
+      }
     }
   }
 
   private _job?: () => void;
+
+  /**
+   * Run the effect only if it is still eligible.
+   *
+   * A scheduled flush or queued job may fire after stop()/pause() — skip
+   * stale runs. A skipped paused run keeps its DIRTY flag, so resume() can
+   * catch up.
+   *
+   * @returns {void}
+   */
+  private _guardedRun(): void {
+    if (this._active && !(this.flag & EffectFlags.PAUSED)) {
+      this.run();
+    }
+  }
 
   /**
    * Get or create the job function for this effect.
@@ -322,9 +404,77 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
    */
   private getJob(): () => void {
     if (!this._job) {
-      this._job = () => this.run();
+      this._job = () => this._guardedRun();
     }
     return this._job;
+  }
+
+  /**
+   * Invoke the cleanup returned by the previous run, exactly once.
+   *
+   * The reference is cleared before invocation so a re-entrant call
+   * (e.g. stop() inside the cleanup) cannot run it twice. Runs untracked
+   * so reactive reads inside the cleanup never register as dependencies.
+   * Errors are reported without interrupting the caller.
+   *
+   * @returns {void}
+   */
+  private _runCleanup(): void {
+    const cleanup = this._cleanup;
+    if (cleanup) {
+      this._cleanup = undefined;
+      const prevSub = setActiveSub(undefined);
+      try {
+        cleanup();
+      } catch (_error) {
+        if (__DEV__) {
+          error('[Effect] cleanup handler threw:', _error);
+        }
+      } finally {
+        setActiveSub(prevSub);
+      }
+    }
+  }
+
+  /**
+   * Disconnect all dependency links.
+   *
+   * This removes this effect from all signals/computed it depends on.
+   * Shared by stop() and the post-run repair for stop()-inside-fn.
+   *
+   * @returns {void}
+   */
+  private _unlinkDeps(): void {
+    let dep = this.depLink;
+    while (dep) {
+      dep = unlinkReactiveNode(dep, this);
+    }
+    this.depLinkTail = undefined;
+  }
+
+  /**
+   * Dispatch a run through the configured scheduling strategy.
+   *
+   * Shared by notify() and resume() so a resume honors the same
+   * scheduler/batch semantics as a regular dependency notification.
+   *
+   * @returns {void}
+   */
+  private _scheduleRun(): void {
+    const scheduler = this._scheduler;
+    if (scheduler) {
+      if (isFunction(scheduler)) {
+        scheduler(this);
+      } else {
+        this._flushScheduler?.();
+      }
+    } else if (isBatching()) {
+      // When in batch, queue for execution
+      queueJob(this.getJob());
+    } else {
+      // In normal case, execute immediately and synchronously
+      this.run();
+    }
   }
 
   /**
@@ -339,8 +489,14 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
     // Cache flags for efficient checking
     const flags = this.flag;
 
-    // Early exit: already stopped, paused, currently running, or already dirty—ignore notification.
-    if (!this._active || flags & (EffectFlags.PAUSED | EffectFlags.RUNNING | ReactiveFlags.DIRTY)) {
+    // Early exit: already stopped, currently running, or already dirty—ignore notification.
+    if (!this._active || flags & (EffectFlags.RUNNING | ReactiveFlags.DIRTY)) {
+      return;
+    }
+
+    // Paused: record the missed update so resume() can catch up, but don't run.
+    if (flags & EffectFlags.PAUSED) {
+      this.flag = flags | ReactiveFlags.DIRTY;
       return;
     }
 
@@ -357,20 +513,7 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
     }
 
     // Use scheduler or decide execution method based on batch state
-    const scheduler = this.options?.flush || this.options?.scheduler;
-    if (scheduler) {
-      if (isFunction(scheduler)) {
-        scheduler(this);
-      } else {
-        this._flushScheduler?.();
-      }
-    } else if (isBatching()) {
-      // When in batch, queue for execution
-      queueJob(this.getJob());
-    } else {
-      // In normal case, execute immediately and synchronously
-      this.run();
-    }
+    this._scheduleRun();
   }
 
   /**
@@ -393,12 +536,17 @@ export class EffectImpl<T = any> implements ReactiveNode, ScopedReactiveEffect {
     this._active = false;
     releaseDisposable(this);
 
+    // Run the pending cleanup from the last execution.
+    // Skipped while RUNNING: stop() is being called from inside fn, so the
+    // cleanup that fn is about to return hasn't been captured yet — run()'s
+    // finally block handles it instead.
+    if (!(this.flag & EffectFlags.RUNNING)) {
+      this._runCleanup();
+    }
+
     // Disconnect all dependency links
     // This removes this effect from all signals/computed it depends on
-    let dep = this.depLink;
-    while (dep) {
-      dep = unlinkReactiveNode(dep, this);
-    }
+    this._unlinkDeps();
 
     // Disconnect all subscription links
     // This removes any subscribers that depend on this effect (rare but possible)

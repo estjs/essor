@@ -517,6 +517,35 @@ describe('effect', () => {
       expect(fn).toHaveBeenCalledTimes(1);
     });
 
+    // SIG-23: a throwing sync subscriber does not truncate dispatch
+    it('notifies the remaining reactive-object subscribers and rethrows', () => {
+      const state = reactive({ n: 0 });
+      let secondRuns = 0;
+
+      effect(
+        () => {
+          if (state.n > 0) {
+            throw new Error('boom');
+          }
+        },
+        { flush: 'sync' },
+      );
+      effect(
+        () => {
+          void state.n;
+          secondRuns++;
+        },
+        { flush: 'sync' },
+      );
+      expect(secondRuns).toBe(1);
+
+      expect(() => {
+        state.n = 1;
+      }).toThrow('boom');
+      // The second effect still saw the write.
+      expect(secondRuns).toBe(2);
+    });
+
     it('should maintain dirty flag after error', () => {
       const count = signal(0);
       const shouldThrow = true;
@@ -1440,6 +1469,15 @@ describe('memoEffect', () => {
   });
 
   describe('array identity regressions', () => {
+    // KNOWN LIMITATION (documented, not a bug to fix): a computed returning a
+    // reactive array proxy yields the SAME proxy identity on every read, so a
+    // `prev !== nextItems` guard inside memoEffect never sees a new reference
+    // after in-place mutations (push/splice). The effect still re-runs (length
+    // was tracked), but identity-based reconciliation short-circuits — hence
+    // `reconciled` stays at 1 while `runs` reaches 2, and this test is
+    // expected to fail. Consumers must compare contents (or track a version
+    // counter) instead of relying on array identity; the plain-effect variant
+    // below shows the working pattern.
     it.fails(
       'should expose prev===nextItems guard pitfalls when memoEffect reuses the same array proxy',
       () => {

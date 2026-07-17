@@ -158,6 +158,16 @@ export class EffectScope {
   _record(effect: ScopedReactiveEffect): void {
     this.effects.add(effect);
     effect.scope = this;
+    // An effect created while the scope is paused must inherit the pause,
+    // otherwise it keeps responding to dependency changes while its siblings
+    // are frozen. resume() iterates `effects`, so it is resumed with the rest.
+    //
+    // Note: the effect's INITIAL run still executes — effect()/watch() run
+    // their body eagerly on creation, before/independently of this pause.
+    // Pausing only freezes subsequent dependency-change notifications.
+    if (this._state === ScopeState.Paused) {
+      effect.pause?.();
+    }
   }
 
   _remove(effect: ScopedReactiveEffect): void {
@@ -166,6 +176,15 @@ export class EffectScope {
   }
 
   _pushCleanup(fn: () => void): void {
+    // A disposed scope will never run its cleanups again — registering one
+    // would silently create a cleanup that never executes (and pin its
+    // closure). Warn and drop instead (SIG-30).
+    if (this._state === ScopeState.Disposed) {
+      if (__DEV__) {
+        warn('[EffectScope] cleanup registered on a disposed scope will never run.');
+      }
+      return;
+    }
     this.cleanups.push(fn);
   }
 }

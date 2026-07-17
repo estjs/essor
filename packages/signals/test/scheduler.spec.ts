@@ -1,5 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createScheduler, flushJobs, nextTick, queueJob, queuePreFlushCb } from '../src/scheduler';
+import {
+  createScheduler,
+  flushJobs,
+  nextTick,
+  queueJob,
+  queuePostFlushJob,
+  queuePreFlushCb,
+} from '../src/scheduler';
 
 // Reset modules between tests to ensure a clean state
 beforeEach(() => {
@@ -85,6 +92,74 @@ describe('queueJob', () => {
     await nextTick();
 
     expect(preFlushCb).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('scheduler phase invariant (SIG-18)', () => {
+  it('should run post-flush callbacks after main jobs queued during the flush', async () => {
+    const order: string[] = [];
+
+    // Job A queues a post-flush callback and a new main job B.
+    // The post callback must wait until B (queued in the same round) has run.
+    queueJob(() => {
+      order.push('A');
+      queuePostFlushJob(() => order.push('post'));
+      queueJob(() => order.push('B'));
+    });
+
+    await nextTick();
+
+    expect(order).toEqual(['A', 'B', 'post']);
+  });
+
+  it('should run pre-flush callbacks queued by a main job before the next main job', async () => {
+    const order: string[] = [];
+
+    queueJob(() => {
+      order.push('main1');
+      queuePreFlushCb(() => order.push('pre'));
+    });
+    queueJob(() => order.push('main2'));
+
+    await nextTick();
+
+    expect(order).toEqual(['main1', 'pre', 'main2']);
+  });
+
+  it('should run new rounds for jobs queued by post-flush callbacks, with post waiting again', async () => {
+    const order: string[] = [];
+
+    queueJob(() => order.push('main1'));
+    queuePostFlushJob(() => {
+      order.push('post1');
+      // A post callback queues new pre/main jobs — they must run in a new
+      // round, and subsequently queued post callbacks must wait for them.
+      queuePreFlushCb(() => order.push('pre2'));
+      queueJob(() => order.push('main2'));
+      queuePostFlushJob(() => order.push('post2'));
+    });
+
+    await nextTick();
+
+    expect(order).toEqual(['main1', 'post1', 'pre2', 'main2', 'post2']);
+  });
+
+  it('should ignore re-entrant flushJobs calls during a flush', async () => {
+    const order: string[] = [];
+
+    queueJob(() => {
+      order.push('A');
+      queuePostFlushJob(() => order.push('post'));
+      queueJob(() => order.push('B'));
+      // Re-entrant flush must be a no-op — otherwise 'post' would run
+      // before 'B'.
+      flushJobs();
+      order.push('A:end');
+    });
+
+    await nextTick();
+
+    expect(order).toEqual(['A', 'A:end', 'B', 'post']);
   });
 });
 
@@ -341,9 +416,34 @@ describe('scheduler Test Suite', () => {
         warnSpy.mockRestore();
       });
 
+      it('warns even in production when jobs are dropped (data-loss level event)', () => {
+        // Dropping queued jobs is a data-loss level event — the warning must
+        // fire regardless of __DEV__ so production apps get a signal too.
+        // @ts-expect-error setting __DEV__ for testing
+        globalThis.__DEV__ = false;
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+        const makeJob = (): (() => void) => () => {
+          queueJob(makeJob());
+        };
+
+        queueJob(makeJob());
+        flushJobs();
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Maximum recursive flush count'),
+        );
+
+        warnSpy.mockRestore();
+        // @ts-expect-error restore
+        globalThis.__DEV__ = true;
+      });
+
       it('drops remaining jobs after exceeding the limit so the queue is left clean', () => {
         // @ts-expect-error setting __DEV__ for testing
-        globalThis.__DEV__ = false; // silence warn for this assertion
+        globalThis.__DEV__ = false;
+        // The drop warning fires even in production; silence it here.
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
         const sibling = vi.fn();
 
         const makeJob = (): (() => void) => () => {
@@ -359,6 +459,7 @@ describe('scheduler Test Suite', () => {
         flushJobs();
         expect(sibling).not.toHaveBeenCalled();
 
+        warnSpy.mockRestore();
         // @ts-expect-error restore
         globalThis.__DEV__ = true;
       });

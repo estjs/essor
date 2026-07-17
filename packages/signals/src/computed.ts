@@ -118,6 +118,10 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
   private _value: T | typeof NO_VALUE = NO_VALUE;
   private _active = true;
 
+  // Guard against circular dependencies (self-referencing or mutually
+  // referencing computeds) which would otherwise cause a stack overflow
+  private _evaluating = false;
+
   /**
    * Create a Computed instance.
    *
@@ -154,30 +158,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
       linkReactiveNode(this, activeSub);
     }
 
-    // Cache flag and hasValue to reduce property access
-    const flags = this.flag;
-    const hasValue = this._value !== NO_VALUE;
-
-    if (hasValue && !(flags & (ReactiveFlags.DIRTY | ReactiveFlags.PENDING))) {
-      return this._value as T;
-    }
-
-    // Dirty state or no value: must recompute
-    if (!hasValue || flags & ReactiveFlags.DIRTY) {
-      this.recompute();
-      return this._value as T;
-    }
-
-    // Pending state: check if dependencies actually changed
-    if (flags & ReactiveFlags.PENDING) {
-      if (this.depLink && checkDirty(this.depLink, this)) {
-        // Dependencies changed, recompute
-        this.recompute();
-      } else {
-        // Dependencies unchanged, clear pending flag using cached flags
-        this.flag = flags & ~ReactiveFlags.PENDING;
-      }
-    }
+    this._validate();
 
     return this._value as T;
   }
@@ -202,6 +183,11 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
   /**
    * Read value without tracking dependencies.
    *
+   * Performs an untracked fresh read: if the computed is dirty (or possibly
+   * dirty), it recomputes before returning, so the result always reflects the
+   * current dependency values. Unlike `value`, it never links the computed to
+   * the active subscriber.
+   *
    * @returns {T} The current value.
    */
   peek(): T {
@@ -209,10 +195,40 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
       return this._value === NO_VALUE ? this.getter() : (this._value as T);
     }
 
-    if (this._value === NO_VALUE) {
-      this.recompute();
-    }
+    this._validate();
+
     return this._value as T;
+  }
+
+  /**
+   * Ensure the cached value is fresh.
+   *
+   * Shared by `get value()` and `peek()` — the only difference between the two
+   * is that `value` additionally links this computed to the active subscriber.
+   *
+   * - No cached value, or DIRTY: recompute unconditionally.
+   * - PENDING: validate via checkDirty(); recompute only if a dependency
+   *   actually changed, otherwise just clear the PENDING flag.
+   *
+   * @private
+   */
+  private _validate(): void {
+    // Cache flag to reduce property access
+    const flags = this.flag;
+
+    // No value or dirty state: must recompute for a fresh read
+    if (this._value === NO_VALUE || flags & ReactiveFlags.DIRTY) {
+      this.recompute();
+    } else if (flags & ReactiveFlags.PENDING) {
+      // Pending state: check if dependencies actually changed
+      if (this.depLink && checkDirty(this.depLink, this)) {
+        // Dependencies changed, recompute
+        this.recompute();
+      } else {
+        // Dependencies unchanged, clear pending flag using cached flags
+        this.flag = flags & ~ReactiveFlags.PENDING;
+      }
+    }
   }
 
   get active(): boolean {
@@ -231,6 +247,13 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
    * @private
    */
   private recompute(): void {
+    // Guard against circular dependencies: if this computed is already being
+    // evaluated, its getter (directly or transitively) reads its own value.
+    // Throwing a stable error here prevents infinite recursion (stack overflow).
+    if (this._evaluating) {
+      throw new Error('[Computed] Circular dependency detected in computed');
+    }
+
     if (!this._active) {
       if (this._value === NO_VALUE) {
         this._value = this.getter();
@@ -244,6 +267,7 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
     const hadValue = oldValue !== NO_VALUE;
 
     // Start tracking dependencies
+    this._evaluating = true;
     const prevSub = startTracking(this);
 
     try {
@@ -314,6 +338,8 @@ export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedR
 
       throw _error;
     } finally {
+      // Clear the evaluation guard so the computed can be re-evaluated later
+      this._evaluating = false;
       // End tracking, clean up stale dependencies
       // This removes links to dependencies that are no longer accessed
       endTracking(this, prevSub);

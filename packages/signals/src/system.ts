@@ -32,6 +32,19 @@ export interface ReactiveNode {
   onTrigger?: (event: DebuggerEvent) => void;
   isDep?: boolean;
   _triggerVersion?: number;
+  /**
+   * Subscriber-side round stamp: the link version assigned to this node's
+   * current tracking round by {@link startTracking}. Stays constant for the
+   * whole round (unlike the global `currentLinkVersion`, which nested rounds
+   * keep bumping), so it identifies "our round" inside {@link linkReactiveNode}.
+   */
+  _trackVersion?: number;
+  /**
+   * Dep-side round stamp: the `_trackVersion` of the round that most recently
+   * linked this node. Used by {@link linkReactiveNode} to skip the duplicate
+   * backscan on first tracking.
+   */
+  _linkedVersion?: number;
 }
 
 export interface Effect extends ReactiveNode {
@@ -88,24 +101,88 @@ export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): 
 
   const prevDep = subNode.depLinkTail;
   if (prevDep && prevDep.depNode === depNode) {
+    // Consecutive duplicate read. The tail was only advanced by a stamped
+    // link/reuse of this same dep earlier in this round, so the dep-side
+    // round stamp is already ours — no restamp needed.
     return prevDep;
   }
 
+  // The subscriber's round version, fixed for the whole tracking round by
+  // startTracking(). Unlike the raw `currentLinkVersion` — which nested
+  // rounds keep bumping — this reliably identifies "our round" in the stamps
+  // below. (Fallback for subs linked outside startTracking; none exist today.)
+  const roundVersion = subNode._trackVersion ?? currentLinkVersion;
+
   const nextDep = prevDep ? prevDep.nextDepLink : subNode.depLink;
   if (nextDep && nextDep.depNode === depNode) {
-    nextDep.version = currentLinkVersion;
+    nextDep.version = roundVersion;
     subNode.depLinkTail = nextDep;
+    depNode._linkedVersion = roundVersion;
     return nextDep;
   }
 
+  // Non-consecutive duplicate read of `depNode` within this same tracking
+  // round (e.g. `a, b, a`, or `a, c, a` where evaluating computed `c` re-read
+  // `a`). Skipped entirely when the dep has no subscribers (we cannot
+  // already be linked).
   const prevSub = depNode.subLinkTail;
-  if (prevSub && prevSub.version === currentLinkVersion && prevSub.subNode === subNode) {
-    subNode.depLinkTail = prevSub;
-    return prevSub;
+  if (prevSub !== undefined) {
+    // Dep-side round stamp (`_linkedVersion`, written on every successful
+    // link/reuse below). Round versions are globally monotonic, so:
+    //
+    //   _linkedVersion <  roundVersion → nobody (us or a nested round) linked
+    //                                    this dep since our round began — we
+    //                                    provably hold no link to it this
+    //                                    round, so create directly, NO scan.
+    //   _linkedVersion === roundVersion → round ids are unique per
+    //                                    startTracking(), so WE linked it this
+    //                                    round: a true duplicate. Reuse via
+    //                                    the tail fast path or the backscan
+    //                                    (guaranteed hit).
+    //   _linkedVersion >  roundVersion → a nested round (e.g. a computed
+    //                                    evaluated mid-run) touched this dep
+    //                                    after our round began, clobbering the
+    //                                    stamp — it can no longer prove we did
+    //                                    NOT link earlier, so fall back to the
+    //                                    backscan (may hit or miss).
+    //
+    // Complexity guarantee: an effect's first tracking over deps that already
+    // have other (older-round) subscribers hits the `<` branch and is O(1) per
+    // dep — O(n) for the whole round, matching alien-signals v3. The O(i)
+    // backscan below survives only for deps re-touched by nested rounds
+    // within the current round (the hijack case), where the stamp
+    // cannot prove freshness.
+    const linkedVersion = depNode._linkedVersion;
+    if (linkedVersion === undefined || linkedVersion >= roundVersion) {
+      // Fast path: the dep's subscriber tail is our own link, stamped this
+      // round — reuse it.
+      //
+      // Do NOT rewind subNode.depLinkTail when reusing: endTracking() only
+      // prunes links after the tail, so rewinding would orphan every dep
+      // genuinely tracked between the duplicate link and the tail (e.g.
+      // reading `a, b, a` would unlink `b`).
+      if (prevSub.subNode === subNode && prevSub.version === roundVersion) {
+        return prevSub;
+      }
+
+      // Slow path: the shared tail was hijacked by another subscriber (a
+      // computed evaluated between the two reads appended its own link).
+      // Positionally, `[subNode.depLink .. depLinkTail]` is exactly the
+      // segment confirmed so far this round — scan it for the dep. Missing
+      // this reuse would create a duplicate (dep, sub) link and corrupt
+      // propagation.
+      for (let scan = prevDep; scan !== undefined; scan = scan.prevDepLink) {
+        if (scan.depNode === depNode) {
+          scan.version = roundVersion;
+          depNode._linkedVersion = roundVersion;
+          return scan;
+        }
+      }
+    }
   }
 
   const newLink: Link = {
-    version: currentLinkVersion,
+    version: roundVersion,
     depNode,
     subNode,
     prevSubLink: prevSub,
@@ -131,6 +208,7 @@ export function linkReactiveNode(depNode: ReactiveNode, subNode: ReactiveNode): 
 
   depNode.subLinkTail = newLink;
   subNode.depLinkTail = newLink;
+  depNode._linkedVersion = roundVersion;
 
   if (__DEV__ && subNode.onTrack && isFunction(subNode.onTrack)) {
     subNode.onTrack({
@@ -386,6 +464,11 @@ export function setActiveSub(sub?: ReactiveNode): ReactiveNode | undefined {
 
 export function startTracking(sub: ReactiveNode): ReactiveNode | undefined {
   currentLinkVersion++;
+  // Freeze this round's version on the subscriber: nested tracking rounds
+  // keep bumping the global counter, but `sub._trackVersion` stays constant,
+  // so linkReactiveNode can always tell "our round" apart (see the dep-side
+  // round stamps there). Round ids are unique — no two rounds share one.
+  sub._trackVersion = currentLinkVersion;
   sub.depLinkTail = undefined;
 
   sub.flag =
@@ -450,6 +533,28 @@ function endTriggerEffects(effects: ReactiveNode[]): void {
   triggerDepth--;
 }
 
+/**
+ * Walk a subLink chain and collect each subscriber exactly once into
+ * `effects`, using the `_triggerVersion` stamp for same-round dedup.
+ *
+ * Shared by {@link collectTriggeredEffects}, {@link trigger} (extraDep
+ * channel) and {@link triggerNode}.
+ */
+function collectSubscribers(
+  link: Link | undefined,
+  effects: ReactiveNode[],
+  version: number,
+): void {
+  for (; link; link = link.nextSubLink) {
+    const effect = link.subNode;
+    if (effect._triggerVersion === version) {
+      continue;
+    }
+    effect._triggerVersion = version;
+    effects.push(effect);
+  }
+}
+
 function collectTriggeredEffects(
   dep: Dep | undefined,
   effects: ReactiveNode[],
@@ -459,14 +564,7 @@ function collectTriggeredEffects(
     return;
   }
 
-  for (let link = dep.subLink; link; link = link.nextSubLink) {
-    const effect = link.subNode;
-    if (effect._triggerVersion === version) {
-      continue;
-    }
-    effect._triggerVersion = version;
-    effects.push(effect);
-  }
+  collectSubscribers(dep.subLink, effects, version);
 }
 
 export function track(target: object, key: string | symbol): void {
@@ -489,14 +587,24 @@ export function track(target: object, key: string | symbol): void {
   linkReactiveNode(dep, activeSub);
 }
 
+/**
+ * Notify all subscribers tracked for `target`/`key`.
+ *
+ * @param extraDep - An extra dep node whose subscribers are merged into the
+ * same trigger round. Passed by the reactive proxy's deleteProperty trap:
+ * when an own key is deleted, its {@link ReactiveNode} (a ReactiveProperty)
+ * is removed from the per-target map, and its subscribers must be dispatched
+ * together with the targetMap DELETE subscribers, deduplicated per round.
+ */
 export function trigger(
   target: object,
   type: string,
   key?: string | symbol | (string | symbol)[],
   newValue?: unknown,
+  extraDep?: ReactiveNode,
 ): void {
   const depsMap = targetMap.get(target);
-  if (!depsMap) {
+  if (!depsMap && !extraDep) {
     return;
   }
 
@@ -504,32 +612,65 @@ export function trigger(
   const version = ++triggerVersion;
 
   try {
-    if (key !== undefined) {
-      if (isArray(key)) {
-        for (const element of key) {
-          collectTriggeredEffects(depsMap.get(element), effects, version);
+    // Collect the extra dep's subscribers into the SAME version round so an
+    // effect subscribed via both channels (e.g. a ReactiveProperty node and a
+    // targetMap Dep during a property delete) is dispatched exactly once.
+    if (extraDep) {
+      collectSubscribers(extraDep.subLink, effects, version);
+    }
+
+    if (depsMap) {
+      if (key !== undefined) {
+        if (isArray(key)) {
+          for (const element of key) {
+            collectTriggeredEffects(depsMap.get(element), effects, version);
+          }
+        } else {
+          collectTriggeredEffects(depsMap.get(key), effects, version);
         }
-      } else {
-        collectTriggeredEffects(depsMap.get(key), effects, version);
+      }
+
+      if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
+        const iterationKey = isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
+        collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
       }
     }
 
-    if (type === 'ADD' || type === 'DELETE' || type === 'CLEAR') {
-      const iterationKey = isArray(target) ? ARRAY_ITERATE_KEY : ITERATE_KEY;
-      collectTriggeredEffects(depsMap.get(iterationKey), effects, version);
+    dispatchCollectedEffects(effects, target, type, key, newValue);
+  } finally {
+    endTriggerEffects(effects);
+  }
+}
+
+/**
+ * Notify every collected effect from a stable snapshot.
+ *
+ * A synchronously flushing subscriber may throw from inside notify(); the
+ * remaining subscribers must still be dispatched (SIG-23), so errors are
+ * collected and the first one is rethrown after the loop completes.
+ */
+function dispatchCollectedEffects(
+  effects: ReactiveNode[],
+  target?: object,
+  type?: string,
+  key?: string | symbol | (string | symbol)[],
+  newValue?: unknown,
+): void {
+  let firstError: unknown;
+  let hasError = false;
+
+  for (const effect of effects) {
+    if (__DEV__ && target !== undefined && isFunction(effect.onTrigger)) {
+      effect.onTrigger({
+        effect,
+        target,
+        type: type!,
+        key,
+        newValue,
+      });
     }
 
-    for (const effect of effects) {
-      if (__DEV__ && isFunction(effect.onTrigger)) {
-        effect.onTrigger({
-          effect,
-          target,
-          type,
-          key,
-          newValue,
-        });
-      }
-
+    try {
       if (effect.flag & ReactiveFlags.WATCHING) {
         (effect as Effect).notify?.();
       } else if (effect.flag & ReactiveFlags.MUTABLE) {
@@ -538,9 +679,18 @@ export function trigger(
           propagate(effect.subLink);
         }
       }
+    } catch (error_) {
+      if (!hasError) {
+        hasError = true;
+        firstError = error_;
+      } else if (__DEV__) {
+        error('[Signals] additional error while notifying subscribers:', error_);
+      }
     }
-  } finally {
-    endTriggerEffects(effects);
+  }
+
+  if (hasError) {
+    throw firstError;
   }
 }
 
@@ -605,25 +755,9 @@ export function triggerNode(node: ReactiveNode): void {
   const version = ++triggerVersion;
 
   try {
-    for (let current: Link | undefined = link; current; current = current.nextSubLink) {
-      const effect = current.subNode;
-      if (effect._triggerVersion === version) {
-        continue;
-      }
-      effect._triggerVersion = version;
-      effects.push(effect);
-    }
+    collectSubscribers(link, effects, version);
 
-    for (const effect of effects) {
-      if (effect.flag & ReactiveFlags.WATCHING) {
-        (effect as Effect).notify?.();
-      } else if (effect.flag & ReactiveFlags.MUTABLE) {
-        effect.flag |= ReactiveFlags.DIRTY;
-        if (effect.subLink) {
-          propagate(effect.subLink);
-        }
-      }
-    }
+    dispatchCollectedEffects(effects);
   } finally {
     endTriggerEffects(effects);
   }
