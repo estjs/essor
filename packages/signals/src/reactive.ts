@@ -178,8 +178,7 @@ function createArrayInstrumentations() {
   });
 
   // Search methods that return elements: track iteration and maintain reactivity.
-  // The user callback must observe REACTIVE elements (mirrors Vue's wrapped
-  // apply()): reads/writes on the callback argument go through the proxy, so
+  // The user callback must observe REACTIVE elements: reads/writes on the callback argument go through the proxy, so
   // `list.find(el => el.id === wanted).x = 1` stays reactive.
   ['find', 'findIndex', 'findLast', 'findLastIndex'].forEach((key) => {
     instrumentations[key] = function (
@@ -214,7 +213,7 @@ function createArrayInstrumentations() {
   });
 
   // Mutation methods: trigger array changes.
-  // Raw/proxy identity policy (mirrors Vue's noTracking + toRaw):
+  // Raw/proxy identity policy:
   // - inserted values are unwrapped so a proxy never leaks into raw storage;
   // - chainable mutators (sort/reverse/fill/copyWithin) return the RECEIVER
   //   proxy, not the raw array;
@@ -259,7 +258,7 @@ function createArrayInstrumentations() {
   );
 
   // ES2023 methods that return new arrays: track access and maintain reactivity.
-  // Mirrors Vue's reactiveReadArray: materialize a reactive-element view FIRST
+  //  materialize a reactive-element view FIRST
   // so a toSorted comparator observes reactive elements, then run the native
   // method on that plain view — the result already contains reactive items.
   ['toReversed', 'toSorted', 'toSpliced'].forEach((key) => {
@@ -1135,7 +1134,7 @@ export function reactiveImpl<T extends object>(target: T, shallow = false): T {
   // Exotic built-ins (Date, Promise, RegExp, class instances with internal
   // slots, DOM nodes, …) would break under a generic object proxy — their
   // prototype methods reject a Proxy receiver ("incompatible receiver") — so
-  // they are returned as-is (mirrors Vue's TargetType.INVALID). Non-extensible
+  // they are returned as-is. Non-extensible
   // (frozen/sealed) objects are also skipped: a proxy over them violates
   // Proxy invariants for non-configurable properties.
   if (!isObservableType(target) || !Object.isExtensible(target)) {
@@ -1171,7 +1170,6 @@ const _objectToString = Object.prototype.toString;
 
 /**
  * Whether a value's type can be wrapped by one of the reactive proxy handlers.
- * Mirrors Vue's targetTypeMap: Object / Array / Map / Set / WeakMap / WeakSet.
  */
 function isObservableType(target: object): boolean {
   switch (_objectToString.call(target)) {
