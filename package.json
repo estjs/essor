@@ -40,7 +40,7 @@
     "@estjs/eslint-config": "^2.3.0",
     "@playwright/test": "^1.61.1",
     "@vitest/coverage-v8": "^4.1.10",
-    "bumpp": "^11.1.0",
+    "bumpp": "^12.0.0",
     "cross-env": "^10.1.0",
     "eslint": "^10.7.0",
     "jsdom": "^29.1.1",
