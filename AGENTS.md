@@ -2,7 +2,7 @@
 
 **Essor** is a signal-based reactive frontend framework with no virtual DOM, built on fine-grained reactivity.
 
-**Version**: 0.0.15-beta.14 | **License**: MIT | **Package Manager**: pnpm@10.28.0
+**Version**: 0.0.18-beta.1| **License**: MIT | **Package Manager**: pnpm@11.13.1
 
 ---
 
@@ -11,9 +11,9 @@
 ```bash
 pnpm dev              # Watch mode
 pnpm build            # Build all packages
-pnpm typecheck        # TypeScript strict check
-pnpm lint             # ESLint auto-fix
-pnpm test             # Unit tests (vitest)
+pnpm typecheck        # Packages typecheck + server type tests
+pnpm lint             # Non-mutating ESLint ratchet (production)
+pnpm test             # Unit tests (vitest run)
 pnpm test:e2e         # E2E (playwright)
 pnpm coverage         # Coverage report
 
@@ -167,20 +167,3 @@ pnpm vitest --reporter=verbose
 - **NPM**: https://www.npmjs.com/package/essor
 
 
-
-<claude-mem-context>
-# Memory Context
-
-# claude-mem status
-
-This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
-
-Memory injection starts on your second session in a project.
-
-`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional). Otherwise memory builds passively as work happens.
-
-Live activity: http://localhost:37777
-How it works: `/how-it-works`
-
-This message disappears once the first observation lands.
-</claude-mem-context>
