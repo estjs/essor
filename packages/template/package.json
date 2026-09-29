@@ -71,7 +71,7 @@
     "@estjs/signals": "workspace:*"
   },
   "devDependencies": {
-    "@babel/core": "^8.0.1",
+    "@babel/core": "^8.0.6",
     "babel-plugin-essor": "workspace:*"
   }
 }

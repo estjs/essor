@@ -3,11 +3,11 @@ import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
 import {
-  claimHydrationNode,
   claimHydratedNodes,
+  claimHydrationNode,
   hasActiveHydrationRange,
-  isHydrationNodeClaimed,
   isHydrating,
+  isHydrationNodeClaimed,
   isNodeHydrated,
   runWithHydrationRange,
   runWithoutHydration,

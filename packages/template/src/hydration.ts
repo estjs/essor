@@ -401,10 +401,7 @@ export function claimHydrationNode(expected: Node): Node {
   const current = cursor.originalNodes[cursor.index];
   if (expected.nodeType === Node.TEXT_NODE) {
     const expectedText = expected.textContent ?? '';
-    if (
-      current?.nodeType === Node.TEXT_NODE &&
-      (current.textContent ?? '') === expectedText
-    ) {
+    if (current?.nodeType === Node.TEXT_NODE && (current.textContent ?? '') === expectedText) {
       cursor.index++;
       cursor.claimed.add(current);
       markNodeHydrated(current);
@@ -440,11 +437,7 @@ export function claimHydrationNode(expected: Node): Node {
 }
 
 /** Conservative backward claim used when no compiler-provided start exists. */
-export function claimHydratedNodes(
-  parent: Node,
-  expected: Node[],
-  before?: Node,
-): Node[] | null {
+export function claimHydratedNodes(parent: Node, expected: Node[], before?: Node): Node[] | null {
   if (!_isHydrating || (before && before.parentNode !== parent)) return null;
   if (expected.length === 0) return [];
 
@@ -479,10 +472,7 @@ export function claimHydratedNodes(
       const expectedText = expectedNode.textContent ?? '';
 
       if (expectedText === '') {
-        if (
-          cursor?.nodeType === Node.TEXT_NODE &&
-          (cursor.textContent ?? '') === ''
-        ) {
+        if (cursor?.nodeType === Node.TEXT_NODE && (cursor.textContent ?? '') === '') {
           claimed[i] = cursor;
           cursor = cursor.previousSibling;
         } else {

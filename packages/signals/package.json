@@ -54,9 +54,16 @@
   "scripts": {
     "build": "tsup && cross-env NODE_ENV=production tsup --clean=false",
     "dev": "tsup --watch",
-    "bench": "node --expose-gc benchmark/benchmark.js && node benchmark/score.js"
+    "bench": "node --expose-gc benchmark/run.js",
+    "bench:quick": "node --expose-gc benchmark/run.js --iterations=5000 --rounds=5"
   },
   "dependencies": {
     "@estjs/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@preact/signals-core": "^1.14.4",
+    "alien-signals": "^3.2.1",
+    "solid-js": "^1.9.15",
+    "vue": "^3.6.0-rc.9"
   }
 }
