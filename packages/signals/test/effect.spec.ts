@@ -1,1648 +1,1626 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   batch,
   computed,
   effect,
-  getTargetDepSize,
-  isEffect,
-  memoEffect,
+  effectScope,
+  nextTick,
+  onEffectCleanup,
+  pauseTracking,
   reactive,
+  resetTracking,
+  shallowReactive,
   signal,
-  stop,
+  toRaw,
 } from '../src';
+import { getDepFromReactive } from '../src/dep';
+import {
+  EffectFlags,
+  ReactiveEffect,
+  type ReactiveEffectRunner,
+  enableTracking,
+  stop,
+} from '../src/effect';
+import { type ReactiveNode, endBatch, endTracking, startBatch, startTracking } from '../src/graph';
+import { markRaw } from '../src/reactive';
 
-describe('effect', () => {
-  describe('basic functionality', () => {
-    it('should run the effect function', () => {
-      let testValue = 0;
-      effect(
-        () => {
-          testValue = 10;
-        },
-        { flush: 'sync' },
-      );
-      expect(testValue).toBe(10);
+describe('effect contract', () => {
+  it('returns a runner that exposes its ReactiveEffect', () => {
+    const runner = effect(() => undefined);
+
+    expect(typeof runner).toBe('function');
+    expect(runner.effect).toBeInstanceOf(ReactiveEffect);
+    expect(runner.effect.active).toBe(true);
+    runner.effect.stop();
+    expect(runner.effect.active).toBe(false);
+  });
+
+  it('runs eagerly and reruns after a changed dependency', () => {
+    const value = signal(1);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(value.value);
     });
 
-    it('should get correct value after effect execution', () => {
-      const name = signal('Dnt');
+    value.value = 2;
+    expect(seen).toEqual([1, 2]);
+    runner.effect.stop();
+  });
 
-      let effectTimes = 0;
-      const runner = effect(
-        () => {
-          effectTimes++;
-          name.value;
-        },
-        { flush: 'sync' },
-      );
-      expect(effectTimes).toBe(1);
-      // Stop the effect
-      runner.stop();
-      name.value = 'John';
-      expect(effectTimes).toBe(1);
-      name.value = '';
-      expect(effectTimes).toBe(1);
-    });
+  it('reruns manually when the runner is called', () => {
+    const value = signal(1);
+    const run = vi.fn(() => value.value);
+    const runner = effect(run);
 
-    it('should re-run the effect when signal value changes', () => {
-      const testSignal = signal([1, 2, 3]);
-      let effectTimes = 0;
+    expect(runner()).toBe(1);
+    expect(run).toHaveBeenCalledTimes(2);
+    runner.effect.stop();
+  });
+
+  it('does not rerun when a dependency is set to the same value', () => {
+    const value = signal(1);
+    const run = vi.fn(() => value.value);
+    const runner = effect(run);
+
+    value.value = 1;
+    expect(run).toHaveBeenCalledOnce();
+    runner.effect.stop();
+  });
+
+  it('drops dependencies from an inactive branch', () => {
+    const enabled = signal(true);
+    const left = signal(1);
+    const right = signal(2);
+    const run = vi.fn(() => (enabled.value ? left.value : right.value));
+    const runner = effect(run);
+
+    enabled.value = false;
+    left.value = 3;
+    right.value = 4;
+
+    expect(run).toHaveBeenCalledTimes(3);
+    runner.effect.stop();
+  });
+
+  it('stops idempotently through stop() and ignores later writes', () => {
+    const value = signal(0);
+    const run = vi.fn(() => value.value);
+    const runner = effect(run);
+
+    stop(runner);
+    stop(runner);
+    value.value = 1;
+
+    expect(run).toHaveBeenCalledOnce();
+  });
+
+  it('stops the effect when the first run throws', () => {
+    const value = signal(0);
+    const failure = new Error('initial run failed');
+    let runs = 0;
+
+    expect(() =>
       effect(() => {
-        testSignal.value.length;
-        effectTimes++;
-      });
-      expect(effectTimes).toBe(1);
-      testSignal.value.push(4);
+        value.value;
+        runs++;
+        throw failure;
+      }),
+    ).toThrow(failure);
 
-      expect(effectTimes).toBe(2);
-    });
-
-    it('should handle different flush options', () => {
-      const mockEffect = vi.fn();
-      const effectFn = effect(mockEffect, { flush: 'sync' });
-      expect(mockEffect).toHaveBeenCalled();
-      effectFn.stop();
-    });
-
-    it('should handle "pre" flush option', () => {
-      const mockEffect = vi.fn();
-      const effectFn = effect(mockEffect, { flush: 'pre' });
-      expect(mockEffect).toHaveBeenCalled();
-      effectFn.stop();
-    });
-
-    it('should handle "post" flush option', () => {
-      const mockEffect = vi.fn();
-      effect(mockEffect, { flush: 'post' });
-      expect(mockEffect).toHaveBeenCalled();
-    });
-
-    it('should call onTrack and onTrigger callbacks', () => {
-      const onTrack = vi.fn();
-      const onTrigger = vi.fn();
-
-      const name = signal('Dnt');
-      const effectFn = effect(
-        () => {
-          name.value;
-        },
-        { onTrack, onTrigger },
-      );
-
-      expect(onTrack).toHaveBeenCalled();
-      expect(onTrigger).not.toHaveBeenCalled();
-      effectFn.stop();
-    });
-
-    it('should not call effect function after disposal', () => {
-      const mockEffect = vi.fn();
-      const effectFn = effect(mockEffect);
-      effectFn.stop();
-      const name = signal('Dnt');
-      name.value = 'Changed';
-      expect(mockEffect).toHaveBeenCalledTimes(1);
-    });
-
-    it('should clean up correctly', () => {
-      const mockEffect = vi.fn();
-      const effectFn = effect(mockEffect);
-      effectFn.stop();
-      const name = signal('Dnt');
-      name.value = 'Changed';
-      expect(mockEffect).toHaveBeenCalledTimes(1);
-    });
-
-    it('should pause and resume', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.pause();
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      count.value = 2;
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.resume();
-      expect(fn).toHaveBeenCalledTimes(2);
-      expect(fn).toHaveBeenLastCalledWith(2);
-    });
-
-    it('should handle stop idempotency', () => {
-      const runner = effect(() => {});
-      runner.stop();
-      expect(() => runner.stop()).not.toThrow();
-    });
-
-    it('should handle error in reactive update', () => {
-      const count = signal(0);
-      effect(() => {
-        if (count.value > 0) {
-          throw new Error('Update Error');
-        }
-      });
-
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Update Error');
-    });
-
-    it('should throw if initial execution fails', () => {
-      expect(() => {
-        effect(() => {
-          throw new Error('Fail');
-        });
-      }).toThrow('Fail');
-    });
-
-    it('should isEffect check', () => {
-      const runner = effect(() => {});
-      expect(isEffect(runner.effect)).toBe(true);
-      expect(isEffect({})).toBe(false);
-      expect(isEffect(null)).toBe(false);
-    });
+    value.value = 1;
+    expect(runs).toBe(1);
   });
 
-  describe('boundary cases - nested effects', () => {
-    it('should handle nested effect execution', () => {
-      const outer = signal(0);
-      const inner = signal(0);
-      const outerFn = vi.fn();
-      const innerFn = vi.fn();
-
-      const outerRunner = effect(() => {
-        outerFn(outer.value);
-        effect(() => {
-          innerFn(inner.value);
-        });
-      });
-
-      expect(outerFn).toHaveBeenCalledTimes(1);
-      expect(innerFn).toHaveBeenCalledTimes(1);
-
-      outer.value = 1;
-      expect(outerFn).toHaveBeenCalledTimes(2);
-      expect(innerFn).toHaveBeenCalledTimes(2);
-
-      outerRunner.stop();
+  it('does not recursively schedule a direct self-write', () => {
+    const value = signal(0);
+    const run = vi.fn(() => {
+      if (value.value === 0) value.value = 1;
     });
+    const runner = effect(run);
 
-    it('should track dependencies correctly in nested effects', () => {
-      const count = signal(0);
-      const multiplier = signal(2);
-      const results: number[] = [];
-
-      const outerRunner = effect(() => {
-        const c = count.value;
-        effect(() => {
-          results.push(c * multiplier.value);
-        });
-      });
-
-      expect(results).toEqual([0]);
-
-      multiplier.value = 3;
-      expect(results).toEqual([0, 0]);
-
-      count.value = 5;
-      expect(results).toEqual([0, 0, 15]);
-
-      outerRunner.stop();
-    });
-
-    it('should handle deeply nested effects', () => {
-      const sig1 = signal(1);
-      const sig2 = signal(2);
-      const sig3 = signal(3);
-      const calls: string[] = [];
-
-      const runner1 = effect(() => {
-        calls.push(`level1:${sig1.value}`);
-        effect(() => {
-          calls.push(`level2:${sig2.value}`);
-          effect(() => {
-            calls.push(`level3:${sig3.value}`);
-          });
-        });
-      });
-
-      expect(calls).toEqual(['level1:1', 'level2:2', 'level3:3']);
-
-      calls.length = 0;
-      sig3.value = 30;
-      expect(calls).toEqual(['level3:30']);
-
-      calls.length = 0;
-      sig2.value = 20;
-      expect(calls).toEqual(['level2:20', 'level3:30']);
-
-      calls.length = 0;
-      sig1.value = 10;
-      expect(calls).toEqual(['level1:10', 'level2:20', 'level3:30']);
-
-      runner1.stop();
-    });
+    expect(run).toHaveBeenCalledOnce();
+    expect(value.value).toBe(1);
+    runner.effect.stop();
   });
 
-  describe('boundary cases - effect cleanup', () => {
-    it('should call onStop callback when effect is stopped', () => {
-      const onStop = vi.fn();
-      const runner = effect(() => {}, { onStop });
-
-      expect(onStop).not.toHaveBeenCalled();
-      runner.stop();
-      expect(onStop).toHaveBeenCalledTimes(1);
+  it('runs effects in registration order across unequal computed branches', () => {
+    const source = signal(0);
+    const first = computed(() => source.value);
+    const deep = computed(() => first.value);
+    const shallow = computed(() => source.value);
+    const order: string[] = [];
+    const deepRunner = effect(() => {
+      deep.value;
+      order.push('deep');
+    });
+    const shallowRunner = effect(() => {
+      shallow.value;
+      order.push('shallow');
     });
 
-    it('should clean up dependencies when effect is stopped', () => {
-      const count = signal(0);
-      const fn = vi.fn();
+    order.length = 0;
+    source.value = 1;
 
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.stop();
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle multiple stop calls gracefully', () => {
-      const onStop = vi.fn();
-      const runner = effect(() => {}, { onStop });
-
-      runner.stop();
-      expect(onStop).toHaveBeenCalledTimes(1);
-
-      runner.stop();
-      expect(onStop).toHaveBeenCalledTimes(1);
-    });
-
-    it('should clean up nested effects when parent is stopped', () => {
-      const outer = signal(0);
-      const inner = signal(0);
-      const innerFn = vi.fn();
-      let innerRunner: any;
-
-      const outerRunner = effect(() => {
-        outer.value;
-        innerRunner = effect(() => {
-          innerFn(inner.value);
-        });
-      });
-
-      expect(innerFn).toHaveBeenCalledTimes(1);
-
-      outerRunner.stop();
-      inner.value = 1;
-      expect(innerFn).toHaveBeenCalledTimes(2);
-
-      innerRunner.stop();
-    });
-
-    it('should not track dependencies after effect is stopped', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      runner.stop();
-
-      runner();
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(2);
-    });
-
-    it('should clear all internal state on stop', () => {
-      const count = signal(0);
-      const runner = effect(() => {
-        count.value;
-      });
-
-      runner.stop();
-
-      expect(runner.effect.active).toBe(false);
-      expect(runner.effect.depLink).toBeUndefined();
-      expect(runner.effect.depLinkTail).toBeUndefined();
-    });
-
-    it('should eagerly remove reactive target subscriptions when effect is stopped', () => {
-      const state = reactive({ count: 0 });
-      const runner = effect(() => {
-        state.count;
-      });
-
-      expect(getTargetDepSize(state, 'count')).toBe(1);
-
-      runner.stop();
-
-      expect(getTargetDepSize(state, 'count')).toBe(0);
-    });
-
-    it('should clean computed reactive deps after the last watcher stops', () => {
-      const state = reactive({ count: 1 });
-      const doubled = computed(() => state.count * 2);
-      const runner = effect(() => {
-        doubled.value;
-      });
-
-      expect(getTargetDepSize(state, 'count')).toBe(1);
-
-      runner.stop();
-
-      expect(getTargetDepSize(state, 'count')).toBe(0);
-    });
-
-    it('should remove dep entry only after the last of multiple effects stops', () => {
-      const state = reactive({ x: 0 });
-      const r1 = effect(() => {
-        state.x;
-      });
-      const r2 = effect(() => {
-        state.x;
-      });
-      const r3 = effect(() => {
-        state.x;
-      });
-
-      expect(getTargetDepSize(state, 'x')).toBe(3);
-
-      r1.stop();
-      expect(getTargetDepSize(state, 'x')).toBe(2);
-
-      r2.stop();
-      expect(getTargetDepSize(state, 'x')).toBe(1);
-
-      r3.stop();
-      expect(getTargetDepSize(state, 'x')).toBe(0);
-    });
-
-    it('dep entry is re-created when property is accessed again after full cleanup', () => {
-      const state = reactive({ n: 1 });
-      const runner = effect(() => {
-        state.n;
-      });
-
-      expect(getTargetDepSize(state, 'n')).toBe(1);
-      runner.stop();
-      expect(getTargetDepSize(state, 'n')).toBe(0);
-
-      // Re-subscribe: a fresh Dep should be created
-      const runner2 = effect(() => {
-        state.n;
-      });
-      expect(getTargetDepSize(state, 'n')).toBe(1);
-      runner2.stop();
-      expect(getTargetDepSize(state, 'n')).toBe(0);
-    });
-
-    it('dep is cleaned up when effect re-runs and drops a reactive dependency', () => {
-      const flag = signal(true);
-      const state = reactive({ a: 1, b: 2 });
-
-      const runner = effect(() => {
-        if (flag.value) {
-          state.a;
-        } else {
-          state.b;
-        }
-      });
-
-      expect(getTargetDepSize(state, 'a')).toBe(1);
-      expect(getTargetDepSize(state, 'b')).toBe(0);
-
-      // Switch branch: effect should drop dep on 'a' and pick up 'b'
-      flag.value = false;
-
-      expect(getTargetDepSize(state, 'a')).toBe(0);
-      expect(getTargetDepSize(state, 'b')).toBe(1);
-
-      runner.stop();
-      expect(getTargetDepSize(state, 'b')).toBe(0);
-    });
-
-    it('multiple reactive properties are each cleaned up independently', () => {
-      const state = reactive({ p: 0, q: 0 });
-      const runner = effect(() => {
-        state.p;
-        state.q;
-      });
-
-      expect(getTargetDepSize(state, 'p')).toBe(1);
-      expect(getTargetDepSize(state, 'q')).toBe(1);
-
-      runner.stop();
-
-      expect(getTargetDepSize(state, 'p')).toBe(0);
-      expect(getTargetDepSize(state, 'q')).toBe(0);
-    });
-
-    it('stopped effect no longer receives reactive updates', () => {
-      const state = reactive({ val: 0 });
-      const fn = vi.fn();
-      const runner = effect(() => {
-        fn(state.val);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-      runner.stop();
-
-      state.val = 99;
-      expect(fn).toHaveBeenCalledTimes(1);
-      expect(getTargetDepSize(state, 'val')).toBe(0);
-    });
-
-    it('watch on reactive object cleans up dep after stop', () => {
-      const state = reactive({ count: 0 });
-      const fn = vi.fn();
-      // watch internally creates an effect; stopping it should release the dep
-      const runner = effect(() => {
-        fn(state.count);
-      });
-
-      state.count = 1;
-      expect(fn).toHaveBeenCalledTimes(2);
-
-      runner.stop();
-      expect(getTargetDepSize(state, 'count')).toBe(0);
-
-      state.count = 2;
-      expect(fn).toHaveBeenCalledTimes(2);
-    });
+    expect(order).toEqual(['deep', 'shallow']);
+    shallowRunner.effect.stop();
+    deepRunner.effect.stop();
   });
 
-  describe('boundary cases - error handling', () => {
-    it('should handle errors during effect execution', () => {
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      try {
-        const count = signal(0);
-        const fn = vi.fn(() => {
-          if (count.value > 0) {
-            throw new Error('Effect error');
-          }
-        });
-
-        effect(fn);
-        expect(fn).toHaveBeenCalledTimes(1);
-
-        expect(() => {
-          count.value = 1;
-        }).toThrow('Effect error');
-
-        expect(fn).toHaveBeenCalledTimes(2);
-      } finally {
-        consoleSpy.mockRestore();
-      }
+  it('reads a diamond of computeds without glitches', () => {
+    const source = signal(1);
+    const left = computed(() => source.value + 1);
+    const right = computed(() => source.value * 2);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(left.value + right.value);
     });
 
-    it('should stop effect if initial execution throws', () => {
-      const fn = vi.fn(() => {
-        throw new Error('Initial error');
-      });
-
-      expect(() => {
-        effect(fn);
-      }).toThrow('Initial error');
-
-      expect(fn).toHaveBeenCalledTimes(1);
-    });
-
-    // SIG-23: a throwing sync subscriber does not truncate dispatch
-    it('notifies the remaining reactive-object subscribers and rethrows', () => {
-      const state = reactive({ n: 0 });
-      let secondRuns = 0;
-
-      effect(
-        () => {
-          if (state.n > 0) {
-            throw new Error('boom');
-          }
-        },
-        { flush: 'sync' },
-      );
-      effect(
-        () => {
-          void state.n;
-          secondRuns++;
-        },
-        { flush: 'sync' },
-      );
-      expect(secondRuns).toBe(1);
-
-      expect(() => {
-        state.n = 1;
-      }).toThrow('boom');
-      // The second effect still saw the write.
-      expect(secondRuns).toBe(2);
-    });
-
-    it('should maintain dirty flag after error', () => {
-      const count = signal(0);
-      const shouldThrow = true;
-
-      const runner = effect(() => {
-        if (shouldThrow && count.value > 0) {
-          throw new Error('Temporary error');
-        }
-      });
-
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Temporary error');
-
-      expect(runner.effect.dirty).toBe(true);
-
-      runner.stop();
-    });
-
-    it('should handle errors in nested effects', () => {
-      const outer = signal(0);
-      const outerFn = vi.fn();
-      let innerRunner;
-      const outerRunner = effect(() => {
-        outerFn(outer.value);
-        innerRunner = effect(() => {
-          if (outer.value > 1) {
-            throw new Error('Inner error');
-          }
-        });
-      });
-
-      expect(outerFn).toHaveBeenCalledTimes(1);
-
-      expect(() => {
-        outer.value = 2;
-      }).toThrow('Inner error');
-
-      expect(outerFn).toHaveBeenCalledTimes(2);
-      innerRunner.stop();
-      outerRunner.stop();
-    });
-
-    it('should handle errors in onStop callback', () => {
-      const onStop = vi.fn(() => {
-        throw new Error('Stop error');
-      });
-
-      const runner = effect(() => {}, { onStop });
-
-      expect(() => {
-        runner.stop();
-      }).toThrow('Stop error');
-
-      expect(runner.effect.active).toBe(false);
-    });
-
-    it('should handle errors with custom scheduler', () => {
-      const count = signal(0);
-      const scheduler = vi.fn((eff) => {
-        eff.run();
-      });
-
-      effect(
-        () => {
-          if (count.value > 0) {
-            throw new Error('Scheduled error');
-          }
-        },
-        { scheduler },
-      );
-
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Scheduled error');
-
-      expect(scheduler).toHaveBeenCalled();
-    });
-
-    it('should handle null and undefined values', () => {
-      const value = signal<any>(null);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(value.value);
-      });
-
-      expect(fn).toHaveBeenCalledWith(null);
-
-      value.value = undefined;
-      expect(fn).toHaveBeenCalledWith(undefined);
-
-      value.value = 0;
-      expect(fn).toHaveBeenCalledWith(0);
-
-      runner.stop();
-    });
-
-    it('should handle empty effect function', () => {
-      const runner = effect(() => {});
-      expect(runner).toBeDefined();
-      expect(runner.effect.active).toBe(true);
-      runner.stop();
-    });
-
-    it('should handle effect with no dependencies', () => {
-      const fn = vi.fn(() => {
-        return 42;
-      });
-
-      const runner = effect(fn);
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      const result = runner();
-      expect(result).toBe(42);
-      expect(fn).toHaveBeenCalledTimes(2);
-
-      runner.stop();
-    });
-
-    it('should handle error recovery after fixing the issue', () => {
-      const count = signal(0);
-      let shouldThrow = true;
-      const fn = vi.fn(() => {
-        if (shouldThrow && count.value > 0) {
-          throw new Error('Temporary error');
-        }
-        return count.value;
-      });
-
-      const runner = effect(fn);
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Temporary error');
-
-      shouldThrow = false;
-
-      const result = runner();
-      expect(result).toBe(1);
-      expect(fn).toHaveBeenCalledTimes(3);
-
-      runner.stop();
-    });
-
-    it('should handle errors during dependency tracking', () => {
-      const count = signal(0);
-      const fn = vi.fn(() => {
-        const val = count.value;
-        if (val > 0) {
-          throw new Error('Tracking error');
-        }
-      });
-
-      const runner = effect(fn);
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      expect(() => {
-        count.value = 1;
-      }).toThrow('Tracking error');
-
-      expect(runner.effect.dirty).toBe(true);
-
-      runner.stop();
-    });
-  });
-
-  describe('boundary cases - scheduler variations', () => {
-    it('should handle scheduler with flush timing string', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(
-        () => {
-          fn(count.value);
-        },
-        { flush: 'sync' },
-      );
-
-      expect(fn).toHaveBeenCalledTimes(1);
-      expect(fn).toHaveBeenCalledWith(0);
-
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(2);
-      expect(fn).toHaveBeenCalledWith(1);
-
-      runner.stop();
-    });
-
-    it('should handle scheduler option as function', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-      const schedulerFn = vi.fn((eff) => {
-        setTimeout(() => eff.run(), 0);
-      });
-
-      const runner = effect(
-        () => {
-          fn(count.value);
-        },
-        { scheduler: schedulerFn },
-      );
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      count.value = 1;
-      expect(schedulerFn).toHaveBeenCalled();
-
-      runner.stop();
-    });
-
-    it('should handle effect without scheduler during batch', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      batch(() => {
-        count.value = 1;
-        count.value = 2;
-        count.value = 3;
-      });
-
-      expect(fn).toHaveBeenCalledTimes(2);
-      expect(fn).toHaveBeenLastCalledWith(3);
-
-      runner.stop();
-    });
-
-    it('should handle multiple effects with different schedulers', () => {
-      const count = signal(0);
-      const syncFn = vi.fn();
-      const customFn = vi.fn();
-      const customScheduler = vi.fn((eff) => eff.run());
-
-      const syncRunner = effect(
-        () => {
-          syncFn(count.value);
-        },
-        { flush: 'sync' },
-      );
-
-      const customRunner = effect(
-        () => {
-          customFn(count.value);
-        },
-        { scheduler: customScheduler },
-      );
-
-      expect(syncFn).toHaveBeenCalledTimes(1);
-      expect(customFn).toHaveBeenCalledTimes(1);
-
-      count.value = 1;
-
-      expect(syncFn).toHaveBeenCalledTimes(2);
-      expect(customFn).toHaveBeenCalledTimes(2);
-      expect(customScheduler).toHaveBeenCalled();
-
-      syncRunner.stop();
-      customRunner.stop();
-    });
-  });
-
-  describe('boundary cases - dirty flag and pending state', () => {
-    it('should check dirty flag correctly', () => {
-      const count = signal(0);
-      const runner = effect(() => {
-        count.value;
-      });
-
-      expect(runner.effect.dirty).toBe(false);
-
-      count.value = 1;
-      expect(runner.effect.dirty).toBe(false);
-
-      runner.stop();
-    });
-
-    it('should handle paused effect with accumulated changes', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.pause();
-
-      count.value = 1;
-      count.value = 2;
-      count.value = 3;
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.resume();
-      expect(fn).toHaveBeenCalledTimes(2);
-      expect(fn).toHaveBeenLastCalledWith(3);
-
-      runner.stop();
-    });
-
-    it('should handle resume without accumulated changes', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.pause();
-      runner.effect.resume();
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.stop();
-    });
-
-    it('should handle multiple pause/resume cycles', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      runner.effect.pause();
-      count.value = 1;
-      runner.effect.resume();
-      expect(fn).toHaveBeenCalledTimes(2);
-
-      runner.effect.pause();
-      count.value = 2;
-      runner.effect.resume();
-      expect(fn).toHaveBeenCalledTimes(3);
-
-      runner.stop();
-    });
-
-    it('should prevent infinite loops when effect modifies its own dependencies', () => {
-      const count = signal(0);
-      let runCount = 0;
-      const fn = vi.fn(() => {
-        runCount++;
-        const currentValue = count.value;
-        if (currentValue === 0 && runCount < 5) {
-          count.value = 1;
-        }
-      });
-
-      const runner = effect(fn);
-
-      expect(fn).toHaveBeenCalledTimes(1);
-      expect(runCount).toBe(1);
-      expect(count.value).toBe(1);
-
-      runner.stop();
-    });
-  });
-
-  describe('boundary cases - stop function', () => {
-    it('should use stop function to stop effect', () => {
-      const count = signal(0);
-      const fn = vi.fn();
-
-      const runner = effect(() => {
-        fn(count.value);
-      });
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      stop(runner);
-
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      expect(runner.effect.active).toBe(false);
-    });
-  });
-
-  describe('boundary cases - manual runner execution', () => {
-    it('should allow manual execution of runner', () => {
-      const count = signal(0);
-      const fn = vi.fn(() => count.value * 2);
-
-      const runner = effect(fn);
-
-      expect(fn).toHaveBeenCalledTimes(1);
-
-      const result1 = runner();
-      expect(result1).toBe(0);
-      expect(fn).toHaveBeenCalledTimes(2);
-
-      count.value = 5;
-      expect(fn).toHaveBeenCalledTimes(3);
-
-      const result2 = runner();
-      expect(result2).toBe(10);
-      expect(fn).toHaveBeenCalledTimes(4);
-
-      runner.stop();
-    });
-
-    it('should return value from manual runner execution', () => {
-      const fn = vi.fn(() => ({ data: 'test' }));
-
-      const runner = effect(fn);
-
-      const result = runner();
-      expect(result).toEqual({ data: 'test' });
-
-      runner.stop();
-    });
-
-    it('should handle manual execution after stop', () => {
-      const count = signal(0);
-      const fn = vi.fn(() => count.value);
-
-      const runner = effect(fn);
-
-      runner.stop();
-
-      const result = runner();
-      expect(result).toBe(0);
-
-      count.value = 1;
-      expect(fn).toHaveBeenCalledTimes(2);
-
-      runner.stop();
-    });
-  });
-  describe('effect delayed execution in batch', () => {
-    it('should delay effect execution during batch and execute once after batch ends', () => {
-      // Test with multiple different scenarios
-      const testCases = [
-        { initialValue: 0, updates: [1, 2, 3] },
-        { initialValue: 10, updates: [20, 30, 40, 50] },
-        { initialValue: -5, updates: [0, 5, 10] },
-        { initialValue: 100, updates: [99, 98, 97, 96, 95, 94, 93, 92, 91, 90] },
-        { initialValue: 42, updates: [43] },
-      ];
-
-      testCases.forEach(({ initialValue, updates }) => {
-        const testSignal = signal(initialValue);
-        const effectFn = vi.fn();
-        let executionCount = 0;
-
-        const runner = effect(() => {
-          effectFn(testSignal.value);
-          executionCount++;
-        });
-
-        expect(executionCount).toBe(1);
-        expect(effectFn).toHaveBeenCalledTimes(1);
-        expect(effectFn).toHaveBeenCalledWith(initialValue);
-
-        executionCount = 0;
-        effectFn.mockClear();
-
-        batch(() => {
-          for (const update of updates) {
-            testSignal.value = update;
-            expect(executionCount).toBe(0);
-          }
-        });
-
-        expect(executionCount).toBe(1);
-        expect(effectFn).toHaveBeenCalledTimes(1);
-        expect(effectFn).toHaveBeenCalledWith(updates[updates.length - 1]);
-
-        runner.stop();
-      });
-    });
-
-    it('should handle multiple signals and effects in batch', () => {
-      const testCases = [
-        {
-          signal1Initial: 0,
-          signal2Initial: 0,
-          signal1Updates: [1, 2],
-          signal2Updates: [10, 20],
-        },
-        {
-          signal1Initial: 5,
-          signal2Initial: 10,
-          signal1Updates: [6, 7, 8],
-          signal2Updates: [11, 12, 13],
-        },
-        {
-          signal1Initial: -1,
-          signal2Initial: -2,
-          signal1Updates: [0],
-          signal2Updates: [0],
-        },
-      ];
-
-      testCases.forEach(({ signal1Initial, signal2Initial, signal1Updates, signal2Updates }) => {
-        const sig1 = signal(signal1Initial);
-        const sig2 = signal(signal2Initial);
-
-        const effect1Fn = vi.fn();
-        const effect2Fn = vi.fn();
-        let effect1Count = 0;
-        let effect2Count = 0;
-
-        const runner1 = effect(() => {
-          effect1Fn(sig1.value);
-          effect1Count++;
-        });
-
-        const runner2 = effect(() => {
-          effect2Fn(sig2.value);
-          effect2Count++;
-        });
-
-        expect(effect1Count).toBe(1);
-        expect(effect2Count).toBe(1);
-
-        effect1Count = 0;
-        effect2Count = 0;
-        effect1Fn.mockClear();
-        effect2Fn.mockClear();
-
-        batch(() => {
-          for (const update of signal1Updates) {
-            sig1.value = update;
-            expect(effect1Count).toBe(0);
-            expect(effect2Count).toBe(0);
-          }
-
-          for (const update of signal2Updates) {
-            sig2.value = update;
-            expect(effect1Count).toBe(0);
-            expect(effect2Count).toBe(0);
-          }
-        });
-
-        expect(effect1Count).toBe(1);
-        expect(effect2Count).toBe(1);
-        expect(effect1Fn).toHaveBeenCalledTimes(1);
-        expect(effect2Fn).toHaveBeenCalledTimes(1);
-
-        expect(effect1Fn).toHaveBeenCalledWith(signal1Updates[signal1Updates.length - 1]);
-        expect(effect2Fn).toHaveBeenCalledWith(signal2Updates[signal2Updates.length - 1]);
-
-        runner1.stop();
-        runner2.stop();
-      });
-    });
-
-    it('should handle nested batches correctly', () => {
-      const testCases = [
-        {
-          initialValue: 0,
-          outerUpdates: [1],
-          innerUpdates: [2],
-          finalUpdates: [3],
-        },
-        {
-          initialValue: 10,
-          outerUpdates: [11, 12],
-          innerUpdates: [13, 14],
-          finalUpdates: [15, 16],
-        },
-        {
-          initialValue: -5,
-          outerUpdates: [-4, -3, -2],
-          innerUpdates: [-1, 0, 1],
-          finalUpdates: [2, 3, 4],
-        },
-      ];
-
-      testCases.forEach(({ initialValue, outerUpdates, innerUpdates, finalUpdates }) => {
-        const testSignal = signal(initialValue);
-        const effectFn = vi.fn();
-        let executionCount = 0;
-
-        const runner = effect(() => {
-          effectFn(testSignal.value);
-          executionCount++;
-        });
-
-        expect(executionCount).toBe(1);
-
-        executionCount = 0;
-        effectFn.mockClear();
-
-        batch(() => {
-          for (const update of outerUpdates) {
-            testSignal.value = update;
-            expect(executionCount).toBe(0);
-          }
-
-          batch(() => {
-            for (const update of innerUpdates) {
-              testSignal.value = update;
-              expect(executionCount).toBe(0);
-            }
-          });
-
-          expect(executionCount).toBe(0);
-
-          for (const update of finalUpdates) {
-            testSignal.value = update;
-            expect(executionCount).toBe(0);
-          }
-        });
-
-        expect(executionCount).toBe(1);
-        expect(effectFn).toHaveBeenCalledTimes(1);
-        expect(effectFn).toHaveBeenCalledWith(finalUpdates[finalUpdates.length - 1]);
-
-        runner.stop();
-      });
-    });
-
-    it('should execute immediately outside of batch', () => {
-      const testCases = [
-        {
-          initialValue: 0,
-          batchUpdates: [1, 2, 3],
-          nonBatchUpdate: 4,
-        },
-        {
-          initialValue: 10,
-          batchUpdates: [20, 30],
-          nonBatchUpdate: 40,
-        },
-        {
-          initialValue: -5,
-          batchUpdates: [0, 5],
-          nonBatchUpdate: 10,
-        },
-      ];
-
-      testCases.forEach(({ initialValue, batchUpdates, nonBatchUpdate }) => {
-        const testSignal = signal(initialValue);
-        const effectFn = vi.fn();
-        let executionCount = 0;
-
-        const runner = effect(() => {
-          effectFn(testSignal.value);
-          executionCount++;
-        });
-
-        expect(executionCount).toBe(1);
-
-        executionCount = 0;
-        effectFn.mockClear();
-
-        batch(() => {
-          for (const update of batchUpdates) {
-            testSignal.value = update;
-          }
-          expect(executionCount).toBe(0);
-        });
-
-        expect(executionCount).toBe(1);
-        effectFn.mockClear();
-        executionCount = 0;
-
-        testSignal.value = nonBatchUpdate;
-        expect(executionCount).toBe(1);
-        expect(effectFn).toHaveBeenCalledTimes(1);
-        expect(effectFn).toHaveBeenCalledWith(nonBatchUpdate);
-
-        runner.stop();
-      });
-    });
-
-    it('should handle effects with no dependency changes in batch', () => {
-      const testValues = [0, 10, -5, 100, 42];
-
-      testValues.forEach((initialValue) => {
-        const testSignal = signal(initialValue);
-        const effectFn = vi.fn();
-        let executionCount = 0;
-
-        const runner = effect(() => {
-          effectFn(testSignal.value);
-          executionCount++;
-        });
-
-        expect(executionCount).toBe(1);
-
-        executionCount = 0;
-        effectFn.mockClear();
-
-        batch(() => {
-          testSignal.value = initialValue;
-          testSignal.value = initialValue;
-          testSignal.value = initialValue;
-        });
-
-        expect(executionCount).toBeLessThanOrEqual(1);
-
-        runner.stop();
-      });
-    });
+    source.value = 2;
+    expect(seen).toEqual([4, 7]);
+    runner.effect.stop();
   });
 });
 
-describe('memoEffect', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+describe('effect options', () => {
+  it('calls the scheduler instead of rerunning directly', () => {
+    const value = signal(0);
+    const run = vi.fn(() => value.value);
+    const scheduler = vi.fn();
+    const runner = effect(run, { scheduler });
+
+    value.value = 1;
+    expect(run).toHaveBeenCalledOnce();
+    expect(scheduler).toHaveBeenCalledOnce();
+
+    runner();
+    expect(run).toHaveBeenCalledTimes(2);
+    runner.effect.stop();
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
+  it('scheduler should not be called when computed dependency does not change value', () => {
+    const s = signal(1);
+    const isEven = computed(() => s.value % 2 === 0);
+    const scheduler = vi.fn();
+    const runner = effect(() => isEven.value, { scheduler });
+
+    expect(isEven.value).toBe(false);
+    expect(scheduler).not.toHaveBeenCalled();
+
+    // Changing s from 1 to 3: isEven remains false
+    s.value = 3;
+    expect(scheduler).not.toHaveBeenCalled();
+
+    // Changing s from 3 to 4: isEven changes to true
+    s.value = 4;
+    expect(scheduler).toHaveBeenCalledTimes(1);
+
+    runner.effect.stop();
   });
 
-  describe('basic functionality tests', () => {
-    it('should call effect function with initial state', () => {
-      const mockFn = vi.fn().mockImplementation((prev: { count: number }) => prev);
-      const initialState = { count: 0 };
+  it('calls onStop once when the effect is stopped', () => {
+    const onStop = vi.fn();
+    const runner = effect(() => undefined, { onStop });
 
-      memoEffect(mockFn, initialState);
+    runner.effect.stop();
+    expect(onStop).toHaveBeenCalledOnce();
+  });
 
-      expect(mockFn).toHaveBeenCalledWith(initialState);
-      expect(mockFn).toHaveBeenCalledTimes(1);
+  it('defers notifications while paused and replays them on resume', () => {
+    const value = signal(0);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(value.value);
     });
 
-    it('should use return value as parameter for next call', () => {
-      const counter = signal(1);
-      const states: Array<{ value: number }> = [];
+    runner.effect.pause();
+    value.value = 1;
+    expect(seen).toEqual([0]);
 
-      const effectFn = (prev: { value: number }) => {
-        states.push({ ...prev });
-        const current = counter.value;
-        return { value: current };
-      };
+    runner.effect.resume();
+    expect(seen).toEqual([0, 1]);
+    runner.effect.stop();
+  });
+});
 
-      memoEffect(effectFn, { value: 0 });
-
-      counter.value = 2;
-      counter.value = 3;
-
-      expect(states).toEqual([{ value: 0 }, { value: 1 }, { value: 2 }]);
+describe('effect cleanup', () => {
+  it('runs onEffectCleanup before each rerun and on stop', () => {
+    const value = signal(0);
+    const order: string[] = [];
+    const runner = effect(() => {
+      const current = value.value;
+      order.push(`run ${current}`);
+      onEffectCleanup(() => order.push(`cleanup ${current}`));
     });
 
-    it('should re-execute when signal value changes', () => {
-      const count = signal(1);
-      const mockFn = vi.fn().mockImplementation(() => {
-        return { lastValue: count.value };
+    value.value = 1;
+    runner.effect.stop();
+
+    expect(order).toEqual(['run 0', 'cleanup 0', 'run 1', 'cleanup 1']);
+  });
+
+  it('runs cleanup without tracking the cleanup reads', () => {
+    const trigger = signal(0);
+    const readInCleanup = signal(0);
+    const run = vi.fn(() => {
+      trigger.value;
+      onEffectCleanup(() => {
+        readInCleanup.value;
       });
+    });
+    const runner = effect(run);
 
-      memoEffect(mockFn, { lastValue: 0 });
+    trigger.value = 1;
+    readInCleanup.value = 1;
 
-      count.value = 5;
-      count.value = 10;
+    expect(run).toHaveBeenCalledTimes(2);
+    runner.effect.stop();
+  });
 
-      expect(mockFn).toHaveBeenCalledTimes(3);
+  it('warns when onEffectCleanup is called without an active effect', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    onEffectCleanup(() => {});
+    expect(warn).toHaveBeenCalled();
+
+    warn.mockClear();
+    onEffectCleanup(() => {}, true);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+});
+
+describe('effect tracking control', () => {
+  it('reads without tracking between pauseTracking and resetTracking', () => {
+    const tracked = signal(0);
+    const ignored = signal(0);
+    const run = vi.fn(() => {
+      tracked.value;
+      pauseTracking();
+      try {
+        ignored.value;
+      } finally {
+        resetTracking();
+      }
+    });
+    const runner = effect(run);
+
+    ignored.value = 1;
+    expect(run).toHaveBeenCalledOnce();
+    tracked.value = 1;
+    expect(run).toHaveBeenCalledTimes(2);
+    runner.effect.stop();
+  });
+});
+
+describe('effect batching', () => {
+  it('flushes one effect run at the outer batch boundary', () => {
+    const left = signal(0);
+    const right = signal(0);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(left.value + right.value);
     });
 
-    it('should support complex state objects', () => {
-      const width = signal(100);
-      const height = signal(200);
-      const visible = signal(true);
-
-      type State = {
-        lastWidth: number;
-        lastHeight: number;
-        lastVisible: boolean;
-        updateCount: number;
-      };
-
-      const effectFn = (prev: State) => {
-        return {
-          lastWidth: width.value,
-          lastHeight: height.value,
-          lastVisible: visible.value,
-          updateCount: prev.updateCount + 1,
-        };
-      };
-
-      memoEffect(effectFn, {
-        lastWidth: 0,
-        lastHeight: 0,
-        lastVisible: false,
-        updateCount: 0,
+    batch(() => {
+      left.value = 1;
+      batch(() => {
+        right.value = 2;
       });
-
-      width.value = 150;
-      height.value = 250;
-      visible.value = false;
-
-      expect(width.value).toBe(150);
-      expect(height.value).toBe(250);
-      expect(visible.value).toBe(false);
+      expect(seen).toEqual([0]);
     });
+
+    expect(seen).toEqual([0, 3]);
+    runner.effect.stop();
   });
 
-  describe('incremental update optimization tests', () => {
-    it('should implement efficient incremental updates', () => {
-      const value1 = signal('a');
-      const value2 = signal('b');
-      const value3 = signal('c');
-
-      const operations = {
-        op1: vi.fn(),
-        op2: vi.fn(),
-        op3: vi.fn(),
-      };
-
-      type State = { v1?: string; v2?: string; v3?: string };
-
-      const effectFn = (prev: State) => {
-        const current = {
-          v1: value1.value,
-          v2: value2.value,
-          v3: value3.value,
-        };
-
-        if (current.v1 !== prev.v1) {
-          operations.op1(current.v1);
-          prev.v1 = current.v1;
-        }
-
-        if (current.v2 !== prev.v2) {
-          operations.op2(current.v2);
-          prev.v2 = current.v2;
-        }
-
-        if (current.v3 !== prev.v3) {
-          operations.op3(current.v3);
-          prev.v3 = current.v3;
-        }
-
-        return prev;
-      };
-
-      memoEffect(effectFn, {});
-
-      expect(operations.op1).toHaveBeenCalledWith('a');
-      expect(operations.op2).toHaveBeenCalledWith('b');
-      expect(operations.op3).toHaveBeenCalledWith('c');
-
-      vi.clearAllMocks();
-
-      value1.value = 'a1';
-
-      expect(operations.op1).toHaveBeenCalledWith('a1');
-      expect(operations.op2).not.toHaveBeenCalled();
-      expect(operations.op3).not.toHaveBeenCalled();
-
-      value2.value = 'b1';
-      value3.value = 'c1';
-
-      expect(operations.op2).toHaveBeenCalledWith('b1');
-      expect(operations.op3).toHaveBeenCalledWith('c1');
+  it('refreshes computed reads inside a batch without flushing effects', () => {
+    const source = signal(0);
+    const doubled = computed(() => source.value * 2);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(doubled.value);
     });
 
-    it('should avoid repeated DOM operations', () => {
-      const width = signal(100);
-      const patchAttributeSpy = vi.fn();
-      const patchStyleSpy = vi.fn();
-
-      const mockElement = {
-        patchAttribute: patchAttributeSpy,
-        style: { setProperty: patchStyleSpy },
-      };
-
-      type State = {
-        lastWidth?: number;
-        lastWidthPx?: string;
-        lastTitle?: string;
-      };
-
-      const effectFn = (prev: State) => {
-        const currentWidth = width.value;
-        const currentWidthPx = `${currentWidth}px`;
-        const currentTitle = `Width: ${currentWidth}`;
-
-        if (currentWidth !== prev.lastWidth) {
-          mockElement.patchAttribute('data-width', currentWidth.toString());
-          prev.lastWidth = currentWidth;
-        }
-
-        if (currentWidthPx !== prev.lastWidthPx) {
-          mockElement.style.setProperty('width', currentWidthPx);
-          prev.lastWidthPx = currentWidthPx;
-        }
-
-        if (currentTitle !== prev.lastTitle) {
-          mockElement.patchAttribute('title', currentTitle);
-          prev.lastTitle = currentTitle;
-        }
-
-        return prev;
-      };
-
-      memoEffect(effectFn, {});
-
-      expect(patchAttributeSpy).toHaveBeenCalledWith('data-width', '100');
-      expect(patchAttributeSpy).toHaveBeenCalledWith('title', 'Width: 100');
-      expect(patchStyleSpy).toHaveBeenCalledWith('width', '100px');
-
-      vi.clearAllMocks();
-
-      width.value = 100;
-
-      expect(patchAttributeSpy).not.toHaveBeenCalled();
-      expect(patchStyleSpy).not.toHaveBeenCalled();
-
-      width.value = 200;
-
-      expect(patchAttributeSpy).toHaveBeenCalledWith('data-width', '200');
-      expect(patchAttributeSpy).toHaveBeenCalledWith('title', 'Width: 200');
-      expect(patchStyleSpy).toHaveBeenCalledWith('width', '200px');
+    batch(() => {
+      source.value = 1;
+      expect(doubled.value).toBe(2);
+      source.value = 2;
+      expect(doubled.value).toBe(4);
+      expect(seen).toEqual([0]);
     });
+
+    expect(seen).toEqual([0, 4]);
+    runner.effect.stop();
   });
 
-  describe('array identity regressions', () => {
-    // KNOWN LIMITATION (documented, not a bug to fix): a computed returning a
-    // reactive array proxy yields the SAME proxy identity on every read, so a
-    // `prev !== nextItems` guard inside memoEffect never sees a new reference
-    // after in-place mutations (push/splice). The effect still re-runs (length
-    // was tracked), but identity-based reconciliation short-circuits — hence
-    // `reconciled` stays at 1 while `runs` reaches 2, and this test is
-    // expected to fail. Consumers must compare contents (or track a version
-    // counter) instead of relying on array identity; the plain-effect variant
-    // below shows the working pattern.
-    it.fails(
-      'should expose prev===nextItems guard pitfalls when memoEffect reuses the same array proxy',
-      () => {
-        const todos = signal<{ id: number; completed: boolean }[]>([]);
-        const allTodos = computed(() => todos.value);
+  it('does not replay an effect created after a batched write', () => {
+    const source = signal(0);
+    let runs = 0;
+    let runner!: ReturnType<typeof effect>;
 
-        let runs = 0;
-        let reconciled = 0;
+    batch(() => {
+      source.value = 1;
+      runner = effect(() => {
+        source.value;
+        runs++;
+      });
+      expect(runs).toBe(1);
+    });
 
-        memoEffect(
-          ({ prev }) => {
-            const nextItems = allTodos.value;
-            void nextItems.length;
-            runs++;
-            if (prev !== nextItems) {
-              reconciled++;
-            }
-            return { prev: nextItems };
-          },
-          { prev: null } as any,
-        );
+    expect(runs).toBe(1);
+    runner.effect.stop();
+  });
 
-        expect(runs).toBe(1);
-        expect(reconciled).toBe(1);
+  it('flushes committed writes before rethrowing a batch body error', () => {
+    const value = signal(0);
+    const seen: number[] = [];
+    const runner = effect(() => {
+      seen.push(value.value);
+    });
 
-        todos.value.push({ id: 1, completed: false });
+    expect(() =>
+      batch(() => {
+        value.value = 1;
+        throw new Error('body');
+      }),
+    ).toThrow('body');
+    expect(seen).toEqual([0, 1]);
+    runner.effect.stop();
+  });
 
-        expect(runs).toBe(2);
-        expect(reconciled).toBe(2);
-        expect(allTodos.value).toHaveLength(1);
+  it('drains writes queued by an effect in the same flush', () => {
+    const source = signal(0);
+    const derived = signal(0);
+    const seen: number[] = [];
+    const writer = effect(() => {
+      if (source.value) derived.value = source.value * 2;
+    });
+    const reader = effect(() => {
+      seen.push(derived.value);
+    });
+
+    batch(() => {
+      source.value = 2;
+    });
+
+    expect(seen).toEqual([0, 4]);
+    writer.effect.stop();
+    reader.effect.stop();
+  });
+});
+
+describe('effect scope integration', () => {
+  it('stops effects created inside a scope and stays idempotent', () => {
+    const scope = effectScope(true);
+    const source = signal(0);
+    let runs = 0;
+    scope.run(() => {
+      effect(() => {
+        source.value;
+        runs++;
+      });
+    });
+
+    source.value = 1;
+    expect(runs).toBe(2);
+
+    scope.stop();
+    source.value = 2;
+    expect(runs).toBe(2);
+    expect(() => scope.stop()).not.toThrow();
+  });
+});
+
+describe('reactivity/effect', () => {
+  it('should run the passed function once (wrapped by a effect)', () => {
+    const fnSpy = vi.fn(() => {});
+    effect(fnSpy);
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should observe basic properties', () => {
+    let dummy;
+    const counter = reactive({ num: 0 });
+    effect(() => (dummy = counter.num));
+
+    expect(dummy).toBe(0);
+    counter.num = 7;
+    expect(dummy).toBe(7);
+  });
+
+  it('should observe multiple properties', () => {
+    let dummy;
+    const counter = reactive({ num1: 0, num2: 0 });
+    effect(() => (dummy = counter.num1 + counter.num1 + counter.num2));
+
+    expect(dummy).toBe(0);
+    counter.num1 = counter.num2 = 7;
+    expect(dummy).toBe(21);
+  });
+
+  it('should handle multiple effects', () => {
+    let dummy1, dummy2;
+    const counter = reactive({ num: 0 });
+    effect(() => (dummy1 = counter.num));
+    effect(() => (dummy2 = counter.num));
+
+    expect(dummy1).toBe(0);
+    expect(dummy2).toBe(0);
+    counter.num++;
+    expect(dummy1).toBe(1);
+    expect(dummy2).toBe(1);
+  });
+
+  it('should observe nested properties', () => {
+    let dummy;
+    const counter = reactive({ nested: { num: 0 } });
+    effect(() => (dummy = counter.nested.num));
+
+    expect(dummy).toBe(0);
+    counter.nested.num = 8;
+    expect(dummy).toBe(8);
+  });
+
+  it('should observe delete operations', () => {
+    let dummy;
+    const obj = reactive<{
+      prop?: string;
+    }>({ prop: 'value' });
+    effect(() => (dummy = obj.prop));
+
+    expect(dummy).toBe('value');
+    delete obj.prop;
+    expect(dummy).toBe(undefined);
+  });
+
+  it('should observe has operations', () => {
+    let dummy;
+    const obj = reactive<{ prop?: string | number }>({ prop: 'value' });
+    effect(() => (dummy = 'prop' in obj));
+
+    expect(dummy).toBe(true);
+    delete obj.prop;
+    expect(dummy).toBe(false);
+    obj.prop = 12;
+    expect(dummy).toBe(true);
+  });
+
+  it('should observe properties on the prototype chain', () => {
+    let dummy;
+    const counter = reactive<{ num?: number }>({ num: 0 });
+    const parentCounter = reactive({ num: 2 });
+    Object.setPrototypeOf(counter, parentCounter);
+    effect(() => (dummy = counter.num));
+
+    expect(dummy).toBe(0);
+    delete counter.num;
+    expect(dummy).toBe(2);
+    parentCounter.num = 4;
+    expect(dummy).toBe(4);
+    counter.num = 3;
+    expect(dummy).toBe(3);
+  });
+
+  it('should observe has operations on the prototype chain', () => {
+    let dummy;
+    const counter = reactive<{ num?: number }>({ num: 0 });
+    const parentCounter = reactive<{ num?: number }>({ num: 2 });
+    Object.setPrototypeOf(counter, parentCounter);
+    effect(() => (dummy = 'num' in counter));
+
+    expect(dummy).toBe(true);
+    delete counter.num;
+    expect(dummy).toBe(true);
+    delete parentCounter.num;
+    expect(dummy).toBe(false);
+    counter.num = 3;
+    expect(dummy).toBe(true);
+  });
+
+  it('should observe inherited property accessors', () => {
+    let dummy, parentDummy, hiddenValue: any;
+    const obj = reactive<{ prop?: number }>({});
+    const parent = reactive({
+      set prop(value) {
+        hiddenValue = value;
       },
+      get prop() {
+        return hiddenValue;
+      },
+    });
+    Object.setPrototypeOf(obj, parent);
+    effect(() => (dummy = obj.prop));
+    effect(() => (parentDummy = parent.prop));
+
+    expect(dummy).toBe(undefined);
+    expect(parentDummy).toBe(undefined);
+    obj.prop = 4;
+    expect(dummy).toBe(4);
+    // this doesn't work, should it?
+    // expect(parentDummy).toBe(4)
+    parent.prop = 2;
+    expect(dummy).toBe(2);
+    expect(parentDummy).toBe(2);
+  });
+
+  it('should observe function call chains', () => {
+    let dummy;
+    const counter = reactive({ num: 0 });
+    effect(() => (dummy = getNum()));
+
+    function getNum() {
+      return counter.num;
+    }
+
+    expect(dummy).toBe(0);
+    counter.num = 2;
+    expect(dummy).toBe(2);
+  });
+
+  it('should observe iteration', () => {
+    let dummy;
+    const list = reactive(['Hello']);
+    effect(() => (dummy = list.join(' ')));
+
+    expect(dummy).toBe('Hello');
+    list.push('World!');
+    expect(dummy).toBe('Hello World!');
+    list.shift();
+    expect(dummy).toBe('World!');
+  });
+
+  it('should observe implicit array length changes', () => {
+    let dummy;
+    const list = reactive(['Hello']);
+    effect(() => (dummy = list.join(' ')));
+
+    expect(dummy).toBe('Hello');
+    list[1] = 'World!';
+    expect(dummy).toBe('Hello World!');
+    list[3] = 'Hello!';
+    expect(dummy).toBe('Hello World!  Hello!');
+  });
+
+  it('should observe sparse array mutations', () => {
+    let dummy;
+    const list = reactive<string[]>([]);
+    list[1] = 'World!';
+    effect(() => (dummy = list.join(' ')));
+
+    expect(dummy).toBe(' World!');
+    list[0] = 'Hello';
+    expect(dummy).toBe('Hello World!');
+    list.pop();
+    expect(dummy).toBe('Hello');
+  });
+
+  it('should observe enumeration', () => {
+    let dummy = 0;
+    const numbers = reactive<Record<string, number>>({ num1: 3 });
+    effect(() => {
+      dummy = 0;
+      for (const key in numbers) {
+        dummy += numbers[key];
+      }
+    });
+
+    expect(dummy).toBe(3);
+    numbers.num2 = 4;
+    expect(dummy).toBe(7);
+    delete numbers.num1;
+    expect(dummy).toBe(4);
+  });
+
+  it('should observe symbol keyed properties', () => {
+    const key = Symbol('symbol keyed prop');
+    let dummy, hasDummy;
+    const obj = reactive<{ [key]?: string }>({ [key]: 'value' });
+    effect(() => (dummy = obj[key]));
+    effect(() => (hasDummy = key in obj));
+
+    expect(dummy).toBe('value');
+    expect(hasDummy).toBe(true);
+    obj[key] = 'newValue';
+    expect(dummy).toBe('newValue');
+    delete obj[key];
+    expect(dummy).toBe(undefined);
+    expect(hasDummy).toBe(false);
+  });
+
+  it('should not observe well-known symbol keyed properties', () => {
+    const key = Symbol.isConcatSpreadable;
+    let dummy;
+    const array: any = reactive([]);
+    effect(() => (dummy = array[key]));
+
+    expect(array[key]).toBe(undefined);
+    expect(dummy).toBe(undefined);
+    array[key] = true;
+    expect(array[key]).toBe(true);
+    expect(dummy).toBe(undefined);
+  });
+
+  it('should not observe well-known symbol keyed properties in has operation', () => {
+    const key = Symbol.isConcatSpreadable;
+    const obj = reactive({
+      [key]: true,
+    });
+
+    const spy = vi.fn(() => {
+      key in obj;
+    });
+    effect(spy);
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    obj[key] = false;
+    expect(spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should support manipulating an array while observing symbol keyed properties', () => {
+    const key = Symbol();
+    let dummy;
+    const array: any = reactive([1, 2, 3]);
+    effect(() => (dummy = array[key]));
+
+    expect(dummy).toBe(undefined);
+    array.pop();
+    array.shift();
+    array.splice(0, 1);
+    expect(dummy).toBe(undefined);
+    array[key] = 'value';
+    array.length = 0;
+    expect(dummy).toBe('value');
+  });
+
+  it('should observe function valued properties', () => {
+    const oldFunc = () => {};
+    const newFunc = () => {};
+
+    let dummy;
+    const obj = reactive({ func: oldFunc });
+    effect(() => (dummy = obj.func));
+
+    expect(dummy).toBe(oldFunc);
+    obj.func = newFunc;
+    expect(dummy).toBe(newFunc);
+  });
+
+  it('should observe chained getters relying on this', () => {
+    const obj = reactive({
+      a: 1,
+      get b() {
+        return this.a;
+      },
+    });
+
+    let dummy;
+    effect(() => (dummy = obj.b));
+    expect(dummy).toBe(1);
+    obj.a++;
+    expect(dummy).toBe(2);
+  });
+
+  it('should observe methods relying on this', () => {
+    const obj = reactive({
+      a: 1,
+      b() {
+        return this.a;
+      },
+    });
+
+    let dummy;
+    effect(() => (dummy = obj.b()));
+    expect(dummy).toBe(1);
+    obj.a++;
+    expect(dummy).toBe(2);
+  });
+
+  it('should not observe set operations without a value change', () => {
+    let hasDummy, getDummy;
+    const obj = reactive({ prop: 'value' });
+
+    const getSpy = vi.fn(() => (getDummy = obj.prop));
+    const hasSpy = vi.fn(() => (hasDummy = 'prop' in obj));
+    effect(getSpy);
+    effect(hasSpy);
+
+    expect(getDummy).toBe('value');
+    expect(hasDummy).toBe(true);
+    obj.prop = 'value';
+    expect(getSpy).toHaveBeenCalledTimes(1);
+    expect(hasSpy).toHaveBeenCalledTimes(1);
+    expect(getDummy).toBe('value');
+    expect(hasDummy).toBe(true);
+  });
+
+  it('should not observe raw mutations', () => {
+    let dummy;
+    const obj = reactive<{ prop?: string }>({});
+    effect(() => (dummy = toRaw(obj).prop));
+
+    expect(dummy).toBe(undefined);
+    obj.prop = 'value';
+    expect(dummy).toBe(undefined);
+  });
+
+  it('should not be triggered by raw mutations', () => {
+    let dummy;
+    const obj = reactive<{ prop?: string }>({});
+    effect(() => (dummy = obj.prop));
+
+    expect(dummy).toBe(undefined);
+    toRaw(obj).prop = 'value';
+    expect(dummy).toBe(undefined);
+  });
+
+  it('should not be triggered by inherited raw setters', () => {
+    let dummy, parentDummy, hiddenValue: any;
+    const obj = reactive<{ prop?: number }>({});
+    const parent = reactive({
+      set prop(value) {
+        hiddenValue = value;
+      },
+      get prop() {
+        return hiddenValue;
+      },
+    });
+    Object.setPrototypeOf(obj, parent);
+    effect(() => (dummy = obj.prop));
+    effect(() => (parentDummy = parent.prop));
+
+    expect(dummy).toBe(undefined);
+    expect(parentDummy).toBe(undefined);
+    toRaw(obj).prop = 4;
+    expect(dummy).toBe(undefined);
+    expect(parentDummy).toBe(undefined);
+  });
+
+  it('should avoid implicit infinite recursive loops with itself', () => {
+    const counter = reactive({ num: 0 });
+
+    const counterSpy = vi.fn(() => counter.num++);
+    effect(counterSpy);
+    expect(counter.num).toBe(1);
+    expect(counterSpy).toHaveBeenCalledTimes(1);
+    counter.num = 4;
+    expect(counter.num).toBe(5);
+    expect(counterSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should avoid infinite recursive loops when use Array.prototype.push/unshift/pop/shift', () => {
+    (['push', 'unshift'] as const).forEach((key) => {
+      const arr = reactive<number[]>([]);
+      const counterSpy1 = vi.fn(() => arr[key](1));
+      const counterSpy2 = vi.fn(() => arr[key](2));
+      effect(counterSpy1);
+      effect(counterSpy2);
+      expect(arr.length).toBe(2);
+      expect(counterSpy1).toHaveBeenCalledTimes(1);
+      expect(counterSpy2).toHaveBeenCalledTimes(1);
+    });
+    (['pop', 'shift'] as const).forEach((key) => {
+      const arr = reactive<number[]>([1, 2, 3, 4]);
+      const counterSpy1 = vi.fn(() => arr[key]());
+      const counterSpy2 = vi.fn(() => arr[key]());
+      effect(counterSpy1);
+      effect(counterSpy2);
+      expect(arr.length).toBe(2);
+      expect(counterSpy1).toHaveBeenCalledTimes(1);
+      expect(counterSpy2).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('should allow explicitly recursive raw function loops', () => {
+    const counter = reactive({ num: 0 });
+    const numSpy = vi.fn(() => {
+      counter.num++;
+      if (counter.num < 10) {
+        numSpy();
+      }
+    });
+    effect(numSpy);
+    expect(counter.num).toEqual(10);
+    expect(numSpy).toHaveBeenCalledTimes(10);
+  });
+
+  it('should avoid infinite loops with other effects', () => {
+    const nums = reactive({ num1: 0, num2: 1 });
+
+    const spy1 = vi.fn(() => (nums.num1 = nums.num2));
+    const spy2 = vi.fn(() => (nums.num2 = nums.num1));
+    effect(spy1);
+    effect(spy2);
+    expect(nums.num1).toBe(1);
+    expect(nums.num2).toBe(1);
+    expect(spy1).toHaveBeenCalledTimes(1);
+    expect(spy2).toHaveBeenCalledTimes(1);
+    nums.num2 = 4;
+    expect(nums.num1).toBe(4);
+    expect(nums.num2).toBe(4);
+    expect(spy1).toHaveBeenCalledTimes(2);
+    expect(spy2).toHaveBeenCalledTimes(2);
+    nums.num1 = 10;
+    expect(nums.num1).toBe(10);
+    expect(nums.num2).toBe(10);
+    expect(spy1).toHaveBeenCalledTimes(3);
+    expect(spy2).toHaveBeenCalledTimes(3);
+  });
+
+  it('should return a new reactive version of the function', () => {
+    function greet() {
+      return 'Hello World';
+    }
+    const effect1 = effect(greet);
+    const effect2 = effect(greet);
+    expect(typeof effect1).toBe('function');
+    expect(typeof effect2).toBe('function');
+    expect(effect1).not.toBe(greet);
+    expect(effect1).not.toBe(effect2);
+  });
+
+  it('should discover new branches while running automatically', () => {
+    let dummy;
+    const obj = reactive({ prop: 'value', run: false });
+
+    const conditionalSpy = vi.fn(() => {
+      dummy = obj.run ? obj.prop : 'other';
+    });
+    effect(conditionalSpy);
+
+    expect(dummy).toBe('other');
+    expect(conditionalSpy).toHaveBeenCalledTimes(1);
+    obj.prop = 'Hi';
+    expect(dummy).toBe('other');
+    expect(conditionalSpy).toHaveBeenCalledTimes(1);
+    obj.run = true;
+    expect(dummy).toBe('Hi');
+    expect(conditionalSpy).toHaveBeenCalledTimes(2);
+    obj.prop = 'World';
+    expect(dummy).toBe('World');
+    expect(conditionalSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('should discover new branches when running manually', () => {
+    let dummy;
+    let run = false;
+    const obj = reactive({ prop: 'value' });
+    const runner = effect(() => {
+      dummy = run ? obj.prop : 'other';
+    });
+
+    expect(dummy).toBe('other');
+    runner();
+    expect(dummy).toBe('other');
+    run = true;
+    runner();
+    expect(dummy).toBe('value');
+    obj.prop = 'World';
+    expect(dummy).toBe('World');
+  });
+
+  it('should not be triggered by mutating a property, which is used in an inactive branch', () => {
+    let dummy;
+    const obj = reactive({ prop: 'value', run: true });
+
+    const conditionalSpy = vi.fn(() => {
+      dummy = obj.run ? obj.prop : 'other';
+    });
+    effect(conditionalSpy);
+
+    expect(dummy).toBe('value');
+    expect(conditionalSpy).toHaveBeenCalledTimes(1);
+    obj.run = false;
+    expect(dummy).toBe('other');
+    expect(conditionalSpy).toHaveBeenCalledTimes(2);
+    obj.prop = 'value2';
+    expect(dummy).toBe('other');
+    expect(conditionalSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should handle deep effect recursion using cleanup fallback', () => {
+    const results = reactive([0]);
+    const effects: { fx: ReactiveEffectRunner; index: number }[] = [];
+    for (let i = 1; i < 40; i++) {
+      ((index) => {
+        const fx = effect(() => {
+          results[index] = results[index - 1] * 2;
+        });
+        effects.push({ fx, index });
+      })(i);
+    }
+
+    expect(results[39]).toBe(0);
+    results[0] = 1;
+    expect(results[39]).toBe(2 ** 39);
+  });
+
+  it('should register deps independently during effect recursion', () => {
+    const input = reactive({ a: 1, b: 2, c: 0 });
+    const output = reactive({ fx1: 0, fx2: 0 });
+
+    const fx1Spy = vi.fn(() => {
+      let result = 0;
+      if (input.c < 2) result += input.a;
+      if (input.c > 1) result += input.b;
+      output.fx1 = result;
+    });
+
+    const fx1 = effect(fx1Spy);
+
+    const fx2Spy = vi.fn(() => {
+      let result = 0;
+      if (input.c > 1) result += input.a;
+      if (input.c < 3) result += input.b;
+      output.fx2 = result + output.fx1;
+    });
+
+    const fx2 = effect(fx2Spy);
+
+    expect(fx1).not.toBeNull();
+    expect(fx2).not.toBeNull();
+
+    expect(output.fx1).toBe(1);
+    expect(output.fx2).toBe(2 + 1);
+    expect(fx1Spy).toHaveBeenCalledTimes(1);
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+
+    fx1Spy.mockClear();
+    fx2Spy.mockClear();
+    input.b = 3;
+    expect(output.fx1).toBe(1);
+    expect(output.fx2).toBe(3 + 1);
+    expect(fx1Spy).toHaveBeenCalledTimes(0);
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+
+    fx1Spy.mockClear();
+    fx2Spy.mockClear();
+    input.c = 1;
+    expect(output.fx1).toBe(1);
+    expect(output.fx2).toBe(3 + 1);
+    expect(fx1Spy).toHaveBeenCalledTimes(1);
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+
+    fx1Spy.mockClear();
+    fx2Spy.mockClear();
+    input.c = 2;
+    expect(output.fx1).toBe(3);
+    expect(output.fx2).toBe(1 + 3 + 3);
+    expect(fx1Spy).toHaveBeenCalledTimes(1);
+
+    // Invoked due to change of fx1.
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+
+    fx1Spy.mockClear();
+    fx2Spy.mockClear();
+    input.c = 3;
+    expect(output.fx1).toBe(3);
+    expect(output.fx2).toBe(1 + 3);
+    expect(fx1Spy).toHaveBeenCalledTimes(1);
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+
+    fx1Spy.mockClear();
+    fx2Spy.mockClear();
+    input.a = 10;
+    expect(output.fx1).toBe(3);
+    expect(output.fx2).toBe(10 + 3);
+    expect(fx1Spy).toHaveBeenCalledTimes(0);
+    expect(fx2Spy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not double wrap if the passed function is a effect', () => {
+    const runner = effect(() => {});
+    const otherRunner = effect(runner);
+    expect(runner).not.toBe(otherRunner);
+    expect(runner.effect.fn).toBe(otherRunner.effect.fn);
+  });
+
+  it('should wrap if the passed function is a fake effect', () => {
+    const fakeRunner = () => {};
+    fakeRunner.effect = {};
+    const runner = effect(fakeRunner);
+    expect(fakeRunner).not.toBe(runner);
+    expect(runner.effect.fn).toBe(fakeRunner);
+  });
+
+  it('should not run multiple times for a single mutation', () => {
+    let dummy;
+    const obj = reactive<Record<string, number>>({});
+    const fnSpy = vi.fn(() => {
+      for (const key in obj) {
+        dummy = obj[key];
+      }
+      dummy = obj.prop;
+    });
+    effect(fnSpy);
+
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    obj.prop = 16;
+    expect(dummy).toBe(16);
+    expect(fnSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('should allow nested effects', () => {
+    const nums = reactive({ num1: 0, num2: 1, num3: 2 });
+    const dummy: any = {};
+
+    const childSpy = vi.fn(() => (dummy.num1 = nums.num1));
+    const childeffect = effect(childSpy);
+    const parentSpy = vi.fn(() => {
+      dummy.num2 = nums.num2;
+      childeffect();
+      dummy.num3 = nums.num3;
+    });
+    effect(parentSpy);
+
+    expect(dummy).toEqual({ num1: 0, num2: 1, num3: 2 });
+    expect(parentSpy).toHaveBeenCalledTimes(1);
+    expect(childSpy).toHaveBeenCalledTimes(2);
+    // this should only call the childeffect
+    nums.num1 = 4;
+    expect(dummy).toEqual({ num1: 4, num2: 1, num3: 2 });
+    expect(parentSpy).toHaveBeenCalledTimes(1);
+    expect(childSpy).toHaveBeenCalledTimes(3);
+    // this calls the parenteffect, which calls the childeffect once
+    nums.num2 = 10;
+    expect(dummy).toEqual({ num1: 4, num2: 10, num3: 2 });
+    expect(parentSpy).toHaveBeenCalledTimes(2);
+    expect(childSpy).toHaveBeenCalledTimes(4);
+    // this calls the parenteffect, which calls the childeffect once
+    nums.num3 = 7;
+    expect(dummy).toEqual({ num1: 4, num2: 10, num3: 7 });
+    expect(parentSpy).toHaveBeenCalledTimes(3);
+    expect(childSpy).toHaveBeenCalledTimes(5);
+  });
+
+  it('should observe json methods', () => {
+    let dummy = <Record<string, number>>{};
+    const obj = reactive<Record<string, number>>({});
+    effect(() => {
+      dummy = JSON.parse(JSON.stringify(obj));
+    });
+    obj.a = 1;
+    expect(dummy.a).toBe(1);
+  });
+
+  it('should observe class method invocations', () => {
+    class Model {
+      count: number;
+      constructor() {
+        this.count = 0;
+      }
+      inc() {
+        this.count++;
+      }
+    }
+    const model = reactive(new Model());
+    let dummy;
+    effect(() => {
+      dummy = model.count;
+    });
+    expect(dummy).toBe(0);
+    model.inc();
+    expect(dummy).toBe(1);
+  });
+
+  it('scheduler', () => {
+    let dummy;
+    let run: any;
+    const scheduler = vi.fn(() => {
+      run = runner;
+    });
+    const obj = reactive({ foo: 1 });
+    const runner = effect(
+      () => {
+        dummy = obj.foo;
+      },
+      { scheduler },
     );
+    expect(scheduler).not.toHaveBeenCalled();
+    expect(dummy).toBe(1);
+    // should be called on first trigger
+    obj.foo++;
+    expect(scheduler).toHaveBeenCalledTimes(1);
+    // should not run yet
+    expect(dummy).toBe(1);
+    // manually run
+    run();
+    // should have run
+    expect(dummy).toBe(2);
+  });
 
-    it('should keep reconciling when using a plain effect with the same array proxy', () => {
-      const todos = signal<{ id: number; completed: boolean }[]>([]);
-      const allTodos = computed(() => todos.value);
+  it('stop', () => {
+    let dummy;
+    const obj = reactive({ prop: 1 });
+    const runner = effect(() => {
+      dummy = obj.prop;
+    });
+    obj.prop = 2;
+    expect(dummy).toBe(2);
+    stop(runner);
+    obj.prop = 3;
+    expect(dummy).toBe(2);
 
-      let runs = 0;
-      let reconciled = 0;
+    // stopped effect should still be manually callable
+    runner();
+    expect(dummy).toBe(3);
+  });
+
+  it('stop with multiple dependencies', () => {
+    let dummy1, dummy2;
+    const obj1 = reactive({ prop: 1 });
+    const obj2 = reactive({ prop: 1 });
+    const runner = effect(() => {
+      dummy1 = obj1.prop;
+      dummy2 = obj2.prop;
+    });
+
+    obj1.prop = 2;
+    expect(dummy1).toBe(2);
+
+    obj2.prop = 3;
+    expect(dummy2).toBe(3);
+
+    stop(runner);
+
+    obj1.prop = 4;
+    obj2.prop = 5;
+
+    // Check that both dependencies have been cleared
+    expect(dummy1).toBe(2);
+    expect(dummy2).toBe(3);
+  });
+
+  it('events: onStop', () => {
+    const onStop = vi.fn();
+    const runner = effect(() => {}, {
+      onStop,
+    });
+
+    stop(runner);
+    expect(onStop).toHaveBeenCalled();
+  });
+
+  it('stop: a stopped effect is nested in a normal effect', () => {
+    let dummy;
+    const obj = reactive({ prop: 1 });
+    const runner = effect(() => {
+      dummy = obj.prop;
+    });
+    stop(runner);
+    obj.prop = 2;
+    expect(dummy).toBe(1);
+
+    // observed value in inner stopped effect
+    // will track outer effect as an dependency
+    effect(() => {
+      runner();
+    });
+    expect(dummy).toBe(2);
+
+    // notify outer effect to run
+    obj.prop = 3;
+    expect(dummy).toBe(3);
+  });
+
+  it('markRaw', () => {
+    const obj = reactive({
+      foo: markRaw({
+        prop: 0,
+      }),
+    });
+    let dummy;
+    effect(() => {
+      dummy = obj.foo.prop;
+    });
+    expect(dummy).toBe(0);
+    obj.foo.prop++;
+    expect(dummy).toBe(0);
+    obj.foo = { prop: 1 };
+    expect(dummy).toBe(1);
+  });
+
+  it('should not be triggered when the value and the old value both are NaN', () => {
+    const obj = reactive({
+      foo: Number.NaN,
+    });
+    const fnSpy = vi.fn(() => obj.foo);
+    effect(fnSpy);
+    obj.foo = Number.NaN;
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('should trigger all effects when array length is set to 0', () => {
+    const observed: any = reactive([1]);
+    let dummy, record;
+    effect(() => {
+      dummy = observed.length;
+    });
+    effect(() => {
+      record = observed[0];
+    });
+    expect(dummy).toBe(1);
+    expect(record).toBe(1);
+
+    observed[1] = 2;
+    expect(observed[1]).toBe(2);
+
+    observed.unshift(3);
+    expect(dummy).toBe(3);
+    expect(record).toBe(3);
+
+    observed.length = 0;
+    expect(dummy).toBe(0);
+    expect(record).toBeUndefined();
+  });
+
+  it('should not be triggered when set with the same proxy', () => {
+    const obj = reactive({ foo: 1 });
+    const observed: any = reactive({ obj });
+    const fnSpy = vi.fn(() => observed.obj);
+
+    effect(fnSpy);
+
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    observed.obj = obj;
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+
+    const obj2 = reactive({ foo: 1 });
+    const observed2: any = shallowReactive({ obj2 });
+    const fnSpy2 = vi.fn(() => observed2.obj2);
+
+    effect(fnSpy2);
+
+    expect(fnSpy2).toHaveBeenCalledTimes(1);
+    observed2.obj2 = obj2;
+    expect(fnSpy2).toHaveBeenCalledTimes(1);
+  });
+
+  it('should be triggered when set length with string', () => {
+    let ret1 = 'idle';
+    let ret2 = 'idle';
+    const arr1 = reactive(new Array(11).fill(0));
+    const arr2 = reactive(new Array(11).fill(0));
+    effect(() => {
+      ret1 = arr1[10] === undefined ? 'arr[10] is set to empty' : 'idle';
+    });
+    effect(() => {
+      ret2 = arr2[10] === undefined ? 'arr[10] is set to empty' : 'idle';
+    });
+    arr1.length = 2;
+    arr2.length = '2';
+    expect(ret1).toBe(ret2);
+  });
+
+  describe('readonly + reactive for Map', () => {
+    it('should track hasOwnProperty', () => {
+      const obj: any = reactive({});
+      let has = false;
+      const fnSpy = vi.fn();
 
       effect(() => {
-        const nextItems = allTodos.value;
-        void nextItems.length;
-        runs++;
-        reconciled++;
+        fnSpy();
+        has = obj.hasOwnProperty('foo');
+      });
+      expect(fnSpy).toHaveBeenCalledTimes(1);
+      expect(has).toBe(false);
+
+      obj.foo = 1;
+      expect(fnSpy).toHaveBeenCalledTimes(2);
+      expect(has).toBe(true);
+
+      delete obj.foo;
+      expect(fnSpy).toHaveBeenCalledTimes(3);
+      expect(has).toBe(false);
+
+      // should not trigger on unrelated key
+      obj.bar = 2;
+      expect(fnSpy).toHaveBeenCalledTimes(3);
+      expect(has).toBe(false);
+    });
+  });
+
+  it('should be triggered once with batching', () => {
+    const counter = reactive({ num: 0 });
+
+    const counterSpy = vi.fn(() => counter.num);
+    effect(counterSpy);
+
+    counterSpy.mockClear();
+
+    startBatch();
+    counter.num++;
+    counter.num++;
+    endBatch();
+    expect(counterSpy).toHaveBeenCalledTimes(1);
+  });
+
+  // #10082
+
+  it('nested effect should force track in untracked zone', () => {
+    const n = signal(0);
+    const spy1 = vi.fn();
+    const spy2 = vi.fn();
+
+    effect(() => {
+      spy1();
+      pauseTracking();
+      n.value;
+      effect(() => {
+        n.value;
+        spy2();
+      });
+      n.value;
+      resetTracking();
+    });
+
+    expect(spy1).toHaveBeenCalledTimes(1);
+    expect(spy2).toHaveBeenCalledTimes(1);
+
+    n.value++;
+    // outer effect should not trigger
+    expect(spy1).toHaveBeenCalledTimes(1);
+    // inner effect should trigger
+    expect(spy2).toHaveBeenCalledTimes(2);
+  });
+
+  describe('dep unsubscribe', () => {
+    function getSubCount(dep: ReactiveNode | undefined) {
+      let count = 0;
+      let sub = dep!.subs;
+      while (sub) {
+        count++;
+        sub = sub.nextSub;
+      }
+      return count;
+    }
+
+    it('should remove the dep when the effect is stopped', () => {
+      const obj = reactive({ prop: 1 });
+      const runner = effect(() => obj.prop);
+      const dep = getDepFromReactive(toRaw(obj), 'prop');
+      expect(getSubCount(dep)).toBe(1);
+      obj.prop = 2;
+      expect(getSubCount(dep)).toBe(1);
+      stop(runner);
+      expect(getSubCount(dep)).toBe(0);
+      obj.prop = 3;
+      runner();
+      expect(getSubCount(dep)).toBe(0);
+    });
+
+    it('should only remove the dep when the last effect is stopped', () => {
+      const obj = reactive({ prop: 1 });
+      const runner1 = effect(() => obj.prop);
+      const dep = getDepFromReactive(toRaw(obj), 'prop');
+      expect(getSubCount(dep)).toBe(1);
+      const runner2 = effect(() => obj.prop);
+      expect(getSubCount(dep)).toBe(2);
+      obj.prop = 2;
+      expect(getSubCount(dep)).toBe(2);
+      stop(runner1);
+      expect(getSubCount(dep)).toBe(1);
+      obj.prop = 3;
+      expect(getSubCount(dep)).toBe(1);
+      stop(runner2);
+      obj.prop = 4;
+      runner1();
+      runner2();
+      expect(getSubCount(dep)).toBe(0);
+    });
+
+    it('should remove the dep when it is no longer used by the effect', () => {
+      const obj = reactive<{ a: number; b: number; c: 'a' | 'b' }>({
+        a: 1,
+        b: 2,
+        c: 'a',
+      });
+      effect(() => obj[obj.c]);
+      const depC = getDepFromReactive(toRaw(obj), 'c');
+      expect(getSubCount(getDepFromReactive(toRaw(obj), 'a'))).toBe(1);
+      expect(getSubCount(depC)).toBe(1);
+      obj.c = 'b';
+      obj.a = 4;
+      expect(getSubCount(getDepFromReactive(toRaw(obj), 'b'))).toBe(1);
+      expect(getDepFromReactive(toRaw(obj), 'c')).toBe(depC);
+      expect(getSubCount(depC)).toBe(1);
+    });
+  });
+
+  describe('onEffectCleanup', () => {
+    it('should get called correctly', async () => {
+      const count = signal(0);
+      const cleanupEffect = vi.fn();
+
+      const e = effect(() => {
+        onEffectCleanup(cleanupEffect);
+        count.value;
       });
 
-      expect(runs).toBe(1);
-      expect(reconciled).toBe(1);
+      count.value++;
+      await nextTick();
+      expect(cleanupEffect).toHaveBeenCalledTimes(1);
 
-      todos.value.push({ id: 1, completed: false });
+      count.value++;
+      await nextTick();
+      expect(cleanupEffect).toHaveBeenCalledTimes(2);
 
-      expect(runs).toBe(2);
-      expect(reconciled).toBe(2);
-      expect(allTodos.value).toHaveLength(1);
+      // call it on stop
+      e.effect.stop();
+      expect(cleanupEffect).toHaveBeenCalledTimes(3);
     });
 
-    it('should reconcile memoEffect when computed returns a fresh filtered array', () => {
-      const todos = signal<{ id: number; completed: boolean }[]>([]);
-      const activeTodos = computed(() => todos.value.filter((todo) => !todo.completed));
+    it('should warn if called without active effect', () => {
+      onEffectCleanup(() => {});
+      expect(`onEffectCleanup() was called when there was no active effect`).toHaveBeenWarned();
+    });
 
-      let runs = 0;
-      let reconciled = 0;
-
-      memoEffect(
-        ({ prev }) => {
-          const nextItems = activeTodos.value;
-          runs++;
-          if (prev !== nextItems) {
-            reconciled++;
-          }
-          return { prev: nextItems };
-        },
-        { prev: null } as any,
-      );
-
-      expect(runs).toBe(1);
-      expect(reconciled).toBe(1);
-
-      todos.value.push({ id: 1, completed: false });
-
-      expect(runs).toBe(2);
-      expect(reconciled).toBe(2);
-      expect(activeTodos.value).toHaveLength(1);
+    it('should not warn without active effect when failSilently argument is passed', () => {
+      onEffectCleanup(() => {}, true);
+      expect(`onEffectCleanup() was called when there was no active effect`).not.toHaveBeenWarned();
     });
   });
 
-  describe('error handling tests', () => {
-    it('should handle errors in effect function', () => {
-      const errorFn = (prev: { count: number }) => {
-        if (prev.count > 2) {
-          throw new Error('Test error');
-        }
-        return { count: prev.count + 1 };
-      };
+  it('should pause/resume effect', () => {
+    const obj = reactive({ foo: 1 });
+    const fnSpy = vi.fn(() => obj.foo);
+    const runner = effect(fnSpy);
 
-      expect(() => {
-        memoEffect(errorFn, { count: 0 });
-      }).not.toThrow();
-    });
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    expect(obj.foo).toBe(1);
 
-    it('should handle cases with no return value', () => {
-      const badFn = vi.fn();
+    runner.effect.pause();
+    obj.foo++;
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    expect(obj.foo).toBe(2);
 
-      const effect = memoEffect(badFn, { value: 1 });
+    runner.effect.resume();
+    expect(fnSpy).toHaveBeenCalledTimes(2);
+    expect(obj.foo).toBe(2);
 
-      expect(effect).toBeDefined();
-      expect(badFn).toHaveBeenCalled();
-    });
+    obj.foo++;
+    expect(fnSpy).toHaveBeenCalledTimes(3);
+    expect(obj.foo).toBe(3);
   });
 
-  it('should simulate compiler-generated optimized code', () => {
-    const editorWidth = signal(50);
+  it('should be executed once immediately when resume is called', () => {
+    const obj = reactive({ foo: 1 });
+    const fnSpy = vi.fn(() => obj.foo);
+    const runner = effect(fnSpy);
 
-    const mockEl = { patchAttribute: vi.fn() };
-    const mockEl2 = { style: { setProperty: vi.fn() } };
-    const mockEl3 = { style: { setProperty: vi.fn() } };
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    expect(obj.foo).toBe(1);
 
-    type State = { e?: number; t?: string; a?: string };
+    runner.effect.pause();
+    obj.foo++;
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    expect(obj.foo).toBe(2);
 
-    const effectFn = (prev: State) => {
-      const v1 = editorWidth.value;
-      const v2 = `${editorWidth.value}%`;
-      const v3 = `${100 - editorWidth.value}%`;
+    obj.foo++;
+    expect(fnSpy).toHaveBeenCalledTimes(1);
+    expect(obj.foo).toBe(3);
 
-      if (v1 !== prev.e) {
-        mockEl.patchAttribute('name', v1.toString());
-        prev.e = v1;
-      }
+    runner.effect.resume();
+    expect(fnSpy).toHaveBeenCalledTimes(2);
+    expect(obj.foo).toBe(3);
+  });
+});
 
-      if (v2 !== prev.t) {
-        mockEl2.style.setProperty('width', v2);
-        prev.t = v2;
-      }
+describe('edge cases', () => {
+  it('reactiveEffect without fn runs the noop fn', () => {
+    const e = new ReactiveEffect();
+    expect(e.run()).toBeUndefined();
+  });
 
-      if (v3 !== prev.a) {
-        mockEl3.style.setProperty('width', v3);
-        prev.a = v3;
-      }
-
-      return prev;
-    };
-
-    memoEffect(effectFn, {
-      e: undefined,
-      t: undefined,
-      a: undefined,
+  it('aLLOW_RECURSE re-runs an effect that mutates its own dependency', () => {
+    const n = signal(0);
+    const e = new ReactiveEffect(() => {
+      if (n.value < 3) n.value++;
     });
+    e.flags |= EffectFlags.ALLOW_RECURSE;
+    e.run();
+    expect(n.value).toBe(3);
+  });
 
-    expect(mockEl.patchAttribute).toHaveBeenCalledWith('name', '50');
-    expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '50%');
-    expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '50%');
+  it('dirty getter resolves pending state', () => {
+    const a = signal(1);
+    const parity = computed(() => a.value % 2);
+    const e = new ReactiveEffect(() => parity.value);
+    // keep notifications from re-running so the pending state stays observable
+    e.notify = () => {};
+    e.run();
+    expect(e.dirty).toBe(false);
+    a.value = 3; // parity unchanged
+    expect(e.dirty).toBe(false);
+    a.value = 4; // parity changed
+    expect(e.dirty).toBe(true);
+  });
 
-    vi.clearAllMocks();
-    editorWidth.value = 75;
+  it('scheduler is not called while the effect is paused', () => {
+    const n = signal(0);
+    const scheduler = vi.fn();
+    const runner = effect(() => n.value, { scheduler });
+    runner.effect.pause();
+    n.value++;
+    expect(scheduler).not.toHaveBeenCalled();
+    runner.effect.resume();
+    n.value++;
+    expect(scheduler).toHaveBeenCalled();
+  });
 
-    expect(mockEl.patchAttribute).toHaveBeenCalledWith('name', '75');
-    expect(mockEl2.style.setProperty).toHaveBeenCalledWith('width', '75%');
-    expect(mockEl3.style.setProperty).toHaveBeenCalledWith('width', '25%');
+  it('enableTracking restores tracking inside paused sections', () => {
+    const n = signal(0);
+    const fn = vi.fn();
+    effect(() => {
+      fn();
+      pauseTracking();
+      enableTracking();
+      n.value;
+      resetTracking();
+      resetTracking();
+    });
+    n.value++;
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
 
-    vi.clearAllMocks();
-    editorWidth.value = 75;
+  it('enableTracking pushes active sub when tracking is active', () => {
+    const n = signal(0);
+    const fn = vi.fn();
+    effect(() => {
+      fn();
+      enableTracking();
+      n.value;
+      resetTracking();
+    });
+    n.value++;
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
 
-    expect(mockEl.patchAttribute).not.toHaveBeenCalled();
-    expect(mockEl2.style.setProperty).not.toHaveBeenCalled();
-    expect(mockEl3.style.setProperty).not.toHaveBeenCalled();
+  it('enableTracking outside of any effect is a noop', () => {
+    const n = signal(0);
+    const fn = vi.fn(() => n.value);
+    enableTracking();
+    fn();
+    resetTracking();
+    n.value++;
+    expect(fn).toHaveBeenCalledTimes(1);
+  });
+
+  it('resetTracking warns when stack is empty', () => {
+    resetTracking();
+    expect('resetTracking() was called when there was no active tracking').toHaveBeenWarned();
+  });
+});
+
+describe('graph edge cases', () => {
+  it('warns when active effect is not restored', () => {
+    const a = new ReactiveEffect();
+    const b = new ReactiveEffect();
+    const prev = startTracking(a);
+    endTracking(b, prev);
+    expect('Active effect was not restored correctly').toHaveBeenWarned();
+  });
+
+  it('nextTick with and without callback', async () => {
+    await nextTick();
+    expect(await nextTick(() => 1)).toBe(1);
+  });
+
+  it('isValidLink walks back through deps', () => {
+    const a = signal(0);
+    const b = signal(0);
+    const c = signal(0);
+    const fn = vi.fn();
+    effect(() => {
+      fn();
+      a.value;
+      b.value;
+      c.value;
+      if (a.value === 1) {
+        a.value = 2;
+      }
+    });
+    a.value = 1;
+    expect(a.value).toBe(2);
+    expect(fn.mock.calls.length).toBeGreaterThan(1);
   });
 });

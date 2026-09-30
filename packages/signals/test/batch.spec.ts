@@ -1,176 +1,85 @@
-import {
-  batch,
-  effect,
-  endBatch,
-  getBatchDepth,
-  isBatching,
-  nextTick,
-  reactive,
-  signal,
-  startBatch,
-} from '../src';
+import { describe, expect, it, vi } from 'vitest';
+import { batch, effect, signal } from '../src';
 
-describe('useBatch', () => {
-  it('should useBatch multiple updates', () => {
-    const count = signal(0);
-    const effectFn = vi.fn();
-
-    effect(() => {
-      effectFn(count.value);
-    });
+describe('batch public contract', () => {
+  it('coalesces nested writes until the outer batch closes', () => {
+    const source = signal(0);
+    const runs: number[] = [];
+    const stop = effect(() => runs.push(source.value));
 
     batch(() => {
-      count.value++;
-      count.value++;
-      count.value++;
+      source.value = 1;
+      batch(() => {
+        source.value = 2;
+        expect(runs).toEqual([0]);
+      });
+      expect(runs).toEqual([0]);
     });
 
-    expect(effectFn).toHaveBeenCalledTimes(2); // initial run + one after batching
-    expect(count.value).toBe(3);
+    expect(runs).toEqual([0, 2]);
+    stop.effect.stop();
   });
 
-  it('should run all accumulated effects after the useBatch ends', () => {
-    const obj = reactive({ a: 1, b: 2 });
-    const effectFn1 = vi.fn();
-    const effectFn2 = vi.fn();
+  it('flushes pending effects before rethrowing a batch body error', () => {
+    const source = signal(0);
+    const run = vi.fn(() => source.value);
+    const stop = effect(run);
+    run.mockClear();
 
-    effect(() => effectFn1(obj.a));
-    effect(() => effectFn2(obj.b));
+    expect(() =>
+      batch(() => {
+        source.value = 1;
+        throw new Error('batch body failed');
+      }),
+    ).toThrow('batch body failed');
 
-    batch(() => {
-      obj.a++;
-      obj.b++;
+    expect(run).toHaveBeenCalledOnce();
+    stop.effect.stop();
+  });
+
+  it('rethrows an effect flush error when the batch body succeeds', () => {
+    const source = signal(0);
+    const failure = new Error('batched effect failed');
+    const stop = effect(() => {
+      if (source.value === 1) throw failure;
     });
-
-    expect(effectFn1).toHaveBeenCalledTimes(2); // initial + after batch
-    expect(effectFn2).toHaveBeenCalledTimes(2);
-  });
-
-  it('should still run the useBatch even when an error occurs', () => {
-    const count = signal(0);
-    const effectFn = vi.fn();
-
-    effect(() => effectFn(count.value));
 
     expect(() => {
       batch(() => {
-        count.value++;
-        throw new Error('Test error');
+        source.value = 1;
       });
-    }).toThrow('Test error');
-
-    expect(effectFn).toHaveBeenCalledTimes(2);
-    expect(count.value).toBe(1);
+    }).toThrow(failure);
+    stop.effect.stop();
   });
-  it('should handle nested batches', () => {
-    const count = signal(0);
-    const fn = vi.fn();
-    effect(() => fn(count.value));
-    fn.mockClear();
+
+  it('does not rerun effect if signal value is rolled back to original within batch', () => {
+    const source = signal(0);
+    const run = vi.fn(() => source.value);
+    const stop = effect(run);
+    run.mockClear();
 
     batch(() => {
-      count.value = 1;
-      expect(fn).not.toHaveBeenCalled();
-
-      batch(() => {
-        count.value = 2;
-        expect(fn).not.toHaveBeenCalled();
-      });
-
-      expect(fn).not.toHaveBeenCalled();
+      source.value = 1;
+      source.value = 0;
     });
 
-    expect(fn).toHaveBeenCalledTimes(1);
-    expect(fn).toHaveBeenCalledWith(2);
+    expect(run).not.toHaveBeenCalled();
+    stop.effect.stop();
   });
 
-  it('should expose batch status utilities', () => {
-    expect(isBatching()).toBe(false);
-    expect(getBatchDepth()).toBe(0);
+  it('does not rerun effect if signal value is read and then rolled back to original within batch', () => {
+    const source = signal(0);
+    const run = vi.fn(() => source.value);
+    const stop = effect(run);
+    run.mockClear();
 
     batch(() => {
-      expect(isBatching()).toBe(true);
-      expect(getBatchDepth()).toBe(1);
-
-      batch(() => {
-        expect(isBatching()).toBe(true);
-        expect(getBatchDepth()).toBe(2);
-      });
-
-      expect(getBatchDepth()).toBe(1);
+      source.value = 1;
+      expect(source.value).toBe(1);
+      source.value = 0;
     });
 
-    expect(isBatching()).toBe(false);
-    expect(getBatchDepth()).toBe(0);
-  });
-
-  it('should warn on unbalanced batch calls in dev', () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    // Manually call endBatch without startBatch
-    endBatch();
-
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[Batch] endBatch() called without matching startBatch()'),
-    );
-    warnSpy.mockRestore();
-  });
-
-  // SIG-24: unbalanced endBatch must not push batchDepth negative
-  it('should not let an extra endBatch() make a later startBatch() flush early', async () => {
-    // Silence the DEV-only unbalanced-batch warning.
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const count = signal(0);
-    const effectFn = vi.fn();
-
-    effect(() => effectFn(count.value));
-    effectFn.mockClear();
-
-    // Extra endBatch() — must be a no-op, not push batchDepth negative.
-    endBatch();
-
-    startBatch();
-    count.value = 1;
-    // Still inside the batch: the effect must not have flushed early.
-    expect(effectFn).not.toHaveBeenCalled();
-    endBatch();
-    await nextTick();
-
-    expect(effectFn).toHaveBeenCalledTimes(1);
-    expect(effectFn).toHaveBeenCalledWith(1);
-    warnSpy.mockRestore();
-  });
-
-  // SIG-18: batch inside a flushing job
-  it('should not recursively flush when a job uses batch()', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const a = signal(0);
-    const b = signal(0);
-    const order: string[] = [];
-
-    effect(() => {
-      order.push(`A:${a.value}`);
-      if (a.value === 1) {
-        // Ending this batch inside the running flush must not re-enter
-        // flushJobs — the outer flush picks up effect B in the same cycle.
-        batch(() => {
-          b.value = 1;
-        });
-      }
-    });
-    effect(() => {
-      order.push(`B:${b.value}`);
-    });
-
-    order.length = 0;
-    a.value = 1;
-    await nextTick();
-
-    // Each effect ran exactly once for the update, in stable queue order.
-    expect(order).toEqual(['A:1', 'B:1']);
-    expect(warnSpy.mock.calls.some(args => String(args[0]).includes('Maximum recursive'))).toBe(
-      false,
-    );
-    warnSpy.mockRestore();
+    expect(run).not.toHaveBeenCalled();
+    stop.effect.stop();
   });
 });

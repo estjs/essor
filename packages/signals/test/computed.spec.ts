@@ -1,683 +1,1166 @@
-import { computed, effect, signal } from '../src';
-import { isComputed } from '../src/computed';
-import { ReactiveFlags } from '../src/constants';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  type ComputedRef,
+  type WritableComputedRef,
+  computed,
+  effect,
+  effectScope,
+  isComputed,
+  pauseTracking,
+  reactive,
+  resetTracking,
+  shallowSignal,
+  signal,
+} from '../src';
+import { signalsFlags } from '../src/constants';
+import { ReactiveFlags } from '../src/graph';
+import { triggerSignal } from '../src/signal';
+import type { ComputedRefImpl } from '../src/computed';
 
-describe('computed', () => {
-  it('should compute the correct value', () => {
-    const testSignal = signal(10);
-    const computedSignal = computed(() => testSignal.value * 2);
-    effect(() => {
-      computedSignal.value;
-    });
-    expect(computedSignal.value).toBe(20);
-    testSignal.value = 20;
-    expect(computedSignal.value).toBe(40);
+describe('computed contract', () => {
+  it('uses signalsFlags for computed type guards', () => {
+    const flaggedComputed = { [signalsFlags.IS_COMPUTED]: true };
+
+    expect(isComputed(flaggedComputed)).toBe(true);
   });
 
-  it('should compute the correct value with condition', () => {
-    const conditionSignal = signal(false);
-    const testSignal = signal(10);
-    let effectTime = 0;
-    const computedValue = computed(() => {
-      effectTime++;
-      return conditionSignal.value ? 50 : testSignal.value * 2;
-    });
-    effect(() => {
-      computedValue.value;
-    });
-    expect(effectTime).toBe(1);
-    expect(computedValue.peek()).toBe(20);
-    testSignal.value = 20;
+  it('is lazy and does not recompute on unrelated writes', () => {
+    const source = signal(1);
+    const unrelated = signal(0);
+    const getter = vi.fn(() => source.value * 2);
+    const value = computed(getter);
 
-    expect(effectTime).toBe(2);
-    expect(computedValue.value).toBe(40);
-    conditionSignal.value = true;
+    expect(getter).not.toHaveBeenCalled();
+    expect(value.value).toBe(2);
+    expect(value.value).toBe(2);
+    expect(getter).toHaveBeenCalledOnce();
 
-    expect(effectTime).toBe(3);
-    expect(computedValue.value).toBe(50);
-    testSignal.value = 25;
+    unrelated.value = 1;
+    expect(value.value).toBe(2);
+    expect(getter).toHaveBeenCalledOnce();
 
-    expect(effectTime).toBe(3);
-    expect(computedValue.value).toBe(50);
-    conditionSignal.value = false;
-
-    expect(effectTime).toBe(4);
-    testSignal.value = 30;
-    expect(effectTime).toBe(5);
-
-    expect(computedValue.value).toBe(60);
+    source.value = 2;
+    expect(value.value).toBe(4);
+    expect(getter).toHaveBeenCalledTimes(2);
   });
 
-  it('should get correct value', () => {
+  it('reconnects a cold computed when it becomes observed after a standalone read', () => {
+    const source = signal(1);
+    const doubled = computed(() => source.value * 2);
+    const seen: number[] = [];
+
+    expect(doubled.value).toBe(2);
+    const stop = effect(() => {
+      seen.push(doubled.value);
+    });
+
+    source.value = 2;
+
+    expect(seen).toEqual([2, 4]);
+    stop();
+  });
+
+  it('passes the previous value to the getter', () => {
     const count = signal(0);
-    const double = computed(() => count.value * 2);
-    const triple = computed(() => count.value * 3);
-    count.value = 1;
+    const previous: Array<number | undefined> = [];
+    const value = computed<number>((pre) => {
+      previous.push(pre);
+      return count.value;
+    });
 
-    expect(double.value).toBe(2);
-    expect(triple.value).toBe(3);
+    expect(value.value).toBe(0);
+    expect(previous).toEqual([undefined]);
+
+    count.value++;
+    expect(value.value).toBe(1);
+    expect(previous).toEqual([undefined, 0]);
   });
 
-  it('should work computed in effect', () => {
-    const val = signal(0);
-    const computedValue = computed(() => {
-      return 10 * val.value;
+  it('cuts an observed Effect when its output is Object.is equal', () => {
+    const source = signal(1);
+    const getter = vi.fn(() => source.value % 2);
+    const parity = computed(getter);
+    const run = vi.fn(() => parity.value);
+    const stop = effect(run);
+
+    source.value = 3;
+    expect(getter).toHaveBeenCalledTimes(2);
+    expect(run).toHaveBeenCalledOnce();
+    stop();
+  });
+  it('does not expose stale values in a diamond', () => {
+    const source = signal(1);
+    const left = computed(() => source.value + 1);
+    const right = computed(() => source.value + 2);
+    const total = computed(() => left.value + right.value);
+    const seen: number[] = [];
+    const stop = effect(() => {
+      seen.push(total.value);
     });
 
-    let effectTimes = 0;
-    effect(() => {
-      computedValue.value;
-      effectTimes++;
-    });
-    expect(effectTimes).toBe(1);
-    val.value = 1;
-
-    expect(effectTimes).toBe(2);
+    source.value = 2;
+    expect(seen).toEqual([5, 7]);
+    stop();
   });
 
-  it('should work computed with set', () => {
-    const count = signal(0);
-    const computedValue = computed(() => count.value * 2);
-    count.value = 1;
+  it('retries an observed getter when it invalidates a dependency mid-run', () => {
+    const source = signal(0);
+    let mutate = false;
+    const getter = vi.fn(() => {
+      const current = source.value;
+      if (mutate) {
+        mutate = false;
+        source.value = current + 1;
+      }
+      return current;
+    });
+    const value = computed(getter);
+    const seen: number[] = [];
+    const stop = effect(() => {
+      seen.push(value.value);
+    });
 
-    expect(computedValue.value).toBe(2);
+    mutate = true;
+    source.value = 1;
+
+    expect(seen).toEqual([0, 2]);
+    expect(getter).toHaveBeenCalledTimes(3);
+    stop();
   });
 
-  describe('array mutation regressions', () => {
-    it('should update primitive computed values after push on a signal array', () => {
-      const todos = signal<{ id: number; completed: boolean }[]>([]);
-      const activeCount = computed(() => todos.value.filter((todo) => !todo.completed).length);
-
-      let runs = 0;
-      effect(() => {
-        activeCount.value;
-        runs++;
-      });
-
-      expect(runs).toBe(1);
-      expect(activeCount.value).toBe(0);
-
-      todos.value.push({ id: 1, completed: false });
-
-      expect(runs).toBe(2);
-      expect(activeCount.value).toBe(1);
+  it('marks a parent clean when a changed child keeps the same value', () => {
+    const source = signal(1);
+    const childGetter = vi.fn(() => source.value % 2);
+    const child = computed(childGetter);
+    const parentGetter = vi.fn(() => child.value + 1);
+    const parent = computed(parentGetter);
+    const seen: number[] = [];
+    const stop = effect(() => {
+      seen.push(parent.value);
     });
+    const initialParentRuns = parentGetter.mock.calls.length;
 
-    it('should update array-producing computed values after push on a signal array', () => {
-      const todos = signal<{ id: number; completed: boolean }[]>([]);
-      const filtered = computed(() => todos.value.filter((todo) => !todo.completed));
+    source.value = 3;
 
-      let runs = 0;
-      effect(() => {
-        filtered.value.length;
-        runs++;
-      });
-
-      expect(runs).toBe(1);
-
-      todos.value.push({ id: 1, completed: false });
-
-      expect(runs).toBe(2);
-      expect(filtered.value).toHaveLength(1);
-    });
-
-    it('should propagate downstream array observers when computed returns the same proxy', () => {
-      const todos = signal<{ id: number; completed: boolean }[]>([]);
-      const allTodos = computed(() => todos.value);
-
-      let runs = 0;
-      effect(() => {
-        allTodos.value.length;
-        runs++;
-      });
-
-      expect(runs).toBe(1);
-
-      todos.value.push({ id: 1, completed: false });
-
-      expect(runs).toBe(2);
-      expect(allTodos.value).toHaveLength(1);
-    });
+    expect(seen).toEqual([2]);
+    expect(childGetter).toHaveBeenCalledTimes(2);
+    expect(parentGetter).toHaveBeenCalledTimes(initialParentRuns);
+    stop();
   });
 
-  it('should work computed with get/set', () => {
-    const count = signal(0);
-    const computedValue = computed({
-      get: () => count.value * 2,
-      set: (value) => {
-        count.value = value / 2;
+  it('delegates writable assignment to its setter', () => {
+    const source = signal(1);
+    const value = computed({
+      get: () => source.value * 2,
+      set: (next) => {
+        source.value = next / 2;
       },
     });
-    count.value = 1;
 
-    expect(computedValue.value).toBe(2);
-    // @ts-ignore test error
-    computedValue.value = 10;
-    expect(count.value).toBe(5);
+    value.value = 8;
+    expect(source.value).toBe(4);
+    expect(value.value).toBe(8);
   });
 
-  it('should throw error when computed getter is not provided', () => {
-    // @ts-ignore test error
-    expect(() => computed({})).toThrow('getter function is required');
+  it('brands Computed separately from mutable Cells', () => {
+    const value = computed(() => 1);
+    expect((value as unknown as Record<PropertyKey, unknown>)[signalsFlags.IS_COMPUTED]).toBe(true);
+    expect(isComputed(value)).toBe(true);
   });
 
-  it('should throw error when computed is not provided', () => {
-    // @ts-ignore test error
-    expect(() => computed()).toThrow('computed() requires a getter function or options object');
-  });
-
-  describe('edge cases', () => {
-    it('should handle NO_VALUE initial state', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      // First access should compute
-      expect(comp.value).toBe(0);
-
-      // Second access should use cache
-      expect(comp.value).toBe(0);
-    });
-
-    it('should handle PENDING state correctly', () => {
-      const a = signal(0);
-      const b = signal(0);
-      const comp = computed(() => a.value + b.value);
-
-      let effectCount = 0;
-      effect(
-        () => {
-          comp.value;
-          effectCount++;
-        },
-        { flush: 'sync' },
-      );
-
-      expect(effectCount).toBe(1);
-
-      // Change dependency
-      a.value = 1;
-      expect(effectCount).toBe(2);
-      expect(comp.value).toBe(1);
-    });
-
-    it('should handle DIRTY state correctly', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      expect(comp.value).toBe(0);
-
-      count.value = 5;
-      // Computed should be dirty now
-      expect(comp.value).toBe(10);
-    });
-
-    it('should handle error in getter', () => {
-      const shouldError = signal(false);
-      const comp = computed(() => {
-        if (shouldError.value) {
-          throw new Error('Computation error');
-        }
-        return 42;
-      });
-
-      expect(comp.value).toBe(42);
-
-      shouldError.value = true;
-      expect(() => comp.value).toThrow('Computation error');
-
-      // Verify that next access retries the computation
-      shouldError.value = false;
-      expect(comp.value).toBe(42); // Should successfully recompute
-    });
-
-    // peek freshness (SIG-26)
-    it('should compute on first peek when there is no cached value', () => {
-      const s = signal(2);
-      const c = computed(() => s.value * 3);
-
-      expect(c.peek()).toBe(6);
-    });
-
-    // peek freshness (SIG-26)
-    it('should handle the pending state by verifying dependencies actually changed', () => {
-      const s = signal(1);
-      const inner = computed(() => s.value % 2);
-      const outer = computed(() => inner.value * 10);
-
-      expect(outer.value).toBe(10);
-
-      // 1 -> 3 keeps inner (s % 2) unchanged: outer becomes pending but is
-      // not actually dirty, so peek keeps the cached value
-      s.value = 3;
-      expect(outer.peek()).toBe(10);
-
-      // 3 -> 4 flips inner: peek must return the fresh value
-      s.value = 4;
-      expect(outer.peek()).toBe(0);
-    });
-  });
-
-  describe('error handling', () => {
-    it('should throw error when getter throws', () => {
-      const comp = computed(() => {
-        throw new Error('Test error');
-      });
-
-      expect(() => comp.value).toThrow('Test error');
-    });
-
-    // circular dependency detection (SIG-07)
-    it('should throw a stable error instead of stack overflow on self-referencing computed', () => {
-      const c: any = computed(() => c.value);
-
-      expect(() => c.value).toThrow(/circular/i);
-      // Must be a stable Error, not a RangeError from stack exhaustion
+  it('does not expose cold-evaluation trampolines to getter catches', () => {
+    const child = computed(() => 1);
+    const parent = computed(() => {
       try {
-        c.value;
-      } catch (err) {
-        expect(err).toBeInstanceOf(Error);
-        expect(err).not.toBeInstanceOf(RangeError);
-        expect((err as Error).message).toMatch(/circular/i);
+        return child.value;
+      } catch {
+        return -1;
       }
     });
 
-    // circular dependency detection (SIG-07)
-    it('should not leave a self-referencing computed in a stuck state after throwing', () => {
-      const c: any = computed(() => c.value);
+    expect(parent.value).toBe(1);
+  });
 
-      expect(() => c.value).toThrow(/circular/i);
-
-      // After the error, the evaluation guard must be reset and the cache
-      // invalidated (NO_VALUE). Since the getter is inherently circular,
-      // subsequent reads re-attempt evaluation and throw the same circular
-      // error again — they must NOT silently return undefined or hang.
-      expect(() => c.value).toThrow(/circular/i);
-      expect(() => c.value).toThrow(/circular/i);
+  it('routes cold child errors through parent getter catches', () => {
+    const failure = new Error('child failure');
+    const child = computed(() => {
+      throw failure;
+    });
+    const parent = computed(() => {
+      try {
+        return child.value;
+      } catch (error) {
+        return error === failure ? 1 : 0;
+      }
     });
 
-    // circular dependency detection (SIG-07)
-    it('should throw a circular error for mutually referencing computeds', () => {
-      const a: any = computed(() => b.value);
-      const b: any = computed(() => a.value);
+    expect(parent.value).toBe(1);
+  });
+});
 
-      expect(() => a.value).toThrow(/circular/i);
-      expect(() => b.value).toThrow(/circular/i);
+describe('computed graph depth', () => {
+  it('evaluates a 1,000-level fully cold lazy chain', () => {
+    const source = signal(0);
+    let value = computed(() => source.value);
+    for (let index = 0; index < 1_000; index++) {
+      const previous = value;
+      value = computed(() => previous.value + 1);
+    }
+
+    expect(value.value).toBe(1_000);
+  });
+
+  it('updates a 10,000-level observed graph without overflowing the stack', () => {
+    const source = signal(0);
+    let value = computed(() => source.value);
+    let result = 0;
+    const stops: Array<() => void> = [];
+
+    for (let index = 0; index < 10_000; index++) {
+      const previous = value;
+      value = computed(() => previous.value + 1);
+
+      if ((index + 1) % 250 === 0) {
+        const pinned = value;
+        stops.push(
+          effect(() => {
+            result = pinned.value;
+          }),
+        );
+      }
+    }
+
+    source.value = 1;
+    expect(result).toBe(10_001);
+    for (let index = stops.length - 1; index >= 0; index--) stops[index]();
+  });
+});
+
+describe('computed edge behavior', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('warns when a readonly computed is assigned in development', () => {
+    const value = computed(() => 1);
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    (value as { value: number }).value = 2;
+
+    expect(value.value).toBe(1);
+    expect(warning).toHaveBeenCalledWith(
+      '[Essor warn]: Write operation failed: computed value is readonly',
+    );
+  });
+
+  it('recovers after a getter failure when its source changes', () => {
+    const source = signal(false);
+    const failure = new Error('not ready');
+    const value = computed(() => {
+      if (!source.value) throw failure;
+      return 'ready';
     });
 
-    // circular dependency detection (SIG-07)
-    it('should not affect normal non-circular computeds', () => {
-      const s = signal(1);
-      const double = computed(() => s.value * 2);
-      const quadruple = computed(() => double.value * 2);
+    expect(() => value.value).toThrow(failure);
 
-      expect(quadruple.value).toBe(4);
-      s.value = 3;
-      expect(quadruple.value).toBe(12);
+    source.value = true;
+
+    expect(value.value).toBe('ready');
+  });
+
+  it('propagates errors thrown by a writable computed setter', () => {
+    const setterError = new Error('setter failed');
+    const setter = vi.fn(() => {
+      throw setterError;
+    });
+    const value = computed({
+      get: () => 1,
+      set: setter,
     });
 
-    it('should clear DIRTY and PENDING flags after error', () => {
-      const shouldError = signal(false);
-      const comp = computed(() => {
-        if (shouldError.value) {
-          throw new Error('Computation error');
-        }
-        return 42;
-      });
+    expect(() => {
+      value.value = 2;
+    }).toThrow(setterError);
+    expect(setter).toHaveBeenCalledWith(2);
+    expect(value.value).toBe(1);
+  });
+});
 
-      // Initial successful computation
-      expect(comp.value).toBe(42);
+describe('effect edge behavior', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-      // Trigger error
-      shouldError.value = true;
-      expect(() => comp.value).toThrow('Computation error');
+  it('pauses and resumes owned effects, then stops them permanently', () => {
+    const source = signal(0);
+    const scope = effectScope();
+    let runs = 0;
 
-      // @ts-ignore accessing private property for testing
-      const flags = comp.flag;
-
-      // Verify DIRTY and PENDING flags are cleared to prevent blocked propagation
-      expect(flags & ReactiveFlags.DIRTY).toBe(0);
-      expect(flags & ReactiveFlags.PENDING).toBe(0);
-    });
-
-    it('should retry computation on next access after error', () => {
-      let attemptCount = 0;
-      const shouldError = signal(true);
-
-      const comp = computed(() => {
-        attemptCount++;
-        if (shouldError.value) {
-          throw new Error('Computation error');
-        }
-        return 42;
-      });
-
-      // First attempt - should error
-      expect(() => comp.value).toThrow('Computation error');
-      expect(attemptCount).toBe(1);
-
-      // Fix the error condition
-      shouldError.value = false;
-
-      // Second attempt - should succeed and retry computation
-      expect(comp.value).toBe(42);
-      expect(attemptCount).toBe(2);
-    });
-
-    it('should handle multiple consecutive errors', () => {
-      let errorCount = 0;
-      const maxErrors = 3;
-
-      const comp = computed(() => {
-        errorCount++;
-        if (errorCount <= maxErrors) {
-          throw new Error(`Error ${errorCount}`);
-        }
-        return 42;
-      });
-
-      // First three attempts should error
-      expect(() => comp.value).toThrow('Error 1');
-      expect(() => comp.value).toThrow('Error 2');
-      expect(() => comp.value).toThrow('Error 3');
-
-      // Fourth attempt should succeed
-      expect(comp.value).toBe(42);
-      expect(errorCount).toBe(4);
-    });
-
-    it('should clean up dependencies even when getter throws', () => {
-      const dep1 = signal(1);
-      const dep2 = signal(2);
-      const shouldError = signal(false);
-
-      const comp = computed(() => {
-        const val1 = dep1.value;
-        if (shouldError.value) {
-          throw new Error('Computation error');
-        }
-        return val1 + dep2.value;
-      });
-
-      // Initial successful computation
-      expect(comp.value).toBe(3);
-
-      // Trigger error - should still track dep1 but not dep2
-      shouldError.value = true;
-      expect(() => comp.value).toThrow('Computation error');
-
-      // Verify dependencies are properly tracked
-      // @ts-ignore accessing private property for testing
-      expect(comp.depLink).toBeDefined();
-    });
-
-    it('should handle error in nested computed', () => {
-      const shouldError = signal(false);
-      const inner = computed(() => {
-        if (shouldError.value) {
-          throw new Error('Inner error');
-        }
-        return 10;
-      });
-
-      const outer = computed(() => inner.value * 2);
-
-      // Initial successful computation
-      expect(outer.value).toBe(20);
-
-      // Trigger error in inner computed
-      shouldError.value = true;
-      expect(() => outer.value).toThrow('Inner error');
-
-      // Fix error and verify both retry
-      shouldError.value = false;
-      expect(outer.value).toBe(20);
-    });
-
-    it('should handle error with effects watching computed', () => {
-      const shouldError = signal(false);
-      const comp = computed(() => {
-        if (shouldError.value) {
-          throw new Error('Computation error');
-        }
-        return 42;
-      });
-
-      let effectValue: number | null = null;
-      let effectError: Error | null = null;
-
+    scope.run(() => {
       effect(() => {
-        try {
-          effectValue = comp.value;
-          effectError = null;
-        } catch (error) {
-          effectError = error as Error;
+        source.value;
+        runs++;
+      });
+    });
+
+    scope.pause();
+    source.value = 1;
+    expect(runs).toBe(1);
+
+    scope.resume();
+    expect(runs).toBe(2);
+
+    scope.stop();
+    source.value = 2;
+    expect(runs).toBe(2);
+  });
+});
+
+describe('reactivity/computed', () => {
+  it('should return updated value', () => {
+    const value = reactive<{ foo?: number }>({});
+    const cValue = computed(() => value.foo);
+    expect(cValue.value).toBe(undefined);
+    value.foo = 1;
+    expect(cValue.value).toBe(1);
+  });
+
+  it('pass oldValue to computed getter', () => {
+    const count = signal(0);
+    const oldValue = signal();
+    const curValue = computed((pre) => {
+      oldValue.value = pre;
+      return count.value;
+    });
+    expect(curValue.value).toBe(0);
+    expect(oldValue.value).toBe(undefined);
+    count.value++;
+    expect(curValue.value).toBe(1);
+    expect(oldValue.value).toBe(0);
+  });
+
+  it('should compute lazily', () => {
+    const value = reactive<{ foo?: number }>({});
+    const getter = vi.fn(() => value.foo);
+    const cValue = computed(getter);
+
+    // lazy
+    expect(getter).not.toHaveBeenCalled();
+
+    expect(cValue.value).toBe(undefined);
+    expect(getter).toHaveBeenCalledTimes(1);
+
+    // should not compute again
+    cValue.value;
+    expect(getter).toHaveBeenCalledTimes(1);
+
+    // should not compute until needed
+    value.foo = 1;
+    expect(getter).toHaveBeenCalledTimes(1);
+
+    // now it should compute
+    expect(cValue.value).toBe(1);
+    expect(getter).toHaveBeenCalledTimes(2);
+
+    // should not compute again
+    cValue.value;
+    expect(getter).toHaveBeenCalledTimes(2);
+  });
+
+  it('should trigger effect', () => {
+    const value = reactive<{ foo?: number }>({});
+    const cValue = computed(() => value.foo);
+    let dummy;
+    effect(() => {
+      dummy = cValue.value;
+    });
+    expect(dummy).toBe(undefined);
+    value.foo = 1;
+    expect(dummy).toBe(1);
+  });
+
+  it('should work when chained', () => {
+    const value = reactive({ foo: 0 });
+    const c1 = computed(() => value.foo);
+    const c2 = computed(() => c1.value + 1);
+    expect(c2.value).toBe(1);
+    expect(c1.value).toBe(0);
+    value.foo++;
+    expect(c2.value).toBe(2);
+    expect(c1.value).toBe(1);
+  });
+
+  it('should trigger effect when chained', () => {
+    const value = reactive({ foo: 0 });
+    const getter1 = vi.fn(() => value.foo);
+    const getter2 = vi.fn(() => {
+      return c1.value + 1;
+    });
+    const c1 = computed(getter1);
+    const c2 = computed(getter2);
+
+    let dummy;
+    effect(() => {
+      dummy = c2.value;
+    });
+    expect(dummy).toBe(1);
+    expect(getter1).toHaveBeenCalledTimes(1);
+    expect(getter2).toHaveBeenCalledTimes(1);
+    value.foo++;
+    expect(dummy).toBe(2);
+    // should not result in duplicate calls
+    expect(getter1).toHaveBeenCalledTimes(2);
+    expect(getter2).toHaveBeenCalledTimes(2);
+  });
+
+  it('should trigger effect when chained (mixed invocations)', () => {
+    const value = reactive({ foo: 0 });
+    const getter1 = vi.fn(() => value.foo);
+    const getter2 = vi.fn(() => {
+      return c1.value + 1;
+    });
+    const c1 = computed(getter1);
+    const c2 = computed(getter2);
+
+    let dummy;
+    effect(() => {
+      dummy = c1.value + c2.value;
+    });
+    expect(dummy).toBe(1);
+
+    expect(getter1).toHaveBeenCalledTimes(1);
+    expect(getter2).toHaveBeenCalledTimes(1);
+    value.foo++;
+    expect(dummy).toBe(3);
+    // should not result in duplicate calls
+    expect(getter1).toHaveBeenCalledTimes(2);
+    expect(getter2).toHaveBeenCalledTimes(2);
+  });
+
+  it('should support setter', () => {
+    const n = signal(1);
+    const plusOne = computed({
+      get: () => n.value + 1,
+      set: (val) => {
+        n.value = val - 1;
+      },
+    });
+
+    expect(plusOne.value).toBe(2);
+    n.value++;
+    expect(plusOne.value).toBe(3);
+
+    plusOne.value = 0;
+    expect(n.value).toBe(-1);
+  });
+
+  it('should trigger effect w/ setter', () => {
+    const n = signal(1);
+    const plusOne = computed({
+      get: () => n.value + 1,
+      set: (val) => {
+        n.value = val - 1;
+      },
+    });
+
+    let dummy;
+    effect(() => {
+      dummy = n.value;
+    });
+    expect(dummy).toBe(1);
+
+    plusOne.value = 0;
+    expect(dummy).toBe(-1);
+  });
+
+  // #5720
+  it('should invalidate before non-computed effects', () => {
+    const plusOneValues: number[] = [];
+    const n = signal(0);
+    const plusOne = computed(() => n.value + 1);
+    effect(() => {
+      n.value;
+      plusOneValues.push(plusOne.value);
+    });
+    // access plusOne, causing it to be non-dirty
+    plusOne.value;
+    // mutate n
+    n.value++;
+    // on the 2nd run, plusOne.value should have already updated.
+    expect(plusOneValues).toMatchObject([1, 2]);
+  });
+
+  it('should warn if trying to set a readonly computed', () => {
+    const n = signal(1);
+    const plusOne = computed(() => n.value + 1);
+    (plusOne as WritableComputedRef<number>).value++; // Type cast to prevent TS from preventing the error
+
+    expect('Write operation failed: computed value is readonly').toHaveBeenWarnedLast();
+  });
+
+  it('should query deps dirty sequentially', () => {
+    const cSpy = vi.fn();
+
+    const a = signal<null | { v: number }>({
+      v: 1,
+    });
+    const b = computed(() => {
+      return a.value;
+    });
+    const c = computed(() => {
+      cSpy();
+      return b.value?.v;
+    });
+    const d = computed(() => {
+      if (b.value) {
+        return c.value;
+      }
+      return 0;
+    });
+
+    d.value;
+    a.value!.v = 2;
+    a.value = null;
+    d.value;
+    expect(cSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('chained computed dirty reallocation after querying dirty', () => {
+    let _msg: string | undefined;
+
+    const items = signal<number[]>();
+    const isLoaded = computed(() => {
+      return !!items.value;
+    });
+    const msg = computed(() => {
+      if (isLoaded.value) {
+        return 'The items are loaded';
+      } else {
+        return 'The items are not loaded';
+      }
+    });
+
+    effect(() => {
+      _msg = msg.value;
+    });
+
+    items.value = [1, 2, 3];
+    items.value = [1, 2, 3];
+    items.value = undefined;
+
+    expect(_msg).toBe('The items are not loaded');
+  });
+
+  it('chained computed dirty reallocation after trigger computed getter', () => {
+    let _msg: string | undefined;
+
+    const items = signal<number[]>();
+    const isLoaded = computed(() => {
+      return !!items.value;
+    });
+    const msg = computed(() => {
+      if (isLoaded.value) {
+        return 'The items are loaded';
+      } else {
+        return 'The items are not loaded';
+      }
+    });
+
+    _msg = msg.value;
+    items.value = [1, 2, 3];
+    isLoaded.value; // <- trigger computed getter
+    _msg = msg.value;
+    items.value = undefined;
+    _msg = msg.value;
+
+    expect(_msg).toBe('The items are not loaded');
+  });
+
+  it('deps order should be consistent with the last time get value', () => {
+    const cSpy = vi.fn();
+
+    const a = signal(0);
+    const b = computed(() => {
+      return a.value % 3 !== 0;
+    }) as unknown as ComputedRefImpl;
+    const c = computed(() => {
+      cSpy();
+      if (a.value % 3 === 2) {
+        return 'expensive';
+      }
+      return 'cheap';
+    }) as unknown as ComputedRefImpl;
+    const d = computed(() => {
+      return a.value % 3 === 2;
+    }) as unknown as ComputedRefImpl;
+    const e = computed(() => {
+      if (b.value) {
+        if (d.value) {
+          return 'Avoiding expensive calculation';
         }
-      });
+      }
+      return c.value;
+    }) as unknown as ComputedRefImpl;
 
-      // Initial state - no error
-      expect(effectValue).toBe(42);
-      expect(effectError).toBeNull();
+    e.value;
+    a.value++;
+    e.value;
 
-      // Trigger error
-      shouldError.value = true;
-      expect(effectError).toBeDefined();
-      expect((effectError as Error | null)?.message).toBe('Computation error');
+    expect(e.deps!.dep).toBe(b);
+    expect(e.deps!.nextDep!.dep).toBe(d);
+    expect(e.deps!.nextDep!.nextDep!.dep).toBe(c);
+    expect(cSpy).toHaveBeenCalledTimes(2);
 
-      // Fix error
-      shouldError.value = false;
-      expect(effectValue).toBe(42);
-      expect(effectError).toBeNull();
-    });
+    a.value++;
+    e.value;
 
-    it('should preserve error state until next access', () => {
-      let callCount = 0;
-      const comp = computed(() => {
-        callCount++;
-        throw new Error('Always fails');
-      });
-
-      // Multiple accesses should each attempt computation
-      expect(() => comp.value).toThrow('Always fails');
-      expect(callCount).toBe(1);
-
-      expect(() => comp.value).toThrow('Always fails');
-      expect(callCount).toBe(2);
-
-      expect(() => comp.value).toThrow('Always fails');
-      expect(callCount).toBe(3);
-    });
-
-    it('should handle undefined and null values', () => {
-      const value = signal<number | null | undefined>(undefined);
-      const comp = computed(() => value.value);
-
-      expect(comp.value).toBeUndefined();
-
-      value.value = null;
-      expect(comp.value).toBeNull();
-
-      value.value = 42;
-      expect(comp.value).toBe(42);
-    });
-
-    it('should handle NaN values correctly', () => {
-      const value = signal(Number.NaN);
-      const comp = computed(() => value.value);
-
-      expect(comp.value).toBeNaN();
-
-      value.value = 42;
-      expect(comp.value).toBe(42);
-    });
-
-    it('should use peek without triggering dependencies', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      // First access to compute the value
-      expect(comp.value).toBe(0);
-
-      let effectCount = 0;
-      effect(
-        () => {
-          comp.peek(); // Should not track
-          effectCount++;
-        },
-        { flush: 'sync' },
-      );
-
-      expect(effectCount).toBe(1);
-
-      count.value = 1;
-      // Effect should not trigger because peek doesn't track
-      expect(effectCount).toBe(1);
-      // peek() is an untracked FRESH read: dirty computeds recompute (SIG-26)
-      expect(comp.peek()).toBe(2);
-      // Accessing .value returns the same fresh value
-      expect(comp.value).toBe(2);
-    });
-
-    it('should handle value unchanged scenario', () => {
-      const count = signal(0);
-      let computeCount = 0;
-      const comp = computed(() => {
-        computeCount++;
-        return Math.floor(count.value / 10) * 10;
-      });
-
-      let effectCount = 0;
-      effect(
-        () => {
-          comp.value;
-          effectCount++;
-        },
-        { flush: 'sync' },
-      );
-
-      expect(effectCount).toBe(1);
-      expect(computeCount).toBe(1);
-
-      // Value changes but computed result doesn't
-      count.value = 5;
-      expect(computeCount).toBe(2);
-      // Effect triggers because computed is marked dirty, even if value doesn't change
-      // This is expected behavior in the current implementation
-      expect(effectCount).toBeGreaterThanOrEqual(1);
-
-      // Value changes and computed result changes
-      count.value = 15;
-      expect(computeCount).toBe(3);
-      expect(effectCount).toBeGreaterThanOrEqual(2);
-    });
+    expect(cSpy).toHaveBeenCalledTimes(2);
   });
 
-  describe('parameter validation', () => {
-    it('should throw error for non-function getter in options', () => {
-      expect(() =>
-        computed({
-          // @ts-ignore test error
-          get: 'not a function',
+  it('should trigger by the second computed that maybe dirty', () => {
+    const cSpy = vi.fn();
+
+    const src1 = signal(0);
+    const src2 = signal(0);
+    const c1 = computed(() => src1.value);
+    const c2 = computed(() => (src1.value % 2) + src2.value);
+    const c3 = computed(() => {
+      cSpy();
+      c1.value;
+      c2.value;
+    });
+
+    c3.value;
+    src1.value = 2;
+    c3.value;
+    expect(cSpy).toHaveBeenCalledTimes(2);
+    src2.value = 1;
+    c3.value;
+    expect(cSpy).toHaveBeenCalledTimes(3);
+  });
+
+  it('should trigger the second effect', () => {
+    const fnSpy = vi.fn();
+    const v = signal(1);
+    const c = computed(() => v.value);
+
+    effect(() => {
+      c.value;
+    });
+    effect(() => {
+      c.value;
+      fnSpy();
+    });
+
+    expect(fnSpy).toBeCalledTimes(1);
+    v.value = 2;
+    expect(fnSpy).toBeCalledTimes(2);
+  });
+
+  it('should chained recursive effects clear dirty after trigger', () => {
+    const v = signal(1);
+    const c1 = computed(() => v.value) as unknown as ComputedRefImpl;
+    const c2 = computed(() => c1.value) as unknown as ComputedRefImpl;
+
+    c2.value;
+    expect(c1.flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)).toBe(0);
+    expect(c2.flags & (ReactiveFlags.Dirty | ReactiveFlags.Pending)).toBe(0);
+  });
+
+  it('should chained computeds dirtyLevel update with first computed effect', () => {
+    const v = signal(0);
+    const c1 = computed(() => {
+      if (v.value === 0) {
+        v.value = 1;
+      }
+      return v.value;
+    });
+    const c2 = computed(() => c1.value);
+    const c3 = computed(() => c2.value);
+
+    expect(c3.value).toBe(1);
+    // expect(COMPUTED_SIDE_EFFECT_WARN).toHaveBeenWarned()
+  });
+
+  it('should work when chained(ref+computed)', () => {
+    const v = signal(0);
+    const c1 = computed(() => {
+      if (v.value === 0) {
+        v.value = 1;
+      }
+      return 'foo';
+    });
+    const c2 = computed(() => v.value + c1.value);
+    expect(c2.value).toBe('0foo');
+    expect(c2.value).toBe('1foo');
+    // expect(COMPUTED_SIDE_EFFECT_WARN).toHaveBeenWarned()
+  });
+
+  it('should trigger effect even computed already dirty', () => {
+    const fnSpy = vi.fn();
+    const v = signal(0);
+    const c1 = computed(() => {
+      if (v.value === 0) {
+        v.value = 1;
+      }
+      return 'foo';
+    });
+    const c2 = computed(() => v.value + c1.value);
+
+    effect(() => {
+      fnSpy(c2.value);
+    });
+    expect(fnSpy).toBeCalledTimes(1);
+    expect(fnSpy.mock.calls).toMatchObject([['0foo']]);
+    expect(v.value).toBe(1);
+    v.value = 2;
+    expect(fnSpy).toBeCalledTimes(2);
+    expect(fnSpy.mock.calls).toMatchObject([['0foo'], ['2foo']]);
+    expect(v.value).toBe(2);
+    // expect(COMPUTED_SIDE_EFFECT_WARN).toHaveBeenWarned()
+  });
+
+  // #10185
+  it('should not override queried MaybeDirty result', () => {
+    class Item {
+      v = signal(0);
+    }
+    const v1 = shallowSignal();
+    const v2 = signal(false);
+    const c1 = computed(() => {
+      let c = v1.value;
+      if (!v1.value) {
+        c = new Item();
+        v1.value = c;
+      }
+      return c.v.value;
+    });
+    const c2 = computed(() => {
+      if (!v2.value) return 'no';
+      return c1.value ? 'yes' : 'no';
+    });
+    const c3 = computed(() => c2.value);
+
+    c3.value;
+    v2.value = true;
+
+    c3.value;
+    v1.value.v.value = 999;
+
+    expect(c3.value).toBe('yes');
+    // expect(COMPUTED_SIDE_EFFECT_WARN).toHaveBeenWarned()
+  });
+
+  it('should not trigger if value did not change', () => {
+    const src = signal(0);
+    const c = computed(() => src.value % 2);
+    const spy = vi.fn();
+    effect(() => {
+      spy(c.value);
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    src.value = 2;
+
+    // should not trigger
+    expect(spy).toHaveBeenCalledTimes(1);
+
+    src.value = 3;
+    src.value = 5;
+    // should trigger because latest value changes
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('chained computed trigger', () => {
+    const effectSpy = vi.fn();
+    const c1Spy = vi.fn();
+    const c2Spy = vi.fn();
+
+    const src = signal(0);
+    const c1 = computed(() => {
+      c1Spy();
+      return src.value % 2;
+    });
+    const c2 = computed(() => {
+      c2Spy();
+      return c1.value + 1;
+    });
+
+    effect(() => {
+      effectSpy(c2.value);
+    });
+
+    expect(c1Spy).toHaveBeenCalledTimes(1);
+    expect(c2Spy).toHaveBeenCalledTimes(1);
+    expect(effectSpy).toHaveBeenCalledTimes(1);
+
+    src.value = 1;
+    expect(c1Spy).toHaveBeenCalledTimes(2);
+    expect(c2Spy).toHaveBeenCalledTimes(2);
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('chained computed avoid re-compute', () => {
+    const effectSpy = vi.fn();
+    const c1Spy = vi.fn();
+    const c2Spy = vi.fn();
+
+    const src = signal(0);
+    const c1 = computed(() => {
+      c1Spy();
+      return src.value % 2;
+    });
+    const c2 = computed(() => {
+      c2Spy();
+      return c1.value + 1;
+    });
+
+    effect(() => {
+      effectSpy(c2.value);
+    });
+
+    expect(effectSpy).toHaveBeenCalledTimes(1);
+    src.value = 2;
+    src.value = 4;
+    src.value = 6;
+    expect(c1Spy).toHaveBeenCalledTimes(4);
+    // c2 should not have to re-compute because c1 did not change.
+    expect(c2Spy).toHaveBeenCalledTimes(1);
+    // effect should not trigger because c2 did not change.
+    expect(effectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('chained computed value invalidation', () => {
+    const effectSpy = vi.fn();
+    const c1Spy = vi.fn();
+    const c2Spy = vi.fn();
+
+    const src = signal(0);
+    const c1 = computed(() => {
+      c1Spy();
+      return src.value % 2;
+    });
+    const c2 = computed(() => {
+      c2Spy();
+      return c1.value + 1;
+    });
+
+    effect(() => {
+      effectSpy(c2.value);
+    });
+
+    expect(effectSpy).toHaveBeenCalledTimes(1);
+    expect(effectSpy).toHaveBeenCalledWith(1);
+    expect(c2.value).toBe(1);
+
+    expect(c1Spy).toHaveBeenCalledTimes(1);
+    expect(c2Spy).toHaveBeenCalledTimes(1);
+
+    src.value = 1;
+    // value should be available sync
+    expect(c2.value).toBe(2);
+    expect(c2Spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('sync access of invalidated chained computed should not prevent final effect from running', () => {
+    const effectSpy = vi.fn();
+    const c1Spy = vi.fn();
+    const c2Spy = vi.fn();
+
+    const src = signal(0);
+    const c1 = computed(() => {
+      c1Spy();
+      return src.value % 2;
+    });
+    const c2 = computed(() => {
+      c2Spy();
+      return c1.value + 1;
+    });
+
+    effect(() => {
+      effectSpy(c2.value);
+    });
+    expect(effectSpy).toHaveBeenCalledTimes(1);
+
+    src.value = 1;
+    // sync access c2
+    c2.value;
+    expect(effectSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('computed should force track in untracked zone', () => {
+    const n = signal(0);
+    const spy1 = vi.fn();
+    const spy2 = vi.fn();
+
+    let c: ComputedRef;
+    effect(() => {
+      spy1();
+      pauseTracking();
+      n.value;
+      c = computed(() => n.value + 1);
+      // access computed now to force refresh
+      c.value;
+      effect(() => spy2(c.value));
+      n.value;
+      resetTracking();
+    });
+
+    expect(spy1).toHaveBeenCalledTimes(1);
+    expect(spy2).toHaveBeenCalledTimes(1);
+
+    n.value++;
+    // outer effect should not trigger
+    expect(spy1).toHaveBeenCalledTimes(1);
+    // inner effect should trigger
+    expect(spy2).toHaveBeenCalledTimes(2);
+  });
+
+  // not recommended behavior, but needed for backwards compatibility
+  // asyncComputed pattern
+  it('computed side effect should be able trigger', () => {
+    const a = signal(false);
+    const b = signal(false);
+    const c = computed(() => {
+      a.value = true;
+      return b.value;
+    });
+    effect(() => {
+      if (a.value) {
+        b.value = true;
+      }
+    });
+    expect(b.value).toBe(false);
+    // accessing c triggers change
+    c.value;
+    expect(b.value).toBe(true);
+    expect(c.value).toBe(true);
+  });
+
+  it('chained computed should work when accessed before having subs', () => {
+    const n = signal(0);
+    const c = computed(() => n.value);
+    const d = computed(() => c.value + 1);
+    const spy = vi.fn();
+
+    // access
+    d.value;
+
+    let dummy;
+    effect(() => {
+      spy();
+      dummy = d.value;
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(dummy).toBe(1);
+
+    n.value++;
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(dummy).toBe(2);
+  });
+
+  // #10236
+
+  // case: setting a template ref during mount,
+  // and checks for the element's closest form element in a computed.
+  // the computed is expected to only evaluate after mount.
+
+  it('should be recomputed without being affected by side effects', () => {
+    const v = signal(0);
+    const c1 = computed(() => {
+      v.value = 1;
+      return 0;
+    });
+    const c2 = computed(() => {
+      return `${v.value},${c1.value}`;
+    });
+
+    expect(c2.value).toBe('0,0');
+    v.value = 1;
+    expect(c2.value).toBe('1,0');
+    // expect(COMPUTED_SIDE_EFFECT_WARN).toHaveBeenWarned()
+  });
+
+  // #11797
+
+  it('manual trigger computed', () => {
+    const cValue = computed(() => 1);
+    triggerSignal(cValue);
+    expect(cValue.value).toBe(1);
+  });
+
+  it('should not recompute if computed does not track reactive data', () => {
+    const spy = vi.fn();
+    const c1 = computed(() => spy());
+
+    c1.value;
+    signal(0).value++; // update globalVersion
+    c1.value;
+
+    expect(spy).toBeCalledTimes(1);
+  });
+
+  it('computed should remain live after losing all subscribers', () => {
+    const state = reactive({ a: 1 });
+    const p = computed(() => state.a + 1);
+    const { effect: e } = effect(() => p.value);
+    e.stop();
+
+    expect(p.value).toBe(2);
+    state.a++;
+    expect(p.value).toBe(3);
+  });
+
+  // #11995
+  it('computed dep cleanup should not cause property dep to be deleted', () => {
+    const toggle = signal(true);
+    const state = reactive({ a: 1 });
+    const p = computed(() => {
+      return toggle.value ? state.a : 111;
+    });
+    const pp = computed(() => state.a);
+    effect(() => p.value);
+
+    expect(pp.value).toBe(1);
+    toggle.value = false;
+    state.a++;
+    expect(pp.value).toBe(2);
+  });
+
+  // #12020
+  it('computed value updates correctly after dep cleanup', () => {
+    const obj = reactive({ foo: 1, flag: 1 });
+    const c1 = computed(() => obj.foo);
+
+    let foo;
+    effect(() => {
+      foo = obj.flag ? (obj.foo, c1.value) : 0;
+    });
+    expect(foo).toBe(1);
+
+    obj.flag = 0;
+    expect(foo).toBe(0);
+
+    obj.foo = 2;
+    obj.flag = 1;
+    expect(foo).toBe(2);
+  });
+
+  // #11928
+  it('should not lead to exponential perf cost with deeply chained computed', () => {
+    const start = {
+      prop1: shallowSignal(1),
+      prop2: shallowSignal(2),
+      prop3: shallowSignal(3),
+      prop4: shallowSignal(4),
+    };
+
+    let layer = start;
+
+    const LAYERS = 1000;
+
+    for (let i = LAYERS; i > 0; i--) {
+      const m = layer;
+      const s = {
+        prop1: computed(() => m.prop2.value),
+        prop2: computed(() => m.prop1.value - m.prop3.value),
+        prop3: computed(() => m.prop2.value + m.prop4.value),
+        prop4: computed(() => m.prop3.value),
+      };
+      effect(() => s.prop1.value);
+      effect(() => s.prop2.value);
+      effect(() => s.prop3.value);
+      effect(() => s.prop4.value);
+
+      s.prop1.value;
+      s.prop2.value;
+      s.prop3.value;
+      s.prop4.value;
+
+      layer = s;
+    }
+
+    const t = performance.now();
+    start.prop1.value = 4;
+    start.prop2.value = 3;
+    start.prop3.value = 2;
+    start.prop4.value = 1;
+    expect(performance.now() - t).toBeLessThan(100);
+
+    const end = layer;
+    expect([end.prop1.value, end.prop2.value, end.prop3.value, end.prop4.value]).toMatchObject([
+      -2, -4, 2, 3,
+    ]);
+  });
+
+  it('performance when removing dependencies from deeply nested computeds', () => {
+    const base = signal(1);
+    const trigger = signal(true);
+    const computeds: ComputedRef<number>[] = [];
+
+    const LAYERS = 30;
+
+    for (let i = 0; i < LAYERS; i++) {
+      const earlier = [...computeds];
+
+      computeds.push(
+        computed(() => {
+          return base.value + earlier.reduce((sum, c) => sum + c.value, 0);
         }),
-      ).toThrow('getter must be a function');
-    });
+      );
+    }
 
-    it('should throw error for invalid argument type', () => {
-      // @ts-ignore test error
-      expect(() => computed(123)).toThrow('expected a function or options object');
-    });
+    const tail = computed(() => (trigger.value ? computeds[computeds.length - 1].value : 0));
 
-    it('should return existing computed when passed computed', () => {
-      const count = signal(0);
-      const comp1 = computed(() => count.value * 2);
-      // @ts-ignore
-      const comp2 = computed(comp1);
+    const t0 = performance.now();
+    expect(tail.value).toBe(2 ** (LAYERS - 1));
+    const t1 = performance.now();
+    expect(t1 - t0).toBeLessThan(100);
 
-      expect(comp2).toBe(comp1);
-    });
+    trigger.value = false;
+    expect(tail.value).toBe(0);
+    const t2 = performance.now();
+    expect(t2 - t1).toBeLessThan(100);
+  });
+});
 
-    it('should handle computed with onTrack and onTrigger', () => {
-      const count = signal(0);
-      const onTrack = vi.fn();
-      const onTrigger = vi.fn();
-
-      const comp = computed({
-        get: () => count.value * 2,
-        onTrack,
-        onTrigger,
-      });
-
-      // Access value to trigger tracking
-      expect(comp.value).toBe(0);
-
-      // Change value to trigger onTrigger
-      count.value = 1;
-      expect(comp.value).toBe(2);
-
-      expect(onTrigger).toHaveBeenCalled();
-    });
+describe('edge cases', () => {
+  it('exposes backwards-compat effect/dep accessors', () => {
+    const c = computed(() => 1);
+    expect((c as any).effect).toBe(c);
+    expect((c as any).dep).toBe(c);
   });
 
-  describe('isComputed', () => {
-    it('should identify computed values', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
+  it('_dirty getter resolves pending state through checkDirty', () => {
+    const a = signal(1);
+    const b = computed(() => a.value % 2);
+    const c = computed(() => b.value) as any;
+    expect(c.value).toBe(1);
+    expect(c._dirty).toBe(false);
 
-      expect(isComputed(comp)).toBe(true);
-      expect(isComputed(count)).toBe(false);
-      expect(isComputed(42)).toBe(false);
-      expect(isComputed(null)).toBe(false);
-      expect(isComputed(undefined)).toBe(false);
-      expect(isComputed({})).toBe(false);
-    });
+    // b changes -> c becomes dirty
+    a.value = 2;
+    expect(c._dirty).toBe(true);
+    expect(c.value).toBe(0);
+
+    // b recomputes to same value -> c pending but not dirty
+    a.value = 4;
+    expect(c._dirty).toBe(false);
+    expect(c.value).toBe(0);
   });
 
-  describe('readonly computed', () => {
-    it('should warn when trying to set readonly computed', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      // Try to set value (should warn in dev mode)
-      // @ts-ignore test error
-      comp.value = 10;
-
-      // Value should not change
-      expect(comp.value).toBe(0);
-    });
-  });
-
-  describe('shouldUpdate', () => {
-    it('should return true for first computation', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      // @ts-ignore accessing private method for testing
-      expect(comp.shouldUpdate()).toBe(true);
-    });
-
-    it('should return true when value changes', () => {
-      const count = signal(0);
-      const comp = computed(() => count.value * 2);
-
-      // Initial computation
-      comp.value;
-
-      count.value = 1;
-
-      // @ts-ignore accessing private method for testing
-      expect(comp.shouldUpdate()).toBe(true);
-    });
-
-    it('should return false when value does not change', () => {
-      const count = signal(0);
-      const comp = computed(() => Math.floor(count.value / 10));
-
-      // Initial computation
-      comp.value;
-
-      count.value = 5; // Still rounds to 0
-
-      // @ts-ignore accessing private method for testing
-      expect(comp.shouldUpdate()).toBe(false);
-    });
+  it('_dirty setter marks and clears dirty state', () => {
+    const getter = vi.fn(() => 1);
+    const c = computed(getter) as any;
+    c.value;
+    expect(getter).toHaveBeenCalledTimes(1);
+    c._dirty = true;
+    expect(c._dirty).toBe(true);
+    c.value;
+    expect(getter).toHaveBeenCalledTimes(2);
+    c._dirty = true;
+    c._dirty = false;
+    expect(c._dirty).toBe(false);
+    c.value;
+    expect(getter).toHaveBeenCalledTimes(2);
   });
 });

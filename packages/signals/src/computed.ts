@@ -1,485 +1,214 @@
-import { error, hasChanged, isFunction, isPlainObject, warn } from '@estjs/shared';
-import { ReactiveFlags, SignalFlags } from './constants';
+import { hasChanged, isFunction, warn } from '@estjs/shared';
+import { signalsFlags } from './constants';
+import { activeEffectScope } from './effectScope';
 import {
-  type EffectScope,
-  type ScopedReactiveEffect,
-  recordDisposable,
-  releaseDisposable,
-} from './effectScope';
-import {
+  type Link,
+  type ReactiveNode,
+  ReactiveFlags as SystemReactiveFlags,
   activeSub,
   checkDirty,
   endTracking,
-  linkReactiveNode,
+  link,
   shallowPropagate,
   startTracking,
-  unlinkReactiveNode,
-} from './system';
-import type { DebuggerEvent, Link, ReactiveNode } from './system';
+} from './graph';
+import type { Signal } from './signal';
 
-/**
- * Computed getter function type
- */
-export type ComputedGetter<T> = (oldValue?: T) => T;
+declare const ComputedRefSymbol: unique symbol;
+declare const WritableComputedRefSymbol: unique symbol;
 
-/**
- * Computed setter function type
- */
-export type ComputedSetter<T> = (value: T) => void;
-
-/**
- * Computed options configuration
- */
-export interface ComputedOptions<T> {
-  /** Getter function to compute the value */
-  get: ComputedGetter<T>;
-
-  /** Optional setter function to make the computed writable */
-  set?: ComputedSetter<T>;
-
+interface BaseComputedRef<T, S = T> extends Signal<T, S> {
+  [ComputedRefSymbol]: true;
   /**
-   * Debug callback invoked when a dependency is tracked
-   * Only called in development mode
-   *
-   * @param event - Information about the tracked dependency
+   * @deprecated computed no longer uses effect
    */
-  onTrack?: (event: DebuggerEvent) => void;
-
-  /**
-   * Debug callback invoked when the computed is triggered by a dependency change
-   * Only called in development mode
-   *
-   * @param event - Information about what triggered the recomputation
-   */
-  onTrigger?: (event: DebuggerEvent) => void;
+  effect: ComputedRefImpl;
 }
 
-/**
- * Computed interface
- */
-export interface Computed<T> {
+export interface ComputedRef<T = any> extends BaseComputedRef<T> {
   readonly value: T;
-  peek(): T;
 }
-/**
- * Extract the value type from a Computed
- *
- * @template T - The Computed type
- *
- * @example
- * ```typescript
- * import { computed, type ComputedType } from '@estjs/signals';
- *
- * const doubled = computed(() => count.value * 2);
- * type DoubledValue = ComputedType<typeof doubled>; // number
- * ```
- */
-export type ComputedType<T> = T extends Computed<infer V> ? V : never;
+
+export interface WritableComputedRef<T, S = T> extends BaseComputedRef<T, S> {
+  [WritableComputedRefSymbol]: true;
+}
+
+export type ComputedGetter<T> = (oldValue?: T) => T;
+export type ComputedSetter<T> = (newValue: T) => void;
+
+export interface WritableComputedOptions<T, S = T> {
+  get: ComputedGetter<T>;
+  set: ComputedSetter<S>;
+}
 
 /**
- * Sentinel symbol used to represent "no value" state in computed
- * Using a Symbol ensures it cannot conflict with any actual computed value
+ * Internal computed reference implementation.
+ * @internal
  */
-const NO_VALUE = Symbol('computed-no-value');
+export class ComputedRefImpl<T = any> implements ReactiveNode {
+  /**
+   * @internal
+   */
+  _value: T | undefined = undefined;
 
-/**
- * Computed implementation class
- *
- * Implements both Computed and ReactiveNode interfaces.
- * Features:
- * - Lazy evaluation: only computes when accessed
- * - Smart caching: returns cached value when dependencies haven't changed
- * - Automatic tracking: automatically tracks dependencies during computation
- *
- * @template T - The type of the computed value
- */
-export class ComputedImpl<T = any> implements Computed<T>, ReactiveNode, ScopedReactiveEffect {
-  //  ReactiveNode interface implementation
-  depLink?: Link;
-  subLink?: Link;
-  depLinkTail?: Link;
-  subLinkTail?: Link;
-  flag: ReactiveFlags = ReactiveFlags.MUTABLE | ReactiveFlags.DIRTY;
-
-  //@ts-ignore
-  private readonly [SignalFlags.IS_COMPUTED] = true as const;
-
-  //  Core properties
-  readonly getter: ComputedGetter<T>;
-  readonly setter?: ComputedSetter<T>;
-
-  //  Debug hooks
-  readonly onTrack?: (event: DebuggerEvent) => void;
-  readonly onTrigger?: (event: DebuggerEvent) => void;
-  scope?: EffectScope;
-
-  //  Cache
-  // Use symbol sentinel to distinguish "no value" from undefined/null values
-  private _value: T | typeof NO_VALUE = NO_VALUE;
-  private _active = true;
-
-  // Guard against circular dependencies (self-referencing or mutually
-  // referencing computeds) which would otherwise cause a stack overflow
-  private _evaluating = false;
+  subs: Link | undefined = undefined;
+  subsTail: Link | undefined = undefined;
+  deps: Link | undefined = undefined;
+  depsTail: Link | undefined = undefined;
+  flags: SystemReactiveFlags = SystemReactiveFlags.Mutable | SystemReactiveFlags.Dirty;
 
   /**
-   * Create a Computed instance.
-   *
-   * @param getter - The computation function.
-   * @param setter - Optional setter function.
-   * @param onTrack - Optional debug callback for dependency tracking.
-   * @param onTrigger - Optional debug callback for triggers.
+   * @internal
    */
+
+  // for backwards compat
+  get effect(): this {
+    return this;
+  }
+  // for backwards compat
+  get dep(): ReactiveNode {
+    return this;
+  }
+  /**
+   * For backwards compat.
+   * @internal
+   */
+  get _dirty(): boolean {
+    const flags = this.flags;
+    if (flags & SystemReactiveFlags.Dirty) {
+      return true;
+    }
+    if (flags & SystemReactiveFlags.Pending) {
+      if (checkDirty(this.deps!, this)) {
+        this.flags = flags | SystemReactiveFlags.Dirty;
+        return true;
+      } else {
+        this.flags = flags & ~SystemReactiveFlags.Pending;
+      }
+    }
+    return false;
+  }
+  /**
+   * For backwards compat.
+   * @internal
+   */
+  set _dirty(v: boolean) {
+    if (v) {
+      this.flags |= SystemReactiveFlags.Dirty;
+    } else {
+      this.flags &= ~(SystemReactiveFlags.Dirty | SystemReactiveFlags.Pending);
+    }
+  }
+
   constructor(
-    getter: ComputedGetter<T>,
-    setter?: ComputedSetter<T>,
-    onTrack?: (event: DebuggerEvent) => void,
-    onTrigger?: (event: DebuggerEvent) => void,
-  ) {
-    this.getter = getter;
-    this.setter = setter;
-    this.onTrack = onTrack;
-    this.onTrigger = onTrigger;
-    recordDisposable(this);
-  }
+    public fn: ComputedGetter<T>,
+    private readonly setter: ComputedSetter<T> | undefined,
+  ) {}
 
-  /**
-   * Returns the current value.
-   *
-   * @returns {T} The current value.
-   */
   get value(): T {
-    if (!this.active) {
-      return this._value === NO_VALUE ? this.getter() : (this._value as T);
+    const flags = this.flags;
+    if (
+      flags & SystemReactiveFlags.Dirty ||
+      (flags & SystemReactiveFlags.Pending && checkDirty(this.deps!, this))
+    ) {
+      if (this.update()) {
+        const subs = this.subs;
+        if (subs !== undefined) {
+          shallowPropagate(subs);
+        }
+      }
+    } else if (flags & SystemReactiveFlags.Pending) {
+      this.flags = flags & ~SystemReactiveFlags.Pending;
     }
-
-    // Track dependencies if accessed within an effect or computed
-    if (activeSub) {
-      linkReactiveNode(this, activeSub);
+    if (activeSub !== undefined) {
+      link(this, activeSub);
+    } else if (activeEffectScope !== undefined) {
+      link(this, activeEffectScope);
     }
-
-    this._validate();
-
-    return this._value as T;
+    return this._value!;
   }
 
-  /**
-   * Set value (only effective when setter is provided).
-   *
-   * @param newValue - The new value.
-   */
-  set value(newValue: T) {
+  set value(newValue) {
     if (this.setter) {
       this.setter(newValue);
     } else if (__DEV__) {
-      warn(
-        '[Computed] Cannot set readonly computed value. ' +
-          'Provide a setter in the computed options to make it writable.\n' +
-          'Example: computed({ get: () => value, set: (v) => { ... } })',
-      );
+      warn('Write operation failed: computed value is readonly');
     }
   }
 
-  /**
-   * Read value without tracking dependencies.
-   *
-   * Performs an untracked fresh read: if the computed is dirty (or possibly
-   * dirty), it recomputes before returning, so the result always reflects the
-   * current dependency values. Unlike `value`, it never links the computed to
-   * the active subscriber.
-   *
-   * @returns {T} The current value.
-   */
-  peek(): T {
-    if (!this.active) {
-      return this._value === NO_VALUE ? this.getter() : (this._value as T);
-    }
-
-    this._validate();
-
-    return this._value as T;
-  }
-
-  /**
-   * Ensure the cached value is fresh.
-   *
-   * Shared by `get value()` and `peek()` — the only difference between the two
-   * is that `value` additionally links this computed to the active subscriber.
-   *
-   * - No cached value, or DIRTY: recompute unconditionally.
-   * - PENDING: validate via checkDirty(); recompute only if a dependency
-   *   actually changed, otherwise just clear the PENDING flag.
-   *
-   * @private
-   */
-  private _validate(): void {
-    // Cache flag to reduce property access
-    const flags = this.flag;
-
-    // No value or dirty state: must recompute for a fresh read
-    if (this._value === NO_VALUE || flags & ReactiveFlags.DIRTY) {
-      this.recompute();
-    } else if (flags & ReactiveFlags.PENDING) {
-      // Pending state: check if dependencies actually changed
-      if (this.depLink && checkDirty(this.depLink, this)) {
-        // Dependencies changed, recompute
-        this.recompute();
-      } else {
-        // Dependencies unchanged, clear pending flag using cached flags
-        this.flag = flags & ~ReactiveFlags.PENDING;
-      }
-    }
-  }
-
-  get active(): boolean {
-    return this._active;
-  }
-
-  /**
-   * Recompute the value
-   *
-   *  computation logic:
-   * 1. Start tracking dependencies
-   * 2. Execute getter function
-   * 3. Check if value changed using optimized comparison
-   * 4. If changed, update cache and notify subscribers
-   * 5. End tracking, clean up stale dependencies
-   * @private
-   */
-  private recompute(): void {
-    // Guard against circular dependencies: if this computed is already being
-    // evaluated, its getter (directly or transitively) reads its own value.
-    // Throwing a stable error here prevents infinite recursion (stack overflow).
-    if (this._evaluating) {
-      throw new Error('[Computed] Circular dependency detected in computed');
-    }
-
-    if (!this._active) {
-      if (this._value === NO_VALUE) {
-        this._value = this.getter();
-      }
-      return;
-    }
-
-    // Store old value for change detection
-    // Use NO_VALUE sentinel to distinguish initial state from undefined/null values
-    const oldValue = this._value;
-    const hadValue = oldValue !== NO_VALUE;
-
-    // Start tracking dependencies
-    this._evaluating = true;
+  update(): boolean {
     const prevSub = startTracking(this);
-
     try {
-      // Execute computation, passing old value for incremental derivation
-      const newValue = this.getter(hadValue ? (oldValue as T) : undefined);
-
-      // Cache current flags and subLink for efficient bitwise operations and reduced property access
-      const flags = this.flag;
-      const subs = this.subLink;
-      // Pre-calculate the mask for clearing DIRTY and PENDING flags in single operation
-      const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
-
-      // - If no previous value, always consider it changed
-      // - Otherwise use hasChanged for proper comparison (handles NaN, etc.)
-      const valueChanged = !hadValue || hasChanged(oldValue, newValue);
-
-      if (valueChanged) {
-        // Update cache
+      const oldValue = this._value;
+      const newValue = this.fn(oldValue);
+      if (hasChanged(oldValue, newValue)) {
         this._value = newValue;
-
-        // Clear DIRTY and PENDING flags in single operation using cached flags
-        this.flag = flags & clearMask;
-
-        // Debug hook: notify about the trigger
-        if (__DEV__ && this.onTrigger) {
-          this.onTrigger({
-            effect: this,
-            target: this,
-            type: 'set',
-            key: 'value',
-            newValue,
-          });
-        }
-
-        // Notify subscribers only when value actually changed
-        // This prevents unnecessary propagation
-        // Use cached subLink to avoid property access
-        if (subs) {
-          shallowPropagate(subs);
-        }
-      } else {
-        // Value unchanged, only clear flags using cached flags
-        // No need to propagate since subscribers already have correct value
-        this.flag = flags & clearMask;
+        return true;
       }
-    } catch (_error) {
-      // On error, ensure DIRTY and PENDING flags are cleared first to prevent stuck state
-      const clearMask = ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
-      this.flag &= clearMask;
-
-      // Force recompute on next access instead of setting DIRTY,
-      // preventing "Clean subscriber with Dirty dependency" illegal state
-      // which would otherwise block propagation.
-      this._value = NO_VALUE;
-
-      if (__DEV__) {
-        error(
-          '[Computed] Error occurred while computing value.\n' +
-            'The computed will retry on next access.\n' +
-            'Common causes:\n' +
-            '  - Accessing undefined properties\n' +
-            '  - Circular dependencies\n' +
-            '  - Exceptions in getter function\n' +
-            'Check your getter function for errors.',
-          _error,
-        );
-      }
-
-      throw _error;
+      return false;
     } finally {
-      // Clear the evaluation guard so the computed can be re-evaluated later
-      this._evaluating = false;
-      // End tracking, clean up stale dependencies
-      // This removes links to dependencies that are no longer accessed
       endTracking(this, prevSub);
     }
   }
-
-  /**
-   * Check if update is needed.
-   *
-   * Internal use, called by reactive system.
-   *
-   * @returns {boolean} True if value changed.
-   */
-  shouldUpdate(): boolean {
-    const hadValue = this._value !== NO_VALUE;
-    const oldValue = this._value;
-
-    this.recompute();
-
-    if (!hadValue) {
-      return true;
-    }
-
-    return hasChanged(this._value, oldValue);
-  }
-
-  stop(): void {
-    if (!this._active) {
-      return;
-    }
-
-    this._active = false;
-    releaseDisposable(this);
-
-    let dep = this.depLink;
-    while (dep) {
-      dep = unlinkReactiveNode(dep, this);
-    }
-
-    let sub = this.subLink;
-    while (sub) {
-      sub = unlinkReactiveNode(sub);
-    }
-
-    this.depLinkTail = undefined;
-    this.subLinkTail = undefined;
-    this.flag &= ~(ReactiveFlags.DIRTY | ReactiveFlags.PENDING);
-  }
 }
 
 /**
- * Create a Computed value.
- *
- * @param getterOrOptions - Computation function or configuration object.
- * @returns {ComputedImpl<T>} Computed instance.
+ * Takes a getter function and returns a readonly reactive ref object for the
+ * returned value from the getter. It can also take an object with get and set
+ * functions to create a writable ref object.
  *
  * @example
- * ```typescript
- * // Read-only computed
- * const count = signal(0);
- * const doubled = computed(() => count.value * 2);
+ * ```js
+ * // Creating a readonly computed ref:
+ * const count = ref(1)
+ * const plusOne = computed(() => count.value + 1)
  *
- * console.log(doubled.value); // 0
- * count.value = 5;
- * console.log(doubled.value); // 10
- *
- * // Writable computed
- * const firstName = signal('John');
- * const lastName = signal('Doe');
- *
- * const fullName = computed({
- *   get: () => `${firstName.value} ${lastName.value}`,
- *   set: (value) => {
- *     const [first, last] = value.split(' ');
- *     firstName.value = first;
- *     lastName.value = last;
- *   }
- * });
- *
- * fullName.value = 'Jane Smith';
- * console.log(firstName.value); // 'Jane'
+ * console.log(plusOne.value) // 2
+ * plusOne.value++ // error
  * ```
+ *
+ * ```js
+ * // Creating a writable computed ref:
+ * const count = ref(1)
+ * const plusOne = computed({
+ *   get: () => count.value + 1,
+ *   set: (val) => {
+ *     count.value = val - 1
+ *   }
+ * })
+ *
+ * plusOne.value = 1
+ * console.log(count.value) // 0
+ * ```
+ *
+ * @param getter - Function that produces the next value.
  */
-export function computed<T>(
-  getterOrOptions: ComputedGetter<T> | ComputedOptions<T>,
-): ComputedImpl<T> {
-  // Guard: Prevent passing computed to computed
-  if (isComputed(getterOrOptions)) {
-    if (__DEV__) {
-      warn(
-        '[Computed] Creating a computed from another computed is not recommended. ' +
-          'The existing computed will be returned to avoid unnecessary wrapping.',
-      );
-    }
-    return getterOrOptions as unknown as ComputedImpl<T>;
-  }
-
-  // Validate input
-  if (!getterOrOptions) {
-    throw new Error(
-      '[Computed] Invalid argument: computed() requires a getter function or options object.',
-    );
-  }
+export function computed<T>(getter: ComputedGetter<T>): ComputedRef<T>;
+export function computed<T, S = T>(
+  options: WritableComputedOptions<T, S>,
+): WritableComputedRef<T, S>;
+/*@__NO_SIDE_EFFECTS__*/
+export function computed<T>(getterOrOptions: ComputedGetter<T> | WritableComputedOptions<T>) {
+  let getter: ComputedGetter<T>;
+  let setter: ComputedSetter<T> | undefined;
 
   if (isFunction(getterOrOptions)) {
-    return new ComputedImpl(getterOrOptions);
+    getter = getterOrOptions;
+  } else {
+    getter = getterOrOptions.get;
+    setter = getterOrOptions.set;
   }
 
-  if (isPlainObject(getterOrOptions)) {
-    const { get, set, onTrack, onTrigger } = getterOrOptions;
+  const cRef = new ComputedRefImpl(getter, setter);
 
-    if (!get) {
-      throw new Error(
-        '[Computed] Invalid options: getter function is required.\n' +
-          'Usage: computed({ get: () => value, set: (v) => { ... } })',
-      );
-    }
-
-    if (!isFunction(get)) {
-      throw new TypeError(
-        '[Computed] Invalid options: getter must be a function.\n' + `Received: ${typeof get}`,
-      );
-    }
-
-    return new ComputedImpl(get, set, onTrack, onTrigger);
-  }
-
-  throw new Error(
-    '[Computed] Invalid argument: expected a function or options object.\n' +
-      `Received: ${typeof getterOrOptions}`,
-  );
+  return cRef as any;
 }
 
-/**
- * Type guard - Check if value is a Computed instance.
- *
- * @template T - The type of value held by the computed instance.
- * @param value - The value to check.
- * @returns {boolean} True if value is a Computed instance.
- */
-export function isComputed<T>(value: unknown): value is Computed<T> {
-  return !!value && !!value[SignalFlags.IS_COMPUTED];
-}
+// Brand on the prototype so `isComputed` (and `watch`) can recognise computed refs.
+// Essor marks computed with IS_SIGNAL so `isSignal(computed)` is true; the
+// equivalent is IS_SIGNAL, which makes reactive/unSignal/toValue unwrap computed.
+(ComputedRefImpl.prototype as any)[signalsFlags.IS_COMPUTED] = true;
+(ComputedRefImpl.prototype as any)[signalsFlags.IS_SIGNAL] = true;
+
+export const isComputed = <T>(v: unknown): v is ComputedRef<T> =>
+  !!(v && (v as Record<PropertyKey, unknown>)[signalsFlags.IS_COMPUTED]);

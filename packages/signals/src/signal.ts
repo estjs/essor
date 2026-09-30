@@ -1,356 +1,597 @@
 import {
+  type IfAny,
   hasChanged,
   isArray,
-  isMap,
+  isFunction,
+  isIntegerKey,
   isObject,
-  isPlainObject,
-  isSet,
-  isWeakMap,
-  isWeakSet,
-  warn,
+  isSymbol,
 } from '@estjs/shared';
-import { activeSub, linkReactiveNode, propagate, shallowPropagate } from './system';
-import { ReactiveFlags, SignalFlags } from './constants';
-import { isReactive, reactive, shallowReactive, toRaw } from './reactive';
-import type { Link, ReactiveNode } from './system';
+import { signalsFlags } from './constants';
+import { getDepFromReactive } from './dep';
+import {
+  type Builtin,
+  type ShallowReactiveBrand,
+  type Target,
+  isProxy,
+  isReactive,
+  isShallow,
+  toRaw,
+  toReactive,
+} from './reactive';
+import {
+  type Link,
+  type ReactiveNode,
+  ReactiveFlags as _ReactiveFlags,
+  activeSub,
+  batchDepth,
+  flush,
+  link,
+  propagate,
+  shallowPropagate,
+} from './graph';
+import type { ComputedRef, WritableComputedRef } from './computed';
 
-/**
- * Signal is a reactive primitive that holds a value and notifies subscribers when the value changes.
- * It provides methods for reading, writing, and observing value changes.
- *
- * @template T - The type of value held by the Signal
- */
-export interface Signal<T> {
-  /**
-   * The current value of the Signal. Reading this property tracks dependencies,
-   * and writing to it notifies subscribers of changes.
-   */
-  value: T;
+export declare const RawSymbol: unique symbol;
 
+export interface Signal<T = any, S = T> {
+  get value(): T;
+  set value(_: S);
   /**
-   * Get the current value without establishing a dependency relationship.
-   * Useful when you need to read the value without tracking dependencies.
-   *
-   * @returns The current value
+   * Type differentiator only.
+   * We need this to be in public d.ts but don't want it to show up in IDE
+   * autocomplete, so we use a private Symbol instead.
    */
-  peek(): T;
-
-  /**
-   * Set a new value without notifying subscribers.
-   * Used for batching multiple updates together.
-   *
-   * @param value - The new value to set
-   */
-  set(value: T): void;
-
-  /**
-   * Update the value using a function that receives the current value.
-   * This is an atomic operation that only notifies subscribers once.
-   *
-   * @param updater - A function that receives the current value and returns the new value
-   */
-  update(updater: (prev: T) => T): void;
+  [signalsFlags.IS_SIGNAL]: true;
 }
 
 /**
- * A more precise type for the value held by a signal.
- * This type helps TypeScript understand the type of the unwrapped value.
+ * Checks if a value is a signal object.
  *
- * @template T - The type of value held by the signal
+ * @param s - The value to inspect.
  */
-export type SignalValue<T> = T extends Signal<infer V> ? V : never;
+export function isSignal<T>(s: Signal<T> | unknown): s is Signal<T>;
+/*@__NO_SIDE_EFFECTS__*/
+export function isSignal(s: any): s is Signal {
+  return s ? s[signalsFlags.IS_SIGNAL] === true : false;
+}
+
 /**
- * Extract the value type from a Signal
+ * Takes an inner value and returns a reactive and mutable signal object, which
+ * has a single property `.value` that points to the inner value.
  *
- * @template T - The Signal type
+ * @param value - The object to wrap in the signal.
+ */
+export function signal<T>(
+  value: T,
+): [T] extends [Signal] ? IfAny<T, Signal<T>, T> : Signal<UnwrapSignal<T>, UnwrapSignal<T> | T>;
+export function signal<T = any>(): Signal<T | undefined>;
+/*@__NO_SIDE_EFFECTS__*/
+export function signal(value?: unknown) {
+  return createSignal(value, toReactive);
+}
+
+declare const ShallowSignalMarker: unique symbol;
+
+export type ShallowSignal<T = any, S = T> = Signal<T, S> & {
+  [ShallowSignalMarker]?: true;
+};
+
+/**
+ * Shallow version of {@link signal}.
  *
  * @example
- * ```typescript
- * import { signal, type SignalType } from '@estjs/signals';
+ * ```js
+ * const state = shallowSignal({ count: 1 })
  *
- * const count = signal(0);
- * type CountValue = SignalType<typeof count>; // number
+ * // does NOT trigger change
+ * state.value.count = 2
+ *
+ * // does trigger change
+ * state.value = { count: 2 }
  * ```
+ *
+ * @param value - The "inner value" for the shallow signal.
  */
-export type SignalType<T> = T extends Signal<infer V> ? V : never;
+export function shallowSignal<T>(
+  value: T,
+): Signal extends T
+  ? T extends Signal
+    ? IfAny<T, ShallowSignal<T>, T>
+    : ShallowSignal<T>
+  : ShallowSignal<T>;
+export function shallowSignal<T = any>(): ShallowSignal<T | undefined>;
+/*@__NO_SIDE_EFFECTS__*/
+export function shallowSignal(value?: unknown) {
+  return createSignal(value);
+}
 
 /**
- * Internal implementation of the Signal interface.
- * This class manages reactive state and handles dependency tracking.
-
- * @template T - The type of value held by the Signal
+ * Check if a value is a shallow signal.
  */
+export function isShallowSignal(value: any): boolean {
+  return isSignal(value) && !!(value as any)[signalsFlags.IS_SHALLOW];
+}
 
-export class SignalImpl<T> implements ReactiveNode {
-  // Implement ReactiveNode interface
-  depLink?: Link | undefined;
-  subLink?: Link | undefined;
-  depLinkTail?: Link | undefined;
-  subLinkTail?: Link | undefined;
-  flag: ReactiveFlags = ReactiveFlags.MUTABLE; // Initial state is "mutable"
+function createSignal(rawValue: unknown, wrap?: <T>(v: T) => T) {
+  if (isSignal(rawValue)) {
+    // Check if the signal has the same "flavor" (shallow vs deep)
+    const isInputShallow = !!(rawValue as any)[signalsFlags.IS_SHALLOW];
+    const isOutputShallow = !wrap;
 
-  // _oldValue is deliberately NOT initialized here so that `'_oldValue' in instance`
-  // returns false until the first value change — the test suite directly checks this.
-  protected _oldValue!: T; // on-demand, only present after first change
-  protected _rawValue: T; // Store raw (non-proxied) new value
+    // Only return the same signal if the flavors match
+    if (isInputShallow === isOutputShallow) {
+      return rawValue;
+    }
+    // Otherwise, wrap it in a new signal with the requested flavor
+  }
+  return new SignalImpl(rawValue, wrap);
+}
 
-  _value: T; // Store current value (may be a reactive proxy)
+/**
+ * @internal
+ */
+class SignalImpl<T = any> implements ReactiveNode {
+  subs: Link | undefined = undefined;
+  subsTail: Link | undefined = undefined;
+  flags: _ReactiveFlags = _ReactiveFlags.Mutable;
 
-  private readonly [SignalFlags.IS_SHALLOW]: boolean; // Mark whether it's shallow reactive
-
-  // @ts-ignore
-  private readonly [SignalFlags.IS_SIGNAL] = true as const; // Mark as Signal
+  _value: T;
+  _wrap?: <T>(v: T) => T;
+  private _oldValue: T;
+  private _rawValue: T;
 
   /**
-   * Create a new Signal with the given initial value.
-   *
-   * @param value - Initial value
-   * @param shallow - Whether only the top level should be reactive
+   * @internal
    */
-  constructor(value?: T, shallow = false) {
-    // Optimization: Don't initialize _oldValue in constructor
-    // It will be created on-demand in shouldUpdate()
+  [signalsFlags.IS_SHALLOW]: boolean = false;
 
-    // Extract raw value correctly in constructor to ensure _rawValue is never a proxy
-    const unwrapped = toRaw(value);
-    this._rawValue = unwrapped as T;
-
-    this[SignalFlags.IS_SHALLOW] = shallow;
-
-    // Fast path: if primitive, no proxy needed
-    if (!shouldWrapReactiveValue(unwrapped)) {
-      this._value = unwrapped as T;
-    } else {
-      // If value is already reactive, reuse it directly instead of lookup
-      if (isReactive(value)) {
-        this._value = value as T;
-      } else {
-        this._value = (
-          shallow ? shallowReactive(unwrapped as object) : reactive(unwrapped as object)
-        ) as T;
-      }
-    }
+  constructor(value: T, wrap: (<T>(v: T) => T) | undefined) {
+    this._oldValue = this._rawValue = wrap ? toRaw(value) : value;
+    this._value = wrap ? wrap(value) : value;
+    this._wrap = wrap;
+    this[signalsFlags.IS_SHALLOW] = !wrap;
   }
 
-  /**
-   * Returns the dependency node used for tracking.
-   *
-   * @returns {this} The dependency node.
-   */
   get dep(): this {
     return this;
   }
 
-  /**
-   * Returns the current value.
-   *
-   * @returns {T} The current value.
-   */
   get value(): T {
-    const sub = activeSub;
-    if (sub) {
-      linkReactiveNode(this, sub);
-    }
-
-    // Optimization: Cache flag and subLink to local variables to reduce property access
-    const flags = this.flag;
-    if (flags & ReactiveFlags.DIRTY && this.shouldUpdate()) {
-      // Cache subLink locally to avoid repeated property access
-      const subs = this.subLink;
-      if (subs) {
-        shallowPropagate(subs);
-      }
-    }
-
+    trackSignal(this);
     return this._value;
   }
 
-  /**
-   * Updates the current value.
-   *
-   * @param newValue - The new value to set.
-   */
-  set value(newValue: T) {
-    // If the new value is another signal, unwrap it
-    if (isSignal(newValue)) {
-      if (__DEV__) {
-        warn(
-          'Setting a signal value to another signal is not recommended. ' +
-            'The value will be unwrapped automatically.',
-        );
+  set value(newValue) {
+    const oldValue = this._rawValue;
+    const useDirectValue =
+      this[signalsFlags.IS_SHALLOW] || isShallow(newValue) || isSignal(newValue);
+    newValue = useDirectValue ? newValue : toRaw(newValue);
+    if (hasChanged(newValue, oldValue)) {
+      this.flags |= _ReactiveFlags.Dirty;
+      this._rawValue = newValue;
+      this._value = !useDirectValue && this._wrap ? this._wrap(newValue) : newValue;
+      const subs = this.subs;
+      if (subs !== undefined) {
+        propagate(subs);
+        if (!batchDepth) {
+          flush();
+        }
       }
-      newValue = (newValue as Signal<T>).peek() as T;
-    }
-
-    // Keep a reference to the caller-supplied value (may already be a reactive proxy)
-    // before stripping it to raw, so we can reuse the existing proxy if present.
-    const originalValue = newValue;
-    const rawValue = toRaw(newValue);
-
-    if (!hasChanged(this._rawValue, rawValue)) {
-      return;
-    }
-
-    this._oldValue = this._rawValue;
-    this._rawValue = rawValue;
-    this.flag |= ReactiveFlags.DIRTY;
-
-    if (!shouldWrapReactiveValue(rawValue)) {
-      // Primitive: no proxy needed
-      this._value = rawValue as T;
-    } else if (isReactive(originalValue)) {
-      // The caller already handed us a reactive proxy — reuse it directly.
-      // This avoids an unnecessary WeakMap lookup in reactiveCaches.
-      this._value = originalValue as T;
-    } else {
-      // Plain object/array: wrap in a reactive proxy (cached by reactiveCaches).
-      const shallow = this[SignalFlags.IS_SHALLOW];
-      this._value = (
-        shallow ? shallowReactive(rawValue as object) : reactive(rawValue as object)
-      ) as T;
-    }
-
-    const subs = this.subLink;
-    if (subs) {
-      propagate(subs);
     }
   }
 
   /**
-   * Check if the value should be updated.
-   *
-   * @returns {boolean} True if the value should be updated.
+   * Clears Dirty and reports whether the value changed since the last read.
+   * Called by `checkDirty` in graph.ts, so the name must match `Computed.update`.
+   * @internal
    */
-  shouldUpdate(): boolean {
-    this.flag &= ~ReactiveFlags.DIRTY;
+  update(): boolean {
+    this.flags &= ~_ReactiveFlags.Dirty;
+    return hasChanged(this._oldValue, (this._oldValue = this._rawValue));
+  }
+}
 
-    // _oldValue is only assigned in the setter (on-demand), so `'_oldValue' in this` is false
-    // until the first actual change. This preserves the test-verified optimization.
-    if (!('_oldValue' in this)) {
+// Set the brand flag on the prototype
+SignalImpl.prototype[signalsFlags.IS_SIGNAL] = true;
+
+/**
+ * Force trigger effects that depends on a shallow signal. This is typically used
+ * after making deep mutations to the inner value of a shallow signal.
+ *
+ * @example
+ * ```js
+ * const shallow = shallowSignal({
+ *   greet: 'Hello, world'
+ * })
+ *
+ * // Logs "Hello, world" once for the first run-through
+ * watchEffect(() => {
+ *   console.log(shallow.value.greet)
+ * })
+ *
+ * // This won't trigger the effect because the signal is shallow
+ * shallow.value.greet = 'Hello, universe'
+ *
+ * // Logs "Hello, universe"
+ * triggerSignal(shallow)
+ * ```
+ *
+ * @param s - The signal whose tied effects shall be executed.
+ */
+export function triggerSignal(s: Signal): void {
+  // Only signals participate in reactivity
+  if (isSignal(s)) {
+    const dep = (s as unknown as SignalImpl).dep;
+    if (dep !== undefined && dep.subs !== undefined) {
+      propagate(dep.subs);
+      shallowPropagate(dep.subs);
+      if (!batchDepth) {
+        flush();
+      }
+    }
+  }
+}
+
+function trackSignal(dep: ReactiveNode) {
+  if (activeSub !== undefined) {
+    link(dep, activeSub!);
+  }
+}
+
+export type MaybeSignal<T = any> = T | Signal<T> | ShallowSignal<T> | WritableComputedRef<T>;
+
+export type MaybeSignalOrGetter<T = any> = MaybeSignal<T> | ComputedRef<T> | (() => T);
+
+/**
+ * Returns the inner value if the argument is a signal, otherwise return the
+ * argument itself. This is a sugar function for
+ * `val = isSignal(val) ? val.value : val`.
+ *
+ * @example
+ * ```js
+ * function useFoo(x: number | Signal<number>) {
+ *   const unwrapped = unSignal(x)
+ *   // unwrapped is guaranteed to be number now
+ * }
+ * ```
+ *
+ * @param s - Signal or plain value to be converted into the plain value.
+ */
+export function unSignal<T>(s: MaybeSignal<T> | ComputedRef<T>): T {
+  return isSignal(s) ? s.value : s;
+}
+
+/**
+ * Normalizes values / signals / getters to values.
+ * This is similar to {@link unSignal}, except that it also normalizes getters.
+ * If the argument is a getter, it will be invoked and its return value will
+ * be returned.
+ *
+ * @example
+ * ```js
+ * toValue(1) // 1
+ * toValue(signal(1)) // 1
+ *  toValue(() => 1) // 1
+ * ```
+ *
+ * @param source - A getter, an existing signal, or a non-function value.
+ */
+export function toValue<T>(source: MaybeSignalOrGetter<T>): T {
+  return isFunction(source) ? source() : unSignal(source);
+}
+
+const shallowUnwrapHandlers: ProxyHandler<any> = {
+  get: (target, key, receiver) =>
+    key === signalsFlags.RAW ? target : unSignal(Reflect.get(target, key, receiver)),
+  set: (target, key, value, receiver) => {
+    const oldValue = target[key];
+    if (isSignal(oldValue) && !isSignal(value)) {
+      oldValue.value = value;
       return true;
-    }
-
-    const changed = hasChanged(this._oldValue as T, this._rawValue);
-    this._oldValue = this._rawValue;
-    return changed;
-  }
-
-  /**
-   * Get current value without triggering dependency tracking.
-   *
-   * @returns {T} The current value.
-   */
-  peek(): T {
-    return this._value;
-  }
-
-  /**
-   * Sets the requested value.
-   *
-   * @param value - The new value to set.
-   * @returns {void}
-   */
-  set(value: T): void {
-    this.value = value;
-  }
-
-  /**
-   * Update value using an updater function.
-   *
-   * @param updater - A function that receives the current value and returns the new value.
-   * @returns {void}
-   */
-  update(updater: (prev: T) => T): void {
-    const nextValue = updater(this.peek());
-    // Handle case where updater function returns a signal
-    if (isSignal(nextValue)) {
-      if (__DEV__) {
-        warn(
-          'Returning a signal from an update function is not recommended. The value will be unwrapped.',
-        );
-      }
-      this.value = nextValue.peek() as T;
     } else {
-      this.value = nextValue;
+      return Reflect.set(target, key, value, receiver);
     }
+  },
+};
+
+/**
+ * Returns a proxy for the given object that shallowly unwraps properties that
+ * are signals. If the object already is reactive, it's returned as-is. If not, a
+ * new reactive proxy is created.
+ *
+ * @param objectWithSignals - Either an already-reactive object or a simple object
+ * that contains signals.
+ */
+export function proxySignals<T extends object>(objectWithSignals: T): ShallowUnwrapSignal<T> {
+  return isReactive(objectWithSignals)
+    ? (objectWithSignals as ShallowUnwrapSignal<T>)
+    : new Proxy(objectWithSignals, shallowUnwrapHandlers);
+}
+
+export type CustomSignalFactory<T, S = T> = (
+  track: () => void,
+  trigger: () => void,
+) => {
+  get: () => T;
+  set: (value: S) => void;
+};
+
+class CustomSignalImpl<T, S = T> implements ReactiveNode {
+  public readonly [signalsFlags.IS_SIGNAL] = true;
+
+  subs: Link | undefined = undefined;
+  subsTail: Link | undefined = undefined;
+  flags: _ReactiveFlags = _ReactiveFlags.None;
+
+  private readonly _get: ReturnType<CustomSignalFactory<T, S>>['get'];
+  private readonly _set: ReturnType<CustomSignalFactory<T, S>>['set'];
+
+  public _value: T = undefined!;
+
+  constructor(factory: CustomSignalFactory<T, S>) {
+    const { get, set } = factory(
+      () => trackSignal(this),
+      () => triggerSignal(this as unknown as Signal),
+    );
+    this._get = get;
+    this._set = set;
+  }
+
+  get dep() {
+    return this;
+  }
+
+  get value(): T {
+    return (this._value = this._get());
+  }
+
+  set value(newVal: S) {
+    this._set(newVal);
   }
 }
 
 /**
- * Checks whether a value should be wrapped in a reactive proxy.
+ * Creates a customized signal with explicit control over its dependency tracking
+ * and updates triggering.
  *
- * @param value - The value to check.
- * @returns True if it should be wrapped.
+ * @param factory - The function that receives the `track` and `trigger` callbacks.
  */
-function shouldWrapReactiveValue(value: unknown): value is object {
-  if (!isObject(value)) return false;
-  return (
-    isArray(value) ||
-    isMap(value) ||
-    isSet(value) ||
-    isWeakMap(value) ||
-    isWeakSet(value) ||
-    isPlainObject(value)
-  );
+export function customSignal<T, S = T>(factory: CustomSignalFactory<T, S>): Signal<T, S> {
+  return new CustomSignalImpl(factory);
 }
 
+export type ToSignals<T = any> = {
+  [K in keyof T]: ToSignal<T[K]>;
+};
+
+type ArrayStringKey<T> = T extends readonly any[]
+  ? number extends T['length']
+    ? `${number}`
+    : never
+  : never;
+
+type ToSignalKey<T> = keyof T | ArrayStringKey<T>;
+
+type ToSignalValue<T extends object, K extends ToSignalKey<T>> = K extends keyof T
+  ? T[K]
+  : T extends readonly (infer V)[]
+    ? K extends ArrayStringKey<T>
+      ? V
+      : never
+    : never;
+
 /**
- * Create a new signal with the given initial value.
- * The signal will track all nested properties of object values.
+ * Converts a reactive object to a plain object where each property of the
+ * resulting object is a signal pointing to the corresponding property of the
+ * original object. Each individual signal is created using {@link toSignal}.
  *
- * @template T - The type of value to store in the signal.
- * @param value - Initial value (defaults to undefined).
- * @returns A new signal instance.
+ * @param object - Reactive object to be made into an object of linked signals.
+ */
+/*@__NO_SIDE_EFFECTS__*/
+export function toSignals<T extends object>(object: T): ToSignals<T> {
+  const ret: any = isArray(object) ? new Array(object.length) : {};
+  for (const key in object) {
+    ret[key] = propertyToSignal(object, key);
+  }
+  return ret;
+}
+
+class ObjectSignalImpl<T extends object, K extends keyof T> {
+  public readonly [signalsFlags.IS_SIGNAL] = true;
+  public _value: T[K] = undefined!;
+
+  private readonly _raw: T;
+  private readonly _key: K;
+  private readonly _shallow: boolean;
+
+  constructor(
+    private readonly _object: T,
+    key: K,
+    private readonly _defaultValue?: T[K],
+  ) {
+    this._key = (isSymbol(key) ? key : String(key)) as K;
+    this._raw = toRaw(_object);
+
+    let shallow = true;
+    let obj = _object;
+
+    // For an array with integer key, signals are not unwrapped
+    if (!isArray(_object) || isSymbol(this._key) || !isIntegerKey(this._key)) {
+      // Otherwise, check each proxy layer for unwrapping
+      do {
+        shallow = !isProxy(obj) || isShallow(obj);
+      } while (shallow && (obj = (obj as Target)[signalsFlags.RAW]));
+    }
+
+    this._shallow = shallow;
+  }
+
+  get value() {
+    let val = this._object[this._key];
+    if (this._shallow) {
+      val = unSignal(val);
+    }
+    return (this._value = val === undefined ? this._defaultValue! : val);
+  }
+
+  set value(newVal) {
+    if (this._shallow && isSignal(this._raw[this._key])) {
+      const nestedSignal = this._object[this._key];
+      if (isSignal(nestedSignal)) {
+        nestedSignal.value = newVal;
+        return;
+      }
+    }
+
+    this._object[this._key] = newVal;
+  }
+
+  get dep(): ReactiveNode | undefined {
+    return getDepFromReactive(this._raw, this._key);
+  }
+}
+
+class GetterSignalImpl<T> {
+  public readonly [signalsFlags.IS_SIGNAL] = true;
+  public _value: T = undefined!;
+
+  constructor(private readonly _getter: () => T) {}
+  get value() {
+    return (this._value = this._getter());
+  }
+}
+
+export type ToSignal<T> = IfAny<T, Signal<T>, [T] extends [Signal] ? T : Signal<T>>;
+
+/**
+ * Used to normalize values / signals / getters into signals.
  *
  * @example
- * ```typescript
- * const count = signal(0);
- * const user = signal({ name: 'John' });
- * const empty = signal(); // undefined
- * ```
- */
-export function signal<T>(value?: T): Signal<T> {
-  // If the value is already a signal, return it directly to avoid duplicate creation
-  if (isSignal(value)) {
-    if (__DEV__) {
-      warn(
-        'Creating a signal with another signal is not recommended. The value will be unwrapped.',
-      );
-    }
-    return value as Signal<T>;
-  }
-  return new SignalImpl(value);
-}
-
-/**
- * Create a new shallow signal with the given initial value.
- * Only the top-level properties of object values are reactive.
+ * ```js
+ * // returns existing signals as-is
+ * toSignal(existingSignal)
  *
- * @template T - The type of value to store in the signal.
- * @param value - Initial value (defaults to undefined).
- * @returns A new shallow signal instance.
+ * // creates a signal that calls the getter on .value access
+ * toSignal(() => props.foo)
+ *
+ * // creates normal signals from non-function values
+ * // equivalent to signal(1)
+ * toSignal(1)
+ * ```
+ *
+ * Can also be used to create a signal for a property on a source reactive object.
+ * The created signal is synced with its source property: mutating the source
+ * property will update the signal, and vice-versa.
  *
  * @example
- * ```typescript
- * const state = shallowSignal({ nested: { value: 1 } });
- * // Only state.nested is reactive, not state.nested.value
+ * ```js
+ * const state = reactive({
+ *   foo: 1,
+ *   bar: 2
+ * })
+ *
+ * const fooSignal = toSignal(state, 'foo')
+ *
+ * // mutating the signal updates the original
+ * fooSignal.value++
+ * console.log(state.foo) // 2
+ *
+ * // mutating the original also updates the signal
+ * state.foo++
+ * console.log(fooSignal.value) // 3
  * ```
+ * @param value - A getter, an existing signal, a non-function value, or a
+ *                reactive object to create a property signal from.
  */
-export function shallowSignal<T>(value?: T): Signal<T> {
-  // If the value is a signal, extract its value
-  if (isSignal(value)) {
-    value = value.peek() as T;
+export function toSignal<T>(
+  value: T,
+): T extends () => infer R ? Readonly<Signal<R>> : T extends Signal ? T : Signal<UnwrapSignal<T>>;
+/**
+ * @param object - The reactive object.
+ * @param key - Name of the property in the reactive object.
+ */
+export function toSignal<T extends object, K extends ToSignalKey<T>>(
+  object: T,
+  key: K,
+): ToSignal<ToSignalValue<T, K>>;
+export function toSignal<T extends object, K extends ToSignalKey<T>>(
+  object: T,
+  key: K,
+  defaultValue: ToSignalValue<T, K>,
+): ToSignal<Exclude<ToSignalValue<T, K>, undefined>>;
+/*@__NO_SIDE_EFFECTS__*/
+export function toSignal(
+  source: Record<PropertyKey, any> | MaybeSignal,
+  key?: string | number | symbol,
+  defaultValue?: unknown,
+): Signal {
+  if (isSignal(source)) {
+    return source;
+  } else if (isFunction(source)) {
+    return new GetterSignalImpl(source);
+  } else if (isObject(source) && arguments.length > 1) {
+    return propertyToSignal(source, key!, defaultValue);
+  } else {
+    return signal(source);
   }
-  return new SignalImpl(value, true);
+}
+
+function propertyToSignal(
+  source: Record<PropertyKey, any>,
+  key: string | number | symbol,
+  defaultValue?: unknown,
+) {
+  return new ObjectSignalImpl(source, key, defaultValue);
 }
 
 /**
- * Type guard to check if a value is a Signal instance.
+ * This is a special exported interface for other packages to declare
+ * additional types that should bail out for signal unwrapping. For example
+ * \@essor/runtime-dom can declare it like so in its d.ts:
  *
- * @template T - The type of value held by the signal.
- * @param value - The value to check.
- * @returns true if the value is a Signal instance.
+ * ``` ts
+ * declare module '@essor/reactivity' {
+ *   export interface SignalUnwrapBailTypes {
+ *     runtimeDOMBailTypes: Node | Window
+ *   }
+ * }
+ * ```
  */
-export function isSignal<T>(value: unknown): value is Signal<T> {
-  return !!value && !!value[SignalFlags.IS_SIGNAL];
-}
+export interface SignalUnwrapBailTypes {}
+
+export type ShallowUnwrapSignal<T> = T extends ShallowReactiveBrand
+  ? T
+  : {
+      [K in keyof T]: DistributeSignal<T[K]>;
+    };
+
+type DistributeSignal<T> = T extends Signal<infer V, unknown> ? V : T;
+
+export type UnwrapSignal<T> =
+  T extends ShallowSignal<infer V, unknown>
+    ? V
+    : T extends Signal<infer V, unknown>
+      ? UnwrapSignalSimple<V>
+      : UnwrapSignalSimple<T>;
+
+export type UnwrapSignalSimple<T> = T extends
+  Builtin | Signal | SignalUnwrapBailTypes[keyof SignalUnwrapBailTypes] | { [RawSymbol]?: true }
+  ? T
+  : T extends ShallowReactiveBrand
+    ? T
+    : T extends Map<infer K, infer V>
+      ? Map<K, UnwrapSignalSimple<V>> & UnwrapSignal<Omit<T, keyof Map<any, any>>>
+      : T extends WeakMap<infer K, infer V>
+        ? WeakMap<K, UnwrapSignalSimple<V>> & UnwrapSignal<Omit<T, keyof WeakMap<any, any>>>
+        : T extends Set<infer V>
+          ? Set<UnwrapSignalSimple<V>> & UnwrapSignal<Omit<T, keyof Set<any>>>
+          : T extends WeakSet<infer V>
+            ? WeakSet<UnwrapSignalSimple<V>> & UnwrapSignal<Omit<T, keyof WeakSet<any>>>
+            : T extends ReadonlyArray<any>
+              ? { [K in keyof T]: UnwrapSignalSimple<T[K]> }
+              : T extends object
+                ? {
+                    [P in keyof T]: P extends symbol ? T[P] : UnwrapSignal<T[P]>;
+                  }
+                : T;

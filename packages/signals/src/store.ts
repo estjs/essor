@@ -1,499 +1,942 @@
-import {
-  isArray,
-  isDate,
-  isFunction,
-  isMap,
-  isNull,
-  isObject,
-  isPromise,
-  isRegExp,
-  isSet,
-  warn,
-} from '@estjs/shared';
-import { batch, computed, onScopeDispose, reactive } from '.';
+import { hasOwn, isFunction, isPlainObject, isPromise } from '@estjs/shared';
+import { computed } from './computed';
+import { type Reactive, reactive, toRaw } from './reactive';
+import { effectScope, getCurrentScope, onScopeDispose } from './effectScope';
+import { watch } from './watch';
+import { batch } from './graph';
 
-/**
- * Represents a store's state object.
- * Must be a plain object containing the store's reactive state.
- */
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/** State must be a plain object with string keys. */
 export type State = Record<string, any>;
 
-/**
- * Represents a store's getters object.
- * Each getter is a function that receives the state and returns a computed value.
- */
+/** Getter functions that derive values from state. */
 export type Getters<S extends State> = Record<string, (state: S) => any>;
 
-/**
- * Represents a store's actions object.
- * Each action is a function that can modify the store's state.
- */
+/** Action functions that can mutate state. */
 export type Actions = Record<string, (...args: any[]) => any>;
 
-/**
- * Configuration options for creating a store.
- *
- * @template S - The type of the store's state
- * @template G - The type of the store's getters
- * @template A - The type of the store's actions
- */
-export interface StoreOptions<S extends State, G extends Getters<S>, A extends Actions> {
-  /** The initial state of the store */
-  state: S;
-  /** Computed values derived from the state */
-  getters?: G;
-  /** Methods that can modify the store's state */
-  actions?: A;
-}
-
-/**
- * Payload for patching store state.
- * Must be a partial object matching the store's state shape.
- */
-export type PatchPayload<S> = Partial<S>;
-
-/**
- * Callback function for store subscriptions and action notifications.
- */
-export type StoreCallback<S> = (state: S) => void;
-
-/**
- * Built-in actions available on all stores.
- *
- * @template S - The type of the store's state
- */
-export interface StoreActions<S extends State> {
-  /**
-   * Updates multiple state properties at once.
-   * Triggers a single update notification.
-   *
-   * @param payload - Object containing state updates
-   */
-  $patch: (payload: PatchPayload<S>) => void;
-
-  /**
-   * Subscribes to state changes.
-   * The callback is called whenever the state changes.
-   *
-   * @param callback - Function to call on state changes
-   * @returns Cleanup function that unsubscribes the callback
-   */
-  $subscribe: (callback: StoreCallback<S>) => () => void;
-
-  /**
-   * Unsubscribes from state changes.
-   *
-   * @param callback - The callback to remove
-   */
-  $unsubscribe: (callback: StoreCallback<S>) => void;
-
-  /**
-   * Subscribes to action executions.
-   * The callback is called whenever an action is executed.
-   *
-   * @param callback - Function to call on action execution
-   * @returns Cleanup function that removes the callback
-   */
-  $onAction: (callback: StoreCallback<S>) => () => void;
-
-  /**
-   * Removes a previously registered action callback.
-   *
-   * @param callback - The callback to remove.
-   */
-  $offAction: (callback: StoreCallback<S>) => void;
-
-  /**
-   * Resets the store state to its initial values.
-   */
-  $reset: () => void;
-}
-
-/**
- * Computed values from getters.
- *
- * @template G - The type of the store's getters
- */
-type GetterValues<G extends Getters<any>> = {
-  [K in keyof G]: ReturnType<G[K]>;
+/** Extract only function properties from an object type. */
+type ActionMethods<A extends object> = {
+  [K in keyof A]: A[K] extends (...args: any[]) => any ? A[K] : never;
 };
 
-function cloneInitialState<T>(value: T, seen = new WeakMap<object, unknown>()): T {
-  if (!isObject(value)) {
-    return value;
-  }
+/** Preserve all properties including functions. */
+type ActionDefinitions<A extends object> = {
+  [K in keyof A]: A[K];
+};
 
-  if (seen.has(value)) {
-    return seen.get(value) as T;
-  }
+/** Extract computed values from getter definitions. */
+export type GetterValues<G extends object> = {
+  readonly [K in keyof G]: G[K] extends (...args: any[]) => infer T ? T : never;
+};
 
-  if (isDate(value)) {
-    return new Date(value.getTime()) as T;
-  }
+/** Type for getter definitions mapping to value types. */
+type GetterDefinitions<S extends object, V extends object> = {
+  [K in keyof V]: (state: S) => V[K];
+};
 
-  if (isRegExp(value)) {
-    return new RegExp(value.source, value.flags) as T;
-  }
+// ============================================================================
+// Class-based Store Type Inference
+// ============================================================================
 
-  if (isMap(value)) {
-    const clone = new Map();
-    seen.set(value, clone);
-    value.forEach((mapValue, mapKey) => {
-      clone.set(cloneInitialState(mapKey, seen), cloneInitialState(mapValue, seen));
-    });
-    return clone as T;
-  }
+/** Extract state properties (non-function, non-getter instance properties). */
+type ExtractState<T> = {
+  [K in keyof T as T[K] extends (...args: any[]) => any ? never : K]: T[K];
+};
 
-  if (isSet(value)) {
-    const clone = new Set();
-    seen.set(value, clone);
-    value.forEach((setValue) => {
-      clone.add(cloneInitialState(setValue, seen));
-    });
-    return clone as T;
-  }
+/** Extract getter properties (prototype getters). */
+type ExtractGetters<T> = {
+  [K in keyof T as T[K] extends (...args: any[]) => any ? never : K]: T[K];
+};
 
-  if (isArray(value)) {
-    const clone: unknown[] = [];
-    seen.set(value, clone);
-    value.forEach((item, index) => {
-      clone[index] = cloneInitialState(item, seen);
-    });
-    return clone as T;
-  }
+/** Extract action methods (prototype methods). */
+type ExtractActions<T> = {
+  [K in keyof T as T[K] extends (...args: any[]) => any ? K : never]: T[K];
+};
 
-  const prototype = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && !isNull(prototype)) {
-    return value;
-  }
+/** Infer complete store type from a class constructor. */
+type InferStoreFromClass<T extends new () => any> = T extends new () => infer Instance
+  ? StoreInstance<ExtractState<Instance>, ExtractGetters<Instance>, ExtractActions<Instance>>
+  : never;
 
-  const clone = Object.create(prototype) as Record<PropertyKey, unknown>;
-  seen.set(value, clone);
-  for (const key of Reflect.ownKeys(value)) {
-    clone[key] = cloneInitialState((value as Record<PropertyKey, unknown>)[key], seen);
-  }
-  return clone as T;
+type PatchFunction = (...args: any[]) => any;
+
+type AtomicPatchValue =
+  | readonly unknown[]
+  | Map<unknown, unknown>
+  | Set<unknown>
+  | WeakMap<object, unknown>
+  | WeakSet<object>
+  | Date
+  | RegExp
+  | Error
+  | PromiseLike<unknown>
+  | ArrayBuffer
+  | ArrayBufferView
+  | PatchFunction;
+
+type FunctionKeys<T extends object> = {
+  [K in keyof T]-?: T[K] extends PatchFunction ? K : never;
+}[keyof T];
+
+export type PatchPayload<T> = T extends AtomicPatchValue
+  ? T
+  : T extends object
+    ? FunctionKeys<T> extends never
+      ? { [K in keyof T]?: PatchPayload<T[K]> }
+      : T
+    : T;
+
+export type StoreMutation<S extends object> =
+  | { readonly type: 'direct' }
+  | { readonly type: 'patch object'; readonly payload: PatchPayload<S> }
+  | { readonly type: 'patch function' }
+  | { readonly type: 'reset' };
+
+/** Options controlling how a store subscription is attached to an effect scope. */
+export interface StoreSubscribeOptions {
+  /** Keep the subscription alive when the current scope is disposed. */
+  detached?: boolean;
 }
 
-/**
- * Creates a store from options (state, getters, and actions).
- *
- * @template S - The type of the store's state.
- * @template G - The type of the store's getters.
- * @template A - The type of the store's actions.
- * @param options - Store configuration options.
- * @returns The store instance.
- */
-function createOptionsStore<S extends State, G extends Getters<S>, A extends Actions>(
-  options: StoreOptions<S, G, A>,
-) {
-  if (__DEV__ && !options.state) {
-    warn('Store state is required');
-    throw new Error('Store state is required');
-  }
+/** Receive a store mutation descriptor and the current reactive state. */
+export type StoreCallback<S extends object> = (
+  mutation: StoreMutation<S>,
+  state: Reactive<S>,
+) => void;
 
-  const { state, getters, actions } = options;
-  const initState = cloneInitialState(state);
-  const reactiveState = reactive(state);
-
-  const subscriptions = new Set<StoreCallback<S>>();
-  const actionCallbacks = new Set<StoreCallback<S>>();
-
-  /** Notify every state subscriber and action callback with the current state. */
-  const notify = (state: S): void => {
-    subscriptions.forEach((callback) => callback(state));
-    actionCallbacks.forEach((callback) => callback(state));
-  };
-
-  /**
-   * Registers a callback into the given set and returns a cleanup function
-   * that unsubscribes it. Shared by `$subscribe` and `$onAction`.
-   */
-  const addCallback = (
-    set: Set<StoreCallback<S>>,
-    callback: StoreCallback<S>,
-    label: string,
-  ): (() => void) => {
-    if (__DEV__ && !callback) {
-      warn(`${label} is required`);
-      return () => {};
-    }
-    set.add(callback);
-    const unsubscribe = () => set.delete(callback);
-    // Backstop: if registered inside an active effect scope (e.g. a component
-    // body), release the callback when that scope is disposed. Without this,
-    // a subscriber that forgets to unsubscribe on unmount keeps the callback,
-    // and everything its closure captures, alive in the store's Set forever.
-    // The manual unsubscribe path above still works and is idempotent with this.
-    onScopeDispose(unsubscribe, /* failSilently */ true);
-    return unsubscribe;
-  };
-
-  type CommitTransaction = {
-    depth: number;
-    pending: number;
-    notified: boolean;
-  };
-
-  let activeTransaction: CommitTransaction | null = null;
-
-  const flushTransaction = (transaction: CommitTransaction): void => {
-    if (transaction.depth === 0 && transaction.pending === 0 && !transaction.notified) {
-      transaction.notified = true;
-      notify(reactiveState);
-    }
-  };
-
-  const commit = <T>(mutate: () => T): T => {
-    const transaction = activeTransaction ?? {
-      depth: 0,
-      pending: 0,
-      notified: false,
-    };
-    const previousTransaction = activeTransaction;
-    transaction.depth++;
-
-    let result: T;
-    try {
-      activeTransaction = transaction;
-      result = batch(mutate);
-    } catch (error) {
-      // A synchronously thrown action did not complete, so do not notify.
-      transaction.depth--;
-      activeTransaction = previousTransaction;
-      throw error;
-    }
-    activeTransaction = previousTransaction;
-
-    if (isPromise(result)) {
-      transaction.pending++;
-      transaction.depth--;
-      return result.then(
-        (value) => {
-          transaction.pending--;
-          flushTransaction(transaction);
-          return value;
-        },
-        (error) => {
-          transaction.pending--;
-          flushTransaction(transaction);
-          throw error;
-        },
-      ) as T;
-    }
-
-    transaction.depth--;
-    flushTransaction(transaction);
-    return result;
-  };
-
-  const defaultActions: StoreActions<S> = {
-    $patch(payload: PatchPayload<S>) {
-      if (__DEV__ && !payload) {
-        warn('Patch payload is required');
-        return;
-      }
-      commit(() => Object.assign(reactiveState, payload));
-    },
-
-    $subscribe(callback: StoreCallback<S>) {
-      return addCallback(subscriptions, callback, 'Subscribe callback');
-    },
-
-    $unsubscribe(callback: StoreCallback<S>) {
-      subscriptions.delete(callback);
-    },
-
-    $onAction(callback: StoreCallback<S>) {
-      return addCallback(actionCallbacks, callback, 'Action callback');
-    },
-
-    $offAction(callback: StoreCallback<S>) {
-      actionCallbacks.delete(callback);
-    },
-
-    $reset() {
-      commit(() => {
-        const fresh = cloneInitialState(initState);
-        // Delete keys added after initialization so $reset is a true reset,
-        // not just an overwrite of the original keys.
-        for (const key of Object.keys(reactiveState)) {
-          if (!Object.prototype.hasOwnProperty.call(fresh, key)) {
-            delete (reactiveState as Record<string, unknown>)[key];
-          }
-        }
-        Object.assign(reactiveState, fresh);
-      });
-    },
-  };
-
-  const store = {} as S & GetterValues<G> & A & StoreActions<S> & { state: S };
-
-  for (const key of Object.keys(initState) as Array<keyof S & string>) {
-    Object.defineProperty(store, key, {
-      get: () => reactiveState[key],
-      set: (value) => {
-        reactiveState[key] = value;
-      },
-      enumerable: true,
-      configurable: true,
-    });
-  }
-
-  Object.defineProperty(store, 'state', {
-    value: reactiveState,
-    enumerable: true,
-    configurable: true,
-    writable: false,
-  });
-
-  Object.assign(store, defaultActions);
-
-  // Add getters as computed properties
-  if (getters) {
-    for (const key in getters) {
-      const getter = getters[key];
-      if (!getter) continue;
-      const getterValue = computed(() => getter.call(store, reactiveState));
-
-      Object.defineProperty(store, key, {
-        get: () => getterValue.value,
-        enumerable: true,
-        configurable: true,
-      });
-    }
-  }
-
-  // Add actions with automatic notification
-  if (actions) {
-    for (const key in actions) {
-      const action = actions[key];
-      if (action) {
-        (store as Record<string, any>)[key] = (...args: any[]) => {
-          return commit(() => action.apply(store, args));
-        };
-      }
-    }
-  }
-
-  return store;
+/** Context supplied to action lifecycle listeners. */
+export interface ActionListenerContext<TStore = unknown> {
+  readonly name: string;
+  readonly store: TStore;
+  readonly args: readonly unknown[];
+  after(callback: (result: unknown) => void): void;
+  onError(callback: (error: unknown) => void): void;
 }
-/**
- * Creates store options from a class definition.
- *
- * @template S - The type of the store's state.
- * @param StoreClass - The store class to use.
- * @returns Store options derived from the class.
- */
-function createClassStore<S extends State>(
-  StoreClass: new () => S,
-): StoreOptions<
+
+/** Observe action invocation and register invocation-scoped lifecycle hooks. */
+export type ActionCallback<TStore = unknown> = (context: ActionListenerContext<TStore>) => void;
+
+/** Declarative state, getter, and action definitions used to create a store. */
+export interface StoreOptions<S extends object, G extends object, A extends object> {
+  state: () => S;
+  getters?: G & {
+    [K in keyof G]: G[K] extends (...args: any[]) => infer T ? (state: S) => T : never;
+  } & ThisType<void>;
+  actions?: A & ActionMethods<A> & ThisType<Store<S, G, A>>;
+}
+
+export interface StoreBuiltins<S extends object, TStore> {
+  readonly $state: S;
+  $patch(payload: PatchPayload<S> | ((state: S) => void)): void;
+  $reset(): void;
+  $subscribe(callback: StoreCallback<S>, options?: StoreSubscribeOptions): () => void;
+  $onAction(callback: ActionCallback<TStore>, options?: StoreSubscribeOptions): () => void;
+  $dispose(): void;
+}
+
+type StoreInstance<S extends object, V extends object, A extends object> = S &
+  Readonly<V> &
+  ActionMethods<A> &
+  StoreBuiltins<S, StoreInstance<S, V, A>>;
+
+type ActionThis<S extends object, V extends object, A extends object> = S &
+  Readonly<V> &
+  ActionDefinitions<A> &
+  StoreBuiltins<S, S & Readonly<V> & ActionDefinitions<A>>;
+
+export type Store<S extends object, G extends object, A extends object> = StoreInstance<
   S,
-  Record<string, (...args: any[]) => any>,
-  Record<string, (...args: any[]) => any>
-> {
-  const instance = new StoreClass();
-  const state = Object.create(null);
-  const getters: Record<string, (...args: any[]) => any> = {};
-  const actions: Record<string, (...args: any[]) => any> = {};
+  GetterValues<G>,
+  A
+>;
 
-  // Extract instance properties as state
-  Object.getOwnPropertyNames(instance).forEach((key) => {
-    state[key] = instance[key];
-  });
-
-  // Extract prototype methods and getters
-  Object.getOwnPropertyNames(StoreClass.prototype).forEach((key) => {
-    const descriptor = Object.getOwnPropertyDescriptor(StoreClass.prototype, key);
-    if (descriptor) {
-      if (isFunction(descriptor.get)) {
-        getters[key] = function (this: S) {
-          return descriptor.get!.call(this);
-        };
-      } else if (isFunction(descriptor.value) && key !== 'constructor') {
-        actions[key] = function (this: S, ...args: any[]) {
-          return descriptor.value.apply(this, args);
-        };
-      }
-    }
-  });
-
-  return {
-    state,
-    getters,
-    actions,
-  };
+interface InferredStoreOptions<S extends object, V extends object, A extends object> {
+  state: () => S;
+  getters?: GetterDefinitions<S, V> & ThisType<void>;
+  actions?: ActionDefinitions<A> & ThisType<ActionThis<NoInfer<S>, NoInfer<V>, A>>;
 }
 
-/**
- * Store definition type that can be either a class or an options object.
- */
-type StoreDefinition<S extends State, G extends Getters<S>, A extends Actions> =
-  | (new () => S)
-  | ({
-      state: S;
-      getters?: G;
-      actions?: A;
-    } & ThisType<S & GetterValues<G> & A & StoreActions<S>>);
+interface SubscriberEntry<S extends object> {
+  callback?: StoreCallback<S>;
+  release(): void;
+}
+
+interface ActionEntry<TStore> {
+  callback?: ActionCallback<TStore>;
+  release(): void;
+}
+
+interface Failure {
+  readonly failed: boolean;
+  readonly value: unknown;
+}
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const NO_FAILURE: Failure = { failed: false, value: undefined };
+const DIRECT_MUTATION = { type: 'direct' } as const;
+const BUILTIN_NAMES = new Set([
+  '$dispose',
+  '$onAction',
+  '$patch',
+  '$reset',
+  '$state',
+  '$subscribe',
+]);
+const objectToString = Object.prototype.toString;
+
+// ============================================================================
+// Public API
+// ============================================================================
 
 /**
- * Creates a new store with the given definition.
- * The store can be defined either as a class or as an options object.
+ * Creates a factory for independent reactive store instances.
  *
- * @template S - The type of the store's state.
- * @template G - The type of the store's getters.
- * @template A - The type of the store's actions.
- * @param storeDefinition - The store definition (class or options).
- * @returns A function that creates a new store instance.
+ * Inspired by Pinia's design:
+ * - State is a reactive proxy (single source of truth)
+ * - Getters are computed properties (cached, auto-track dependencies)
+ * - Actions are methods with `this` bound to the store
+ * - All side effects managed in one effectScope for clean disposal
+ *
+ * @param options - State factory, computed getters, and action definitions.
+ * @returns A hook function that returns a new reactive store instance.
  *
  * @example
- * ```ts
- * // Options-based store
  * const useCounter = createStore({
- *   state: { count: 0 },
+ *   state: () => ({ count: 0 }),
  *   getters: {
- *     double: state => state.count * 2
+ *     doubled: (state) => state.count * 2
  *   },
  *   actions: {
- *     increment() {
- *       this.count++;
- *     }
+ *     increment() { this.count++ }
  *   }
  * });
  *
- * // Class-based store
- * class Counter {
- *   count = 0;
- *
- *   get double() {
- *     return this.count * 2;
- *   }
- *
- *   increment() {
- *     this.count++;
- *   }
- * }
- *
- * const useCounter = createStore(Counter);
- * ```
+ * const store = useCounter();
+ * store.increment();
+ * console.log(store.doubled); // 2
  */
-export function createStore<S extends State, G extends Getters<S>, A extends Actions>(
-  storeDefinition: StoreDefinition<S, G, A>,
-): () => S & GetterValues<G> & A & StoreActions<S> & { state: S } {
-  if (__DEV__ && !storeDefinition) {
-    warn('Store definition is required');
-    throw new Error('Store definition is required');
+/**
+ * Create a store factory from options object with full type inference.
+ */
+export function createStore<S extends object, V extends object = {}, A extends object = {}>(
+  options: InferredStoreOptions<S, V, A>,
+): () => StoreInstance<S, V, A>;
+
+/**
+ * Create a store factory from a class with proper type inference.
+ */
+export function createStore<T extends new () => any>(StoreClass: T): () => InferStoreFromClass<T>;
+
+/**
+ * Implementation - handles both options and class-based definitions.
+ */
+export function createStore(optionsOrClass: any): () => Store<any, any, any> {
+  if (!optionsOrClass) {
+    throw new TypeError('Store definition is required');
   }
 
-  return () => {
-    let options: StoreOptions<S, G, A>;
+  // Class-based store
+  if (typeof optionsOrClass === 'function') {
+    const options = classToStoreOptions(optionsOrClass);
+    return () => createStoreInstance(options);
+  }
 
-    if (isFunction(storeDefinition)) {
-      options = createClassStore(storeDefinition) as StoreOptions<S, G, A>;
-    } else {
-      options = storeDefinition;
+  // Options-based store
+  if (typeof optionsOrClass.state !== 'function') {
+    throw new TypeError('Store state must be a function');
+  }
+  return () => createStoreInstance(optionsOrClass);
+}
+
+/**
+ * Transform a class definition into store options.
+ *
+ * Extracts:
+ * - Instance properties → state
+ * - Prototype getters → computed getters
+ * - Prototype methods → actions
+ *
+ * @param StoreClass - The class constructor
+ * @returns Store options compatible with createStoreInstance
+ * @internal
+ */
+function classToStoreOptions<T extends new () => any>(StoreClass: T): StoreOptions<any, any, any> {
+  const extractedState: Record<string, any> = {};
+  const getters: Record<string, (state: any) => any> = {};
+  const actions: Record<string, (...args: any[]) => any> = {};
+
+  // Instantiate to extract initial state values
+  const instance = new StoreClass();
+
+  // Extract instance properties (state)
+  const instanceKeys = Object.getOwnPropertyNames(instance);
+  for (const key of instanceKeys) {
+    extractedState[key] = (instance as any)[key];
+  }
+
+  // Extract prototype getters and methods
+  const proto = Object.getPrototypeOf(instance);
+  const protoKeys = Object.getOwnPropertyNames(proto);
+
+  for (const key of protoKeys) {
+    if (key === 'constructor') continue;
+
+    const descriptor = Object.getOwnPropertyDescriptor(proto, key);
+    if (!descriptor) continue;
+
+    // Getter accessor → computed getter
+    if (descriptor.get) {
+      const getter = descriptor.get;
+      getters[key] = (state: any) => getter.call(state);
+    }
+    // Method → action
+    else if (typeof descriptor.value === 'function') {
+      actions[key] = descriptor.value;
+    }
+  }
+
+  return {
+    state: () => ({ ...extractedState }),
+    getters: Object.keys(getters).length > 0 ? getters : undefined,
+    actions: Object.keys(actions).length > 0 ? actions : undefined,
+  };
+}
+
+// ============================================================================
+// Store Instance Creation
+// ============================================================================
+
+/**
+ * Build one reactive store instance from validated options.
+ *
+ * Architecture (following Pinia):
+ * 1. Create reactive state (single source of truth)
+ * 2. Setup computed getters (auto-track state dependencies)
+ * 3. Bind actions to store context
+ * 4. Expose utility methods ($patch, $reset, etc.)
+ * 5. Manage all effects in one effectScope
+ */
+function createStoreInstance<S extends object, G extends object, A extends object>(
+  options: StoreOptions<S, G, A>,
+): Store<S, G, A> {
+  // ----------------------------------------
+  // 1. Initialize reactive state
+  // ---------------------------------------
+
+  const initialState = options.state();
+  assertState(initialState);
+
+  // This is the single source of truth - all getters read from this
+  const state = reactive(initialState);
+
+  const getters = options.getters ?? ({} as G);
+  const actions = options.actions ?? ({} as A);
+  const stateKeys = enumerableKeys(initialState);
+  const getterKeys = enumerableKeys(getters);
+  const actionKeys = enumerableKeys(actions);
+
+  // Validate all names are unique and not reserved
+  validateNames(stateKeys, getterKeys, actionKeys);
+  validateFunctions(getters, getterKeys, 'getter');
+  validateFunctions(actions, actionKeys, 'action');
+
+  // ----------------------------------------
+  // 2. Setup store object
+  // ----------------------------------------
+  const target = {} as any;
+  const store = target as Store<S, G, A>;
+  let flattenedStateKeys = new Set<PropertyKey>();
+
+  // Single scope for all store effects (Pinia pattern)
+  const storeScope = effectScope(true);
+
+  // Subscription management
+  const subscribers = new Set<SubscriberEntry<S>>();
+  const actionListeners = new Set<ActionEntry<Store<S, G, A>>>();
+  let pendingMutation: StoreMutation<S> | undefined;
+  let stopWatch: (() => void) | undefined;
+  let disposed = false;
+
+  // 3. Helper functions
+  // ----------------------------------------
+
+  /**
+   * Guard: Ensure store is still active (not disposed).
+   * @throws {Error} If store has been disposed
+   */
+  const assertActive = (): void => {
+    if (disposed) throw new Error('Store has been disposed');
+  };
+
+  /**
+   * Notify all subscribers about a state change.
+   * Takes a snapshot to handle concurrent modifications safely.
+   * Collects errors and throws the first one after all callbacks complete.
+   */
+  const dispatchSubscribers = (): void => {
+    const mutation = pendingMutation ?? DIRECT_MUTATION;
+    pendingMutation = undefined;
+
+    // Take a snapshot to avoid issues with concurrent modifications
+    const snapshot: StoreCallback<S>[] = [];
+    for (const entry of subscribers) {
+      if (entry.callback) snapshot.push(entry.callback);
     }
 
-    return createOptionsStore(options) as S & GetterValues<G> & A & StoreActions<S> & { state: S };
+    let failed = false;
+    let firstError: unknown;
+    for (const callback of snapshot) {
+      try {
+        callback(mutation, state);
+      } catch (error) {
+        if (!failed) {
+          failed = true;
+          firstError = error;
+        }
+      }
+    }
+    if (failed) throw firstError;
   };
+
+  /**
+   * Start watching state changes (lazy initialization).
+   */
+  const ensureWatch = (): void => {
+    if (stopWatch) return;
+    // watch() links its WatcherEffect to the active scope before the first run.
+    // Run it in a child scope so a failed initial traversal can be fully rolled back.
+    const watchScope = storeScope.run(() => effectScope())!;
+    try {
+      watchScope.run(() => watch(state, dispatchSubscribers));
+    } catch (error) {
+      watchScope.stop();
+      throw error;
+    }
+    stopWatch = () => watchScope.stop();
+  };
+
+  /**
+   * Stop watching when no subscribers remain.
+   */
+  const stopSharedWatch = (): void => {
+    if (subscribers.size || !stopWatch) return;
+    const stop = stopWatch;
+    stopWatch = undefined;
+    stop();
+    pendingMutation = undefined;
+  };
+
+  /**
+   * Synchronize state properties on the store object.
+   * Creates getters/setters that proxy to the reactive state.
+   */
+  const syncStateProperties = (keys: PropertyKey[]): void => {
+    const nextKeys = new Set(keys);
+
+    // Remove old keys
+    for (const key of flattenedStateKeys) {
+      if (!nextKeys.has(key)) Reflect.deleteProperty(target, key);
+    }
+
+    // Add new keys
+    for (const key of keys) {
+      if (flattenedStateKeys.has(key)) continue;
+      Object.defineProperty(target, key, {
+        configurable: true,
+        enumerable: true,
+        get: () => Reflect.get(state, key),
+        set: (value) => Reflect.set(state, key, value),
+      });
+    }
+
+    flattenedStateKeys = nextKeys;
+  };
+
+  /**
+   * Execute a state mutation within a batch, tracking mutation metadata.
+   * Ensures subscribers receive the correct mutation type descriptor.
+   */
+  const withMutation = <T>(mutation: StoreMutation<S>, fn: () => T): T => {
+    const activeWatch = stopWatch;
+    const shouldTag = !!activeWatch && subscribers.size > 0 && pendingMutation === undefined;
+    if (shouldTag) pendingMutation = mutation;
+    try {
+      return batch(fn);
+    } finally {
+      if (shouldTag && pendingMutation === mutation) {
+        pendingMutation = undefined;
+      }
+      if (!stopWatch || subscribers.size === 0) pendingMutation = undefined;
+    }
+  };
+
+  // ----------------------------------------
+  // 4. Public API Methods
+  // ----------------------------------------
+
+  /**
+   * Apply partial state updates.
+   * Supports both object patches and mutator functions (Pinia API).
+   */
+  const patch = (payloadOrMutator: PatchPayload<S> | ((state: S) => void)): void => {
+    assertActive();
+    if (isFunction(payloadOrMutator)) {
+      withMutation({ type: 'patch function' }, () => payloadOrMutator(state as S));
+      return;
+    }
+    if (!isPlainObject(payloadOrMutator)) {
+      throw new TypeError('Store patch must be a plain object or function');
+    }
+    withMutation({ type: 'patch object', payload: payloadOrMutator }, () =>
+      mergePatch(state, payloadOrMutator),
+    );
+  };
+
+  /**
+   * Reset state to initial values.
+   * Creates a fresh state object from the factory.
+   */
+  const reset = (): void => {
+    assertActive();
+    const nextState = options.state();
+    assertState(nextState);
+    const nextStateKeys = enumerableKeys(nextState);
+    validateNames(nextStateKeys, getterKeys, actionKeys);
+
+    withMutation({ type: 'reset' }, () => {
+      syncStateProperties(nextStateKeys);
+
+      // Remove deleted keys
+      for (const key of enumerableKeys(state)) {
+        if (!hasOwn(nextState, key)) Reflect.deleteProperty(state, key);
+      }
+
+      // Set new values
+      for (const key of enumerableKeys(nextState)) {
+        Reflect.set(state, key, Reflect.get(nextState, key));
+      }
+    });
+  };
+
+  /**
+   * Subscribe to state mutations (Pinia API).
+   */
+  const subscribe = (
+    callback: StoreCallback<S>,
+    subscribeOptions: StoreSubscribeOptions = {},
+  ): (() => void) => {
+    assertActive();
+    const entry = {} as SubscriberEntry<S>;
+    let owner: Set<SubscriberEntry<S>> | undefined = subscribers;
+    entry.callback = callback;
+    entry.release = () => {
+      owner = undefined;
+      entry.callback = undefined;
+    };
+    subscribers.add(entry);
+
+    try {
+      ensureWatch();
+    } catch (error) {
+      subscribers.delete(entry);
+      entry.release();
+      throw error;
+    }
+
+    const unsubscribe = (): void => {
+      const current = owner;
+      if (!current) return;
+      current.delete(entry);
+      entry.release();
+      stopSharedWatch();
+    };
+
+    bindToCurrentScope(unsubscribe, subscribeOptions.detached);
+    return unsubscribe;
+  };
+
+  /**
+   * Subscribe to action calls (Pinia API).
+   */
+  const onAction = (
+    callback: ActionCallback<Store<S, G, A>>,
+    subscribeOptions: StoreSubscribeOptions = {},
+  ): (() => void) => {
+    assertActive();
+    const entry = {} as ActionEntry<Store<S, G, A>>;
+    let owner: Set<ActionEntry<Store<S, G, A>>> | undefined = actionListeners;
+    entry.callback = callback;
+    entry.release = () => {
+      owner = undefined;
+      entry.callback = undefined;
+    };
+    actionListeners.add(entry);
+
+    const unsubscribe = (): void => {
+      const current = owner;
+      if (!current) return;
+      current.delete(entry);
+      entry.release();
+    };
+
+    bindToCurrentScope(unsubscribe, subscribeOptions.detached);
+    return unsubscribe;
+  };
+
+  /**
+   * Execute an action with lifecycle hooks.
+   * Handles both sync and async actions.
+   */
+  const runAction = (name: string, action: (...args: any[]) => any, args: unknown[]): unknown => {
+    assertActive();
+
+    // Fast path: no listeners
+    if (actionListeners.size === 0) {
+      let result: unknown;
+      try {
+        // Assign inside the batch so the result survives a subscriber error thrown by the flush
+        batch(() => (result = Reflect.apply(action, store, args)));
+      } catch (error) {
+        observeDetachedAction(result);
+        throw error;
+      }
+      observeDetachedAction(result);
+      return result;
+    }
+
+    // Slow path: notify listeners
+    const afterHooks: Array<(result: unknown) => void> = [];
+    const errorHooks: Array<(error: unknown) => void> = [];
+    const context: ActionListenerContext<Store<S, G, A>> = {
+      name,
+      store,
+      args,
+      after: (hook) => afterHooks.push(hook),
+      onError: (hook) => errorHooks.push(hook),
+    };
+
+    // Call before listeners
+    let beforeFailed = false;
+    let beforeError: unknown;
+    const listeners: ActionCallback<Store<S, G, A>>[] = [];
+    for (const entry of actionListeners) {
+      if (entry.callback) listeners.push(entry.callback);
+    }
+    for (const listener of listeners) {
+      try {
+        listener(context);
+      } catch (error) {
+        if (!beforeFailed) {
+          beforeFailed = true;
+          beforeError = error;
+        }
+      }
+    }
+    if (beforeFailed) {
+      runHooks(errorHooks, beforeError);
+      throw beforeError;
+    }
+
+    // Execute action
+    let result: unknown;
+    try {
+      // Assign inside the batch so the result survives a subscriber error thrown by the flush
+      batch(() => (result = Reflect.apply(action, store, args)));
+    } catch (error) {
+      if (!observeActionOutcome(result, afterHooks, errorHooks)) {
+        runHooks(errorHooks, error);
+      }
+      throw error;
+    }
+
+    // Handle async results
+    let promiseLike = false;
+    try {
+      promiseLike = isPromise(result);
+    } catch (error) {
+      runHooks(errorHooks, error);
+      throw error;
+    }
+
+    if (promiseLike) {
+      return Promise.resolve(result).then(
+        (value) => {
+          const failure = runHooks(afterHooks, value);
+          if (failure.failed) throw failure.value;
+          return value;
+        },
+        (error) => {
+          runHooks(errorHooks, error);
+          throw error;
+        },
+      );
+    }
+
+    // Handle sync results
+    const failure = runHooks(afterHooks, result);
+    if (failure.failed) throw failure.value;
+    return result;
+  };
+
+  /**
+   * Dispose the store and clean up all effects.
+   * Following Pinia's disposal pattern.
+   */
+  const dispose = (): void => {
+    if (disposed) return;
+    disposed = true;
+    let failed = false;
+    let firstError: unknown;
+
+    if (stopWatch) {
+      const stop = stopWatch;
+      stopWatch = undefined;
+      try {
+        stop();
+      } catch (error) {
+        failed = true;
+        firstError = error;
+      }
+    }
+
+    for (const entry of subscribers) entry.release();
+    subscribers.clear();
+    for (const entry of actionListeners) entry.release();
+    actionListeners.clear();
+    pendingMutation = undefined;
+
+    try {
+      storeScope.stop();
+    } catch (error) {
+      if (!failed) {
+        failed = true;
+        firstError = error;
+      }
+    }
+
+    if (failed) throw firstError;
+  };
+
+  // ----------------------------------------
+  // 5. Build the store object
+  // ----------------------------------------
+
+  // Flatten state properties onto store
+  syncStateProperties(stateKeys);
+
+  // Setup computed getters
+  // CRITICAL: Each getter must be a computed that reads from the reactive state
+  for (const key of getterKeys) {
+    const getterFn = Reflect.get(getters, key) as (state: S) => unknown;
+
+    // Create computed within the store scope
+    const computedValue = storeScope.run(() =>
+      computed(() => {
+        assertActive();
+        // The getter receives the reactive state
+        // Any property access will be tracked by the computed
+        return getterFn(state as S);
+      }),
+    )!;
+
+    // Expose as read-only property
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      configurable: true,
+      get: () => {
+        assertActive();
+        return computedValue.value;
+      },
+    });
+  }
+
+  // Setup action methods
+  for (const key of actionKeys) {
+    const actionFn = Reflect.get(actions, key) as (...args: any[]) => any;
+    Object.defineProperty(target, key, {
+      enumerable: true,
+      configurable: true,
+      value: (...args: unknown[]) => runAction(String(key), actionFn, args),
+    });
+  }
+
+  // Setup built-in methods
+  Object.defineProperties(target, {
+    $dispose: { value: dispose },
+    $onAction: { value: onAction },
+    $patch: { value: patch },
+    $reset: { value: reset },
+    $state: {
+      get: () => {
+        assertActive();
+        return state;
+      },
+    },
+    $subscribe: { value: subscribe },
+  });
+
+  return store;
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Run a list of hooks and capture the first error.
+ */
+function runHooks<T>(hooks: Array<(value: T) => void>, value: T): Failure {
+  let failed = false;
+  let firstError: unknown;
+  for (const hook of [...hooks]) {
+    try {
+      hook(value);
+    } catch (error) {
+      if (!failed) {
+        failed = true;
+        firstError = error;
+      }
+    }
+  }
+  hooks.length = 0;
+  return failed ? { failed: true, value: firstError } : NO_FAILURE;
+}
+
+/**
+ * Bind cleanup to current effect scope.
+ */
+function bindToCurrentScope(dispose: () => void, detached?: boolean): void {
+  if (detached) return;
+  const scope = getCurrentScope();
+  if (!scope) return;
+  if (scope.active) onScopeDispose(dispose);
+  else dispose();
+}
+
+/**
+ * Observe Promise-like action results for error reporting.
+ */
+function observeActionOutcome(
+  result: unknown,
+  afterHooks: Array<(result: unknown) => void>,
+  errorHooks: Array<(error: unknown) => void>,
+): boolean {
+  try {
+    if (!isPromise(result)) return false;
+  } catch (error) {
+    if (__DEV__) console.error('[Essor signals] additional action error', error);
+    return false;
+  }
+
+  void Promise.resolve(result).then(
+    (value) => {
+      const failure = runHooks(afterHooks, value);
+      if (failure.failed) {
+        if (__DEV__) console.error('[Essor signals] additional action error', failure.value);
+      }
+    },
+    (error) => {
+      const failure = runHooks(errorHooks, error);
+      if (failure.failed) {
+        if (__DEV__) console.error('[Essor signals] additional action error', failure.value);
+      }
+    },
+  );
+  return true;
+}
+
+/**
+ * Observe detached action results for unhandled rejections.
+ */
+function observeDetachedAction(result: unknown): void {
+  try {
+    if (!isPromise(result)) return;
+  } catch (error) {
+    if (__DEV__) console.error('[Essor signals] additional action error', error);
+    return;
+  }
+  void Promise.resolve(result).catch((error) => {
+    if (__DEV__) console.error('[Essor signals] additional action error', error);
+  });
+}
+
+/**
+ * Deep merge patch into target.
+ * Handles plain objects, Maps, and Sets specially.
+ */
+function mergePatch(target: any, patch: any): void {
+  for (const key of enumerableKeys(patch)) {
+    const current = Reflect.get(target, key);
+    const value = Reflect.get(patch, key);
+
+    if (isPlainObject(current) && isPlainObject(value)) {
+      mergePatch(current, value);
+      continue;
+    }
+
+    const currentTag = objectToString.call(toRaw(current));
+    const valueTag = objectToString.call(toRaw(value));
+
+    if (currentTag === '[object Map]' && valueTag === '[object Map]') {
+      for (const [entryKey, entryValue] of value) current.set(entryKey, entryValue);
+    } else if (currentTag === '[object Set]' && valueTag === '[object Set]') {
+      for (const entry of value) current.add(entry);
+    } else {
+      Reflect.set(target, key, value);
+    }
+  }
+}
+
+/**
+ * Validate that names don't conflict with built-ins or each other.
+ */
+function validateNames(
+  stateKeys: PropertyKey[],
+  getterKeys: PropertyKey[],
+  actionKeys: PropertyKey[],
+): void {
+  const names = new Set<PropertyKey>(BUILTIN_NAMES);
+  for (const key of [...stateKeys, ...getterKeys, ...actionKeys]) {
+    if (typeof key === 'string' && key.startsWith('$')) {
+      throw new TypeError('Store property names cannot start with $');
+    }
+    if (names.has(key)) throw new TypeError(`Duplicate store property: ${String(key)}`);
+    names.add(key);
+  }
+}
+
+/**
+ * Validate that all getters/actions are functions.
+ */
+function validateFunctions(values: object, keys: PropertyKey[], kind: 'action' | 'getter'): void {
+  for (const key of keys) {
+    if (!isFunction(Reflect.get(values, key))) {
+      throw new TypeError(`Store ${kind} ${String(key)} must be a function`);
+    }
+  }
+}
+
+/**
+ * Assert value is a plain object.
+ */
+function assertState(value: unknown): asserts value is State {
+  if (!isPlainObject(value)) {
+    throw new TypeError('Store state factory must return a plain object');
+  }
+}
+
+/**
+ * Get enumerable keys including symbols.
+ */
+function enumerableKeys(value: object): PropertyKey[] {
+  return Reflect.ownKeys(value).filter((key) => {
+    return Reflect.getOwnPropertyDescriptor(value, key)?.enumerable === true;
+  });
 }

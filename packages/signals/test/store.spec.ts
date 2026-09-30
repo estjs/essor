@@ -1,1535 +1,1263 @@
-import { computed, createStore, effect, effectScope, signal, toRaw } from '../src';
+import { describe, expect, it, vi } from 'vitest';
+import { createStore, effect, effectScope } from '../src';
+import { onWatcherCleanup } from '../src/watch';
 
-/**
- * Store Test Suite
- *
- * Test Organization:
- * 1. Basic Functionality - Creation and basic operations
- * 2. Built-in Methods - $patch, $subscribe, $reset, etc.
- * 3. Reactivity Integration - Integration with effect, computed, signal
- * 4. Edge Cases - Special values and error handling
- * 5. Performance & Optimization - Batch updates and caching
- * 6. Complex Scenarios - Nested state and complex operations
- */
+it('creates independent stores with flattened state, computed getters, and batched actions', () => {
+  let stateCalls = 0;
+  const useCounter = createStore({
+    state: () => {
+      stateCalls++;
+      return { count: 0 };
+    },
+    getters: {
+      doubled: (state) => state.count * 2,
+    },
+    actions: {
+      addTwice(value: number) {
+        this.count += value;
+        this.count += value;
+        return this.count;
+      },
+    },
+  });
+  const first = useCounter();
+  const second = useCounter();
+  const seen: number[] = [];
+  const stop = effect(() => seen.push(first.doubled));
 
-describe('store - Basic Functionality', () => {
-  describe('object-based Store', () => {
-    it('should create store with state, getters and actions', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          doubleCount: (state) => state.count * 2,
-        },
-        actions: {
-          increment() {
-            this.count++;
-          },
-        },
-      });
-      const store = useStore();
+  expect(first.addTwice(2)).toBe(4);
+  expect(first.count).toBe(4);
+  expect(first.doubled).toBe(8);
+  expect(second.count).toBe(0);
+  expect(seen).toEqual([0, 8]);
+  expect(stateCalls).toBe(2);
+  stop();
+});
 
-      expect(store.state.count).toBe(0);
-      expect(store.doubleCount).toBe(0);
-
-      store.increment();
-      expect(store.state.count).toBe(1);
-      expect(store.doubleCount).toBe(2);
-    });
-
-    it('should create store with only state', () => {
-      const useStore = createStore({
-        state: { value: 'test' },
-      });
-      const store = useStore();
-
-      expect(store.value).toBe('test');
-      expect(store.state.value).toBe('test');
-    });
-
-    it('should handle multiple state properties', () => {
-      const useStore = createStore({
-        state: {
-          count: 0,
-          name: 'test',
-          active: true,
-        },
-      });
-      const store = useStore();
-
-      expect(store.count).toBe(0);
-      expect(store.name).toBe('test');
-      expect(store.active).toBe(true);
-    });
-
-    it('should handle nested state objects', () => {
-      const useStore = createStore({
-        state: {
-          user: {
-            name: 'John',
-            address: {
-              city: 'NYC',
-            },
-          },
-        },
-      });
-      const store = useStore();
-
-      expect(store.user.name).toBe('John');
-      expect(store.user.address.city).toBe('NYC');
-    });
-
-    it('should keep top-level state properties in sync with the state object', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-
-      store.count = 1;
-      expect(store.state.count).toBe(1);
-
-      store.state.count = 2;
-      expect(store.count).toBe(2);
-    });
+it('patches and resets stable state with precise mutation metadata', () => {
+  let resetVersion = 0;
+  const useStore = createStore({
+    state: () => ({
+      nested: { count: resetVersion++ },
+      map: new Map([['a', 1]]),
+      set: new Set([1]),
+      list: [1],
+    }),
+  });
+  const store = useStore();
+  const state = store.$state;
+  const mutations: Array<{ type: string; payload?: unknown }> = [];
+  const unsubscribe = store.$subscribe((mutation, current) => {
+    expect(current).toBe(state);
+    mutations.push(mutation);
   });
 
-  describe('class-based Store', () => {
-    it('should create store from class', () => {
-      class TestStore {
-        count = 0;
+  store.$patch({
+    nested: { count: 2 },
+    map: new Map([['b', 2]]),
+    set: new Set([2]),
+    list: [2, 3],
+  });
+  expect(store.nested.count).toBe(2);
+  expect([...store.map]).toEqual([
+    ['a', 1],
+    ['b', 2],
+  ]);
+  expect([...store.set]).toEqual([1, 2]);
+  expect(store.list).toEqual([2, 3]);
+  expect(mutations[0]).toMatchObject({ type: 'patch object' });
 
-        get doubleCount() {
-          return this.count * 2;
-        }
+  store.$patch((current) => {
+    current.nested.count = 3;
+    current.list.push(4);
+  });
+  expect(mutations[1]).toEqual({ type: 'patch function' });
 
-        increment() {
+  const alias = store.nested;
+  alias.count = 4;
+  expect(mutations[2]).toEqual({ type: 'direct' });
+
+  const extendedState = store.$state as typeof store.$state & {
+    extra?: number;
+  };
+  extendedState.extra = 1;
+  store.$reset();
+  expect(store.$state).toBe(state);
+  expect(store.nested.count).toBe(1);
+  expect('extra' in store.$state).toBe(false);
+  expect(mutations.at(-1)).toEqual({ type: 'reset' });
+  unsubscribe();
+});
+
+it('keeps flattened state properties aligned with a reset state shape', () => {
+  let alternate = false;
+  const useStore = createStore({
+    state: (): { first?: number; second?: number } => (alternate ? { second: 2 } : { first: 1 }),
+  });
+  const store = useStore();
+
+  expect(store.first).toBe(1);
+  expect('second' in store).toBe(false);
+
+  alternate = true;
+  store.$reset();
+
+  expect('first' in store).toBe(false);
+  expect(store.second).toBe(2);
+  expect('second' in store).toBe(true);
+});
+
+it('preserves explicit mutation metadata across reentrant subscribers', () => {
+  const useStore = createStore({ state: () => ({ count: 0 }) });
+  const store = useStore();
+  const mutations: string[] = [];
+  let reset = false;
+  const stop = store.$subscribe((mutation) => {
+    mutations.push(mutation.type);
+    if (!reset) {
+      reset = true;
+      store.$reset();
+    }
+  });
+
+  store.$patch({ count: 1 });
+
+  expect(mutations).toEqual(['patch object', 'reset']);
+  stop();
+});
+
+it('keeps the outer metadata for synchronously nested patches', () => {
+  const useStore = createStore({ state: () => ({ count: 0 }) });
+  const store = useStore();
+  const mutations: string[] = [];
+  const stop = store.$subscribe((mutation) => mutations.push(mutation.type));
+
+  store.$patch(() => {
+    store.$patch({ count: 1 });
+  });
+
+  expect(mutations).toEqual(['patch function']);
+  stop();
+});
+
+it('does not notify for empty or same-value patches', () => {
+  const useStore = createStore({
+    state: () => ({ count: 0, nested: { value: 1 } }),
+  });
+  const store = useStore();
+  const subscriber = vi.fn();
+  const stop = store.$subscribe(subscriber);
+
+  store.$patch({});
+  store.$patch({ count: 0, nested: { value: 1 } });
+  store.$patch(() => {});
+
+  expect(subscriber).not.toHaveBeenCalled();
+  stop();
+});
+
+it('rolls back the first subscriber when deep watch initialization fails', () => {
+  const traversalError = new Error('traversal failed');
+  let shouldThrow = true;
+  const useStore = createStore({
+    state: () => ({
+      count: 0,
+      get unstable() {
+        if (shouldThrow) throw traversalError;
+        return 1;
+      },
+    }),
+  });
+  const store = useStore();
+  const abandoned = vi.fn();
+
+  expect(() => store.$subscribe(abandoned)).toThrow(traversalError);
+
+  shouldThrow = false;
+  const active = vi.fn();
+  const stop = store.$subscribe(active);
+  store.count++;
+
+  expect(abandoned).not.toHaveBeenCalled();
+  expect(active).toHaveBeenCalledOnce();
+  stop();
+});
+
+it('uses stable callback snapshots when listeners remove siblings', () => {
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++;
+      },
+    },
+  });
+  const store = useStore();
+  const stateOrder: string[] = [];
+  const actionOrder: string[] = [];
+  let stopSecondState!: () => void;
+  let stopSecondAction!: () => void;
+  const stopFirstState = store.$subscribe(() => {
+    stateOrder.push('first');
+    stopSecondState();
+  });
+  stopSecondState = store.$subscribe(() => stateOrder.push('second'));
+  const stopFirstAction = store.$onAction(() => {
+    actionOrder.push('first');
+    stopSecondAction();
+  });
+  stopSecondAction = store.$onAction(() => actionOrder.push('second'));
+
+  store.increment();
+  expect(stateOrder).toEqual(['first', 'second']);
+  expect(actionOrder).toEqual(['first', 'second']);
+
+  store.increment();
+  expect(stateOrder).toEqual(['first', 'second', 'first']);
+  expect(actionOrder).toEqual(['first', 'second', 'first']);
+  stopFirstState();
+  stopFirstAction();
+});
+
+it('runs action listeners and outcome hooks for sync and async actions', async () => {
+  const actionError = { action: 'failed' };
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      add(value: number) {
+        this.count += value;
+        return this.count;
+      },
+      fail() {
+        throw actionError;
+      },
+      async addAsync(value: number) {
+        this.count += value;
+        await Promise.resolve();
+        this.count += value;
+        return this.count;
+      },
+    },
+  });
+  const store = useStore();
+  const order: string[] = [];
+  const unsubscribe = store.$onAction(({ name, args, store: current, after, onError }) => {
+    expect(current).toBe(store);
+    order.push(`before:${name}:${String(args[0] ?? '')}`);
+    after((result) => order.push(`after:${name}:${String(result)}`));
+    onError((error) => order.push(`error:${name}:${error === actionError}`));
+  });
+
+  expect(store.add(1)).toBe(1);
+  await expect(store.addAsync(2)).resolves.toBe(5);
+  expect(() => store.fail()).toThrow(actionError);
+  expect(order).toEqual([
+    'before:add:1',
+    'after:add:1',
+    'before:addAsync:2',
+    'after:addAsync:5',
+    'before:fail:',
+    'error:fail:true',
+  ]);
+  unsubscribe();
+});
+
+it('skips an action after a before-listener error but still drains listeners and error hooks', () => {
+  const listenerError = { listener: 'failed' };
+  const body = vi.fn();
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      run() {
+        body();
+      },
+    },
+  });
+  const store = useStore();
+  const order: string[] = [];
+  store.$onAction(({ onError }) => {
+    order.push('first');
+    onError((error) => order.push(`error:${error === listenerError}`));
+    throw listenerError;
+  });
+  store.$onAction(() => order.push('second'));
+
+  expect(() => store.run()).toThrow(listenerError);
+  expect(body).not.toHaveBeenCalled();
+  expect(order).toEqual(['first', 'second', 'error:true']);
+});
+
+it('routes a throwing then accessor through action error hooks', () => {
+  const thenError = new Error('then accessor failed');
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      invalidThenable() {
+        return Object.defineProperty({}, 'then', {
+          get() {
+            throw thenError;
+          },
+        }) as PromiseLike<never>;
+      },
+    },
+  });
+  const store = useStore();
+  const errorHook = vi.fn();
+  store.$onAction(({ onError }) => onError(errorHook));
+
+  expect(() => store.invalidThenable()).toThrow(thenError);
+  expect(errorHook).toHaveBeenCalledExactlyOnceWith(thenError);
+});
+
+it('observes an async action after a synchronous subscriber failure', async () => {
+  const subscriberError = new Error('subscriber failed');
+  const actionError = new Error('action failed');
+  const rejected = Promise.reject(actionError);
+  rejected.catch(() => {});
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      failAfterWrite() {
+        this.count++;
+        return rejected;
+      },
+    },
+  });
+  const store = useStore();
+  const errorHook = vi.fn();
+  store.$subscribe(() => {
+    throw subscriberError;
+  });
+  store.$onAction(({ onError }) => onError(errorHook));
+
+  expect(() => store.failAfterWrite()).toThrow(subscriberError);
+  await Promise.resolve();
+  await Promise.resolve();
+
+  expect(errorHook).toHaveBeenCalledExactlyOnceWith(actionError);
+});
+
+it('binds subscriptions to the current scope unless detached', () => {
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++;
+      },
+    },
+  });
+  const store = useStore();
+  const scopedState = vi.fn();
+  const detachedState = vi.fn();
+  const scopedAction = vi.fn();
+  const scope = effectScope();
+  let stopDetached!: () => void;
+  scope.run(() => {
+    store.$subscribe(scopedState);
+    stopDetached = store.$subscribe(detachedState, { detached: true });
+    store.$onAction(scopedAction);
+  });
+
+  scope.stop();
+  store.increment();
+
+  expect(scopedState).not.toHaveBeenCalled();
+  expect(scopedAction).not.toHaveBeenCalled();
+  expect(detachedState).toHaveBeenCalledOnce();
+  stopDetached();
+});
+
+it('does not leave subscriptions alive in a scope stopped during run', () => {
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    actions: {
+      increment() {
+        this.count++;
+      },
+    },
+  });
+  const store = useStore();
+  const stateListener = vi.fn();
+  const actionListener = vi.fn();
+  const scope = effectScope();
+
+  scope.run(() => {
+    scope.stop();
+    store.$subscribe(stateListener);
+    store.$onAction(actionListener);
+  });
+  store.increment();
+
+  expect(stateListener).not.toHaveBeenCalled();
+  expect(actionListener).not.toHaveBeenCalled();
+});
+
+it('disposes internals while leaving state directly readable and writable', () => {
+  const useStore = createStore({
+    state: () => ({ count: 0 }),
+    getters: { doubled: (state) => state.count * 2 },
+    actions: {
+      increment() {
+        this.count++;
+      },
+    },
+  });
+  const store = useStore();
+  const subscriber = vi.fn();
+  store.$subscribe(subscriber);
+
+  store.$dispose();
+  store.$dispose();
+  store.count = 2;
+  expect(store.count).toBe(2);
+  expect(() => store.$state).toThrow('Store has been disposed');
+  expect(subscriber).not.toHaveBeenCalled();
+  expect(() => store.doubled).toThrow('Store has been disposed');
+  expect(() => store.increment()).toThrow('Store has been disposed');
+  expect(() => store.$patch({ count: 3 })).toThrow('Store has been disposed');
+  expect(() => store.$subscribe(() => {})).toThrow('Store has been disposed');
+  expect(() => store.$onAction(() => {})).toThrow('Store has been disposed');
+});
+
+it('rejects invalid state factories and conflicting public names', () => {
+  expect(() => createStore({ state: null as never })).toThrow('state must be a function');
+  expect(() => createStore({ state: () => [] as never })()).toThrow(
+    'state factory must return a plain object',
+  );
+  expect(() =>
+    createStore({
+      state: () => ({ count: 0 }),
+      getters: { count: (state) => state.count },
+    })(),
+  ).toThrow('Duplicate store property: count');
+  expect(() =>
+    createStore({
+      state: () => ({ $hidden: 0 }),
+    })(),
+  ).toThrow('Store property names cannot start with $');
+  expect(() =>
+    createStore({
+      state: () => ({ count: 0 }),
+      getters: { invalid: 1 as never },
+    })(),
+  ).toThrow('Store getter invalid must be a function');
+  expect(() =>
+    createStore({
+      state: () => ({ count: 0 }),
+      actions: { invalid: 1 as never },
+    })(),
+  ).toThrow('Store action invalid must be a function');
+});
+
+describe('store action Promise-like outcomes', () => {
+  it('delivers hooks for native promises and custom thenables', async () => {
+    const rejected = new Error('native rejection');
+    const thenableRejected = new Error('thenable rejection');
+    const successThenable = {
+      then(resolve: (value: number) => void) {
+        resolve(7);
+      },
+    } as unknown as PromiseLike<number>;
+    const rejectedThenable = {
+      then(_resolve: (value: never) => void, reject: (reason: unknown) => void) {
+        reject(thenableRejected);
+      },
+    } as unknown as PromiseLike<never>;
+    const useStore = createStore({
+      state: () => ({ calls: 0 }),
+      actions: {
+        nativeSuccess() {
+          return Promise.resolve('native value');
+        },
+        thenableSuccess() {
+          return successThenable;
+        },
+        nativeFailure() {
+          return Promise.reject(rejected);
+        },
+        thenableFailure() {
+          return rejectedThenable;
+        },
+      },
+    });
+    const store = useStore();
+    const outcomes: string[] = [];
+    const stop = store.$onAction(({ name, after, onError }) => {
+      after((value) => outcomes.push(`after:${name}:${String(value)}`));
+      onError((error) => {
+        const reason =
+          error === rejected ? 'native' : error === thenableRejected ? 'thenable' : 'other';
+        outcomes.push(`error:${name}:${reason}`);
+      });
+    });
+
+    await expect(store.nativeSuccess()).resolves.toBe('native value');
+    await expect(store.thenableSuccess()).resolves.toBe(7);
+    await expect(store.nativeFailure()).rejects.toBe(rejected);
+    await expect(store.thenableFailure()).rejects.toBe(thenableRejected);
+
+    expect(outcomes).toEqual([
+      'after:nativeSuccess:native value',
+      'after:thenableSuccess:7',
+      'error:nativeFailure:native',
+      'error:thenableFailure:thenable',
+    ]);
+    stop();
+  });
+
+  it('preserves action errors while reporting hook failures for sync and async results', async () => {
+    const syncActionError = new Error('sync action failed');
+    const syncAfterError = new Error('sync after failed');
+    const syncOnErrorError = new Error('sync onError failed');
+    const asyncAfterError = new Error('async after failed');
+    const asyncActionError = new Error('async action failed');
+    const asyncOnErrorError = new Error('async onError failed');
+    const useStore = createStore({
+      state: () => ({ calls: 0 }),
+      actions: {
+        syncSuccess() {
+          return 1;
+        },
+        syncFailure() {
+          throw syncActionError;
+        },
+        asyncSuccess() {
+          return Promise.resolve(2);
+        },
+        asyncFailure() {
+          return Promise.reject(asyncActionError);
+        },
+      },
+    });
+    const store = useStore();
+    const stop = store.$onAction(({ name, after, onError }) => {
+      if (name === 'syncSuccess')
+        after(() => {
+          throw syncAfterError;
+        });
+      if (name === 'syncFailure')
+        onError(() => {
+          throw syncOnErrorError;
+        });
+      if (name === 'asyncSuccess')
+        after(() => {
+          throw asyncAfterError;
+        });
+      if (name === 'asyncFailure')
+        onError(() => {
+          throw asyncOnErrorError;
+        });
+    });
+
+    expect(() => store.syncSuccess()).toThrow(syncAfterError);
+    expect(() => store.syncFailure()).toThrow(syncActionError);
+    await expect(store.asyncSuccess()).rejects.toBe(asyncAfterError);
+    // An error hook cannot replace the original rejection of an async action.
+    await expect(store.asyncFailure()).rejects.toBe(asyncActionError);
+    stop();
+  });
+
+  it('runs every failing action listener while preserving the first listener error', () => {
+    const firstError = new Error('first listener failed');
+    const secondError = new Error('second listener failed');
+    const body = vi.fn();
+    const useStore = createStore({
+      state: () => ({ count: 0 }),
+      actions: {
+        run() {
+          body();
+        },
+      },
+    });
+    const store = useStore();
+    const seen: string[] = [];
+    store.$onAction(({ onError }) => {
+      seen.push('before:first');
+      onError((error) => seen.push(`error:first:${error === firstError}`));
+      throw firstError;
+    });
+    store.$onAction(({ onError }) => {
+      seen.push('before:second');
+      onError((error) => seen.push(`error:second:${error === firstError}`));
+      throw secondError;
+    });
+
+    expect(() => store.run()).toThrow(firstError);
+    expect(body).not.toHaveBeenCalled();
+    expect(seen).toEqual([
+      'before:first',
+      'before:second',
+      'error:first:true',
+      'error:second:true',
+    ]);
+  });
+
+  it('runs every failing outcome hook while preserving the first hook error', () => {
+    const firstError = new Error('first after hook failed');
+    const secondError = new Error('second after hook failed');
+    const hooks: string[] = [];
+    const useStore = createStore({
+      state: () => ({ count: 0 }),
+      actions: {
+        run() {
+          return 'done';
+        },
+      },
+    });
+    const store = useStore();
+    store.$onAction(({ after }) => {
+      after(() => {
+        hooks.push('first');
+        throw firstError;
+      });
+      after(() => {
+        hooks.push('second');
+        throw secondError;
+      });
+    });
+
+    expect(() => store.run()).toThrow(firstError);
+    expect(hooks).toEqual(['first', 'second']);
+  });
+
+  it('passes rejected actions through when no action listeners are registered', async () => {
+    const rejected = new Error('detached rejection');
+    const useStore = createStore({
+      state: () => ({ count: 0 }),
+      actions: {
+        reject() {
+          return Promise.reject(rejected);
+        },
+      },
+    });
+    const store = useStore();
+
+    await expect(store.reject()).rejects.toBe(rejected);
+  });
+
+  it('observes a rejected result when a synchronous subscriber aborts an action', async () => {
+    const subscriberError = new Error('subscriber failed');
+    const rejected = new Error('action rejected after write');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const useStore = createStore({
+      state: () => ({ count: 0 }),
+      actions: {
+        writeThenReject() {
           this.count++;
-        }
+          return Promise.reject(rejected);
+        },
+      },
+    });
+    const store = useStore();
+    store.$subscribe(() => {
+      throw subscriberError;
+    });
+
+    expect(() => store.writeThenReject()).toThrow(subscriberError);
+    await Promise.resolve();
+    expect(consoleError).toHaveBeenCalledExactlyOnceWith(
+      '[Essor signals] additional action error',
+      rejected,
+    );
+  });
+
+  it('preserves a synchronous subscriber error for a detached non-Promise result', () => {
+    const subscriberError = new Error('subscriber failed');
+    const useStore = createStore({
+      state: () => ({ count: 0 }),
+      actions: {
+        writeThenReturn() {
+          this.count++;
+          return 1;
+        },
+      },
+    });
+    const store = useStore();
+    store.$subscribe(() => {
+      throw subscriberError;
+    });
+
+    expect(() => store.writeThenReturn()).toThrow(subscriberError);
+  });
+
+  it('reports secondary thenable and after-hook failures without masking the subscriber error', async () => {
+    const subscriberError = new Error('subscriber failed');
+    const thenError = new Error('then accessor failed');
+    const afterError = new Error('after hook failed');
+    const rejectedHookError = new Error('rejected hook failed');
+    const invalidThenable = Object.defineProperty({}, 'then', {
+      get() {
+        throw thenError;
+      },
+    }) as PromiseLike<never>;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const createFailingStore = () =>
+      createStore({
+        state: () => ({ count: 0 }),
+        actions: {
+          writeThenInvalid() {
+            this.count++;
+            return invalidThenable;
+          },
+          writeThenResolve() {
+            this.count++;
+            return Promise.resolve('resolved');
+          },
+          writeThenResolveWithoutHook() {
+            this.count++;
+            return Promise.resolve('resolved without hook');
+          },
+          writeThenRejectWithFailingHook() {
+            this.count++;
+            return Promise.reject(new Error('rejected result'));
+          },
+        },
+      })();
+
+    const detachedStore = createFailingStore();
+    detachedStore.$subscribe(() => {
+      throw subscriberError;
+    });
+    expect(() => detachedStore.writeThenInvalid()).toThrow(subscriberError);
+
+    const observedStore = createFailingStore();
+    observedStore.$subscribe(() => {
+      throw subscriberError;
+    });
+    observedStore.$onAction(({ name, after, onError }) => {
+      if (name === 'writeThenResolve')
+        after(() => {
+          throw afterError;
+        });
+      if (name === 'writeThenRejectWithFailingHook')
+        onError(() => {
+          throw rejectedHookError;
+        });
+    });
+    expect(() => observedStore.writeThenInvalid()).toThrow(subscriberError);
+    expect(() => observedStore.writeThenResolve()).toThrow(subscriberError);
+    expect(() => observedStore.writeThenResolveWithoutHook()).toThrow(subscriberError);
+    expect(() => observedStore.writeThenRejectWithFailingHook()).toThrow(subscriberError);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(consoleError).toHaveBeenCalledWith('[Essor signals] additional action error', thenError);
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Essor signals] additional action error',
+      afterError,
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      '[Essor signals] additional action error',
+      rejectedHookError,
+    );
+    expect(consoleError.mock.calls.filter(([, error]) => error === thenError)).toHaveLength(2);
+    expect(consoleError).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('store disposal and invalid public operations', () => {
+  it('notifies every subscriber while preserving the first subscriber error', () => {
+    const firstError = new Error('first subscriber failed');
+    const secondError = new Error('second subscriber failed');
+    const seen: string[] = [];
+    const useStore = createStore({ state: () => ({ count: 0 }) });
+    const store = useStore();
+    const stopFirst = store.$subscribe(() => {
+      seen.push('first');
+      throw firstError;
+    });
+    const stopSecond = store.$subscribe(() => {
+      seen.push('second');
+      throw secondError;
+    });
+
+    expect(() => {
+      store.count++;
+    }).toThrow(firstError);
+    expect(seen).toEqual(['first', 'second']);
+    stopFirst();
+    stopSecond();
+  });
+
+  it('rejects malformed patches and reset factories, then disposes idempotently', () => {
+    let malformedReset = false;
+    const patchError = new Error('patch callback failed');
+    const useStore = createStore<{ count: number }>({
+      state: () => (malformedReset ? ([] as never) : { count: 0 }),
+    });
+    const store = useStore();
+
+    expect(() => store.$patch(null as never)).toThrow('plain object or function');
+    expect(() => store.$patch([] as never)).toThrow('plain object or function');
+    expect(() => store.$patch(new Date() as never)).toThrow('plain object or function');
+    expect(() =>
+      store.$patch(() => {
+        throw patchError;
+      }),
+    ).toThrow(patchError);
+    expect(store.count).toBe(0);
+
+    malformedReset = true;
+    expect(() => store.$reset()).toThrow('state factory must return a plain object');
+    expect(store.count).toBe(0);
+
+    store.$dispose();
+    expect(() => store.$dispose()).not.toThrow();
+    store.count = 2;
+    expect(store.count).toBe(2);
+    expect(() => store.$state).toThrow('Store has been disposed');
+    expect(() => store.$patch({ count: 3 })).toThrow('Store has been disposed');
+    expect(() => store.$reset()).toThrow('Store has been disposed');
+    expect(() => store.$subscribe(() => {})).toThrow('Store has been disposed');
+    expect(() => store.$onAction(() => {})).toThrow('Store has been disposed');
+  });
+
+  it('rejects reset shapes that conflict with the store public namespace', () => {
+    let invalidShape = false;
+    const useStore = createStore({
+      state: () => (invalidShape ? ({ $private: true } as never) : { count: 0 }),
+    });
+    const store = useStore();
+
+    invalidShape = true;
+    expect(() => store.$reset()).toThrow('Store property names cannot start with $');
+    expect(store.count).toBe(0);
+  });
+});
+
+describe('edge cases', () => {
+  const throwingThen = () => {
+    const o: any = {};
+    Object.defineProperty(o, 'then', {
+      get() {
+        throw new Error('then getter');
+      },
+    });
+    return o;
+  };
+
+  const make = (ret: () => unknown) =>
+    createStore({
+      state: () => ({ n: 0 }),
+      actions: {
+        run() {
+          this.n++;
+          return ret();
+        },
+      },
+    })();
+
+  it('dispose rethrows errors from stopping the shared watcher', () => {
+    const store = make(() => 1);
+    store.$subscribe(() => {
+      onWatcherCleanup(() => {
+        throw new Error('cleanup');
+      });
+    });
+    store.n++;
+    expect(() => store.$dispose()).toThrow('cleanup');
+  });
+
+  it('detached action with throwing then getter is reported', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = make(throwingThen);
+    store.run();
+    expect(err).toHaveBeenCalledWith('[Essor signals] additional action error', expect.any(Error));
+    err.mockRestore();
+  });
+
+  it('detached rejected action is reported when a subscriber throws', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = make(() => Promise.reject(new Error('rej')));
+    store.$subscribe(() => {
+      throw new Error('sub');
+    });
+    expect(() => store.run()).toThrow('sub');
+    await new Promise((r) => setTimeout(r));
+    expect(err).toHaveBeenCalledWith('[Essor signals] additional action error', expect.any(Error));
+    err.mockRestore();
+  });
+
+  it('listener path: throwing then getter after a subscriber error', () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const store = make(throwingThen);
+    store.$onAction(() => {});
+    store.$subscribe(() => {
+      throw new Error('sub');
+    });
+    expect(() => store.run()).toThrow('sub');
+    expect(err).toHaveBeenCalled();
+    err.mockRestore();
+  });
+
+  it('listener path: failing after/onError hooks on async result after subscriber error', async () => {
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    for (const ret of [() => Promise.resolve(1), () => Promise.reject(new Error('x'))]) {
+      const store = make(ret);
+      store.$onAction(({ after, onError }) => {
+        after(() => {
+          throw new Error('after');
+        });
+        onError(() => {
+          throw new Error('onError');
+        });
+      });
+      store.$subscribe(() => {
+        throw new Error('sub');
+      });
+      expect(() => store.run()).toThrow('sub');
+    }
+    await new Promise((r) => setTimeout(r));
+    const msgs = err.mock.calls.map((c) => (c[1] as Error).message);
+    expect(msgs).toContain('after');
+    expect(msgs).toContain('onError');
+    err.mockRestore();
+  });
+
+  it('listener path: throwing then getter on success runs onError', () => {
+    const store = make(throwingThen);
+    const onErr = vi.fn();
+    store.$onAction(({ onError }) => onError(onErr));
+    expect(() => store.run()).toThrow('then getter');
+    expect(onErr).toHaveBeenCalled();
+  });
+});
+describe('class-based Store', () => {
+  it('creates store from class with state, getters, and actions', () => {
+    class Counter {
+      count = 0;
+
+      get doubled() {
+        return this.count * 2;
       }
 
-      const useStore = createStore(TestStore);
-      const store = useStore();
+      increment() {
+        this.count++;
+      }
 
-      expect(store.count).toBe(0);
-      expect(store.doubleCount).toBe(0);
+      add(value: number) {
+        this.count += value;
+      }
+    }
 
-      store.increment();
-      expect(store.count).toBe(1);
-      expect(store.doubleCount).toBe(2);
-    });
+    const useStore = createStore(Counter);
+    const store = useStore();
+
+    expect(store.count).toBe(0);
+    expect(store.doubled).toBe(0);
+
+    store.increment();
+    expect(store.count).toBe(1);
+    expect(store.doubled).toBe(2);
+
+    store.add(5);
+    expect(store.count).toBe(6);
+    expect(store.doubled).toBe(12);
   });
 
-  describe('getters', () => {
-    it('should reactively compute getter values', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          doubled: (state) => state.count * 2,
-        },
-      });
-      const store = useStore();
+  it('supports multiple state properties in class', () => {
+    class UserStore {
+      name = 'John';
+      age = 30;
+      active = true;
 
-      expect(store.doubled).toBe(0);
-      store.state.count = 5;
-      expect(store.doubled).toBe(10);
-    });
+      get info() {
+        return `${this.name} (${this.age})`;
+      }
 
-    it('should support multiple getters', () => {
-      const useStore = createStore({
-        state: { count: 10 },
-        getters: {
-          doubled: (state) => state.count * 2,
-          tripled: (state) => state.count * 3,
-        },
-      });
-      const store = useStore();
+      updateName(newName: string) {
+        this.name = newName;
+      }
+    }
 
-      expect(store.doubled).toBe(20);
-      expect(store.tripled).toBe(30);
-    });
+    const useStore = createStore(UserStore);
+    const store = useStore();
 
-    it('should support getters depending on multiple state properties', () => {
-      const useStore = createStore({
-        state: { firstName: 'John', lastName: 'Doe' },
-        getters: {
-          fullName: (state) => `${state.firstName} ${state.lastName}`,
-        },
-      });
-      const store = useStore();
+    expect(store.name).toBe('John');
+    expect(store.age).toBe(30);
+    expect(store.active).toBe(true);
+    expect(store.info).toBe('John (30)');
 
-      expect(store.fullName).toBe('John Doe');
-      store.state.firstName = 'Jane';
-      expect(store.fullName).toBe('Jane Doe');
-    });
-
-    it('should cache getter computed instances across repeated reads', () => {
-      let getterRuns = 0;
-      const useStore = createStore({
-        state: { count: 2 },
-        getters: {
-          doubled: (state) => {
-            getterRuns += 1;
-            return state.count * 2;
-          },
-        },
-      });
-      const store = useStore();
-
-      expect(store.doubled).toBe(4);
-      expect(store.doubled).toBe(4);
-      expect(getterRuns).toBe(1);
-
-      store.state.count = 3;
-
-      expect(store.doubled).toBe(6);
-      expect(getterRuns).toBe(2);
-    });
+    store.updateName('Jane');
+    expect(store.name).toBe('Jane');
+    expect(store.info).toBe('Jane (30)');
   });
 
-  describe('actions', () => {
-    it('should execute actions with correct context', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          increment() {
-            this.count++;
-          },
-          add(value: number) {
-            this.count += value;
-          },
+  it('supports nested objects in class state', () => {
+    class ProfileStore {
+      user = {
+        name: 'Alice',
+        address: {
+          city: 'NYC',
         },
-      });
-      const store = useStore();
-
-      store.increment();
-      expect(store.state.count).toBe(1);
-
-      store.add(5);
-      expect(store.state.count).toBe(6);
-    });
-
-    it('should support actions with multiple parameters', () => {
-      const useStore = createStore({
-        state: { x: 0, y: 0 },
-        actions: {
-          setPosition(x: number, y: number) {
-            this.x = x;
-            this.y = y;
-          },
-        },
-      });
-      const store = useStore();
-
-      store.setPosition(10, 20);
-      expect(store.state.x).toBe(10);
-      expect(store.state.y).toBe(20);
-    });
-
-    it('should support actions with return values', () => {
-      const useStore = createStore({
-        state: { count: 5 },
-        actions: {
-          getDoubled() {
-            return this.count * 2;
-          },
-        },
-      });
-      const store = useStore();
-
-      const result = store.getDoubled();
-      expect(result).toBe(10);
-    });
-
-    it('should support async actions', async () => {
-      const useStore = createStore({
-        state: { data: null as string | null },
-        actions: {
-          async fetchData() {
-            await new Promise((resolve) => setTimeout(resolve, 10));
-            this.data = 'fetched';
-          },
-        },
-      });
-      const store = useStore();
-
-      await store.fetchData();
-      expect(store.state.data).toBe('fetched');
-    });
-
-    it('should notify subscribers after an async action settles', async () => {
-      const useStore = createStore({
-        state: { data: null as string | null },
-        actions: {
-          async fetchData() {
-            await Promise.resolve();
-            this.data = 'fetched';
-          },
-        },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-      const seen: Array<string | null> = [];
-
-      store.$subscribe((state) => {
-        seen.push(state.data);
-        callback(state);
-      });
-
-      await store.fetchData();
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(seen).toEqual(['fetched']);
-    });
-
-    it('should notify subscribers when an async action rejects after mutating state', async () => {
-      const useStore = createStore({
-        state: { data: null as string | null },
-        actions: {
-          async failAfterUpdate() {
-            await Promise.resolve();
-            this.data = 'failed';
-            throw new Error('fetch failed');
-          },
-        },
-      });
-      const store = useStore();
-      const seen: Array<string | null> = [];
-
-      store.$subscribe((state) => {
-        seen.push(state.data);
-      });
-
-      await expect(store.failAfterUpdate()).rejects.toThrow('fetch failed');
-
-      expect(seen).toEqual(['failed']);
-    });
-  });
-});
-
-describe('store - Built-in Methods', () => {
-  describe('$patch', () => {
-    it('should correctly update state', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-
-      store.$patch({ value: 42 });
-      expect(store.state.value).toBe(42);
-    });
-
-    it('should update multiple properties at once', () => {
-      const useStore = createStore({
-        state: { count: 0, name: 'old', active: false },
-      });
-      const store = useStore();
-
-      store.$patch({ count: 10, name: 'new', active: true });
-      expect(store.state.count).toBe(10);
-      expect(store.state.name).toBe('new');
-      expect(store.state.active).toBe(true);
-    });
-
-    it('should only update specified properties', () => {
-      const useStore = createStore({
-        state: { count: 0, name: 'test' },
-      });
-      const store = useStore();
-
-      store.$patch({ count: 5 });
-      expect(store.state.count).toBe(5);
-      expect(store.state.name).toBe('test');
-    });
-
-    it('should handle nested object updates', () => {
-      const useStore = createStore({
-        state: {
-          user: { name: 'John', age: 30 },
-        },
-      });
-      const store = useStore();
-
-      store.$patch({ user: { name: 'Jane', age: 25 } });
-      expect(store.state.user.name).toBe('Jane');
-      expect(store.state.user.age).toBe(25);
-    });
-
-    it('should trigger subscriber callbacks', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$patch({ count: 5 });
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 5 }));
-    });
-  });
-
-  describe('$subscribe / $unsubscribe', () => {
-    it('should subscribe and trigger callback', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$patch({ value: 42 });
-
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
-    });
-
-    it('should correctly unsubscribe', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$patch({ value: 42 });
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      store.$unsubscribe(callback);
-      store.$patch({ value: 43 });
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle multiple subscribers', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback1 = vitest.fn();
-      const callback2 = vitest.fn();
-
-      store.$subscribe(callback1);
-      store.$subscribe(callback2);
-      store.$patch({ value: 42 });
-
-      expect(callback1).toHaveBeenCalledTimes(1);
-      expect(callback2).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle unsubscribing non-existent subscription', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      expect(() => store.$unsubscribe(callback)).not.toThrow();
-    });
-
-    it('auto-unsubscribes a $subscribe callback when its owning scope is disposed', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      const scope = effectScope();
-      scope.run(() => {
-        store.$subscribe(callback);
-      });
-
-      store.$patch({ value: 1 });
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      // Disposing the scope the subscription was created in must release the
-      // callback — otherwise the store's subscription Set holds the closure
-      // (and whatever it captures) forever.
-      scope.stop();
-
-      store.$patch({ value: 2 });
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('auto-removes a $onAction callback when its owning scope is disposed', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          increment() {
-            this.count++;
-          },
-        },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      const scope = effectScope();
-      scope.run(() => {
-        store.$onAction(callback);
-      });
-
-      store.increment();
-      expect(callback).toHaveBeenCalledTimes(1);
-
-      scope.stop();
-
-      store.increment();
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('$onAction', () => {
-    it('should execute onAction callback', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$onAction(callback);
-      store.$patch({ value: 42 });
-
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 42 }));
-    });
-
-    it('should trigger onAction for custom actions', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          increment() {
-            this.count++;
-          },
-        },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$onAction(callback);
-      store.increment();
-
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('should trigger both subscribe and onAction callbacks', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const subscribeCallback = vitest.fn();
-      const actionCallback = vitest.fn();
-
-      store.$subscribe(subscribeCallback);
-      store.$onAction(actionCallback);
-      store.$patch({ value: 42 });
-
-      expect(subscribeCallback).toHaveBeenCalledTimes(1);
-      expect(actionCallback).toHaveBeenCalledTimes(1);
-    });
-
-    it('should allow removing action callbacks', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          increment() {
-            this.count++;
-          },
-        },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$onAction(callback);
-      store.$offAction(callback);
-      store.increment();
-
-      expect(callback).not.toHaveBeenCalled();
-    });
-
-    it('should notify subscribers only once per outermost nested action', () => {
-      const useStore = createStore({
-        state: { a: 0, b: 0 },
-        actions: {
-          inner() {
-            this.b++;
-          },
-          outer() {
-            this.a++;
-            this.inner();
-          },
-        },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.outer();
-
-      // One logical transaction (outer, which calls inner) must notify exactly
-      // once — not once per nested action commit.
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(store.state.a).toBe(1);
-      expect(store.state.b).toBe(1);
-    });
-
-    it('should expose flushed computed values to subscribers of nested actions', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          doubled: (state) => state.count * 2,
-        },
-        actions: {
-          bump() {
-            this.count++;
-          },
-          bumpTwice() {
-            this.bump();
-            this.bump();
-          },
-        },
-      });
-      const store = useStore();
-      const seen: number[] = [];
-
-      store.$subscribe(() => {
-        seen.push(store.doubled);
-      });
-      store.bumpTwice();
-
-      // Subscriber must observe the final, settled derived value once.
-      expect(seen).toEqual([4]);
-      expect(store.doubled).toBe(4);
-    });
-
-    it('should notify subscribers once for nested async actions', async () => {
-      const useStore = createStore({
-        state: { a: 0, b: 0 },
-        actions: {
-          async inner() {
-            await Promise.resolve();
-            this.b++;
-          },
-          async outer() {
-            this.a++;
-            await this.inner();
-            this.a++;
-          },
-        },
-      });
-      const store = useStore();
-      const seen: Array<[number, number]> = [];
-
-      store.$subscribe((state) => {
-        seen.push([state.a, state.b]);
-      });
-
-      await store.outer();
-
-      expect(seen).toEqual([[2, 1]]);
-    });
-
-    it('should not merge independent async actions that overlap in time', async () => {
-      let releaseSlow!: () => void;
-      const slowGate = new Promise<void>((resolve) => {
-        releaseSlow = resolve;
-      });
-      const useStore = createStore({
-        state: { slow: 0, fast: 0 },
-        actions: {
-          async slowAction() {
-            await slowGate;
-            this.slow++;
-          },
-          async fastAction() {
-            await Promise.resolve();
-            this.fast++;
-          },
-        },
-      });
-      const store = useStore();
-      const seen: Array<[number, number]> = [];
-
-      store.$subscribe((state) => {
-        seen.push([state.slow, state.fast]);
-      });
-
-      const slow = store.slowAction();
-      await store.fastAction();
-
-      expect(seen).toEqual([[0, 1]]);
-
-      releaseSlow();
-      await slow;
-
-      expect(seen).toEqual([
-        [0, 1],
-        [1, 1],
-      ]);
-    });
-  });
-
-  describe('$reset', () => {
-    it('should reset state', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-
-      store.$patch({ value: 42 });
-      store.$reset();
-
-      expect(store.state.value).toBe(0);
-    });
-
-    it('should reset multiple properties', () => {
-      const useStore = createStore({
-        state: { count: 0, name: 'initial', active: false },
-      });
-      const store = useStore();
-
-      store.$patch({ count: 10, name: 'changed', active: true });
-      store.$reset();
-
-      expect(store.state.count).toBe(0);
-      expect(store.state.name).toBe('initial');
-      expect(store.state.active).toBe(false);
-    });
-
-    it('should trigger subscribers on reset', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$patch({ value: 42 });
-      callback.mockClear();
-
-      store.$reset();
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ value: 0 }));
-    });
-
-    it('should notify action callbacks with the restored snapshot on reset', () => {
-      const useStore = createStore({
-        state: { count: 1 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$onAction(callback);
-      store.$patch({ count: 5 });
-      callback.mockClear();
-
-      store.$reset();
-
-      expect(callback).toHaveBeenCalledTimes(1);
-      expect(callback).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
-    });
-
-    it('should replace nested objects on reset', () => {
-      const useStore = createStore({
-        state: { nested: { value: 0 } },
-      });
-      const store = useStore();
-
-      const nested = store.state.nested;
-      nested.value = 42;
-
-      store.$reset();
-
-      expect(store.state.nested).not.toBe(nested);
-      expect(store.state.nested.value).toBe(0);
-      expect(nested.value).toBe(42);
-    });
-
-    it('should reset deeply nested values by replacing the top-level branch', () => {
-      const useStore = createStore({
-        state: { a: { b: { c: 1 } } },
-      });
-      const store = useStore();
-
-      const a = store.state.a;
-      const b = store.state.a.b;
-      store.state.a.b.c = 99;
-
-      store.$reset();
-
-      expect(store.state.a).not.toBe(a);
-      expect(store.state.a.b).not.toBe(b);
-      expect(store.state.a.b.c).toBe(1);
-      expect(a.b.c).toBe(99);
-    });
-
-    it('should remove extra top-level keys added after init on reset', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-
-      (store.state as Record<string, unknown>).extra = 'kept';
-      store.state.value = 42;
-
-      store.$reset();
-
-      // $reset restores exactly the initial state — keys added after
-      // initialization must be removed, not merely overwritten.
-      expect(store.state.value).toBe(0);
-      expect((store.state as Record<string, unknown>).extra).toBeUndefined();
-    });
-
-    it('should reset Date values to the initial snapshot', () => {
-      const useStore = createStore({
-        state: { when: new Date('2020-01-01T00:00:00.000Z') },
-      });
-      const store = useStore();
-
-      store.state.when = new Date('2099-12-31T00:00:00.000Z');
-      // `reactive()` wraps a Date in a generic object proxy, so Date methods
-      // cannot be called through `store.state.when` directly — read the raw
-      // value to assert against the underlying Date.
-      expect((toRaw(store.state.when) as Date).getUTCFullYear()).toBe(2099);
-
-      store.$reset();
-
-      // Date must be restored — it must NOT be treated as a recursable plain
-      // object (which would leave the mutated value untouched).
-      expect((toRaw(store.state.when) as Date).getUTCFullYear()).toBe(2020);
-    });
-
-    it('should reset Map values to the initial snapshot', () => {
-      const useStore = createStore({
-        state: { data: new Map<string, number>([['a', 1]]) },
-      });
-      const store = useStore();
-
-      store.state.data.set('a', 999);
-      store.state.data.set('b', 2);
-      expect(store.state.data.get('a')).toBe(999);
-      expect(store.state.data.size).toBe(2);
-
-      store.$reset();
-
-      expect(store.state.data.get('a')).toBe(1);
-      expect(store.state.data.has('b')).toBe(false);
-      expect(store.state.data.size).toBe(1);
-    });
-
-    it('should replace captured Map proxies across reset', () => {
-      const useStore = createStore({
-        state: { data: new Map<string, number>([['a', 1]]) },
-      });
-      const store = useStore();
-      const data = store.state.data;
-
-      store.state.data.set('a', 999);
-      store.state.data.set('b', 2);
-
-      store.$reset();
-
-      expect(store.state.data).not.toBe(data);
-      expect(store.state.data.get('a')).toBe(1);
-      expect(store.state.data.has('b')).toBe(false);
-      expect(data.get('a')).toBe(999);
-      expect(data.has('b')).toBe(true);
-    });
-
-    it('should reset Set values to the initial snapshot', () => {
-      const useStore = createStore({
-        state: { tags: new Set<number>([1, 2, 3]) },
-      });
-      const store = useStore();
-
-      store.state.tags.add(4);
-      store.state.tags.delete(1);
-      expect(store.state.tags.has(4)).toBe(true);
-
-      store.$reset();
-
-      expect([...store.state.tags]).toEqual([1, 2, 3]);
-    });
-
-    it('should replace captured Set proxies across reset', () => {
-      const useStore = createStore({
-        state: { tags: new Set<number>([1, 2, 3]) },
-      });
-      const store = useStore();
-      const tags = store.state.tags;
-
-      tags.add(4);
-      tags.delete(1);
-
-      store.$reset();
-
-      expect(store.state.tags).not.toBe(tags);
-      expect([...store.state.tags]).toEqual([1, 2, 3]);
-      expect([...tags]).toEqual([2, 3, 4]);
-    });
-
-    it('should reset array values to the initial snapshot', () => {
-      const useStore = createStore({
-        state: { items: [1, 2, 3] },
-      });
-      const store = useStore();
-
-      store.state.items.push(4);
-      store.state.items[0] = 99;
-
-      store.$reset();
-
-      expect(store.state.items).toEqual([1, 2, 3]);
-    });
-
-    it('should replace captured array proxies across reset', () => {
-      const useStore = createStore({
-        state: { items: [1, 2, 3] },
-      });
-      const store = useStore();
-      const items = store.state.items;
-
-      items.push(4);
-      items[0] = 99;
-
-      store.$reset();
-
-      expect(store.state.items).not.toBe(items);
-      expect(store.state.items).toEqual([1, 2, 3]);
-      expect(items).toEqual([99, 2, 3, 4]);
-    });
-
-    it('should update effects that read the store array property after reset', () => {
-      const useStore = createStore({
-        state: { items: [1, 2, 3] },
-      });
-      const store = useStore();
-      let snapshot: number[] = [];
-
-      effect(() => {
-        snapshot = store.state.items.slice();
-      });
-
-      store.state.items.push(4);
-      expect(snapshot).toEqual([1, 2, 3, 4]);
-
-      store.$reset();
-
-      expect(snapshot).toEqual([1, 2, 3]);
-    });
-
-    it('should not overflow the stack when resetting cyclic state', () => {
-      const state: { value: number; self?: unknown } = { value: 1 };
-      state.self = state;
-      const useStore = createStore({ state });
-      const store = useStore();
-
-      store.state.value = 2;
-
-      expect(() => store.$reset()).not.toThrow();
-      expect(store.state.value).toBe(1);
-    });
-  });
-});
-
-describe('store - Reactivity Integration', () => {
-  describe('integration with effect', () => {
-    it('should work with effect', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      let effectCount = 0;
-
-      effect(() => {
-        effectCount = store.state.count * 2;
-      });
-
-      expect(effectCount).toBe(0);
-      store.state.count = 5;
-      expect(effectCount).toBe(10);
-    });
-
-    it('should trigger effects when using $patch', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      let effectCount = 0;
-
-      effect(() => {
-        effectCount = store.state.count;
-      });
-
-      expect(effectCount).toBe(0);
-      store.$patch({ count: 5 });
-      expect(effectCount).toBe(5);
-    });
-
-    it('should trigger effects when using $reset', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      let effectCount = 0;
-
-      effect(() => {
-        effectCount = store.state.count;
-      });
-
-      store.$patch({ count: 10 });
-      expect(effectCount).toBe(10);
-
-      store.$reset();
-      expect(effectCount).toBe(0);
-    });
-  });
-
-  describe('integration with computed', () => {
-    it('should work with computed', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      const doubled = computed(() => store.state.count * 2);
-
-      expect(doubled.value).toBe(0);
-      store.state.count = 5;
-      expect(doubled.value).toBe(10);
-    });
-  });
-
-  describe('integration with signal', () => {
-    it('should work with signal', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      const externalSignal = signal(0);
-
-      effect(() => {
-        externalSignal.value = store.state.count * 2;
-      });
-
-      expect(externalSignal.value).toBe(0);
-      store.state.count = 5;
-      expect(externalSignal.value).toBe(10);
-    });
-  });
-});
-
-describe('store - Edge Cases', () => {
-  describe('state Edge Cases', () => {
-    it('should handle empty state object', () => {
-      const useStore = createStore({
-        state: {},
-      });
-      const store = useStore();
-
-      expect(store.state).toEqual({});
-    });
-
-    it('should handle null values', () => {
-      const useStore = createStore({
-        state: { value: null as string | null },
-      });
-      const store = useStore();
-
-      expect(store.state.value).toBeNull();
-    });
-
-    it('should handle undefined values', () => {
-      const useStore = createStore({
-        state: { value: undefined as string | undefined },
-      });
-      const store = useStore();
-
-      expect(store.state.value).toBeUndefined();
-    });
-
-    it('should handle array values', () => {
-      const useStore = createStore({
-        state: { items: [1, 2, 3] },
-      });
-      const store = useStore();
-
-      expect(store.state.items).toEqual([1, 2, 3]);
-      store.state.items.push(4);
-      expect(store.state.items).toEqual([1, 2, 3, 4]);
-    });
-
-    it('should handle Date objects', () => {
-      const date = new Date('2024-01-01');
-      const useStore = createStore({
-        state: { createdAt: date },
-      });
-      const store = useStore();
-
-      // Date object is stored but wrapped in proxy
-      expect(store.state.createdAt).toBeDefined();
-      expect(store.state.createdAt).not.toBeNull();
-    });
-
-    it('should handle Map objects', () => {
-      const map = new Map([['key', 'value']]);
-      const useStore = createStore({
-        state: { data: map },
-      });
-      const store = useStore();
-
-      // Map functionality works even when wrapped in proxy
-      expect(store.state.data.get('key')).toBe('value');
-      expect(store.state.data.size).toBe(1);
-    });
-
-    it('should handle Set objects', () => {
-      const set = new Set([1, 2, 3]);
-      const useStore = createStore({
-        state: { items: set },
-      });
-      const store = useStore();
-
-      // Set functionality works even when wrapped in proxy
-      expect(store.state.items.has(2)).toBe(true);
-      expect(store.state.items.size).toBe(3);
-    });
-
-    it('should allow non-cloneable state values', () => {
-      const handler = () => 'ok';
-      const token = Symbol('token');
-      const useStore = createStore({
-        state: { handler, token },
-      });
-
-      const store = useStore();
-
-      expect(store.state.handler).toBe(handler);
-      expect(store.state.token).toBe(token);
-    });
-  });
-
-  describe('getter Edge Cases', () => {
-    it('should handle getter returning null', () => {
-      const useStore = createStore({
-        state: { value: null as string | null },
-        getters: {
-          getValue: (state) => state.value,
-        },
-      });
-      const store = useStore();
-
-      expect(store.getValue).toBeNull();
-    });
-
-    it('should handle getter returning undefined', () => {
-      const useStore = createStore({
-        state: { value: undefined as string | undefined },
-        getters: {
-          getValue: (state) => state.value,
-        },
-      });
-      const store = useStore();
-
-      expect(store.getValue).toBeUndefined();
-    });
-
-    it('should handle getter with conditional logic', () => {
-      const useStore = createStore({
-        state: { count: 5 },
-        getters: {
-          status: (state) => (state.count > 10 ? 'high' : 'low'),
-        },
-      });
-      const store = useStore();
-
-      expect(store.status).toBe('low');
-      store.state.count = 15;
-      expect(store.status).toBe('high');
-    });
-
-    it('should handle getter throwing error', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          throwError: () => {
-            throw new Error('Getter error');
-          },
-        },
-      });
-      const store = useStore();
-
-      expect(() => store.throwError).toThrow('Getter error');
-    });
-  });
-
-  describe('action Edge Cases', () => {
-    it('should handle action throwing error', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          throwError() {
-            throw new Error('Action error');
-          },
-        },
-      });
-      const store = useStore();
-
-      expect(() => store.throwError()).toThrow('Action error');
-    });
-
-    it('should handle action with no parameters', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          increment() {
-            this.count++;
-          },
-        },
-      });
-      const store = useStore();
-
-      store.increment();
-      expect(store.state.count).toBe(1);
-    });
-
-    it('should handle action with optional parameters', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        actions: {
-          add(value = 1) {
-            this.count += value;
-          },
-        },
-      });
-      const store = useStore();
-
-      store.add();
-      expect(store.state.count).toBe(1);
-
-      store.add(5);
-      expect(store.state.count).toBe(6);
-    });
-
-    it('should handle action modifying multiple properties', () => {
-      const useStore = createStore({
-        state: { count: 0, name: 'test' },
-        actions: {
-          update(count: number, name: string) {
-            this.count = count;
-            this.name = name;
-          },
-        },
-      });
-      const store = useStore();
-
-      store.update(10, 'updated');
-      expect(store.state.count).toBe(10);
-      expect(store.state.name).toBe('updated');
-    });
-  });
-
-  describe('subscription Edge Cases', () => {
-    it('should handle duplicate subscription of same callback', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$subscribe(callback);
-      store.$patch({ value: 42 });
-
-      // Set only stores unique callbacks
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-
-    it('should handle callback throwing error', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const errorCallback = () => {
-        throw new Error('Callback error');
       };
 
-      store.$subscribe(errorCallback);
-      expect(() => store.$patch({ value: 42 })).toThrow('Callback error');
-    });
-
-    it('should handle empty patch payload', () => {
-      const useStore = createStore({
-        state: { value: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-      store.$patch({});
-
-      expect(callback).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  describe('multiple Store Instances', () => {
-    it('should create store instances sharing state', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store1 = useStore();
-      const store2 = useStore();
-
-      store1.state.count = 5;
-      store2.state.count = 10;
-
-      // Note: Store instances share the same reactive state by design
-      expect(store1.state.count).toBe(10);
-      expect(store2.state.count).toBe(10);
-    });
-
-    it('should provide independent subscribers for each instance', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store1 = useStore();
-      const store2 = useStore();
-      const callback1 = vitest.fn();
-      const callback2 = vitest.fn();
-
-      store1.$subscribe(callback1);
-      store2.$subscribe(callback2);
-      store1.$patch({ count: 5 });
-
-      expect(callback1).toHaveBeenCalledTimes(1);
-      expect(callback2).not.toHaveBeenCalled();
-    });
-  });
-});
-
-describe('store - Performance & Optimization', () => {
-  describe('batch Updates', () => {
-    it('should batch process multiple patch calls', () => {
-      const useStore = createStore({
-        state: { count: 0, name: 'test' },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-
-      // Multiple patches should each trigger callback
-      store.$patch({ count: 1 });
-      store.$patch({ count: 2 });
-      store.$patch({ name: 'updated' });
-
-      expect(callback).toHaveBeenCalledTimes(3);
-    });
-
-    it('should handle rapid state changes', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-      });
-      const store = useStore();
-      const callback = vitest.fn();
-
-      store.$subscribe(callback);
-
-      for (let i = 0; i < 100; i++) {
-        store.$patch({ count: i });
+      get cityName() {
+        return this.user.address.city;
       }
 
-      expect(callback).toHaveBeenCalledTimes(100);
-      expect(store.state.count).toBe(99);
-    });
-  });
-
-  describe('getter Caching', () => {
-    it('should recompute getter when dependencies change', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          doubled: (state) => state.count * 2,
-        },
-      });
-      const store = useStore();
-
-      expect(store.doubled).toBe(0);
-      store.state.count = 5;
-      expect(store.doubled).toBe(10);
-      store.state.count = 10;
-      expect(store.doubled).toBe(20);
-    });
-
-    it('should efficiently handle multiple getter accesses', () => {
-      const useStore = createStore({
-        state: { count: 0 },
-        getters: {
-          doubled: (state) => state.count * 2,
-        },
-      });
-      const store = useStore();
-
-      // Multiple accesses should work correctly
-      for (let i = 0; i < 100; i++) {
-        expect(store.doubled).toBe(0);
+      updateCity(city: string) {
+        this.user.address.city = city;
       }
-    });
-  });
-});
+    }
 
-describe('store - Complex Scenarios', () => {
-  describe('nested State Management', () => {
-    it('should handle deeply nested state updates', () => {
-      const useStore = createStore({
-        state: {
-          level1: {
-            level2: {
-              level3: {
-                value: 0,
-              },
-            },
-          },
-        },
-      });
-      const store = useStore();
+    const useStore = createStore(ProfileStore);
+    const store = useStore();
 
-      store.state.level1.level2.level3.value = 42;
-      expect(store.state.level1.level2.level3.value).toBe(42);
-    });
+    expect(store.user.name).toBe('Alice');
+    expect(store.user.address.city).toBe('NYC');
+    expect(store.cityName).toBe('NYC');
 
-    it('should handle array operations', () => {
-      const useStore = createStore({
-        state: { items: [1, 2, 3] },
-      });
-      const store = useStore();
-
-      store.items.push(4);
-      expect(store.items).toEqual([1, 2, 3, 4]);
-
-      store.items.pop();
-      expect(store.items).toEqual([1, 2, 3]);
-
-      store.items[0] = 10;
-      expect(store.items).toEqual([10, 2, 3]);
-    });
-
-    it('should handle object spread in patch', () => {
-      const useStore = createStore({
-        state: { user: { name: 'John', age: 30, city: 'NYC' } },
-      });
-      const store = useStore();
-
-      store.$patch({
-        user: { ...store.state.user, age: 31 },
-      });
-
-      expect(store.state.user.name).toBe('John');
-      expect(store.state.user.age).toBe(31);
-      expect(store.state.user.city).toBe('NYC');
-    });
+    store.updateCity('SF');
+    expect(store.cityName).toBe('SF');
   });
 
-  describe('complex Getters', () => {
-    it('should handle getter depending on multiple state properties', () => {
-      const useStore = createStore({
-        state: { firstName: 'John', lastName: 'Doe', age: 30 },
-        getters: {
-          fullInfo: (state) => `${state.firstName} ${state.lastName}, ${state.age} years old`,
-        },
-      });
-      const store = useStore();
+  it('supports arrays in class state', () => {
+    class TodoStore {
+      todos: string[] = [];
 
-      expect(store.fullInfo).toBe('John Doe, 30 years old');
-      store.state.firstName = 'Jane';
-      expect(store.fullInfo).toBe('Jane Doe, 30 years old');
-    });
-
-    it('should handle getter with array operations', () => {
-      const useStore = createStore({
-        state: { numbers: [1, 2, 3, 4, 5] },
-        getters: {
-          evenNumbers: (state) => state.numbers.filter((n) => n % 2 === 0),
-          sum: (state) => state.numbers.reduce((a, b) => a + b, 0),
-        },
-      });
-      const store = useStore();
-
-      expect(store.evenNumbers).toEqual([2, 4]);
-      expect(store.sum).toBe(15);
-
-      store.numbers.push(6);
-      expect(store.evenNumbers).toEqual([2, 4, 6]);
-      expect(store.sum).toBe(21);
-    });
-  });
-
-  describe('complex Actions', () => {
-    it('should handle action with complex logic', () => {
-      const useStore = createStore({
-        state: { items: [] as number[], total: 0 },
-        actions: {
-          addItem(value: number) {
-            this.items.push(value);
-            this.total = this.items.reduce((a, b) => a + b, 0);
-          },
-        },
-      });
-      const store = useStore();
-
-      store.addItem(10);
-      expect(store.state.items).toEqual([10]);
-      expect(store.state.total).toBe(10);
-
-      store.addItem(20);
-      expect(store.state.items).toEqual([10, 20]);
-      expect(store.state.total).toBe(30);
-    });
-
-    it('should handle action with conditional logic', () => {
-      const useStore = createStore({
-        state: { count: 0, max: 10 },
-        actions: {
-          incrementIfPossible() {
-            if (this.count < this.max) {
-              this.count++;
-              return true;
-            }
-            return false;
-          },
-        },
-      });
-      const store = useStore();
-
-      for (let i = 0; i < 15; i++) {
-        store.incrementIfPossible();
+      get count() {
+        return this.todos.length;
       }
 
-      expect(store.state.count).toBe(10);
-    });
+      add(todo: string) {
+        this.todos.push(todo);
+      }
+
+      clear() {
+        this.todos.length = 0;
+      }
+    }
+
+    const useStore = createStore(TodoStore);
+    const store = useStore();
+
+    expect(store.todos).toEqual([]);
+    expect(store.count).toBe(0);
+
+    store.add('Buy milk');
+    store.add('Walk dog');
+    expect(store.todos).toEqual(['Buy milk', 'Walk dog']);
+    expect(store.count).toBe(2);
+
+    store.clear();
+    expect(store.count).toBe(0);
   });
 
-  describe('subscription Patterns', () => {
-    it('should handle subscriber modifying state', () => {
-      const useStore = createStore({
-        state: { count: 0, doubled: 0 },
-      });
-      const store = useStore();
+  it('supports $patch with class-based stores', () => {
+    class Counter {
+      count = 0;
+      name = 'test';
 
-      store.$subscribe((state) => {
-        state.doubled = state.count * 2;
-      });
+      get doubled() {
+        return this.count * 2;
+      }
+    }
 
-      store.$patch({ count: 5 });
-      expect(store.state.doubled).toBe(10);
+    const useStore = createStore(Counter);
+    const store = useStore();
+
+    store.$patch({ count: 5, name: 'patched' });
+    expect(store.count).toBe(5);
+    expect(store.name).toBe('patched');
+    expect(store.doubled).toBe(10);
+
+    store.$patch((state) => {
+      state.count += 10;
+    });
+    expect(store.count).toBe(15);
+  });
+
+  it('supports $subscribe with class-based stores', () => {
+    class Counter {
+      count = 0;
+
+      increment() {
+        this.count++;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store = useStore();
+    const mutations: any[] = [];
+
+    const unsubscribe = store.$subscribe((mutation, state) => {
+      mutations.push({ type: mutation.type, count: state.count });
     });
 
-    it('should handle multiple subscribers with dependencies', () => {
-      const useStore = createStore({
-        state: { value: 0 },
+    store.increment();
+    expect(mutations).toHaveLength(1);
+    expect(mutations[0]).toMatchObject({ type: 'direct', count: 1 });
+
+    store.$patch({ count: 10 });
+    expect(mutations).toHaveLength(2);
+    expect(mutations[1]).toMatchObject({ type: 'patch object', count: 10 });
+
+    unsubscribe();
+    store.increment();
+    expect(mutations).toHaveLength(2);
+  });
+
+  it('supports $reset with class-based stores', () => {
+    class Counter {
+      count = 5;
+      name = 'initial';
+
+      increment() {
+        this.count++;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store = useStore();
+
+    expect(store.count).toBe(5);
+    store.increment();
+    store.name = 'modified';
+    expect(store.count).toBe(6);
+    expect(store.name).toBe('modified');
+
+    store.$reset();
+    expect(store.count).toBe(5);
+    expect(store.name).toBe('initial');
+  });
+
+  it('supports $onAction with class-based stores', () => {
+    class Counter {
+      count = 0;
+
+      increment() {
+        this.count++;
+        return this.count;
+      }
+
+      add(value: number) {
+        this.count += value;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store = useStore();
+    const calls: string[] = [];
+
+    store.$onAction((context) => {
+      calls.push(context.name);
+      context.after((result) => {
+        calls.push(`after:${result}`);
       });
-      const store = useStore();
-
-      const results: number[] = [];
-      store.$subscribe((state) => results.push(state.value * 2));
-      store.$subscribe((state) => results.push(state.value * 3));
-
-      store.$patch({ value: 5 });
-      expect(results).toEqual([10, 15]);
     });
+
+    const result = store.increment();
+    expect(result).toBe(1);
+    expect(calls).toEqual(['increment', 'after:1']);
+
+    store.add(5);
+    expect(calls).toEqual(['increment', 'after:1', 'add', 'after:undefined']);
+  });
+
+  it('class-based stores are reactive in effects', () => {
+    class Counter {
+      count = 0;
+
+      get doubled() {
+        return this.count * 2;
+      }
+
+      increment() {
+        this.count++;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store = useStore();
+    const seen: number[] = [];
+
+    const stop = effect(() => {
+      seen.push(store.doubled);
+    });
+
+    expect(seen).toEqual([0]);
+
+    store.increment();
+    expect(seen).toEqual([0, 2]);
+
+    store.count = 10;
+    expect(seen).toEqual([0, 2, 20]);
+
+    stop();
+  });
+
+  it('creates independent instances from class', () => {
+    class Counter {
+      count = 0;
+
+      increment() {
+        this.count++;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store1 = useStore();
+    const store2 = useStore();
+
+    store1.increment();
+    expect(store1.count).toBe(1);
+    expect(store2.count).toBe(0);
+
+    store2.count = 5;
+    expect(store1.count).toBe(1);
+    expect(store2.count).toBe(5);
+  });
+
+  it('supports async actions in class-based stores', async () => {
+    class AsyncStore {
+      data: string | null = null;
+      loading = false;
+
+      async fetch() {
+        this.loading = true;
+        await new Promise((r) => setTimeout(r, 10));
+        this.data = 'loaded';
+        this.loading = false;
+        return this.data;
+      }
+    }
+
+    const useStore = createStore(AsyncStore);
+    const store = useStore();
+
+    expect(store.loading).toBe(false);
+    const promise = store.fetch();
+    expect(store.loading).toBe(true);
+
+    const result = await promise;
+    expect(result).toBe('loaded');
+    expect(store.data).toBe('loaded');
+    expect(store.loading).toBe(false);
+  });
+
+  it('batches updates in class-based store actions', () => {
+    class Counter {
+      count = 0;
+
+      addTwice(value: number) {
+        this.count += value;
+        this.count += value;
+      }
+    }
+
+    const useStore = createStore(Counter);
+    const store = useStore();
+    const seen: number[] = [];
+
+    const stop = effect(() => {
+      seen.push(store.count);
+    });
+
+    store.addTwice(5);
+    // Should only trigger effect once due to batching
+    expect(seen).toEqual([0, 10]);
+
+    stop();
   });
 });

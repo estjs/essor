@@ -1,74 +1,74 @@
 export {
-  signal,
-  shallowSignal,
+  isShallowSignal,
   isSignal,
+  shallowSignal,
+  signal,
+  toValue,
+  toSignal,
+  toSignals,
+  unSignal,
+  triggerSignal,
+  customSignal,
+  proxySignals,
   type Signal,
-  type SignalValue,
-  type SignalType,
+  type ShallowSignal,
+  type MaybeSignal,
+  type MaybeSignalOrGetter,
+  type ToSignals,
+  type ToSignal,
+  type CustomSignalFactory,
+  type UnwrapSignal,
+  type ShallowUnwrapSignal,
 } from './signal';
 
 export {
   effect,
-  memoEffect,
   stop,
-  isEffect,
-  type Unwrap,
-  type EffectRunner,
-  type EffectFunction,
-  type EffectOptions,
-  type EffectScheduler,
-  type MemoEffectFn,
+  onEffectCleanup,
+  pauseTracking,
+  resetTracking,
+  enableTracking,
+  untrack,
+  type ReactiveEffect,
+  type ReactiveEffectOptions,
+  type ReactiveEffectRunner,
 } from './effect';
 
 export {
   computed,
+  type ComputedRef,
+  type WritableComputedRef,
   isComputed,
-  type Computed,
-  type ComputedGetter,
-  type ComputedSetter,
-  type ComputedOptions,
-  type ComputedType,
+  ComputedRef as Computed,
 } from './computed';
 
-export {
-  reactive,
-  shallowReactive,
-  isReactive,
-  toRaw,
-  isShallow,
-  toReactive,
-  getTargetDepSize,
-  type Reactive,
-} from './reactive';
+export { isReactive, isShallow, toRaw, isProxy, toReactive, Reactive } from './reactive';
+export { reactive, shallowReactive } from './reactive';
 
-export { batch, startBatch, endBatch, isBatching, getBatchDepth } from './batch';
+export { batch, startBatch, endBatch, nextTick } from './graph';
 
 export {
-  nextTick,
-  queueJob,
-  queuePreFlushCb,
-  queuePostFlushJob,
-  type Job,
-  type PreFlushCallback,
-  type PostFlushCallback,
-  type FlushTiming,
-} from './scheduler';
-
-export { untrack, trigger, type DebuggerEvent, type DebuggerEventType } from './system';
-export { TriggerOpTypes } from './constants';
-
-export { createStore, type StoreOptions, type StoreActions } from './store';
-
-export { type Ref, isRef, ref } from './ref';
-
-export { unref, toRef, toRefs } from './refUtils';
-
-export { watch } from './watch';
+  watch,
+  type OnCleanup,
+  type WatchCallback,
+  type WatchOptions,
+  type WatchSource,
+} from './watch';
 
 export {
   EffectScope,
   effectScope,
-  getCurrentScope,
+  activeEffectScope,
   onScopeDispose,
   setCurrentScope,
+  getCurrentScope,
 } from './effectScope';
+
+export {
+  createStore,
+  type Actions,
+  type Getters,
+  type State,
+  type Store,
+  type StoreOptions,
+} from './store';

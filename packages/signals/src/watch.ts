@@ -1,351 +1,311 @@
-import { hasChanged, isArray, isFunction, isMap, isObject, isSet, warn } from '@estjs/shared';
-import { type FlushTiming, createScheduler } from './scheduler';
-import { isSignal } from './signal';
-import { isReactive } from './reactive';
-import { isComputed } from './computed';
-import { effect } from './effect';
+import {
+  EMPTY_OBJ,
+  noop as NOOP,
+  hasChanged,
+  isArray,
+  isFunction,
+  isMap,
+  isObject,
+  isPlainObject,
+  isSet,
+  warn,
+} from '@estjs/shared';
+import { signalsFlags } from './constants';
+import { ReactiveEffect, cleanup } from './effect';
+import { isReactive, isShallow } from './reactive';
+import { type Signal, isSignal } from './signal';
+import { setActiveSub } from './graph';
+import { type ComputedRef, isComputed } from './computed';
 
-// A unique initial value used to identify if watcher is running for the first time.
+// These errors were transferred from `packages/runtime-core/src/errorHandling.ts`
+// to @essor/reactivity to allow co-location with the moved base watch logic, hence
+// it is essential to keep these values unchanged.
+export enum WatchErrorCodes {
+  WATCH_GETTER = 2,
+  WATCH_CALLBACK,
+  WATCH_CLEANUP,
+}
+
+export type WatchEffect = (onCleanup: OnCleanup) => void;
+
+export type WatchSource<T = any> = Signal<T, any> | ComputedRef<T> | (() => T);
+
+export type WatchCallback<V = any, OV = any> = (
+  value: V,
+  oldValue: OV,
+  onCleanup: OnCleanup,
+) => any;
+
+export type OnCleanup = (cleanupFn: () => void) => void;
+
+export interface WatchOptions<Immediate = boolean> {
+  immediate?: Immediate;
+  deep?: boolean | number;
+  once?: boolean;
+  onWarn?: (msg: string, ...args: any[]) => void;
+  /**
+   * @internal
+   */
+  call?: (fn: Function | Function[], type: WatchErrorCodes, args?: unknown[]) => void;
+}
+
+export type WatchStopHandle = () => void;
+
+export interface WatchHandle extends WatchStopHandle {
+  pause: () => void;
+  resume: () => void;
+  stop: () => void;
+}
+
+// initial value for watchers to trigger on undefined initial values
 const INITIAL_WATCHER_VALUE = {};
 
-// Watch function options interface.
-interface WatchOptions {
-  /** Whether to execute the callback immediately once on setup. */
-  immediate?: boolean;
-  /** Whether to deeply traverse the source to track nested changes. */
-  deep?: boolean;
-  /**
-   * When the callback fires relative to the reactive flush cycle.
-   * - `'post'` (default) — queued on the microtask job queue (essor's historical
-   *   behavior).
-   * - `'pre'`  — queued before the main job queue.
-   * - `'sync'` — run synchronously the instant the source changes. Use sparingly:
-   *   a callback that mutates a tracked dependency can recurse.
-   */
-  flush?: FlushTiming;
-  /** Stop the watcher automatically after the callback fires once. */
-  once?: boolean;
+let activeWatcher: WatcherEffect | undefined = undefined;
+
+/**
+ * Returns the current active effect if there is one.
+ */
+export function getCurrentWatcher(): ReactiveEffect<any> | undefined {
+  return activeWatcher;
 }
 
-// Watch source type, can be value, ref/signal, getter function or array.
-type WatchSource<T = any> = T | { value: T } | (() => T);
 /**
- * Register a cleanup handler that runs right before the next callback invocation
- */
-type OnCleanup = (cleanupFn: () => void) => void;
-// Watch callback function type.
-type WatchCallback<T = any> = (newValue: T, oldValue: T | undefined, onCleanup: OnCleanup) => void;
-
-/**
- * Iteratively traverse a value, accessing all its properties to trigger
- * dependency tracking. Returns the original value.
+ * Registers a cleanup callback on the current active effect. This
+ * registered cleanup callback will be invoked right before the
+ * associated effect re-runs.
  *
- * Uses an explicit stack instead of recursion so deeply nested chains cannot
- * overflow the call stack, and a per-call `seen` Set for cycle detection so no
- * object graph is retained after the walk completes (a module-level Set would
- * pin the entire last-traversed graph in memory). Per-call state also makes
- * re-entrant traversal (a computed read during the walk triggering another
- * traverse) safe with no extra guards.
+ * @param cleanupFn - The callback function to attach to the effect's cleanup.
+ * @param failSilently - if `true`, will not throw warning when called without
+ * an active effect.
+ * @param owner - The effect that this cleanup function should be attached to.
+ * By default, the current active effect.
  */
-function traverse(value: any): any {
-  if (!isObject(value)) {
-    return value;
-  }
-  const seen = new Set<any>();
-  const stack: any[] = [value];
-  while (stack.length > 0) {
-    const current = stack.pop();
-    // If not an object or already traversed, skip.
-    if (!isObject(current) || seen.has(current)) {
-      continue;
-    }
-    seen.add(current);
-    // If it's a signal or computed, traverse its .value.
-    if (isSignal(current) || isComputed(current)) {
-      stack.push(current.value);
-      // If it's an array, traverse all its elements.
-    } else if (isArray(current)) {
-      for (const element of current) {
-        stack.push(element);
-      }
-      // If it's a Map, traverse all its values, and access keys and values to track changes.
-    } else if (isMap(current)) {
-      current.forEach((v: any) => {
-        stack.push(v);
-      });
-      current.keys();
-      current.values();
-      // If it's a Set, traverse all its values to track changes.
-    } else if (isSet(current)) {
-      current.forEach((v: any) => {
-        stack.push(v);
-      });
-      current.values();
-      // If it's a plain object, traverse all its keys.
+export function onWatcherCleanup(
+  cleanupFn: () => void,
+  failSilently = false,
+  owner: WatcherEffect | undefined = activeWatcher,
+): void {
+  if (owner) {
+    const { call } = owner.options;
+    if (call) {
+      owner.cleanups[owner.cleanupsLength++] = () => call(cleanupFn, WatchErrorCodes.WATCH_CLEANUP);
     } else {
-      for (const key of Object.keys(current)) {
-        stack.push(current[key]);
-      }
+      owner.cleanups[owner.cleanupsLength++] = cleanupFn;
     }
+  } else if (__DEV__ && !failSilently) {
+    warn(`onWatcherCleanup() was called when there was no active watcher` + ` to associate with.`);
   }
-  return value;
 }
 
-/**
- * Create a clone of a value for comparison purposes.
- *
- * Intentionally an identity function: `watch` does NOT deep-clone the watched
- * value between runs (deep cloning every tick is a major performance
- * bottleneck). See the `oldValue` caveat in {@link watch}'s docs.
- *
- * @param value - The value to clone.
- * @returns The value itself.
- */
-function cloneValue<T>(value: T): T {
-  return value;
-}
+export class WatcherEffect extends ReactiveEffect {
+  forceTrigger: boolean;
+  isMultiSource: boolean;
+  oldValue: any;
+  boundCleanup: typeof onWatcherCleanup = (fn) => onWatcherCleanup(fn, false, this);
 
-/**
- * Resolve a single (non-array) watch source into a standard getter function.
- *
- * @param source - The watch source.
- * @returns A getter function.
- */
-function resolveSingleSource<T>(source: WatchSource<T>): () => T {
-  // Function source: use directly.
-  if (isFunction(source)) {
-    return source as () => T;
-  }
-  // Signal or computed: read .value.
-  if (isSignal(source) || isComputed(source)) {
-    return () => source.value as T;
-  }
-  // Reactive object: deep traverse to track nested changes.
-  if (isReactive(source)) {
-    return () => traverse(source) as unknown as T;
-  }
-  // Plain value: identity getter.
-  return () => source as T;
-}
+  constructor(
+    source: WatchSource | WatchSource[] | WatchEffect | object,
+    public cb?: WatchCallback<any, any> | null | undefined,
+    public options: WatchOptions = EMPTY_OBJ,
+  ) {
+    const { deep, once, call, onWarn } = options;
 
-/**
- * Resolve watch sources of various forms into a standard getter function.
- *
- * @param source - The watch source passed by the user.
- * @returns A getter function that returns the current source value.
- */
-function resolveSource<T>(source: WatchSource<T>): () => T {
-  // A reactive array is a single reactive source (deep-traversed), not a
-  // multi-source list — check reactivity BEFORE isArray (SIG-15).
-  if (isArray(source) && !isReactive(source)) {
-    // Pre-build per-element getters; call sites only allocate the output array.
-    const getters = (source as WatchSource[]).map((s) => resolveSingleSource(s));
-    return () => getters.map((g) => g()) as unknown as T;
-  }
-  return resolveSingleSource(source);
-}
+    let getter: () => any;
+    let forceTrigger = false;
+    let isMultiSource = false;
 
-/**
- * Watch one or more reactive data sources and execute callback when sources change.
- *
- * To capture a previous snapshot for object sources, derive the specific
- * primitive you care about in a getter:
- *
- * ```ts
- * // ❌ old === new — both point at the mutated object
- * watch(state, (n, o) => { ... });
- *
- * // ✅ watch a derived primitive; oldValue is a real previous value
- * watch(() => state.count, (n, o) => { ... }); // o is the prior count
- * ```
- *
- * For primitive sources (signals/computed/getters returning primitives),
- * `oldValue` behaves as expected.
- *
- * **Cleanup for async side effects.** The callback receives a third argument,
- * `onCleanup`, to cancel stale work before the next run (and on stop):
- *
- * ```ts
- * watch(id, async (id, _old, onCleanup) => {
- *   const controller = new AbortController();
- *   onCleanup(() => controller.abort());
- *   const data = await fetch(`/api/${id}`, { signal: controller.signal });
- * });
- * ```
- *
- * @param source - The source(s) to watch.
- * @param callback - The callback function to execute when source changes.
- * @param options - Configuration options (`immediate`, `deep`, `flush`, `once`).
- * @returns {Function} A function to stop watching.
- */
-export function watch<T = any>(
-  source: WatchSource<T>,
-  callback: WatchCallback<T>,
-  options: WatchOptions = {},
-): () => void {
-  const { immediate = false, deep = false, flush = 'post', once = false } = options;
-
-  // Initialize oldValue as a special object to determine if it's the first execution.
-  let oldValue: any = INITIAL_WATCHER_VALUE;
-  // Holds the value produced by the most recent effect run (including the eager
-  // run that `effect()` performs on creation, which seeds the initial value
-  // without a second invocation of the getter).
-  let lastValue: T;
-  let active = true;
-
-  // A single reactive source already deep-traverses inside its own getter
-  // (resolveSingleSource), so the effect body must NOT traverse it again —
-  // that was the old double-walk for `watch(reactiveObj, cb, { deep: true })`.
-  // For every other source, an explicit `deep: true` triggers the body traverse.
-  //
-  // Order matters: a reactive ARRAY is also `isArray`, but it is a single
-  // reactive source (watch its contents), not a multi-source list (SIG-15).
-  const isSingleReactive = isReactive(source);
-  const isMultiSource = !isSingleReactive && isArray(source);
-  const needTraverse = deep && !isSingleReactive;
-  // Reactive sources in a multi-source array yield the same proxy reference on
-  // every run, so element-wise comparison can never observe their in-place
-  // mutations — such arrays must keep the always-fire path (mirroring the
-  // single-reactive `isObject(newValue)` branch below).
-  //
-  // Known limitation: this only detects DIRECT reactive elements. A getter
-  // element that returns a stable reactive reference (e.g.
-  // `watch([() => state.obj])`) still goes through the element-wise comparison
-  // — the reference never changes, so in-place mutations of `state.obj` do not
-  // fire the callback. Watch `state.obj` directly (or a derived primitive)
-  // instead.
-  const forceMultiTrigger = isMultiSource && (source as WatchSource[]).some((s) => isReactive(s));
-
-  // Resolve source to a getter function.
-  const getter = resolveSource(source);
-
-  // ── Cleanup handling ────────
-  let cleanup: (() => void) | undefined;
-  const onCleanup: OnCleanup = (fn: () => void) => {
-    cleanup = () => {
-      cleanup = undefined;
-      try {
-        fn();
-      } catch (error) {
-        if (__DEV__) warn('[watch] cleanup handler threw:', error);
+    if (isSignal(source) || isComputed(source)) {
+      getter = () => source.value;
+      forceTrigger = isShallow(source);
+    } else if (isReactive(source)) {
+      getter = () => reactiveGetter(source, deep);
+      forceTrigger = true;
+    } else if (isArray(source)) {
+      isMultiSource = true;
+      forceTrigger = source.some((s) => isReactive(s) || isShallow(s));
+      getter = () =>
+        source.map((s) => {
+          if (isSignal(s) || isComputed(s)) {
+            return s.value;
+          } else if (isReactive(s)) {
+            return reactiveGetter(s, deep);
+          } else if (isFunction(s)) {
+            return call ? call(s, WatchErrorCodes.WATCH_GETTER) : s();
+          } else {
+            __DEV__ && warnInvalidSource(s, onWarn);
+            return undefined;
+          }
+        });
+    } else if (isFunction(source)) {
+      if (cb) {
+        // getter with cb
+        getter = call ? () => call(source, WatchErrorCodes.WATCH_GETTER) : (source as () => any);
+      } else {
+        // no cb -> simple effect
+        getter = () => {
+          if (this.cleanupsLength) {
+            const prevSub = setActiveSub();
+            try {
+              cleanup(this);
+            } finally {
+              setActiveSub(prevSub);
+            }
+          }
+          const currentEffect = activeWatcher;
+          activeWatcher = this;
+          try {
+            return call
+              ? call(source, WatchErrorCodes.WATCH_CALLBACK, [this.boundCleanup])
+              : source(this.boundCleanup);
+          } finally {
+            activeWatcher = currentEffect;
+          }
+        };
       }
-    };
-  };
-  const runCleanup = (): void => {
-    if (cleanup) cleanup();
-  };
-
-  // Guards `once` against double-firing when the callback throws or
-  // re-triggers the watcher synchronously (sync flush re-entrancy).
-  let onceFired = false;
-
-  /**
-   * Invoke the user callback with proper cleanup/oldValue bookkeeping.
-   */
-  const invoke = (newValue: T): void => {
-    if (once) {
-      if (onceFired) return;
-      onceFired = true;
+    } else {
+      getter = NOOP;
+      __DEV__ && warnInvalidSource(source, onWarn);
     }
-    const prevValue: any = oldValue;
-    // Commit the newValue → oldValue snapshot BEFORE running the callback so a
-    // re-entrant write from a sync-flush callback sees the up-to-date oldValue
-    // instead of the uncommitted previous one.
-    oldValue = cloneValue(newValue);
-    runCleanup();
-    try {
-      callback(
-        newValue,
-        prevValue === INITIAL_WATCHER_VALUE ? undefined : (prevValue as T),
-        onCleanup,
-      );
-    } finally {
-      // Stop after the callback so an onCleanup registered inside it still
-      // runs; `onceFired` already prevents any re-entrant second invocation.
-      if (once) stop();
+
+    if (cb && deep) {
+      const baseGetter = getter;
+      const depth = deep === true ? Infinity : deep;
+      getter = () => traverse(baseGetter(), depth);
     }
-  };
 
-  /**
-   * Runs the scheduled watch job.
-   */
-  const job = (): void => {
-    if (!active) return;
-    const currentEffect = runner.effect;
-    if (!currentEffect.active) return;
+    super(getter);
+    this.forceTrigger = forceTrigger;
+    this.isMultiSource = isMultiSource;
 
-    // Run effect to get new value.
-    const newValue = currentEffect.run();
+    if (once && cb) {
+      const _cb = cb;
+      cb = (...args) => {
+        const res = _cb(...args);
+        this.stop();
+        return res;
+      };
+    }
 
-    if (isMultiSource && !deep && !forceMultiTrigger) {
-      // The multi-source getter allocates a fresh array every run, so the
-      // generic isObject check below would fire the callback even when every
-      // source is unchanged. Compare element-wise against the previous
-      // snapshot instead. With `deep: true` (or a reactive element, see
-      // `forceMultiTrigger`) we keep the always-fire path — nested mutations
-      // cannot be detected cheaply by comparing snapshots.
-      if (
-        oldValue !== INITIAL_WATCHER_VALUE &&
-        (newValue as any[]).every((v, i) => !hasChanged(v, (oldValue as any[])[i]))
-      ) {
-        return;
-      }
-      invoke(newValue);
+    this.cb = cb;
+
+    this.oldValue = isMultiSource
+      ? new Array((source as []).length).fill(INITIAL_WATCHER_VALUE)
+      : INITIAL_WATCHER_VALUE;
+  }
+
+  run(initialRun = false): void {
+    const oldValue = this.oldValue;
+    const newValue = (this.oldValue = super.run());
+    if (!this.cb) {
       return;
     }
-
-    if (deep || isObject(newValue) || hasChanged(newValue, oldValue)) {
-      invoke(newValue);
+    const { immediate, deep, call } = this.options;
+    if (initialRun && !immediate) {
+      return;
     }
-  };
-
-  // Create an effect to track getter dependencies. The scheduler queues the
-  // job according to the requested flush timing.
-  const runner = effect(
-    () => {
-      const value = getter();
-      // Explicit deep on a non-reactive source. Reactive sources already deep-
-      // traverse inside their getter, so they are excluded via `needTraverse`.
-      if (needTraverse) {
-        traverse(value);
+    if (
+      initialRun ||
+      deep ||
+      this.forceTrigger ||
+      (this.isMultiSource
+        ? newValue.some((v, i) => hasChanged(v, oldValue[i]))
+        : hasChanged(newValue, oldValue))
+    ) {
+      // cleanup before running cb again
+      cleanup(this);
+      const currentWatcher = activeWatcher;
+      activeWatcher = this;
+      try {
+        const args = [
+          newValue,
+          // pass undefined as the old value when it's changed for the first time
+          oldValue === INITIAL_WATCHER_VALUE
+            ? undefined
+            : this.isMultiSource && oldValue[0] === INITIAL_WATCHER_VALUE
+              ? []
+              : oldValue,
+          this.boundCleanup,
+        ];
+        call
+          ? call(this.cb, WatchErrorCodes.WATCH_CALLBACK, args)
+          : // @ts-expect-error
+            this.cb(...args);
+      } finally {
+        activeWatcher = currentWatcher;
       }
-      lastValue = value;
-      return value;
-    },
-    {
-      scheduler: createScheduler(job, flush),
-      // The getter's return value is the watched data — a function value
-      // must not be captured as an effect cleanup.
-      captureCleanup: false,
-    },
-  );
-  // `effect()` already ran the body once on creation, so `lastValue` holds the
-  // initial value — no second getter invocation needed here.
-
-  /**
-   * Stop watching and run any pending cleanup.
-   */
-  function stop(): void {
-    if (!active) return;
-    active = false;
-    runCleanup();
-    runner.stop();
-  }
-
-  if (immediate) {
-    // First callback: oldValue is still INITIAL → reported as undefined.
-    // If the callback throws we have not yet returned the stop handle, so the
-    // caller could never tear the watcher down — stop it here before rethrowing.
-    try {
-      invoke(lastValue!);
-    } catch (error) {
-      stop();
-      throw error;
     }
-  } else {
-    // Seed oldValue from the eager run for the first real comparison.
-    oldValue = cloneValue(lastValue!);
   }
+}
+
+function reactiveGetter(source: object, deep: WatchOptions['deep']): unknown {
+  // traverse will happen in wrapped getter below
+  if (deep) return source;
+  // for `deep: false | 0` or shallow reactive, only traverse root-level properties
+  if (isShallow(source) || deep === false || deep === 0) return traverse(source, 1);
+  // for `deep: undefined` on a reactive object, deeply traverse all properties
+  return traverse(source);
+}
+
+function warnInvalidSource(s: object, onWarn: WatchOptions['onWarn']): void {
+  (onWarn || warn)(
+    `Invalid watch source: `,
+    s,
+    `A watch source can only be a getter/effect function, a ref, ` +
+      `a reactive object, or an array of these types.`,
+  );
+}
+
+export function watch(
+  source: WatchSource | WatchSource[] | WatchEffect | object,
+  cb?: WatchCallback | null,
+  options: WatchOptions = EMPTY_OBJ,
+): WatchHandle {
+  const effect = new WatcherEffect(source, cb, options);
+
+  effect.run(true);
+
+  const stop = effect.stop.bind(effect) as WatchHandle;
+  stop.pause = effect.pause.bind(effect);
+  stop.resume = effect.resume.bind(effect);
+  stop.stop = stop;
 
   return stop;
+}
+
+export function traverse(
+  value: unknown,
+  depth: number = Infinity,
+  seen?: Map<unknown, number>,
+): unknown {
+  if (depth <= 0 || !isObject(value) || value[signalsFlags.SKIP]) {
+    return value;
+  }
+
+  seen = seen || new Map();
+  if ((seen.get(value) || 0) >= depth) {
+    return value;
+  }
+  seen.set(value, depth);
+  depth--;
+  if (isSignal(value) || isComputed(value)) {
+    traverse(value.value, depth, seen);
+  } else if (isArray(value)) {
+    for (const element of value) {
+      traverse(element, depth, seen);
+    }
+  } else if (isSet(value) || isMap(value)) {
+    value.forEach((v: any) => {
+      traverse(v, depth, seen);
+    });
+  } else if (isPlainObject(value)) {
+    for (const key in value) {
+      traverse(value[key], depth, seen);
+    }
+    for (const key of Object.getOwnPropertySymbols(value)) {
+      if (Object.prototype.propertyIsEnumerable.call(value, key)) {
+        traverse((value as any)[key], depth, seen);
+      }
+    }
+  }
+  return value;
 }
