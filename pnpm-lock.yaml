@@ -245,6 +245,9 @@ importers:
       vitest:
         specifier: ^5.0.2
         version: 5.0.2(@types/node@26.1.1)(@vitest/coverage-v8@5.0.2)(jsdom@30.1.1)(vite@8.3.1(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.0))
+      vitest-plugin-console:
+        specifier: ^0.0.4
+        version: 0.0.4
 
   benchmark:
     dependencies:
@@ -6407,6 +6410,9 @@ packages:
         optional: true
       yaml:
         optional: true
+
+  vitest-plugin-console@0.0.4:
+    resolution: {integrity: sha512-ZayOf8NRaBSRXg0Y6YpyjFZNNkj0jHbaAWGFu7ecFO4FmbZL3+S7DPIF4uR715TcykGnW/VFQhEvIIfs69PRpA==}
 
   vitest@5.0.2:
     resolution: {integrity: sha512-7MQrx9pDv5aHiUcovIb/70Ys3tgtkUVgCtledvKdCmEO+/1Dicq5ZqoSxOW034m03oqC+oHOKui2dM6qtMLoJg==}
@@ -12659,6 +12665,8 @@ snapshots:
       terser: 5.48.0
       tsx: 4.23.15
       yaml: 2.9.0
+
+  vitest-plugin-console@0.0.4: {}
 
   vitest@5.0.2(@types/node@26.1.1)(@vitest/coverage-v8@5.0.2)(jsdom@30.1.1)(vite@8.3.1(@types/node@26.1.1)(esbuild@0.27.7)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.0)):
     dependencies:

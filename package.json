@@ -54,7 +54,8 @@
     "tsx": "^4.23.15",
     "turbo": "^2.11.5",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.2",
+    "vitest-plugin-console": "^0.0.4"
   },
   "engines": {
     "node": "^22.18.0 || >=24.11.0"
