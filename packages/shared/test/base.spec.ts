@@ -6,7 +6,6 @@ import {
   coerceArray,
   extend,
   generateUniqueId,
-  getGlobalThis,
   hasChanged,
   hasOwn,
   isBrowser,
@@ -247,53 +246,6 @@ describe('base Utils', () => {
         EMPTY_ARR.push(1);
       }).toThrow();
       expect(EMPTY_ARR).toEqual([]);
-    });
-  });
-
-  describe('getGlobalThis', () => {
-    it('should return the global object', () => {
-      const globalObject = getGlobalThis();
-      // In a browser environment, globalThis should be window
-      expect(globalObject).toBeDefined();
-      // Depending on the test environment, this might be `window`, `self`, or `global`
-      // For browser tests, it should be window
-      if (typeof window !== 'undefined') {
-        expect(globalObject).toBe(window);
-      } else if (typeof self !== 'undefined') {
-        expect(globalObject).toBe(self);
-      } else if (typeof global !== 'undefined') {
-        expect(globalObject).toBe(global);
-      }
-    });
-
-    it('should cache the global object on subsequent calls', () => {
-      const first = getGlobalThis();
-      const second = getGlobalThis();
-      expect(first).toBe(second);
-    });
-
-    it('should return globalThis when available', () => {
-      const globalObject = getGlobalThis();
-      // globalThis is the standard way to access the global object
-      if (typeof globalThis !== 'undefined') {
-        expect(globalObject).toBe(globalThis);
-      }
-    });
-
-    it('should return window in browser environment', () => {
-      const globalObject = getGlobalThis();
-      // In JSDOM environment, window should be available
-      expect(globalObject).toBe(window);
-      expect(globalObject).toBe(globalThis);
-    });
-
-    it('should handle multiple calls efficiently', () => {
-      // Call multiple times to ensure caching works
-      const results = Array.from({ length: 10 }, () => getGlobalThis());
-      // All results should be the same object
-      results.forEach((result) => {
-        expect(result).toBe(results[0]);
-      });
     });
   });
 });

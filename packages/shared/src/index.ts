@@ -62,6 +62,7 @@ export {
   SPREAD_NAME,
 } from './dom';
 export {
+  makeMap,
   isKnownSvgAttr,
   isKnownHtmlAttr,
   isSSRSafeAttrName,

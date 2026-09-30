@@ -1,5 +1,17 @@
-import { createApp, shallowSignal } from 'essor';
+import { batch, createApp, shallowSignal } from 'essor';
 // import './style.css';
+
+/** @typedef {{ id: number, label: import('essor').Signal<string> }} Row */
+/** @typedef {{
+ * run: () => void,
+ * runLots: () => void,
+ * add: () => void,
+ * update: () => void,
+ * clear: () => void,
+ * swapRows: () => void,
+ * remove: (id: number) => void,
+ * select: (id: number) => void
+ * }} Actions */
 const A = [
   'pretty',
   'large',
@@ -56,41 +68,49 @@ const N = [
   'keyboard',
 ];
 let nextId = 1;
+/** @param {number} max */
 const random = max => Math.round(Math.random() * 1000) % max;
+/** @param {number} count @returns {Row[]} */
 const buildData = count => {
+  /** @type {Row[]} */
   const data = Array.from({ length: count });
   for (let i = 0; i < count; i++) {
     data[i] = {
       id: nextId++,
-      label: `${A[random(A.length)]} ${C[random(C.length)]} ${N[random(N.length)]}`,
+      label: shallowSignal(`${A[random(A.length)]} ${C[random(C.length)]} ${N[random(N.length)]}`),
     };
   }
   return data;
 };
+/** @type {import('essor').Signal<Row[]>} */
 const data = shallowSignal([]);
 const selected = shallowSignal(0);
+/** @type {Actions} */
 const actions = {
   run: () => {
-    data.set(buildData(1000));
-    selected.set(0);
+    nextId = 1;
+    data.value = buildData(1000);
+    selected.value = 0;
   },
   runLots: () => {
-    data.set(buildData(10000));
-    selected.set(0);
+    nextId = 1;
+    data.value = buildData(10000);
+    selected.value = 0;
   },
   add: () => {
     data.value = data.value.slice().concat(buildData(1000));
   },
   update: () => {
-    const _rows = data.value.slice();
-    for (let i = 0; i < _rows.length; i += 10) {
-      _rows[i].label += ' !!!';
-    }
-    data.set(_rows);
+    batch(() => {
+      const rows = data.value;
+      for (let i = 0; i < rows.length; i += 10) {
+        rows[i].label.value += ' !!!';
+      }
+    });
   },
   clear: () => {
-    data.set([]);
-    selected.set(0);
+    data.value = [];
+    selected.value = 0;
   },
   swapRows: () => {
     const _rows = data.value.slice();
@@ -100,41 +120,25 @@ const actions = {
       _rows[1] = d998;
       _rows[998] = d1;
     }
-    data.set(_rows);
+    data.value = _rows;
   },
+  /** @param {number} id */
   remove: id => {
-    data.update(d =>
-      d.toSpliced(
-        d.findIndex(d => d.id === id),
-        1,
-      ),
+    data.value = data.value.toSpliced(
+      data.value.findIndex(d => d.id === id),
+      1,
     );
   },
+  /** @param {number} id */
   select: id => {
-    selected.set(id);
+    selected.value = id;
   },
 };
-function Row(props) {
-  return (
-    <tr class={selected.value === props.item.id ? 'danger' : ''}>
-      <td class="col-md-1 1">{props.item.id}</td>
-      <td class="col-md-4 2">
-        <a onClick={() => actions.select(props.item.id)}>{props.item.label}</a>
-      </td>
-      <td class="col-md-1 3">
-        <a onClick={() => actions.remove(props.item.id)}>
-          <span class="glyphicon glyphicon-remove" aria-hidden="true" />
-        </a>
-      </td>
-      <td class="col-md-6 4" />
-    </tr>
-  );
-}
-
+/** @param {{ id: string, onClick: () => void, children: unknown }} props */
 function Button(props) {
   return (
     <div class="col-sm-6 smallpad">
-      <button type="button" class="btn btn-primary btn-block" id={props.id}>
+      <button type="button" class="btn btn-primary btn-block" id={props.id} onClick={props.onClick}>
         {props.children}
       </button>
     </div>
@@ -181,9 +185,23 @@ function Main() {
       <Jumbotron />
       <table class="table table-hover table-striped test-data">
         <tbody>
-          {data.value.map(item => (
-            <Row key={item.id} item={item} />
-          ))}
+          {data.value.map(item => {
+            const rowId = item.id;
+            return (
+                <tr key={rowId} class={selected.value === rowId ? 'danger' : ''}>
+                <td class="col-md-1 1" textContent={rowId} />
+                <td class="col-md-4 2">
+                  <a onClick={() => actions.select(rowId)} textContent={item.label.value} />
+                </td>
+                <td class="col-md-1 3">
+                  <a onClick={() => actions.remove(rowId)}>
+                    <span class="glyphicon glyphicon-remove" aria-hidden="true" />
+                  </a>
+                </td>
+                <td class="col-md-6 4" />
+              </tr>
+            );
+          })}
         </tbody>
       </table>
       <span class="preloadicon glyphicon glyphicon-remove" aria-hidden="true" />
