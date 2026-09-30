@@ -224,7 +224,7 @@ export function Portal(props: PortalProps): Comment {
 
   onCleanup(() => {
     disposed = true;
-    effectRunner.stop();
+    effectRunner.effect.stop();
     teardown();
   });
 

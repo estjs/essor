@@ -371,7 +371,7 @@ export function For<T>(props: ForProps<T>): Node {
   }
 
   onCleanup(() => {
-    effectRunner.stop();
+    effectRunner.effect.stop();
     for (const entry of entries) {
       disposeItem(entry);
     }

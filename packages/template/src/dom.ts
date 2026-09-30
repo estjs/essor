@@ -368,7 +368,7 @@ export function insert(
   });
 
   onCleanup(() => {
-    effectRunner.stop();
+    effectRunner.effect.stop();
     for (const node of renderedNodes) removeNode(node);
     renderedNodes.length = 0;
     // Release scope reference so GC can reclaim the ancestor scope chain
@@ -420,7 +420,7 @@ export function insertTextContent(parent: Element, valueFactory: unknown): Text 
   });
 
   onCleanup(() => {
-    effectRunner.stop();
+    effectRunner.effect.stop();
     if (textNode.parentNode === parent) textNode.remove();
   });
 

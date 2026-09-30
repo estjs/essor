@@ -569,7 +569,7 @@ export function Transition(props: TransitionProps): Node {
     disposed = true;
     stopEnterWait();
     stopLeaveWait();
-    effectRunner.stop();
+    effectRunner.effect.stop();
     for (const el of [currentEl, leavingEl]) {
       if (!el) continue;
       const ec = (el as unknown as Record<symbol, CancelCb>)[ENTER_CB];

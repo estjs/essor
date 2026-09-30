@@ -1,5 +1,5 @@
 import { isArray, isFunction, isString, warn } from '@estjs/shared';
-import { effect } from '@estjs/signals';
+import { type ReactiveEffectRunner, effect } from '@estjs/signals';
 import { addEventListener } from './events';
 import { getActiveScope, onCleanup } from './scope';
 import { isHydrating, isNodeHydrated } from './hydration';
@@ -372,7 +372,7 @@ export function bindElement(
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
-    runner.stop();
+    runner.effect.stop();
     for (const d of disposers) d();
     disposers.length = 0;
   };
@@ -382,4 +382,19 @@ export function bindElement(
   }
 
   return dispose;
+}
+export type MemoEffectFn<T> = (previous: T) => T;
+
+/**
+ * Create an effect that feeds its previous result into the next execution.
+ *
+ * @template T - Memoized value type.
+ * @param fn - Derivation receiving the previous value.
+ * @param initial - Value passed to the first derivation.
+ */
+export function memoEffect<T>(fn: MemoEffectFn<T>, initial: T): ReactiveEffectRunner {
+  let previous = initial;
+  return effect(() => {
+    previous = fn(previous);
+  });
 }

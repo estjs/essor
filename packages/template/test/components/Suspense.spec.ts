@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as shared from '@estjs/shared';
 import { computed, signal } from '@estjs/signals';
 import {
   Suspense,
@@ -520,12 +521,8 @@ describe('suspense component', () => {
 
   describe('edge cases', () => {
     it('should return the fallback directly during SSR when document is unavailable', () => {
-      const originalDocument = global.document;
-
+      const isBrowserSpy = vi.spyOn(shared, 'isBrowser').mockReturnValue(false);
       try {
-        // @ts-expect-error – simulate SSR env
-        delete global.document;
-
         expect(
           Suspense({
             children: Promise.resolve('ignored') as any,
@@ -533,7 +530,7 @@ describe('suspense component', () => {
           }),
         ).toBe('SSR fallback');
       } finally {
-        global.document = originalDocument;
+        isBrowserSpy.mockRestore();
       }
     });
 

@@ -629,7 +629,7 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
   });
 
   onCleanup(() => {
-    effectRunner.stop();
+    effectRunner.effect.stop();
     for (const entry of entries) disposeEntry(entry);
     entries = [];
     if (wrapper.parentNode) wrapper.parentNode.removeChild(wrapper);

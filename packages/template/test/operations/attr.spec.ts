@@ -380,6 +380,7 @@ describe('attributes module', () => {
         patchAttr(iframe, 'srcdoc', null, '<script>alert(1)</script>');
 
         expect(iframe.getAttribute('srcdoc')).toBeNull();
+        expect('srcdoc updates are ignored by patchAttr').toHaveBeenWarned();
       });
 
       it('should block dangerous data: MIME types (markup/script payloads)', () => {
@@ -483,8 +484,6 @@ describe('attributes module', () => {
       });
 
       it('should warn and ignore nested spread attributes', () => {
-        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
         patchAttr(element, SPREAD_NAME, null, {
           [SPREAD_NAME]: { id: 'nested' },
           title: 'visible',
@@ -492,9 +491,7 @@ describe('attributes module', () => {
 
         expect(element.title).toBe('visible');
         expect(element.id).toBe('');
-        expect(warnSpy).toHaveBeenCalledWith(
-          expect.stringContaining('[Essor warn]: nested spread attributes are ignored'),
-        );
+        expect('[Essor warn]: nested spread attributes are ignored').toHaveBeenWarned();
       });
 
       it('should remove the old spread listener when onClick changes to a non-function', () => {

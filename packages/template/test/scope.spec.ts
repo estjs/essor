@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { computed, effect, getCurrentScope, memoEffect, signal } from '@estjs/signals';
+import { computed, effect, getCurrentScope, signal } from '@estjs/signals';
 import { createScope, disposeScope, runWithScope, setActiveScope } from '../src/scope';
 import { createComponent } from '../src/component';
 import { child, insert, next } from '../src/dom';
 import { patchAttr } from '../src/operations';
 import { createApp, template } from '../src/renderer';
 import { type Scope, getActiveScope } from '../src/scope';
+import { memoEffect } from '../src/binding';
 describe('scope effectScope bridge', () => {
   afterEach(() => {
     setActiveScope(null);

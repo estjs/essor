@@ -1,4 +1,4 @@
-import { isFunction } from '@estjs/shared';
+import { isBrowser, isFunction } from '@estjs/shared';
 import { inject } from '../provide';
 import { onDestroy } from '../lifecycle';
 import { createScope, disposeScope, getActiveScope, runWithScope } from '../scope';
@@ -71,11 +71,11 @@ function defineServerAsyncComponent<P extends ComponentProps>(
   let promise: Promise<void> | null = null;
 
   const load = (): Promise<void> =>
-    (promise ??= loader()
-      .then((mod) => {
-        resolved = resolveModule(mod);
-      })
-      .catch(() => {}));
+  (promise ??= loader()
+    .then((mod) => {
+      resolved = resolveModule(mod);
+    })
+    .catch(() => { }));
 
   load();
 
@@ -182,23 +182,23 @@ function defineClientAsyncComponent<P extends ComponentProps>(
     /** Build a retry handler bound to the given props. */
     const retryWith =
       (retryProps: P): (() => void) =>
-      () => {
-        if (!alive) return;
-        // Bump the shared loadId so the next load() call is authoritative.
-        // Older in-flight promises forward to this new load instead of settling
-        // early, so sibling instances and Suspense boundaries do not get stuck.
-        const retryLoadId = ++loadId;
-        loadPromise = null;
-        status = 'pending';
-        loadError = null;
-        instanceRetryId++;
-        const capturedRetry = instanceRetryId;
-        if (loading) render(loading);
-        load(retryLoadId).then(() => {
-          // Only settle if this instance's retry is still the latest one.
-          if (alive && capturedRetry === instanceRetryId) settle(retryProps);
-        });
-      };
+        () => {
+          if (!alive) return;
+          // Bump the shared loadId so the next load() call is authoritative.
+          // Older in-flight promises forward to this new load instead of settling
+          // early, so sibling instances and Suspense boundaries do not get stuck.
+          const retryLoadId = ++loadId;
+          loadPromise = null;
+          status = 'pending';
+          loadError = null;
+          instanceRetryId++;
+          const capturedRetry = instanceRetryId;
+          if (loading) render(loading);
+          load(retryLoadId).then(() => {
+            // Only settle if this instance's retry is still the latest one.
+            if (alive && capturedRetry === instanceRetryId) settle(retryProps);
+          });
+        };
 
     /** Reflect the current cache status into the rendered view. */
     const settle = (renderProps: P): void => {
@@ -282,7 +282,7 @@ export function defineAsyncComponent<P extends ComponentProps = ComponentProps>(
   loader: Loader<P>,
   options: AsyncComponentOptions = {},
 ): ComponentFn<P> {
-  return typeof window === 'undefined'
+  return !isBrowser()
     ? defineServerAsyncComponent(loader, options.ssr ?? 'blocking')
     : defineClientAsyncComponent(loader, options);
 }

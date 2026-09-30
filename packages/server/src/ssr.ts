@@ -248,6 +248,7 @@ export function ssrSelected(value: unknown, ownValue?: unknown): string {
  * @returns {string} The pre-escaped text fragment.
  */
 export function ssrTextValue(value: unknown, _modifiers?: SSRBindModifiers): string {
+  void _modifiers;
   if (isNil(value) || value === false) return '';
   const text = String(value);
   const serialized = escapeHTML(text);

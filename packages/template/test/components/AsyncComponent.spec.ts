@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as shared from '@estjs/shared';
 import { isString } from '@estjs/shared';
 import { defineAsyncComponent, isAsyncComponent } from '../../src/components/AsyncComponent';
 import { Suspense } from '../../src/components/Suspense';
@@ -778,17 +779,17 @@ describe('defineAsyncComponent', () => {
   // ── SSR branch (server environment simulation) ────────────────────────────
 
   describe('sSR branch', () => {
-    // We simulate the server branch by temporarily removing `window`
-    const originalWindow = global.window;
+    let isBrowserSpy: any;
+
+    beforeEach(() => {
+      isBrowserSpy = vi.spyOn(shared, 'isBrowser').mockReturnValue(false);
+    });
 
     afterEach(() => {
-      global.window = originalWindow;
+      isBrowserSpy?.mockRestore();
     });
 
     it('ssr: client-only returns empty string on server', () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       const Async = defineAsyncComponent(makeLoader('Client Only'), {
         ssr: 'client-only',
       });
@@ -800,9 +801,6 @@ describe('defineAsyncComponent', () => {
     });
 
     it('ssr: client-only exposes an unresolved marker helper', () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       const Async = defineAsyncComponent(makeLoader('Client Only Marker'), {
         ssr: 'client-only',
       }) as any;
@@ -811,9 +809,6 @@ describe('defineAsyncComponent', () => {
     });
 
     it('ssr: blocking exposes __asyncLoader() loader function on server', () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       const Async = defineAsyncComponent(makeLoader('SSR Content'), {
         ssr: 'blocking',
       }) as any;
@@ -826,9 +821,6 @@ describe('defineAsyncComponent', () => {
     });
 
     it('ssr: blocking renders component after __asyncLoader resolves', async () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       // Use a direct Promise.resolve (no setTimeout dependency)
       const innerFn = () => {
         const el = document.createElement('div');
@@ -842,9 +834,6 @@ describe('defineAsyncComponent', () => {
       // Await the pre-loader (a real promise, not timer-based)
       await Async.__asyncLoader();
 
-      // Restore window before any DOM operations
-      global.window = originalWindow;
-
       // The resolved component should be set
       const resolved = Async.__asyncResolved();
       expect(resolved).not.toBeNull();
@@ -856,9 +845,6 @@ describe('defineAsyncComponent', () => {
     });
 
     it('ssr: blocking wrapper returns the resolved component output once preloaded', async () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       const Async = defineAsyncComponent(() => Promise.resolve(() => 'SSR inline' as any), {
         ssr: 'blocking',
       }) as any;
@@ -869,9 +855,6 @@ describe('defineAsyncComponent', () => {
     });
 
     it('ssr: blocking stays unresolved when the loader rejects', async () => {
-      // @ts-expect-error – simulate server env
-      delete global.window;
-
       const Async = defineAsyncComponent(() => Promise.reject(new Error('SSR boom')), {
         ssr: 'blocking',
       }) as any;

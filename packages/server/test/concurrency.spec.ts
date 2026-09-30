@@ -108,8 +108,8 @@ describe('server/concurrency', () => {
         finish.A.release();
         finish.B.release();
         await Promise.allSettled([renders.A, renders.B]);
-        runners.A?.stop();
-        runners.B?.stop();
+        runners.A?.();
+        runners.B?.();
       }
     },
   );
@@ -144,7 +144,7 @@ describe('server/concurrency', () => {
     } finally {
       finish.release();
       await Promise.allSettled([render]);
-      outsideEffect.stop();
+      outsideEffect();
     }
   });
 
@@ -192,7 +192,7 @@ describe('server/concurrency', () => {
     } finally {
       resume.release();
       await Promise.allSettled([handledRender]);
-      outsideEffect?.stop();
+      outsideEffect?.();
     }
   });
 
