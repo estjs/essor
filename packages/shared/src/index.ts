@@ -9,9 +9,11 @@ export {
   generateUniqueId,
   isBrowser,
   cacheStringFunction,
+  IfAny,
+  def,
+  toRawType,
   EMPTY_OBJ,
   EMPTY_ARR,
-  getGlobalThis,
 } from './base';
 
 export {
@@ -39,6 +41,7 @@ export {
   isBigint,
   isDate,
   isRegExp,
+  isIntegerKey,
   type StringNumber,
 } from './is';
 

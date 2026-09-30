@@ -20,7 +20,7 @@ export const extend = Object.assign;
  * @param key - The property name to check for.
  * @returns {boolean} True if the object has the property, false otherwise.
  */
-export const hasOwn = (val: object, key: string | symbol): key is keyof typeof val =>
+export const hasOwn = (val: object, key: PropertyKey): key is keyof typeof val =>
   hasOwnProperty.call(val, key);
 /**
  * Forces a value to be an array.
@@ -94,25 +94,26 @@ export const isOn = (key: string): boolean =>
   key.charCodeAt(2) >= 65 && // uppercase letter A-Z
   key.charCodeAt(2) <= 90;
 
-declare let global: {};
-
-let _globalThis: unknown;
 /**
- * Gets the global object for the current environment
- * @returns {unknown} - The global object for the current environment
+ * Define a non-enumerable property on an object
  */
-export const getGlobalThis = (): unknown => {
-  return (
-    _globalThis ||
-    (_globalThis =
-      typeof globalThis !== 'undefined'
-        ? globalThis
-        : typeof self !== 'undefined'
-          ? self
-          : typeof window !== 'undefined'
-            ? window
-            : typeof global !== 'undefined'
-              ? global
-              : {})
-  );
-};
+export function def(obj: object, key: string | symbol, value: any, writable = false): void {
+  Object.defineProperty(obj, key, {
+    configurable: true,
+    enumerable: false,
+    writable,
+    value,
+  });
+}
+
+/**
+ * Get the raw type string of a value, e.g. [object Object]
+ */
+export function toRawType(value: unknown): string {
+  return _toString.call(value).slice(8, -1);
+}
+
+/**
+ * Type helper for handling any type
+ */
+export type IfAny<T, Y, N> = 0 extends 1 & T ? Y : N;

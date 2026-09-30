@@ -251,3 +251,10 @@ export function isDate(val: unknown): val is Date {
 export function isRegExp(val: unknown): val is RegExp {
   return _toString.call(val) === '[object RegExp]';
 }
+
+/**
+ * Check if a string is an integer key
+ */
+export function isIntegerKey(key: unknown): boolean {
+  return isString(key) && key !== 'NaN' && key[0] !== '-' && `${Number.parseInt(key, 10)}` === key;
+}
