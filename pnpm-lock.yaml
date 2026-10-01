@@ -398,7 +398,7 @@ importers:
     devDependencies:
       '@rspack/cli':
         specifier: ^2.2.7
-        version: 2.2.7(@rspack/core@2.2.7)(@rspack/dev-server@2.2.1(@rspack/core@2.2.7))
+        version: 2.2.8(@rspack/core@2.2.7)(@rspack/dev-server@2.2.1(@rspack/core@2.2.7))
       '@rspack/core':
         specifier: ^2.2.7
         version: 2.2.7
@@ -748,7 +748,7 @@ importers:
     devDependencies:
       '@rspack/cli':
         specifier: ^2.2.7
-        version: 2.2.7(@rspack/core@2.2.7)(@rspack/dev-server@2.1.0(@rspack/core@2.2.7))
+        version: 2.2.8(@rspack/core@2.2.7)(@rspack/dev-server@2.1.0(@rspack/core@2.2.7))
       '@rspack/core':
         specifier: ^2.2.7
         version: 2.2.7
@@ -2988,8 +2988,8 @@ packages:
   '@rspack/binding@2.2.7':
     resolution: {integrity: sha512-opY7Sw6iwtBa23CeNj18GOqKBlaJUZXp52kNIGyNq+7jpCQKrJYeX5wiK7uBn8/ZpHQfhwNL2xxu5yzG4JFH1g==}
 
-  '@rspack/cli@2.2.7':
-    resolution: {integrity: sha512-BqMFL4KLtXOSlKaVgu9V7Hjlr7jq7+88BlFvTTBtPz92OZ9Rclr8z41DI7/PqRqjj88ba3gk08fc+lR56EPhZg==}
+  '@rspack/cli@2.2.8':
+    resolution: {integrity: sha512-6f5ITncKnqXUKZVHmD3qHMVZzQz+C07oCdci+eqBwLswA3n9AhNiM0LR4Es1ai528rv5SpiUDUFulziqSEl2Cw==}
     hasBin: true
     peerDependencies:
       '@rspack/core': ^2.0.0-0
@@ -4116,9 +4116,6 @@ packages:
 
   error-stack-parser-es@2.0.1:
     resolution: {integrity: sha512-J36ntO+rMQVRuR/umlmxmfLi4TpWwtmTnHoJoXTiC2xDNazs0VDPKcX6pbhZMDd2HFtH9isMBJXMdbki+A++Pg==}
-
-  es-module-lexer@2.1.0:
-    resolution: {integrity: sha512-n27zTYMjYu1aj4MjCWzSP7G9r75utsaoc8m61weK+W8JMBGGQybd43GstCXZ3WNmSFtGT9wi59qQTW6mhTR5LQ==}
 
   es-module-lexer@2.3.2:
     resolution: {integrity: sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw==}
@@ -7495,7 +7492,7 @@ snapshots:
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
-      '@jridgewell/sourcemap-codec': 1.5.5
+      '@jridgewell/sourcemap-codec': 1.6.0
       '@jridgewell/trace-mapping': 0.3.31
 
   '@jridgewell/gen-mapping@0.4.0-beta.0':
@@ -8361,13 +8358,13 @@ snapshots:
       '@rspack/binding-win32-ia32-msvc': 2.2.7
       '@rspack/binding-win32-x64-msvc': 2.2.7
 
-  '@rspack/cli@2.2.7(@rspack/core@2.2.7)(@rspack/dev-server@2.1.0(@rspack/core@2.2.7))':
+  '@rspack/cli@2.2.8(@rspack/core@2.2.7)(@rspack/dev-server@2.1.0(@rspack/core@2.2.7))':
     dependencies:
       '@rspack/core': 2.2.7
     optionalDependencies:
       '@rspack/dev-server': 2.1.0(@rspack/core@2.2.7)
 
-  '@rspack/cli@2.2.7(@rspack/core@2.2.7)(@rspack/dev-server@2.2.1(@rspack/core@2.2.7))':
+  '@rspack/cli@2.2.8(@rspack/core@2.2.7)(@rspack/dev-server@2.2.1(@rspack/core@2.2.7))':
     dependencies:
       '@rspack/core': 2.2.7
     optionalDependencies:
@@ -9646,9 +9643,6 @@ snapshots:
 
   error-stack-parser-es@2.0.1: {}
 
-  es-module-lexer@2.1.0:
-    optional: true
-
   es-module-lexer@2.3.2: {}
 
   esast-util-from-estree@2.0.0:
@@ -10180,9 +10174,9 @@ snapshots:
     optionalDependencies:
       picomatch: 4.0.4
 
-  fdir@6.5.0(picomatch@4.0.5):
+  fdir@6.5.0(picomatch@4.0.7):
     optionalDependencies:
-      picomatch: 4.0.5
+      picomatch: 4.0.7
 
   file-entry-cache@11.1.5:
     dependencies:
@@ -11565,7 +11559,7 @@ snapshots:
 
   postcss@8.5.19:
     dependencies:
-      nanoid: 3.3.15
+      nanoid: 3.3.19
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -12197,8 +12191,8 @@ snapshots:
 
   tinyglobby@0.2.17:
     dependencies:
-      fdir: 6.5.0(picomatch@4.0.5)
-      picomatch: 4.0.5
+      fdir: 6.5.0(picomatch@4.0.7)
+      picomatch: 4.0.7
 
   tinyrainbow@3.1.1: {}
 
@@ -12791,7 +12785,7 @@ snapshots:
       browserslist: 4.28.2
       chrome-trace-event: 1.0.4
       enhanced-resolve: 5.22.0
-      es-module-lexer: 2.1.0
+      es-module-lexer: 2.3.2
       eslint-scope: 5.1.1
       events: 3.3.0
       glob-to-regexp: 0.4.1
