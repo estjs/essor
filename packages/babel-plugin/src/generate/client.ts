@@ -576,16 +576,16 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
 
   const body: t.Statement[] = [];
   const tmplId = ctx.templates.register(template, node.isSVG);
-  const rootId = ctx.uids.generate('root$');
+  const elId = ctx.uids.generate('el$');
   body.push(
-    t.variableDeclaration('const', [t.variableDeclarator(rootId, t.callExpression(tmplId, []))]),
+    t.variableDeclaration('const', [t.variableDeclarator(elId, t.callExpression(tmplId, []))]),
   );
 
   const varMap: NodeVarMap = new Map();
-  varMap.set(0, rootId);
+  varMap.set(0, elId);
 
   // Phase 1: Navigation
-  emitNavigationDeclarations(navSteps, varMap, rootId, body, ctx);
+  emitNavigationDeclarations(navSteps, varMap, elId, body, ctx);
 
   // Phase 2: Effects (events, refs, binds, attrs, spreads)
   const pendingMemoPatches: PendingMemoPatch[] = [];
@@ -595,21 +595,21 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
   // Phase 3: Dynamic child insertions
   emitDynamicChildInserts(flatNodes, varMap, state, body);
 
-  body.push(t.returnStatement(rootId));
+  body.push(t.returnStatement(elId));
   return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(body)), []);
 }
 
 function emitNavigationDeclarations(
   steps: NavigationStep[],
   varMap: NodeVarMap,
-  rootId: t.Identifier,
+  elId: t.Identifier,
   body: t.Statement[],
   ctx: CompileContext,
 ): void {
   for (const step of steps) {
     const isHydration = step.type === 'hydrationMarker' || step.type === 'hydrationAnchor';
     const varName = ctx.uids.generate(isHydration ? 'hk$' : 'n$');
-    const fromExpr = varMap.get(step.fromNodeId) ?? rootId;
+    const fromExpr = varMap.get(step.fromNodeId) ?? elId;
     const navExpr = createNavigationExpression(step, fromExpr, ctx);
 
     body.push(t.variableDeclaration('const', [t.variableDeclarator(varName, navExpr)]));

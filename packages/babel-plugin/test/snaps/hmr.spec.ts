@@ -133,7 +133,7 @@ describe('hMR transformation', () => {
     const output = await transform(input);
 
     expect(output).toContain("createApp(__$createHMRComponent$__(App), 'root');");
-    expect(output).toContain('_insert$(_root$, __$createHMRComponent$__(CounterPanel, {})');
+    expect(output).toContain('_insert$(_el$, __$createHMRComponent$__(CounterPanel, {})');
   });
 
   it('should not transform when HMR is disabled', async () => {

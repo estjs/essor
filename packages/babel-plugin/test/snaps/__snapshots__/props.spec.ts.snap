@@ -5,18 +5,18 @@ exports[`jsx props transform > should array-destructure an iterable (Set/Map/gen
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...__props.items][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "first", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...__props.items][1];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "second", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -26,18 +26,18 @@ exports[`jsx props transform > should array-destructure with element defaults fr
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...(__props.items === undefined ? [] : __props.items)][0] === undefined ? 'a' : [...(__props.items === undefined ? [] : __props.items)][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "first", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...(__props.items === undefined ? [] : __props.items)][1] === undefined ? 'b' : [...(__props.items === undefined ? [] : __props.items)][1];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "second", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -47,18 +47,18 @@ exports[`jsx props transform > should destructure Map entries via nested array p
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...[...__props.entries][0]][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "key", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "key", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...[...__props.entries][0]][1];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "value", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "value", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -69,18 +69,18 @@ const _t$ = _template$("<div>");
 function testFunction(__props) {
   const restChars = [...__props.name].slice(1);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...__props.name][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "initial", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "initial", _p$.a0, _p$.a0 = _v$);
       let _v$2 = restChars;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "rest", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "rest", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -91,18 +91,18 @@ const _t$ = _template$("<div>");
 function testFunction(__props) {
   const rest = _omitProps$(__props, [dynamicKey]);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props[dynamicKey];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "value", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "value", _p$.a0, _p$.a0 = _v$);
       let _v$2 = rest;
-      _v$2 !== _p$.sp1 && _patchAttr$(_root$, "_$spread$", _p$.sp1, _p$.sp1 = _v$2);
+      _v$2 !== _p$.sp1 && _patchAttr$(_el$, "_$spread$", _p$.sp1, _p$.sp1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       sp1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -112,21 +112,21 @@ exports[`jsx props transform > should handle a binding used at multiple sites 1`
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.value === undefined ? 0 : __props.value;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "a", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.value === undefined ? 0 : __props.value;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "b", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = __props.value === undefined ? 0 : __props.value;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "c", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -136,15 +136,15 @@ exports[`jsx props transform > should handle alias combined with default 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.a === undefined ? 5 : __props.a;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "value", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "value", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -154,21 +154,21 @@ exports[`jsx props transform > should handle array of objects 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...__props.list][0].id;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "id", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "id", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...__props.list][0].name;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "name", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "name", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = [...__props.list][1].id;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "id2", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "id2", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -178,16 +178,16 @@ exports[`jsx props transform > should handle nested array-in-array patterns 1`] 
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...[...__props.matrix][0]][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "a", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...[...__props.matrix][0]][1];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "b", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = [...[...__props.matrix][1]][0];
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "c", _p$.a2, _p$.a2 = _v$3);
       let _v$4 = [...[...__props.matrix][1]][1];
-      _v$4 !== _p$.a3 && _patchAttr$(_root$, "d", _p$.a3, _p$.a3 = _v$4);
+      _v$4 !== _p$.a3 && _patchAttr$(_el$, "d", _p$.a3, _p$.a3 = _v$4);
       return _p$;
     }, {
       a0: undefined,
@@ -195,7 +195,7 @@ function testFunction(__props) {
       a2: undefined,
       a3: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -206,20 +206,20 @@ const _t$ = _template$("<div>");
 function testFunction(__props) {
   const others = _omitProps$(__props.user, ["name"]);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.user.name;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "name", _p$.a0, _p$.a0 = _v$);
       let _v$2 = {
         ...others
       };
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "others", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "others", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -229,18 +229,18 @@ exports[`jsx props transform > should handle numeric and string-literal keys 1`]
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props[0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "zero", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "zero", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props["data-id"];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "dataId", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "dataId", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -250,15 +250,15 @@ exports[`jsx props transform > should keep a Map default value 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.cache === undefined ? new Map([['a', 1]]) : __props.cache;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "cache", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "cache", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -268,15 +268,15 @@ exports[`jsx props transform > should keep a Set default value 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.tags === undefined ? new Set([1, 2]) : __props.tags;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "tags", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "tags", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -286,19 +286,19 @@ exports[`jsx props transform > should keep a deep object literal as a top-level 
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.user === undefined ? {
         profile: {
           name: 'anon'
         }
       } : __props.user;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "user", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "user", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -308,15 +308,15 @@ exports[`jsx props transform > should keep an array default value 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.list === undefined ? [1, 2, 3] : __props.list;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "list", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "list", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -326,7 +326,7 @@ exports[`jsx props transform > should keep an object default value 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.config === undefined ? {
         theme: 'dark',
@@ -334,12 +334,12 @@ function testFunction(__props) {
           a: 1
         }
       } : __props.config;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "config", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "config", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -349,20 +349,20 @@ exports[`jsx props transform > should not work with array props 1`] = `
 const _t$ = _template$("<div>");
 function testFunction([prop1, prop2], otherProps) {
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _child$(_root$);
+    const _el$ = _t$();
+    const _n$ = _child$(_el$);
     _memoEffect$(_p$ => {
       let _v$ = prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    _insert$(_root$, () => otherProps, _n$);
-    return _root$;
+    _insert$(_el$, () => otherProps, _n$);
+    return _el$;
   })();
 }"
 `;
@@ -372,18 +372,18 @@ exports[`jsx props transform > should not work with not pattern props 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(prop1, prop2) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -393,18 +393,18 @@ exports[`jsx props transform > should replace function parameter with "props" 1`
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -414,20 +414,20 @@ exports[`jsx props transform > should replace function parameter with 'props' wh
 const _t$ = _template$("<div>");
 function testFunction(__props, otherProps) {
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _child$(_root$);
+    const _el$ = _t$();
+    const _n$ = _child$(_el$);
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    _insert$(_root$, () => otherProps, _n$);
-    return _root$;
+    _insert$(_el$, () => otherProps, _n$);
+    return _el$;
   })();
 }"
 `;
@@ -437,21 +437,21 @@ exports[`jsx props transform > should resolve a chain of sibling-referencing def
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.a === undefined ? 1 : __props.a;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "a", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "a", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.b === undefined ? __props.a === undefined ? 1 : __props.a : __props.b;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "b", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "b", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = __props.c === undefined ? __props.b === undefined ? __props.a === undefined ? 1 : __props.a : __props.b : __props.c;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "c", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "c", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -461,18 +461,18 @@ exports[`jsx props transform > should resolve a default that references a siblin
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.id;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "id", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "id", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.key === undefined ? __props.id : __props.key;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "key", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "key", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -482,18 +482,18 @@ exports[`jsx props transform > should resolve a sibling reference inside a defau
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.count === undefined ? 0 : __props.count;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "count", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "count", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.label === undefined ? 'n=' + (__props.count === undefined ? 0 : __props.count) : __props.label;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "label", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "label", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -503,15 +503,15 @@ exports[`jsx props transform > should resolve deep object structure with default
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = ((__props.a === undefined ? {} : __props.a).b === undefined ? {} : (__props.a === undefined ? {} : __props.a).b).c === undefined ? 1 : ((__props.a === undefined ? {} : __props.a).b === undefined ? {} : (__props.a === undefined ? {} : __props.a).b).c;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "c", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "c", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -521,18 +521,18 @@ exports[`jsx props transform > should resolve deep structure with a container de
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = (__props.config === undefined ? {} : __props.config).tags === undefined ? new Set() : (__props.config === undefined ? {} : __props.config).tags;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "tags", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "tags", _p$.a0, _p$.a0 = _v$);
       let _v$2 = (__props.config === undefined ? {} : __props.config).items === undefined ? [] : (__props.config === undefined ? {} : __props.config).items;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "items", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "items", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -542,23 +542,23 @@ exports[`jsx props transform > should work just rest props 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(restProps) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = restProps.$prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = restProps.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = {
         ...restProps
       };
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "rest", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -568,18 +568,18 @@ exports[`jsx props transform > should work with array destructuring in object pa
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = [...__props.items][0];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "first", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...__props.items][1];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "second", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "second", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -590,18 +590,18 @@ const _t$ = _template$("<div>");
 class TestClass {
   handler = __props => {
     return (() => {
-      const _root$ = _t$();
+      const _el$ = _t$();
       _memoEffect$(_p$ => {
         let _v$ = __props.prop1;
-        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
         let _v$2 = __props.prop2;
-        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
         a0: undefined,
         a1: undefined
       });
-      return _root$;
+      return _el$;
     })();
   };
 }"
@@ -613,21 +613,21 @@ const _t$ = _template$("<div>");
 async function testFunction(__props) {
   const result = await someAsyncOperation();
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = result;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "result", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "result", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -637,15 +637,15 @@ exports[`jsx props transform > should work with async generator functions 1`] = 
 const _t$ = _template$("<div>");
 async function* testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop2;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop2", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop2", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -659,18 +659,18 @@ class TestClass {
     prop2
   }) {
     return (() => {
-      const _root$ = _t$();
+      const _el$ = _t$();
       _memoEffect$(_p$ => {
         let _v$ = prop1;
-        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
         let _v$2 = prop2;
-        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
         a0: undefined,
         a1: undefined
       });
-      return _root$;
+      return _el$;
     })();
   }
 }"
@@ -683,18 +683,18 @@ function testFunction(__props) {
   const others = [...__props.user.contacts].slice(1);
   const otherSettings = _omitProps$(__props.user.settings === undefined ? {} : __props.user.settings, ["theme"]);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.user.name;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "name", _p$.a0, _p$.a0 = _v$);
       let _v$2 = [...__props.user.contacts][0] === undefined ? {} : [...__props.user.contacts][0];
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "primary", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "primary", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = others;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "others", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "others", _p$.a2, _p$.a2 = _v$3);
       let _v$4 = (__props.user.settings === undefined ? {} : __props.user.settings).theme === undefined ? 'light' : (__props.user.settings === undefined ? {} : __props.user.settings).theme;
-      _v$4 !== _p$.a3 && _patchAttr$(_root$, "theme", _p$.a3, _p$.a3 = _v$4);
+      _v$4 !== _p$.a3 && _patchAttr$(_el$, "theme", _p$.a3, _p$.a3 = _v$4);
       let _v$5 = otherSettings;
-      _v$5 !== _p$.a4 && _patchAttr$(_root$, "settings", _p$.a4, _p$.a4 = _v$5);
+      _v$5 !== _p$.a4 && _patchAttr$(_el$, "settings", _p$.a4, _p$.a4 = _v$5);
       return _p$;
     }, {
       a0: undefined,
@@ -703,7 +703,7 @@ function testFunction(__props) {
       a3: undefined,
       a4: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -713,15 +713,15 @@ exports[`jsx props transform > should work with computed property names 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props[computedProp];
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -731,18 +731,18 @@ exports[`jsx props transform > should work with deep props 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1.prop2.prop3.prop4;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop4", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop4", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop1.prop2.prop3.prop5;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop5", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop5", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -752,18 +752,18 @@ exports[`jsx props transform > should work with default values 1`] = `
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1 === undefined ? 'default1' : __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2 === undefined ? 42 : __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -773,9 +773,9 @@ exports[`jsx props transform > should work with function parameters 1`] = `
 const _t$ = _template$("<button>Click me");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
-    _root$["_$click"] = __props.callback === undefined ? () => {} : __props.callback;
-    return _root$;
+    const _el$ = _t$();
+    _el$["_$click"] = __props.callback === undefined ? () => {} : __props.callback;
+    return _el$;
   })();
 }
 _delegateEvents$(["click"]);"
@@ -789,26 +789,26 @@ function* testFunction({
   prop2
 }) {
   yield (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
   yield (() => {
-    const _root$2 = _t$();
+    const _el$2 = _t$();
     _memoEffect$(_p$ => {
       let _v$2 = prop2;
-      _v$2 !== _p$.a0 && _patchAttr$(_root$2, "prop2", _p$.a0, _p$.a0 = _v$2);
+      _v$2 !== _p$.a0 && _patchAttr$(_el$2, "prop2", _p$.a0, _p$.a0 = _v$2);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$2;
+    return _el$2;
   })();
 }"
 `;
@@ -821,16 +821,16 @@ function testFunction(first, {
   prop2
 }, last) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = first;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "first", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "first", _p$.a0, _p$.a0 = _v$);
       let _v$2 = prop1;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop1", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop1", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = prop2;
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "prop2", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "prop2", _p$.a2, _p$.a2 = _v$3);
       let _v$4 = last;
-      _v$4 !== _p$.a3 && _patchAttr$(_root$, "last", _p$.a3, _p$.a3 = _v$4);
+      _v$4 !== _p$.a3 && _patchAttr$(_el$, "last", _p$.a3, _p$.a3 = _v$4);
       return _p$;
     }, {
       a0: undefined,
@@ -838,7 +838,7 @@ function testFunction(first, {
       a2: undefined,
       a3: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -848,18 +848,18 @@ exports[`jsx props transform > should work with nested destructuring and default
 const _t$ = _template$("<div>");
 function testFunction(__props) {
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = (__props.user === undefined ? {} : __props.user).name === undefined ? 'John' : (__props.user === undefined ? {} : __props.user).name;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "name", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "name", _p$.a0, _p$.a0 = _v$);
       let _v$2 = (__props.user === undefined ? {} : __props.user).age === undefined ? 25 : (__props.user === undefined ? {} : __props.user).age;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "age", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "age", _p$.a1, _p$.a1 = _v$2);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -870,18 +870,18 @@ const _t$ = _template$("<div>");
 function outer() {
   function inner(__props) {
     return (() => {
-      const _root$ = _t$();
+      const _el$ = _t$();
       _memoEffect$(_p$ => {
         let _v$ = __props.prop1;
-        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
         let _v$2 = __props.prop2;
-        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
         a0: undefined,
         a1: undefined
       });
-      return _root$;
+      return _el$;
     })();
   }
   return inner;
@@ -895,23 +895,23 @@ function outer() {
   function inner(__props) {
     const restProps = _omitProps$(__props, ["prop1", "prop2"]);
     return (() => {
-      const _root$ = _t$();
+      const _el$ = _t$();
       _memoEffect$(_p$ => {
         let _v$ = __props.prop1;
-        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
         let _v$2 = __props.prop2;
-        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
         let _v$3 = {
           ...restProps
         };
-        _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
+        _v$3 !== _p$.a2 && _patchAttr$(_el$, "rest", _p$.a2, _p$.a2 = _v$3);
         return _p$;
       }, {
         a0: undefined,
         a1: undefined,
         a2: undefined
       });
-      return _root$;
+      return _el$;
     })();
   }
   return inner;
@@ -927,18 +927,18 @@ const obj = {
     prop2
   }) {
     return (() => {
-      const _root$ = _t$();
+      const _el$ = _t$();
       _memoEffect$(_p$ => {
         let _v$ = prop1;
-        _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+        _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
         let _v$2 = prop2;
-        _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+        _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
         return _p$;
       }, {
         a0: undefined,
         a1: undefined
       });
-      return _root$;
+      return _el$;
     })();
   }
 };"
@@ -950,21 +950,21 @@ const _t$ = _template$("<div>");
 function testFunction(__props) {
   const restProps = _omitProps$(__props, ["prop1", "prop2"]);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = restProps;
-      _v$3 !== _p$.sp2 && _patchAttr$(_root$, "_$spread$", _p$.sp2, _p$.sp2 = _v$3);
+      _v$3 !== _p$.sp2 && _patchAttr$(_el$, "_$spread$", _p$.sp2, _p$.sp2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       sp2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;
@@ -975,23 +975,23 @@ const _t$ = _template$("<div>");
 function testFunction(__props) {
   const restProps = _omitProps$(__props, ["prop1", "prop2"]);
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = __props.prop1;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "prop1", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "prop1", _p$.a0, _p$.a0 = _v$);
       let _v$2 = __props.prop2;
-      _v$2 !== _p$.a1 && _patchAttr$(_root$, "prop2", _p$.a1, _p$.a1 = _v$2);
+      _v$2 !== _p$.a1 && _patchAttr$(_el$, "prop2", _p$.a1, _p$.a1 = _v$2);
       let _v$3 = {
         ...restProps
       };
-      _v$3 !== _p$.a2 && _patchAttr$(_root$, "rest", _p$.a2, _p$.a2 = _v$3);
+      _v$3 !== _p$.a2 && _patchAttr$(_el$, "rest", _p$.a2, _p$.a2 = _v$3);
       return _p$;
     }, {
       a0: undefined,
       a1: undefined,
       a2: undefined
     });
-    return _root$;
+    return _el$;
   })();
 }"
 `;

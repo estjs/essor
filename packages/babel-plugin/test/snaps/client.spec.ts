@@ -297,7 +297,7 @@ describe('should work with jsx client transform', () => {
 
     const output = transformCode(inputCode);
     expect(output).toContain('nthChild as _nthChild$');
-    expect(output).toContain('const _n$ = _nthChild$(_root$, 1);');
+    expect(output).toContain('const _n$ = _nthChild$(_el$, 1);');
     expect(output).not.toContain('_next$(_');
   });
 
@@ -775,7 +775,7 @@ describe('should work with jsx client transform', () => {
     const output = transformCode(inputCode);
     expect(output).toContain('key: item => {');
     expect(output).toContain('return label;');
-    expect(output).not.toContain('_patchAttr$(_root$2, "key"');
+    expect(output).not.toContain('_patchAttr$(_el$2, "key"');
     expect(output).toMatchSnapshot();
   });
 
@@ -795,7 +795,7 @@ describe('should work with jsx client transform', () => {
     expect(output).toContain('const label = getIconLinkLabel(item);');
     expect(output).toContain('key: item => {');
     expect(output).toContain('return item.id;');
-    expect(output).not.toContain('_patchAttr$(_root$2, "key"');
+    expect(output).not.toContain('_patchAttr$(_el$2, "key"');
     expect(output).toMatchSnapshot();
   });
 
@@ -1260,7 +1260,7 @@ describe('should work with jsx client transform', () => {
     `;
     const output = transformCodeWithFor(code);
     expect(output).not.toContain('Fragment as _Fragment$');
-    expect(output).not.toContain('_patchAttr$(_root$, "key"');
+    expect(output).not.toContain('_patchAttr$(_el$, "key"');
   });
 
   it('extracts keys from single-child fragment map bodies', () => {
@@ -1297,18 +1297,18 @@ describe('should work with jsx client transform', () => {
     `);
     // 4th argument `true` = isSVG (SVG className is an SVGAnimatedString;
     // patchClass must use setAttribute, not el.className).
-    expect(output).toContain('_patchClass$(_root$, _p$.c0, _p$.c0 = _v$, true)');
+    expect(output).toContain('_patchClass$(_el$, _p$.c0, _p$.c0 = _v$, true)');
   });
 
   it('registers delegated events via the _$<name> slot + delegateEvents', () => {
     const output = transformCode(`const el = <button onClick={() => 1}>go</button>;`);
-    expect(output).toContain('_root$["_$click"] = () => 1;');
+    expect(output).toContain('_el$["_$click"] = () => 1;');
     expect(output).toContain('_delegateEvents$(["click"]);');
   });
 
   it('compiles bind:value into a getter/setter pair through bindElement', () => {
     const output = transformCode(`let $v = 1; const el = <input bind:value={$v} />;`);
-    expect(output).toContain('_bindElement$(_root$, "value", () => $v.value, _v => $v.value = _v)');
+    expect(output).toContain('_bindElement$(_el$, "value", () => $v.value, _v => $v.value = _v)');
   });
 
   it('preserves literal prop value types for components (CMP-04)', () => {

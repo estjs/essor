@@ -5,26 +5,26 @@ exports[`should work with jsx client transform > extracts item-derived keys when
 const _t$2 = _template$("<li>");
 const _t$ = _template$("<ul>");
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_For$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_For$, {
     get each() {
       return items;
     },
     children: item => {
       const label = getIconLinkLabel(item);
       return (() => {
-        const _root$2 = _t$2();
-        const _n$2 = _child$(_root$2);
+        const _el$2 = _t$2();
+        const _n$2 = _child$(_el$2);
         _memoEffect$(_p$ => {
           let _v$ = label;
-          _v$ !== _p$.a0 && _patchAttr$(_root$2, "data-test", _p$.a0, _p$.a0 = _v$);
+          _v$ !== _p$.a0 && _patchAttr$(_el$2, "data-test", _p$.a0, _p$.a0 = _v$);
           return _p$;
         }, {
           a0: undefined
         });
-        _insert$(_root$2, () => label, _n$2);
-        return _root$2;
+        _insert$(_el$2, () => label, _n$2);
+        return _el$2;
       })();
     },
     key: item => {
@@ -32,7 +32,7 @@ const element = (() => {
       return item.id;
     }
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -41,10 +41,10 @@ exports[`should work with jsx client transform > handles signal variables in JSX
 const _t$ = _template$("<div>");
 const $count = signal(0);
 (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => $count.value, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => $count.value, _n$);
+  return _el$;
 })();"
 `;
 
@@ -53,15 +53,15 @@ exports[`should work with jsx client transform > handles signal variables in JSX
 const _t$ = _template$("<div>");
 const $value = signal('test');
 const fn = () => (() => {
-  const _root$ = _t$();
+  const _el$ = _t$();
   _memoEffect$(_p$ => {
     let _v$ = $value.value;
-    _v$ !== _p$.c0 && _patchClass$(_root$, _p$.c0, _p$.c0 = _v$);
+    _v$ !== _p$.c0 && _patchClass$(_el$, _p$.c0, _p$.c0 = _v$);
     return _p$;
   }, {
     c0: undefined
   });
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -69,9 +69,9 @@ exports[`should work with jsx client transform > keeps map expressions as plain 
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
 const _t$ = _template$("<tbody>");
 (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_For$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_For$, {
     get each() {
       return data.value;
     },
@@ -80,7 +80,7 @@ const _t$ = _template$("<tbody>");
     }),
     key: item => item.id
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -89,19 +89,19 @@ exports[`should work with jsx client transform > preserves map callback statemen
 const _t$2 = _template$("<li>");
 const _t$ = _template$("<ul>");
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_For$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_For$, {
     get each() {
       return items;
     },
     children: item => {
       const label = getIconLinkLabel(item);
       return (() => {
-        const _root$2 = _t$2();
-        const _n$2 = _child$(_root$2);
-        _insert$(_root$2, () => label, _n$2);
-        return _root$2;
+        const _el$2 = _t$2();
+        const _n$2 = _child$(_el$2);
+        _insert$(_el$2, () => label, _n$2);
+        return _el$2;
       })();
     },
     key: item => {
@@ -109,7 +109,7 @@ const element = (() => {
       return label;
     }
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -125,9 +125,9 @@ const NavIconLinks = __props => {
     return null;
   }
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _child$(_root$);
-    _insert$(_root$, _createComponent$(_For$, {
+    const _el$ = _t$();
+    const _n$ = _child$(_el$);
+    _insert$(_el$, _createComponent$(_For$, {
       get each() {
         return __props.links;
       },
@@ -135,52 +135,52 @@ const NavIconLinks = __props => {
         const label = getIconLinkLabel(item);
         const iconClass = getIconLinkClass(item.icon);
         return (() => {
-          const _root$2 = _t$2();
-          const _n$2 = _child$(_root$2);
+          const _el$2 = _t$2();
+          const _n$2 = _child$(_el$2);
           _memoEffect$(_p$ => {
             let _v$ = item.link;
-            _v$ !== _p$.a0 && _patchAttr$(_root$2, "href", _p$.a0, _p$.a0 = _v$);
+            _v$ !== _p$.a0 && _patchAttr$(_el$2, "href", _p$.a0, _p$.a0 = _v$);
             let _v$2 = label;
-            _v$2 !== _p$.a1 && _patchAttr$(_root$2, "aria-label", _p$.a1, _p$.a1 = _v$2);
+            _v$2 !== _p$.a1 && _patchAttr$(_el$2, "aria-label", _p$.a1, _p$.a1 = _v$2);
             let _v$3 = label;
-            _v$3 !== _p$.a2 && _patchAttr$(_root$2, "title", _p$.a2, _p$.a2 = _v$3);
+            _v$3 !== _p$.a2 && _patchAttr$(_el$2, "title", _p$.a2, _p$.a2 = _v$3);
             return _p$;
           }, {
             a0: undefined,
             a1: undefined,
             a2: undefined
           });
-          _insert$(_root$2, () => isSvgIcon(item.icon) ? (() => {
-            const _root$3 = _t$3();
+          _insert$(_el$2, () => isSvgIcon(item.icon) ? (() => {
+            const _el$3 = _t$3();
             _memoEffect$(_p$ => {
               let _v$4 = item.icon.svg;
-              _v$4 !== _p$.a0 && _patchAttr$(_root$3, "innerHTML", _p$.a0, _p$.a0 = _v$4);
+              _v$4 !== _p$.a0 && _patchAttr$(_el$3, "innerHTML", _p$.a0, _p$.a0 = _v$4);
               return _p$;
             }, {
               a0: undefined
             });
-            return _root$3;
+            return _el$3;
           })() : iconClass ? (() => {
-            const _root$4 = _t$4();
+            const _el$4 = _t$4();
             _memoEffect$(_p$ => {
               let _v$5 = \`\${iconClass} h-5 w-5 fill-current\`;
-              _v$5 !== _p$.c0 && _patchClass$(_root$4, _p$.c0, _p$.c0 = _v$5);
+              _v$5 !== _p$.c0 && _patchClass$(_el$4, _p$.c0, _p$.c0 = _v$5);
               return _p$;
             }, {
               c0: undefined
             });
-            return _root$4;
+            return _el$4;
           })() : (() => {
-            const _root$5 = _t$5();
-            const _n$3 = _child$(_root$5);
-            _insert$(_root$5, () => label, _n$3);
-            return _root$5;
+            const _el$5 = _t$5();
+            const _n$3 = _child$(_el$5);
+            _insert$(_el$5, () => label, _n$3);
+            return _el$5;
           })(), _n$2);
-          return _root$2;
+          return _el$2;
         })();
       }
     }), _n$);
-    return _root$;
+    return _el$;
   })();
 };"
 `;
@@ -202,13 +202,13 @@ export default function Home() {
   return _createComponent$(_Fragment$, {
     get children() {
       return ["pure string string value", value, "1", undefined, false, true, Symbol(), (() => {
-        const _root$ = _t$();
-        _root$["_$click"] = onClick;
-        return _root$;
+        const _el$ = _t$();
+        _el$["_$click"] = onClick;
+        return _el$;
       })(), (() => {
-        const _root$2 = _t$2();
-        _root$2["_$click"] = onRandomClick;
-        return _root$2;
+        const _el$2 = _t$2();
+        _el$2["_$click"] = onRandomClick;
+        return _el$2;
       })()];
     }
   });
@@ -226,9 +226,9 @@ exports[`should work with jsx client transform > should work with For 1`] = `
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$, For as _For$ } from "essor";
 const _t$ = _template$("<tbody>");
 (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_For$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_For$, {
     get each() {
       return data.value;
     },
@@ -240,7 +240,7 @@ const _t$ = _template$("<tbody>");
     })),
     key: item => item.id
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -255,10 +255,10 @@ exports[`should work with jsx client transform > should work with concurrent mod
 const _t$2 = _template$("<div>Concurrent Mode Content");
 const _t$ = _template$("<div data-concurrent=\\"true\\">");
 const ConcurrentMode = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 const element = _createComponent$(ConcurrentMode, {
   get children() {
@@ -293,12 +293,12 @@ const _t$2 = _template$("<p>Visible Content");
 const _t$ = _template$("<div><!><!>");
 const isVisible = true;
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _next$(_n$, 1);
-  _insert$(_root$, () => isVisible && _t$2(), _n$);
-  _insert$(_root$, () => isVisible ? _t$3() : _t$4(), _n$2);
-  return _root$;
+  _insert$(_el$, () => isVisible && _t$2(), _n$);
+  _insert$(_el$, () => isVisible ? _t$3() : _t$4(), _n$2);
+  return _el$;
 })();"
 `;
 
@@ -329,15 +329,15 @@ const ThemeContext = {
   }) => children
 };
 const MemoComponent = __props => (() => {
-  const _root$ = _t$();
+  const _el$ = _t$();
   _memoEffect$(_p$ => {
     let _v$ = __props.theme;
-    _v$ !== _p$.a0 && _patchAttr$(_root$, "data-theme", _p$.a0, _p$.a0 = _v$);
+    _v$ !== _p$.a0 && _patchAttr$(_el$, "data-theme", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
     a0: undefined
   });
-  return _root$;
+  return _el$;
 })();
 MemoComponent._memo = true;
 const element = _createComponent$(ThemeContext.Provider, {
@@ -378,15 +378,15 @@ const Component = () => {
     value
   } = useCustomHook();
   return (() => {
-    const _root$ = _t$();
+    const _el$ = _t$();
     _memoEffect$(_p$ => {
       let _v$ = value;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "data-hook", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "data-hook", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    return _root$;
+    return _el$;
   })();
 };
 const element = _createComponent$(Component, {});"
@@ -441,12 +441,12 @@ const _t$3 = _template$("<div>Error occurred!");
 const _t$2 = _template$("<div>Protected Content");
 const _t$ = _template$("<div data-error-boundary=\\"true\\"><!><!>");
 const ErrorBoundary = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _next$(_n$, 1);
-  _insert$(_root$, () => __props.children, _n$);
-  _insert$(_root$, () => __props.fallback, _n$2);
-  return _root$;
+  _insert$(_el$, () => __props.children, _n$);
+  _insert$(_el$, () => __props.fallback, _n$2);
+  return _el$;
 })();
 const element = _createComponent$(ErrorBoundary, {
   get fallback() {
@@ -463,9 +463,9 @@ exports[`should work with jsx client transform > should work with event handlers
 const _t$ = _template$("<button>Click me");
 const handleClick = () => console.log('clicked');
 const element = (() => {
-  const _root$ = _t$();
-  _root$["_$click"] = handleClick;
-  return _root$;
+  const _el$ = _t$();
+  _el$["_$click"] = handleClick;
+  return _el$;
 })();
 _delegateEvents$(["click"]);"
 `;
@@ -485,11 +485,11 @@ exports[`should work with jsx client transform > should work with forwardRef com
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div>");
 const ForwardRefComponent = (__props, ref) => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  (_r$ => typeof _r$ === "function" ? _r$(_el$) : _r$.value = _el$)(ref);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 const element = _createComponent$(ForwardRefComponent, {
   get children() {
@@ -506,10 +506,10 @@ const _t$ = _template$("<div>");
 const val = 'test';
 const Children = __props => {
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _child$(_root$);
-    _insert$(_root$, () => __props.children, _n$);
-    return _root$;
+    const _el$ = _t$();
+    const _n$ = _child$(_el$);
+    _insert$(_el$, () => __props.children, _n$);
+    return _el$;
   })();
 };
 const element = _createComponent$(_Fragment$, {
@@ -525,10 +525,10 @@ const _t$3 = _template$("<meta name=\\"description\\" content=\\"Page descriptio
 const _t$2 = _template$("<title>Page Title");
 const _t$ = _template$("<head>");
 const Head = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 const element = _createComponent$(Head, {
   get children() {
@@ -541,10 +541,10 @@ exports[`should work with jsx client transform > should work with lazy component
 "import { template as _template$, child as _child$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div data-lazy=\\"true\\">");
 const LazyComponent = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 LazyComponent._lazy = true;
 const element = _createComponent$(LazyComponent, {
@@ -560,21 +560,21 @@ const _t$2 = _template$("<li>");
 const _t$ = _template$("<ul>");
 const items = ['Item 1', 'Item 2', 'Item 3'];
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_For$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_For$, {
     get each() {
       return items;
     },
     children: (item, index) => (() => {
-      const _root$2 = _t$2();
-      const _n$2 = _child$(_root$2);
-      _insert$(_root$2, () => item, _n$2);
-      return _root$2;
+      const _el$2 = _t$2();
+      const _n$2 = _child$(_el$2);
+      _insert$(_el$2, () => item, _n$2);
+      return _el$2;
     })(),
     key: (item, index) => index
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -582,10 +582,10 @@ exports[`should work with jsx client transform > should work with memo and custo
 "import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
 const _t$ = _template$("<div>Memo: <!>");
 const MemoComponent = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _nthChild$(_root$, 1);
-  _insert$(_root$, () => __props.value, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _nthChild$(_el$, 1);
+  _insert$(_el$, () => __props.value, _n$);
+  return _el$;
 })();
 MemoComponent._memo = true;
 MemoComponent._compare = (prev, next) => prev.value === next.value;
@@ -653,11 +653,11 @@ exports[`should work with jsx client transform > should work with multiple event
 "import { template as _template$, addEventListener as _addEventListener$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = _template$("<div>Multiple Events");
 const element = (() => {
-  const _root$ = _t$();
-  _root$["_$click"] = () => console.log('clicked');
-  _addEventListener$(_root$, "mouseenter", () => console.log('mouse enter'));
-  _addEventListener$(_root$, "mouseleave", () => console.log('mouse leave'));
-  return _root$;
+  const _el$ = _t$();
+  _el$["_$click"] = () => console.log('clicked');
+  _addEventListener$(_el$, "mouseenter", () => console.log('mouse enter'));
+  _addEventListener$(_el$, "mouseleave", () => console.log('mouse leave'));
+  return _el$;
 })();
 _delegateEvents$(["click"]);"
 `;
@@ -667,26 +667,26 @@ exports[`should work with jsx client transform > should work with nested compone
 const _t$2 = _template$("<div><!><!>");
 const _t$ = _template$("<div>Name: <!>, Age: <!>");
 const Child = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _nthChild$(_root$, 1);
+  const _el$ = _t$();
+  const _n$ = _nthChild$(_el$, 1);
   const _n$2 = _next$(_n$, 2);
-  _insert$(_root$, () => __props.name, _n$);
-  _insert$(_root$, () => __props.age, _n$2);
-  return _root$;
+  _insert$(_el$, () => __props.name, _n$);
+  _insert$(_el$, () => __props.age, _n$2);
+  return _el$;
 })();
 const Parent = () => (() => {
-  const _root$2 = _t$2();
-  const _n$3 = _child$(_root$2);
+  const _el$2 = _t$2();
+  const _n$3 = _child$(_el$2);
   const _n$4 = _next$(_n$3, 1);
-  _insert$(_root$2, _createComponent$(Child, {
+  _insert$(_el$2, _createComponent$(Child, {
     name: "John",
     age: 25
   }), _n$3);
-  _insert$(_root$2, _createComponent$(Child, {
+  _insert$(_el$2, _createComponent$(Child, {
     name: "Jane",
     age: 23
   }), _n$4);
-  return _root$2;
+  return _el$2;
 })();"
 `;
 
@@ -696,17 +696,17 @@ const _t$2 = _template$("<div>Modal Content");
 const _t$ = _template$("<div>");
 const Portal = __props => {
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _child$(_root$);
+    const _el$ = _t$();
+    const _n$ = _child$(_el$);
     _memoEffect$(_p$ => {
       let _v$ = __props.target;
-      _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    _insert$(_root$, () => __props.children, _n$);
-    return _root$;
+    _insert$(_el$, () => __props.children, _n$);
+    return _el$;
   })();
 };
 const element = _createComponent$(_Portal$, {
@@ -722,18 +722,18 @@ exports[`should work with jsx client transform > should work with portals and re
 const _t$2 = _template$("<div>Modal Content with Ref");
 const _t$ = _template$("<div>");
 const Portal = (__props, ref) => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(ref);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  (_r$ => typeof _r$ === "function" ? _r$(_el$) : _r$.value = _el$)(ref);
   _memoEffect$(_p$ => {
     let _v$ = __props.target;
-    _v$ !== _p$.a0 && _patchAttr$(_root$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
+    _v$ !== _p$.a0 && _patchAttr$(_el$, "data-portal-target", _p$.a0, _p$.a0 = _v$);
     return _p$;
   }, {
     a0: undefined
   });
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 const ref = useRef();
 const element = _createComponent$(_Portal$, {
@@ -754,9 +754,9 @@ const myRef = {
   current: null
 };
 const element = (() => {
-  const _root$ = _t$();
-  (_r$ => typeof _r$ === "function" ? _r$(_root$) : _r$.value = _root$)(myRef);
-  return _root$;
+  const _el$ = _t$();
+  (_r$ => typeof _r$ === "function" ? _r$(_el$) : _r$.value = _el$)(myRef);
+  return _el$;
 })();"
 `;
 
@@ -771,10 +771,10 @@ exports[`should work with jsx client transform > should work with strict mode 1`
 const _t$2 = _template$("<div>Strict Mode Content");
 const _t$ = _template$("<div data-strict=\\"true\\">");
 const StrictMode = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 const element = _createComponent$(StrictMode, {
   get children() {
@@ -828,10 +828,10 @@ exports[`should work with jsx client transform > should work with suspense and l
 const _t$2 = _template$("<div>Loading...");
 const _t$ = _template$("<div data-lazy=\\"true\\">");
 const LazyComponent = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, () => __props.children, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, () => __props.children, _n$);
+  return _el$;
 })();
 LazyComponent._lazy = true;
 const element = _createComponent$(_Suspense$, {
@@ -854,12 +854,12 @@ const _t$3 = _template$("<div>Loading...");
 const _t$2 = _template$("<div>Content");
 const _t$ = _template$("<div data-suspense=\\"true\\"><!><!>");
 const Suspense = __props => (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _next$(_n$, 1);
-  _insert$(_root$, () => __props.children, _n$);
-  _insert$(_root$, () => __props.fallback, _n$2);
-  return _root$;
+  _insert$(_el$, () => __props.children, _n$);
+  _insert$(_el$, () => __props.fallback, _n$2);
+  return _el$;
 })();
 const element = _createComponent$(_Suspense$, {
   get fallback() {
@@ -902,14 +902,14 @@ const _t$3 = _template$("<p>Paragraph 2");
 const _t$2 = _template$("<p>Paragraph 1");
 const _t$ = _template$("<div>");
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
-  _insert$(_root$, _createComponent$(_Fragment$, {
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
+  _insert$(_el$, _createComponent$(_Fragment$, {
     get children() {
       return [_t$2(), _t$3()];
     }
   }), _n$);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -959,17 +959,17 @@ exports[`should work with jsx client transform > transforms JSX element with fun
 "import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div><!><div>");
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _next$(_n$, 1);
   const _n$3 = _child$(_n$2);
-  _insert$(_root$, _createComponent$(MyComponent, {
+  _insert$(_el$, _createComponent$(MyComponent, {
     text: "Component 1"
   }), _n$);
   _insert$(_n$2, _createComponent$(MyComponent, {
     text: "Component 2"
   }), _n$3);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -977,10 +977,10 @@ exports[`should work with jsx client transform > transforms JSX element with nul
 "import { template as _template$, patchAttr as _patchAttr$, patchClass as _patchClass$ } from "essor";
 const _t$ = _template$("<div>Hello, World!");
 const element = (() => {
-  const _root$ = _t$();
-  _patchAttr$(_root$, "id", null);
-  _patchClass$(_root$, undefined);
-  return _root$;
+  const _el$ = _t$();
+  _patchAttr$(_el$, "id", null);
+  _patchClass$(_el$, undefined);
+  return _el$;
 })();"
 `;
 
@@ -988,14 +988,14 @@ exports[`should work with jsx client transform > transforms JSX element with nul
 "import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
 const _t$ = _template$("<div><!><p>Paragraph 1</p><!><!><p>Paragraph 2");
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _next$(_n$, 2);
   const _n$3 = _next$(_n$2, 1);
-  _insert$(_root$, () => null, _n$);
-  _insert$(_root$, () => undefined, _n$2);
-  _insert$(_root$, () => false, _n$3);
-  return _root$;
+  _insert$(_el$, () => null, _n$);
+  _insert$(_el$, () => undefined, _n$2);
+  _insert$(_el$, () => false, _n$3);
+  return _el$;
 })();"
 `;
 
@@ -1004,13 +1004,13 @@ exports[`should work with jsx client transform > transforms JSX element with nul
 const _t$ = _template$("<div><p><!>&#39;s Profile</p><!><p>Paragraph 2");
 const name = null;
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _child$(_n$);
   const _n$3 = _next$(_n$, 1);
   _insert$(_n$, () => name, _n$2);
-  _insert$(_root$, () => undefined, _n$3);
-  return _root$;
+  _insert$(_el$, () => undefined, _n$3);
+  return _el$;
 })();"
 `;
 
@@ -1028,15 +1028,15 @@ const props = {
   class: 'myClass'
 };
 const element = (() => {
-  const _root$ = _t$();
+  const _el$ = _t$();
   _memoEffect$(_p$ => {
     let _v$ = props;
-    _v$ !== _p$.sp0 && _patchAttr$(_root$, "_$spread$", _p$.sp0, _p$.sp0 = _v$);
+    _v$ !== _p$.sp0 && _patchAttr$(_el$, "_$spread$", _p$.sp0, _p$.sp0 = _v$);
     return _p$;
   }, {
     sp0: undefined
   });
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -1055,10 +1055,10 @@ exports[`should work with jsx client transform > transforms client JSX element w
 const _t$ = _template$("<div>Hello, <!>!");
 const name = 'John';
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _nthChild$(_root$, 1);
-  _insert$(_root$, () => name, _n$);
-  return _root$;
+  const _el$ = _t$();
+  const _n$ = _nthChild$(_el$, 1);
+  _insert$(_el$, () => name, _n$);
+  return _el$;
 })();"
 `;
 
@@ -1067,18 +1067,18 @@ exports[`should work with jsx client transform > transforms client JSX element w
 const _t$ = _template$("<div>Hello, <!>!<p><!>&#39;s Profile<span><!> is a developer.<!> is a designer.");
 const name = 'John';
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _nthChild$(_root$, 1);
+  const _el$ = _t$();
+  const _n$ = _nthChild$(_el$, 1);
   const _n$2 = _next$(_n$, 2);
   const _n$3 = _child$(_n$2);
   const _n$4 = _next$(_n$3, 2);
   const _n$5 = _child$(_n$4);
   const _n$6 = _next$(_n$5, 2);
-  _insert$(_root$, () => name, _n$);
+  _insert$(_el$, () => name, _n$);
   _insert$(_n$2, () => name, _n$3);
   _insert$(_n$4, () => name, _n$5);
   _insert$(_n$4, () => name, _n$6);
-  return _root$;
+  return _el$;
 })();"
 `;
 
@@ -1088,8 +1088,8 @@ const _t$2 = _template$("<li>Item <!>");
 const _t$ = _template$("<div><p><!>&#39;s Profile</p><ul>");
 const name = 'John';
 const element = (() => {
-  const _root$ = _t$();
-  const _n$ = _child$(_root$);
+  const _el$ = _t$();
+  const _n$ = _child$(_el$);
   const _n$2 = _child$(_n$);
   const _n$3 = _next$(_n$, 1);
   const _n$4 = _child$(_n$3);
@@ -1097,19 +1097,19 @@ const element = (() => {
   _insert$(_n$3, () => Array.from({
     length: 3
   }, (_, i) => (() => {
-    const _root$2 = _t$2();
-    const _n$5 = _nthChild$(_root$2, 1);
+    const _el$2 = _t$2();
+    const _n$5 = _nthChild$(_el$2, 1);
     _memoEffect$(_p$ => {
       let _v$ = i;
-      _v$ !== _p$.a0 && _patchAttr$(_root$2, "key", _p$.a0, _p$.a0 = _v$);
+      _v$ !== _p$.a0 && _patchAttr$(_el$2, "key", _p$.a0, _p$.a0 = _v$);
       return _p$;
     }, {
       a0: undefined
     });
-    _insert$(_root$2, () => i + 1, _n$5);
-    return _root$2;
+    _insert$(_el$2, () => i + 1, _n$5);
+    return _el$2;
   })()), _n$4);
-  return _root$;
+  return _el$;
 })();"
 `;
 

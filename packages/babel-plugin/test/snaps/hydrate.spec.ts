@@ -61,28 +61,28 @@ describe('jsx hydrate transform', () => {
     const element = transformCode('const element = <div>{value}<span>right</span></div>');
     const tail = transformCode('const element = <div><span>left</span>{value}</div>');
 
-    expect(comment).toContain('_hydrationRange$(_root$, 0, "comment")');
-    expect(comment).toMatch(/_insert\$\(_root\$, \(\) => value, _hk\$, _hr\$\d*\)/);
-    expect(element).toContain('_hydrationRange$(_root$, 0, "element")');
-    expect(element).toMatch(/_insert\$\(_root\$, \(\) => value, _hk\$, _hr\$\d*\)/);
-    expect(tail).toContain('_hydrationRange$(_root$, 0, "tail")');
-    expect(tail).toMatch(/_insert\$\(_root\$, \(\) => value, undefined, _hr\$\d*\)/);
+    expect(comment).toContain('_hydrationRange$(_el$, 0, "comment")');
+    expect(comment).toMatch(/_insert\$\(_el\$, \(\) => value, _hk\$, _hr\$\d*\)/);
+    expect(element).toContain('_hydrationRange$(_el$, 0, "element")');
+    expect(element).toMatch(/_insert\$\(_el\$, \(\) => value, _hk\$, _hr\$\d*\)/);
+    expect(tail).toContain('_hydrationRange$(_el$, 0, "tail")');
+    expect(tail).toMatch(/_insert\$\(_el\$, \(\) => value, undefined, _hr\$\d*\)/);
   });
 
   it('looks up range ownership from the dynamic child actual parent', () => {
     const output = transformCode('const element = <main><section>{value}text</section></main>');
 
     expect(output).toContain('_hydrationRange$(_n$, 0, "comment")');
-    expect(output).not.toContain('_hydrationRange$(_root$, 0, "comment")');
+    expect(output).not.toContain('_hydrationRange$(_el$, 0, "comment")');
   });
 
   it('keeps range ownership slots distinct within one parent', () => {
     const output = transformCode('const element = <div>{first}x{second}y</div>');
 
-    expect(output).toContain('_hydrationRange$(_root$, 0, "comment")');
-    expect(output).toContain('_hydrationRange$(_root$, 1, "comment")');
-    expect(output).toMatch(/_insert\$\(_root\$, \(\) => first, _hk\$, _hr\$\)/);
-    expect(output).toMatch(/_insert\$\(_root\$, \(\) => second, _hk\$2, _hr\$2\)/);
+    expect(output).toContain('_hydrationRange$(_el$, 0, "comment")');
+    expect(output).toContain('_hydrationRange$(_el$, 1, "comment")');
+    expect(output).toMatch(/_insert\$\(_el\$, \(\) => first, _hk\$, _hr\$\)/);
+    expect(output).toMatch(/_insert\$\(_el\$, \(\) => second, _hk\$2, _hr\$2\)/);
   });
 
   it('passes tail range ownership through the IRFor insert branch', () => {
@@ -91,9 +91,9 @@ describe('jsx hydrate transform', () => {
     );
 
     expect(output).toContain('For as _For$');
-    expect(output).toContain('_hydrationRange$(_root$, 0, "tail")');
+    expect(output).toContain('_hydrationRange$(_el$, 0, "tail")');
     expect(output).toMatch(
-      /_insert\$\(_root\$, _createComponent\$\(_For\$,[\s\S]*?\}\), undefined, _hr\$\);/,
+      /_insert\$\(_el\$, _createComponent\$\(_For\$,[\s\S]*?\}\), undefined, _hr\$\);/,
     );
   });
 
@@ -256,9 +256,9 @@ describe('jsx hydrate transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).toContain('_hydrationAnchor$(_el$, 0)');
     expect(output).toContain('<form data-hk-idx=\\"0\\">');
-    expect(output).not.toContain('const _n$ = _child$(_root$)');
+    expect(output).not.toContain('const _n$ = _child$(_el$)');
     expect(output).toMatchSnapshot();
   });
 
@@ -278,9 +278,9 @@ describe('jsx hydrate transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).toContain('_hydrationAnchor$(_el$, 0)');
     expect(output).toContain('const _n$ = _next$(_hk$');
-    expect(output).not.toContain('const _n$ = _nthChild$(_root$, 1)');
+    expect(output).not.toContain('const _n$ = _nthChild$(_el$, 1)');
   });
 
   it('uses an internal hydration anchor attribute without colliding with user data-idx', () => {
@@ -298,7 +298,7 @@ describe('jsx hydrate transform', () => {
 
     expect(output).toContain('data-idx=\\"row\\" data-hk-idx=\\"0\\"');
     expect(output).not.toContain('data-idx=\\"row\\" data-idx=\\"0\\"');
-    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
+    expect(output).toContain('_hydrationAnchor$(_el$, 0)');
   });
 
   it('omits dynamic comment anchors when a stable static sibling can anchor hydration', () => {
@@ -314,9 +314,9 @@ describe('jsx hydrate transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('_insert$(_root$, _createComponent$(Feedback');
-    expect(output).toContain('_hydrationAnchor$(_root$, 0)');
-    expect(output).not.toContain('_hydrationMarker$(_root$, 0)');
+    expect(output).toContain('_insert$(_el$, _createComponent$(Feedback');
+    expect(output).toContain('_hydrationAnchor$(_el$, 0)');
+    expect(output).not.toContain('_hydrationMarker$(_el$, 0)');
     expect(output).not.toContain('<!><form>');
   });
 
@@ -331,9 +331,9 @@ describe('jsx hydrate transform', () => {
     `;
     const output = transformCode(inputCode);
 
-    expect(output).toContain('_hydrationRange$(_root$, 0, "tail")');
-    expect(output).toContain('_insert$(_root$, () => footer, undefined, _hr$)');
-    expect(output).not.toContain('_hydrationMarker$(_root$, 0)');
+    expect(output).toContain('_hydrationRange$(_el$, 0, "tail")');
+    expect(output).toContain('_insert$(_el$, () => footer, undefined, _hr$)');
+    expect(output).not.toContain('_hydrationMarker$(_el$, 0)');
     expect(output).not.toContain('<!></div>');
   });
 
