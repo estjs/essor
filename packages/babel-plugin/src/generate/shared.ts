@@ -3,7 +3,7 @@
  */
 import * as t from '@babel/types';
 import { SLOT_CLOSE, SLOT_OPEN, escapeHTML, isBooleanAttr, propsToAttrMap } from '@estjs/shared';
-import type { CompileContext, IRDynamicProp, IRElement, IRNode, IRStaticProp } from '../core/types';
+import type { CompileContext, IRDynamicProp, IRElement, IRNode, IRStaticProp } from '../types';
 
 /**
  * SSR / hydration slot marker pair. A dynamic slot always renders both

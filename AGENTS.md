@@ -6,6 +6,38 @@
 
 ---
 
+
+代码哲学
+
+简洁优于复杂
+- 直接表达意图，避免多层抽象
+- 函数做一件事，但不要拆得太碎
+- 重复两次可以接受，三次再提取
+
+明了优于clever
+- 用最直白的方式解决问题
+- 避免过度设计和提前优化
+- 代码要让人一眼看懂意图
+
+实用优于完美
+- 解决当前问题，不做未来可能不需要的东西
+- 合理的耦合好过过度的解耦
+- 性能够用就好，不追求极致
+
+具体实践
+
+1. 不过度封装
+   - 工具函数只在真正复用时创建
+   - 简单逻辑直接写，不包一层
+2. 不过度拆分
+   - 相关逻辑放一起，方便理解上下文
+   - 小函数也要有存在的价值
+3. 保持简单
+   - 少用设计模式，多用直观代码
+   - 变量命名清晰，减少注释需求
+   - 控制文件大小，但不强求
+
+
 ## Quick Commands
 
 ```bash
@@ -167,20 +199,3 @@ pnpm vitest --reporter=verbose
 - **NPM**: https://www.npmjs.com/package/essor
 
 
-
-<claude-mem-context>
-# Memory Context
-
-# claude-mem status
-
-This project has no memory yet. The current session will seed it; subsequent sessions will receive auto-injected context for relevant past work.
-
-Memory injection starts on your second session in a project.
-
-`/learn-codebase` is available if the user wants to front-load the entire repo into memory in a single pass (~5 minutes on a typical repo, optional). Otherwise memory builds passively as work happens.
-
-Live activity: http://localhost:37777
-How it works: `/how-it-works`
-
-This message disappears once the first observation lands.
-</claude-mem-context>

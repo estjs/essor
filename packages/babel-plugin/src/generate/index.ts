@@ -4,8 +4,8 @@
 import { generateClient } from './client';
 import { generateServer } from './server';
 import type * as t from '@babel/types';
-import type { CompileContext } from '../core/context';
-import type { IRNode } from '../core/types';
+import type { CompileContext } from '../context';
+import type { IRNode } from '../types';
 
 export function generateCode(ir: IRNode, ctx: CompileContext): t.Expression {
   return ctx.mode === 'server' ? generateServer(ir, ctx) : generateClient(ir, ctx);

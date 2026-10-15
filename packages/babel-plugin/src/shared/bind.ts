@@ -2,7 +2,7 @@
  * Two-way binding helpers (bind:value, bind:checked, etc.)
  */
 import * as t from '@babel/types';
-import { collectIdentifiers, unwrapTSWrappers } from '../utils/ast';
+import { collectIdentifiers, unwrapTSWrappers } from '../utils/dom';
 import { CompileErrors } from '../utils/errors';
 
 /** Modifier whitelist — keep in sync with runtime */

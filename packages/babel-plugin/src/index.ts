@@ -2,15 +2,12 @@
  * Main Plugin Entry Point
  * Simplified babel plugin with clear pipeline
  */
-import { createContext, emitArtifacts } from './core/context';
-import { transformSignals } from './transform/signals';
-import { transformProps } from './transform/props';
-import { transformMapToFor } from './transform/map-to-for';
-import { transformHMR } from './transform/hmr';
-import { parseJSX } from './parse/index';
-import { analyzeIR } from './analyze/index';
-import { generateCode } from './generate/index';
-import type { PluginOptions } from './core/types';
+import { createContext, emitArtifacts } from './context';
+import { transformHMR, transformMapToFor, transformProps, transformSignals } from './transform';
+import { parseJSX } from './parse';
+import { analyzeIR } from './analyze';
+import { generateCode } from './generate';
+import type { PluginOptions } from './types';
 import type * as t from '@babel/types';
 import type { NodePath, PluginObject } from '@babel/core';
 

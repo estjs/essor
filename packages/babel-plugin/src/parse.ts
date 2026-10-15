@@ -9,13 +9,17 @@
  */
 import * as t from '@babel/types';
 import { isDelegatedEvent, isHTMLTag, isOn, isSVGTag } from '@estjs/shared';
-import { getJSXText } from '../utils/text';
-import { containsJSX, hasRawTextEndTag, isWholeTextTag } from '../shared/text';
-import { SERVER_BUILTINS, UNIVERSAL_BUILTINS } from '../constants';
-import { CANNOT_EVALUATE, evaluateConstant } from '../constants';
-import { styleToString } from '../utils/style';
-import { createBindingSetter, unwrapBindTuple } from '../shared/bind';
-import { CompileErrors } from '../utils/errors';
+import { getJSXText } from './utils/text';
+import { containsJSX, hasRawTextEndTag, isWholeTextTag } from './shared/text';
+import {
+  CANNOT_EVALUATE,
+  SERVER_BUILTINS,
+  UNIVERSAL_BUILTINS,
+  evaluateConstant,
+} from './constants';
+import { styleToString } from './utils/style';
+import { createBindingSetter, unwrapBindTuple } from './shared/bind';
+import { CompileErrors } from './utils/errors';
 import type {
   CompileContext,
   IRDynamicProp,
@@ -24,7 +28,7 @@ import type {
   IRNode,
   IRProps,
   IRStaticProp,
-} from '../core/types';
+} from '../types';
 import type { NodePath } from '@babel/traverse';
 
 type JSXChild =
@@ -589,20 +593,12 @@ function parseChildren(children: JSXChild[], state: ParseState, parentIsSVG: boo
 
 // ===== Validation =====
 
-function fail(state: ParseState, node: t.Node, message: string): never {
-  if (state.path?.hub) {
-    throw state.path.hub.buildError(node, message, Error);
-  }
-  throw new Error(message);
-}
-
 // Whole-text elements (title, textarea, style, script)
 function validateWholeTextElement(
   tag: string,
   children: IRNode[],
   props: IRProps,
   node: t.JSXElement,
-  state: ParseState,
 ): void {
   for (const child of children) {
     if (child.type !== 'text' && child.type !== 'expression') {

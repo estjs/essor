@@ -15,8 +15,7 @@ import {
 } from '@estjs/shared';
 import { isWholeTextTag, serializeStaticWholeText } from '../shared/text';
 import { UNIVERSAL_BUILTINS } from '../constants';
-import { unwrapBindTuple, createBindingSetter } from '../shared/bind';
-import { unwrapTSWrappers } from '../utils/ast';
+import { createBindingSetter, unwrapBindTuple } from '../shared/bind';
 import { parseJSX } from '../parse';
 import { serializeStaticAttrs } from './shared';
 import type {
@@ -30,7 +29,7 @@ import type {
   IRRef,
   IRSpread,
   IRStaticProp,
-} from '../core/types';
+} from '../types';
 
 const HMR_COMPONENT_NAME = '__$createHMRComponent$__';
 const MEMO_STATE_ID = '_p$';

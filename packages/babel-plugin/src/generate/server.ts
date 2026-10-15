@@ -29,7 +29,7 @@ import type {
   IRNode,
   IRSpread,
   IRStaticProp,
-} from '../core/types';
+} from '../types';
 
 const RAW_TEXT_TAGS = new Set(['script', 'style']);
 
