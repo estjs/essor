@@ -50,7 +50,7 @@ const value = 1;
 (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
-  _bindElement$(_n$, "value", () => value, _v$ => value = _v$);
+  _bindElement$(_n$, "value", () => value, _v => value = _v);
   return _root$;
 })();"
 `;
@@ -62,7 +62,7 @@ const value = 1;
 (() => {
   const _root$ = _t$();
   const _n$ = _child$(_root$);
-  _bindElement$(_n$, "value", () => value, _v$ => value = _v$);
+  _bindElement$(_n$, "value", () => value, _v => value = _v);
   return _root$;
 })();"
 `;

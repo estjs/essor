@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'client', hmr: false });
 const transformCodeWithClosingTags = getTransform('jsx', {
@@ -1308,9 +1308,7 @@ describe('should work with jsx client transform', () => {
 
   it('compiles bind:value into a getter/setter pair through bindElement', () => {
     const output = transformCode(`let $v = 1; const el = <input bind:value={$v} />;`);
-    expect(output).toContain(
-      '_bindElement$(_root$, "value", () => $v.value, _v$ => $v.value = _v$)',
-    );
+    expect(output).toContain('_bindElement$(_root$, "value", () => $v.value, _v => $v.value = _v)');
   });
 
   it('preserves literal prop value types for components (CMP-04)', () => {

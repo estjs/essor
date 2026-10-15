@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { getTransform } from './transform';
 const transformCode = getTransform('jsx', { mode: 'server', hmr: false });
 const transformCodeWithFor = getTransform('jsx', {

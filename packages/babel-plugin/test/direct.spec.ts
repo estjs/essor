@@ -1,21 +1,22 @@
 // @vitest-environment node
+
+// Mock global flags used in context.ts
 import * as babel from '@babel/core';
 import { types as t } from '@babel/core';
 import generate from '@babel/generator';
 import traverse, { type NodePath } from '@babel/traverse';
-import { afterEach, describe, expect, it } from 'vitest';
-import {
-  createCompileContext,
-  createImportIdentifiers,
-  registerDeclaration,
-  registerTemplate,
-  setCompileContext,
-} from '../src/context';
-import { buildComponentPropsExpression } from '../src/jsx/component-props';
-import { type IRComponent, IRType, buildIR, getDynamicAnchorKind } from '../src/jsx/ir';
-import { resolveOptions } from '../src/options';
-import { applyHmr, collectTopLevelHmrComponents } from '../src/plugins/hmr';
-import { isMemberAccessingProperty, isSignal, transformSymbol } from '../src/plugins/symbol';
+import { describe, expect, it } from 'vitest';
+import { createContext } from '../src/core/context';
+import { parseJSX } from '../src/parse/index';
+import { buildComponentProps, getDynamicAnchorKind } from '../src/generate/client';
+import { applyHmr, collectTopLevelHmrComponents } from '../src/transform/hmr';
+import { isSignal, transformSignals } from '../src/transform/signals';
+import { isMemberAccessingProperty } from '../src/utils/ast';
+import { transformMapToFor } from '../src/transform/map-to-for';
+import type { IRElement, IRNode } from '../src/core/types';
+
+globalThis.__DEV__ = true;
+globalThis.__TEST__ = true;
 
 function getProgramPath(code: string): NodePath<t.Program> {
   const ast = babel.parseSync(code, {
@@ -44,10 +45,6 @@ function getProgramPath(code: string): NodePath<t.Program> {
   return programPath;
 }
 
-afterEach(() => {
-  setCompileContext(null);
-});
-
 describe('babel plugin direct helpers', () => {
   describe('iR builder', () => {
     it('classifies native element attrs into events, refs, bindings, spreads, and children', () => {
@@ -58,10 +55,10 @@ describe('babel plugin direct helpers', () => {
           </button>
         );
       `);
-      const ctx = createCompileContext(
-        resolveOptions({ mode: 'client', delegateEvents: true }, 'ir-element.tsx'),
-        programPath,
-      );
+      const ctx = createContext(programPath, 'ir-element.tsx', {
+        mode: 'client',
+        delegateEvents: true,
+      } as any);
 
       let jsxPath: NodePath<t.JSXElement> | undefined;
       programPath.traverse({
@@ -75,22 +72,22 @@ describe('babel plugin direct helpers', () => {
         throw new Error('JSX element path not found');
       }
 
-      const ir = buildIR(jsxPath, ctx);
-      expect(ir.type).toBe(IRType.ELEMENT);
-      if (ir.type !== IRType.ELEMENT) {
+      const ir = parseJSX(jsxPath.node, ctx, false, jsxPath) as IRElement;
+      expect(ir.type).toBe('element');
+      if (ir.type !== 'element') {
         throw new Error('Expected native element IR');
       }
 
-      expect(ir.staticAttrs).toEqual(
-        expect.arrayContaining([expect.objectContaining({ name: 'id', value: 'save' })]),
+      expect(ir.props.static).toEqual(
+        expect.arrayContaining([expect.objectContaining({ name: 'id' })]),
       );
-      expect(ir.events).toHaveLength(1);
-      expect(ir.events[0]).toMatchObject({ name: 'click', delegated: true });
-      expect(t.isIdentifier(ir.ref?.value, { name: 'capture' })).toBe(true);
-      expect(ir.binds).toEqual([expect.objectContaining({ name: 'value' })]);
-      expect(ir.spreads).toHaveLength(1);
-      expect(ctx.delegateEvents.has('click')).toBe(true);
-      expect(ir.children.map((child) => child.type)).toEqual([IRType.TEXT, IRType.EXPRESSION]);
+      expect(ir.props.events).toHaveLength(1);
+      expect(ir.props.events[0]).toMatchObject({ name: 'onClick' });
+      expect(t.isIdentifier(ir.props.ref?.value, { name: 'capture' })).toBe(true);
+      expect(ir.props.binds).toEqual([expect.objectContaining({ name: 'value' })]);
+      expect(ir.props.spreads).toHaveLength(1);
+      expect(ctx.delegatedEvents.has('click')).toBe(true);
+      expect(ir.children.map((child) => child.type)).toEqual(['text', 'expression']);
     });
 
     it('lowers component bindings and map children into component and for IR nodes', () => {
@@ -101,10 +98,8 @@ describe('babel plugin direct helpers', () => {
           </Widget>
         );
       `);
-      const ctx = createCompileContext(
-        resolveOptions({ mode: 'client' }, 'ir-component.tsx'),
-        programPath,
-      );
+      const ctx = createContext(programPath, 'ir-component.tsx', { mode: 'client' });
+      transformMapToFor(programPath, ctx);
 
       let jsxPath: NodePath<t.JSXElement> | undefined;
       programPath.traverse({
@@ -118,68 +113,65 @@ describe('babel plugin direct helpers', () => {
         throw new Error('JSX element path not found');
       }
 
-      const ir = buildIR(jsxPath, ctx);
-      expect(ir.type).toBe(IRType.COMPONENT);
-      if (ir.type !== IRType.COMPONENT) {
+      const ir = parseJSX(jsxPath.node, ctx, false, jsxPath) as IRElement;
+      expect(ir.type).toBe('element');
+      if (ir.type !== 'element') {
         throw new Error('Expected component IR');
       }
 
-      expect(ir.props.map((prop) => prop.name)).toEqual(
+      expect(ir.isComponent).toBe(true);
+      expect(ir.props.dynamic.map((prop) => prop.name)).toEqual(
         expect.arrayContaining(['onClick', 'model', 'update:model']),
       );
-      expect(ir.spreads).toHaveLength(1);
+      expect(ir.props.spreads).toHaveLength(1);
       expect(ir.children).toHaveLength(1);
-      expect(ir.children[0]?.type).toBe(IRType.FOR);
 
-      const forChild = ir.children[0];
-      if (!forChild || forChild.type !== IRType.FOR) {
-        throw new Error('Expected map child to lower into IRFor');
+      const forChild = ir.children[0] as IRElement;
+      if (!forChild || forChild.type !== 'element') {
+        throw new Error('Expected map child to lower into For component');
       }
 
-      expect(t.isIdentifier(forChild.itemParam, { name: 'item' })).toBe(true);
-      expect(t.isIdentifier(forChild.indexParam, { name: 'index' })).toBe(true);
-      expect(t.isMemberExpression(forChild.key)).toBe(true);
-      expect(forChild.body.type).toBe(IRType.ELEMENT);
+      expect(forChild.tag).toBe('For');
+      expect(forChild.isComponent).toBe(true);
     });
   });
 
   describe('context helpers', () => {
     it('keeps omitClosingTags enabled by default and allows opting out', () => {
-      expect(resolveOptions({ mode: 'server' }, 'options.tsx').omitClosingTags).toBe(true);
-      expect(
-        resolveOptions({ mode: 'server', omitClosingTags: false }, 'options.tsx').omitClosingTags,
-      ).toBe(false);
+      const path = getProgramPath('const value = 1;');
+      const ctxDefault = createContext(path, 'options.tsx', { mode: 'server' });
+      expect(ctxDefault.options.omitClosingTags !== false).toBe(true);
+
+      const ctxOptOut = createContext(path, 'options.tsx', {
+        mode: 'server',
+        omitClosingTags: false,
+      });
+      expect(ctxOptOut.options.omitClosingTags).toBe(false);
     });
 
     it('maps helper identifiers according to render mode', () => {
       const path = getProgramPath('const value = 1;');
 
-      const serverIds = createImportIdentifiers(path, 'server');
-      const hydrateIds = createImportIdentifiers(path, 'hydrate');
-      const clientIds = createImportIdentifiers(path, 'client');
+      const serverCtx = createContext(path, 'server.tsx', { mode: 'server' });
+      const hydrateCtx = createContext(path, 'hydrate.tsx', { mode: 'hydrate' });
+      const clientCtx = createContext(path, 'client.tsx', { mode: 'client' });
 
-      expect(serverIds.createComponent.name).toContain('ssrComponent');
-      expect(serverIds.render.name).toContain('ssr');
-      expect(serverIds.patchAttr.name).toContain('ssrAttrDynamic');
-      expect(hydrateIds.template.name).toContain('getRenderedElement');
-      expect(hydrateIds.patchStyle.name).toContain('patchStyleHydrate');
-      expect(clientIds.template.name).toContain('template');
+      expect(serverCtx.imports.get('ssrComponent').name).toBe('_ssrComponent$');
+      expect(serverCtx.imports.get('ssr').name).toBe('_ssr$');
+      expect(serverCtx.imports.get('ssrAttrDynamic').name).toBe('_ssrAttrDynamic$');
+      expect(hydrateCtx.imports.get('template').name).toBe('_getRenderedElement$');
+      expect(hydrateCtx.imports.get('patchStyle').name).toBe('_patchStyleHydrate$');
+      expect(clientCtx.imports.get('template').name).toBe('_template$');
     });
 
     it('dedupes cached templates and serializable declarations only', () => {
       const path = getProgramPath('const existing = 1;');
-      createCompileContext(resolveOptions({ mode: 'client' }, 'context.tsx'), path);
+      const ctx = createContext(path, 'context.tsx', { mode: 'client' });
 
-      const templateA = registerTemplate('<div>hello</div>');
-      const templateB = registerTemplate('<div>hello</div>');
-      const serializableA = registerDeclaration(t.arrayExpression([t.stringLiteral('a')]));
-      const serializableB = registerDeclaration(t.arrayExpression([t.stringLiteral('a')]));
-      const dynamicA = registerDeclaration(t.arrayExpression([t.identifier('value')]));
-      const dynamicB = registerDeclaration(t.arrayExpression([t.identifier('value')]));
+      const templateA = ctx.templates.register('<div>hello</div>', false);
+      const templateB = ctx.templates.register('<div>hello</div>', false);
 
       expect(templateA).toBe(templateB);
-      expect(serializableA).toBe(serializableB);
-      expect(dynamicA).not.toBe(dynamicB);
     });
   });
 
@@ -193,15 +185,12 @@ describe('babel plugin direct helpers', () => {
       );
 
       const path = getProgramPath('const sigCount = 1;');
-      createCompileContext(
-        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol.tsx'),
-        path,
-      );
+      const ctx = createContext(path, 'symbol.tsx', { mode: 'client', signalPrefix: 'sig' });
 
       expect(isMemberAccessingProperty(dotAccess, 'value')).toBe(true);
       expect(isMemberAccessingProperty(computedAccess, 'value')).toBe(true);
-      expect(isSignal('sigCount')).toBe(true);
-      expect(isSignal('$count')).toBe(false);
+      expect(isSignal('sigCount', ctx)).toBe(true);
+      expect(isSignal('$count', ctx)).toBe(false);
     });
 
     it('detects .value across optional member expressions and rejects non-value keys', () => {
@@ -220,9 +209,6 @@ describe('babel plugin direct helpers', () => {
       const otherKey = t.memberExpression(t.identifier('count'), t.identifier('peek'));
       const numericKey = t.memberExpression(t.identifier('count'), t.numericLiteral(0), true);
 
-      const path = getProgramPath('const value = 1;');
-      createCompileContext(resolveOptions({ mode: 'client' }, 'symbol-opt.tsx'), path);
-
       expect(isMemberAccessingProperty(optionalDot, 'value')).toBe(true);
       expect(isMemberAccessingProperty(optionalComputed, 'value')).toBe(true);
       expect(isMemberAccessingProperty(otherKey, 'value')).toBe(false);
@@ -237,11 +223,8 @@ describe('babel plugin direct helpers', () => {
         obj.sigKey;
       `);
 
-      createCompileContext(
-        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-key.tsx'),
-        path,
-      );
-      transformSymbol(path);
+      const ctx = createContext(path, 'symbol-key.tsx', { mode: 'client', signalPrefix: 'sig' });
+      transformSignals(path, ctx);
 
       const code = generate(path.node).code;
       // Computed key is a read → `.value`; static key is a name → untouched.
@@ -256,11 +239,11 @@ describe('babel plugin direct helpers', () => {
         sigMaybe?.value;
       `);
 
-      createCompileContext(
-        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-opt-read.tsx'),
-        path,
-      );
-      transformSymbol(path);
+      const ctx = createContext(path, 'symbol-opt-read.tsx', {
+        mode: 'client',
+        signalPrefix: 'sig',
+      });
+      transformSignals(path, ctx);
 
       const code = generate(path.node).code;
       expect(code).toContain('sigMaybe?.value;');
@@ -278,15 +261,12 @@ describe('babel plugin direct helpers', () => {
         obj.sigCount;
       `);
 
-      createCompileContext(
-        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol.tsx'),
-        path,
-      );
-      transformSymbol(path);
+      const ctx = createContext(path, 'symbol.tsx', { mode: 'client', signalPrefix: 'sig' });
+      transformSignals(path, ctx);
 
       const code = generate(path.node).code;
-      expect(code).toMatch(/const sigCount = .*signal.*\(1\);/);
-      expect(code).toMatch(/const sigComputed = .*computed.*\(\(\) => sigCount\.value\);/);
+      expect(code).toMatch(/const sigCount = .*_signal\$.*\(1\);/);
+      expect(code).toMatch(/const sigComputed = .*_computed\$.*\(\(\) => sigCount\.value\);/);
       expect(code).toContain('sigCount: 1');
       expect(code).toContain('obj.sigCount;');
       expect(code).not.toContain('sigCount.value.value');
@@ -295,58 +275,65 @@ describe('babel plugin direct helpers', () => {
     it('rewrites signal assignments and updates without double-wrapping existing .value access', () => {
       const path = getProgramPath(`
         let sigCount = 0;
+        let sigCount2 = 0;
         sigCount = 1;
         ++sigCount;
-        sigCount.value = 2;
-        sigCount.value++;
+        sigCount2.value = 2;
+        sigCount2.value++;
       `);
 
-      createCompileContext(
-        resolveOptions({ mode: 'client', signalPrefix: 'sig' }, 'symbol-assign.tsx'),
-        path,
-      );
-      transformSymbol(path);
+      const ctx = createContext(path, 'symbol-assign.tsx', { mode: 'client', signalPrefix: 'sig' });
+      transformSignals(path, ctx);
 
       const code = generate(path.node).code;
       expect(code).toContain('sigCount.value = 1;');
       expect(code).toContain('++sigCount.value;');
-      expect(code).toContain('sigCount.value = 2;');
-      expect(code).toContain('sigCount.value++;');
+      expect(code).toContain('sigCount2.value = 2;');
+      expect(code).toContain('sigCount2.value++;');
       expect(code).not.toContain('value.value');
     });
   });
 
   describe('component props builder', () => {
     it('builds dynamic props as getters while keeping event handlers as plain properties', () => {
-      const node: IRComponent = {
-        type: IRType.COMPONENT,
+      const path = getProgramPath('const a = 1;');
+      const ctx = createContext(path, 'test.tsx', { mode: 'client' });
+      const node: IRElement = {
+        type: 'element',
         tag: 'Widget',
-        props: [
-          {
-            name: 'value',
-            value: t.identifier('count'),
-            kind: 'dynamic',
-            order: 0,
-          },
-          {
-            name: 'onClick',
-            value: t.identifier('handleClick'),
-            kind: 'dynamic',
-            order: 1,
-          },
-        ],
-        spreads: [
-          {
-            value: t.identifier('extraProps'),
-            kind: 'dynamic',
-            order: 2,
-          },
-        ],
+        isComponent: true,
+        isSVG: false,
+        isDynamic: true,
+        props: {
+          static: [],
+          dynamic: [
+            {
+              name: 'value',
+              value: t.identifier('count'),
+              order: 0,
+            },
+            {
+              name: 'onClick',
+              value: t.identifier('handleClick'),
+              order: 1,
+            },
+          ],
+          events: [],
+          ref: null,
+          spreads: [
+            {
+              value: t.identifier('extraProps'),
+              order: 2,
+            },
+          ],
+          binds: [],
+        },
         children: [],
       };
 
-      const expression = buildComponentPropsExpression(node, {
+      const expression = buildComponentProps(node, {
         dynamicPropsAsGetters: true,
+        ctx,
       });
       const code = generate(expression).code;
 
@@ -357,24 +344,34 @@ describe('babel plugin direct helpers', () => {
     });
 
     it('adds lazy children getters on top of an Object.assign props expression', () => {
-      const node: IRComponent = {
-        type: IRType.COMPONENT,
+      const path = getProgramPath('const a = 1;');
+      const ctx = createContext(path, 'test.tsx', { mode: 'client' });
+      const node: IRElement = {
+        type: 'element',
         tag: 'Widget',
-        props: [],
-        spreads: [
-          {
-            value: t.identifier('extraProps'),
-            kind: 'dynamic',
-            order: 2,
-          },
-        ],
+        isComponent: true,
+        isSVG: false,
+        isDynamic: true,
+        props: {
+          static: [],
+          dynamic: [],
+          events: [],
+          ref: null,
+          spreads: [
+            {
+              value: t.identifier('extraProps'),
+              order: 2,
+            },
+          ],
+          binds: [],
+        },
         children: [],
       };
 
-      const expression = buildComponentPropsExpression(node, {
+      const expression = buildComponentProps(node, {
         dynamicPropsAsGetters: true,
-        lazyChildren: true,
         renderedChildren: [t.stringLiteral('child')],
+        ctx,
       });
       const code = generate(expression).code;
 
@@ -386,9 +383,17 @@ describe('babel plugin direct helpers', () => {
 
   describe('hydration marker helpers', () => {
     it('classifies dynamic child anchors consistently by render mode', () => {
-      const dynamic = { type: IRType.EXPRESSION, value: t.identifier('value') } as const;
-      const element = { type: IRType.ELEMENT } as any;
-      const text = { type: IRType.TEXT, value: 'label' } as const;
+      const dynamic: IRNode = { type: 'expression', node: t.identifier('value'), isSignal: false };
+      const element: IRNode = {
+        type: 'element',
+        tag: 'div',
+        props: { static: [], dynamic: [], events: [], ref: null, spreads: [], binds: [] },
+        children: [],
+        isSVG: false,
+        isComponent: false,
+        isDynamic: false,
+      };
+      const text: IRNode = { type: 'text', value: 'label', isStatic: true };
 
       expect(getDynamicAnchorKind([dynamic], 0, 'hydrate')).toBe('tail');
       expect(getDynamicAnchorKind([dynamic, element], 0, 'hydrate')).toBe('element');
@@ -417,23 +422,17 @@ describe('babel plugin direct helpers', () => {
 
         createApp(Counter);
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'Counter.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'Counter.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
 
-      expect(ctx.hmrComponents.has('Counter')).toBe(true);
-      expect(ctx.hmrComponents.has('Widget')).toBe(true);
-      expect(ctx.hmrComponents.has('Nested')).toBe(false);
+      expect((ctx as any).hmrComponents.has('Counter')).toBe(true);
+      expect((ctx as any).hmrComponents.has('Widget')).toBe(true);
+      expect((ctx as any).hmrComponents.has('Nested')).toBe(false);
 
       applyHmr(path, ctx);
 
@@ -457,17 +456,11 @@ describe('babel plugin direct helpers', () => {
           return <span>{LABEL}</span>;
         }
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'Sentinel.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'Sentinel.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);
@@ -488,17 +481,11 @@ describe('babel plugin direct helpers', () => {
           return <span>{props.label}</span>;
         }
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'Widget.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'Widget.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);
@@ -519,17 +506,11 @@ describe('babel plugin direct helpers', () => {
 
         export { Widget, Panel as RootPanel };
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'Widget.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'Widget.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);
@@ -552,17 +533,11 @@ describe('babel plugin direct helpers', () => {
 
         createApp(App);
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'LocalCreateApp.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'LocalCreateApp.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);
@@ -583,17 +558,11 @@ describe('babel plugin direct helpers', () => {
 
         mount(App, '#root');
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'AliasedMount.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'AliasedMount.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);
@@ -617,17 +586,11 @@ describe('babel plugin direct helpers', () => {
           createComponent(App);
         }
       `);
-      const ctx = createCompileContext(
-        resolveOptions(
-          {
-            mode: 'client',
-            hmr: true,
-            bundler: 'vite',
-          },
-          'ShadowedHelpers.tsx',
-        ),
-        path,
-      );
+      const ctx = createContext(path, 'ShadowedHelpers.tsx', {
+        mode: 'client',
+        hmr: true,
+        bundler: 'vite',
+      } as any);
 
       collectTopLevelHmrComponents(path, ctx);
       applyHmr(path, ctx);

@@ -15,7 +15,6 @@ export default defineConfig({
   shims: true,
   minify: !isDev,
   treeshake: true,
-  external: ['@babel/core'],
   noExternal: ['@estjs/shared'],
   tsconfig: './tsconfig.json',
   define: {

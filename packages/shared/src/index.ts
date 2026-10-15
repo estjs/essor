@@ -93,3 +93,12 @@ export {
   type StyleValue,
   type ClassValue,
 } from './normalize';
+export {
+  PROTOCOL_VERSION,
+  ANCHOR_OPEN,
+  ANCHOR_END,
+  ANCHOR_CLOSE,
+  DELEGATED_SLOT_PREFIX,
+  SLOT_OPEN,
+  SLOT_CLOSE,
+} from './constants';
