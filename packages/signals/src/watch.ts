@@ -1,6 +1,5 @@
 import {
   EMPTY_OBJ,
-  noop as NOOP,
   hasChanged,
   isArray,
   isFunction,
@@ -8,6 +7,7 @@ import {
   isObject,
   isPlainObject,
   isSet,
+  noop,
   warn,
 } from '@estjs/shared';
 import { signalsFlags } from './constants';
@@ -26,17 +26,17 @@ export enum WatchErrorCodes {
   WATCH_CLEANUP,
 }
 
-export type WatchEffect = (onCleanup: OnCleanup) => void;
+export type WatchEffect = (onScopeDispose: onScopeDispose) => void;
 
 export type WatchSource<T = any> = Signal<T, any> | ComputedRef<T> | (() => T);
 
 export type WatchCallback<V = any, OV = any> = (
   value: V,
   oldValue: OV,
-  onCleanup: OnCleanup,
+  onScopeDispose: onScopeDispose,
 ) => any;
 
-export type OnCleanup = (cleanupFn: () => void) => void;
+export type onScopeDispose = (cleanupFn: () => void) => void;
 
 export interface WatchOptions<Immediate = boolean> {
   immediate?: Immediate;
@@ -163,7 +163,7 @@ export class WatcherEffect extends ReactiveEffect {
         };
       }
     } else {
-      getter = NOOP;
+      getter = noop;
       __DEV__ && warnInvalidSource(source, onWarn);
     }
 

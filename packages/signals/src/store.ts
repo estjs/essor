@@ -1,4 +1,4 @@
-import { hasOwn, isFunction, isPlainObject, isPromise } from '@estjs/shared';
+import { hasOwn, isFunction, isPlainObject, isPromise, isString, startsWith } from '@estjs/shared';
 import { computed } from './computed';
 import { type Reactive, reactive, toRaw } from './reactive';
 import { effectScope, getCurrentScope, onScopeDispose } from './effectScope';
@@ -243,13 +243,13 @@ export function createStore(optionsOrClass: any): () => Store<any, any, any> {
   }
 
   // Class-based store
-  if (typeof optionsOrClass === 'function') {
+  if (isFunction(optionsOrClass)) {
     const options = classToStoreOptions(optionsOrClass);
     return () => createStoreInstance(options);
   }
 
   // Options-based store
-  if (typeof optionsOrClass.state !== 'function') {
+  if (!isFunction(optionsOrClass.state)) {
     throw new TypeError('Store state must be a function');
   }
   return () => createStoreInstance(optionsOrClass);
@@ -297,7 +297,7 @@ function classToStoreOptions<T extends new () => any>(StoreClass: T): StoreOptio
       getters[key] = (state: any) => getter.call(state);
     }
     // Method → action
-    else if (typeof descriptor.value === 'function') {
+    else if (isFunction(descriptor.value)) {
       actions[key] = descriptor.value;
     }
   }
@@ -904,7 +904,7 @@ function validateNames(
 ): void {
   const names = new Set<PropertyKey>(BUILTIN_NAMES);
   for (const key of [...stateKeys, ...getterKeys, ...actionKeys]) {
-    if (typeof key === 'string' && key.startsWith('$')) {
+    if (isString(key) && startsWith(key, '$')) {
       throw new TypeError('Store property names cannot start with $');
     }
     if (names.has(key)) throw new TypeError(`Duplicate store property: ${String(key)}`);

@@ -45,7 +45,7 @@ function hasOwnProperty(this: object, key: unknown) {
   if (!isSymbol(key)) key = String(key);
   const obj = toRaw(this);
   track(obj, TrackOpTypes.HAS, key);
-  return obj.hasOwnProperty(key as string);
+  return hasOwn(obj, key as string);
 }
 
 class BaseReactiveHandler implements ProxyHandler<Target> {

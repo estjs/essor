@@ -47,13 +47,7 @@ export { reactive, shallowReactive } from './reactive';
 
 export { batch, startBatch, endBatch, nextTick } from './graph';
 
-export {
-  watch,
-  type OnCleanup,
-  type WatchCallback,
-  type WatchOptions,
-  type WatchSource,
-} from './watch';
+export { watch, type WatchCallback, type WatchOptions, type WatchSource } from './watch';
 
 export {
   EffectScope,

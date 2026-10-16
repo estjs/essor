@@ -9,6 +9,7 @@ import {
   checkDirty,
   endTracking,
   link,
+  setIsUntracking,
   shallowPropagate,
   startTracking,
 } from './graph';
@@ -138,6 +139,7 @@ export class ComputedRefImpl<T = any> implements ReactiveNode {
 
   update(): boolean {
     const prevSub = startTracking(this);
+    const prevUntracking = setIsUntracking(false);
     try {
       const oldValue = this._value;
       const newValue = this.fn(oldValue);
@@ -147,6 +149,7 @@ export class ComputedRefImpl<T = any> implements ReactiveNode {
       }
       return false;
     } finally {
+      setIsUntracking(prevUntracking);
       endTracking(this, prevSub);
     }
   }
