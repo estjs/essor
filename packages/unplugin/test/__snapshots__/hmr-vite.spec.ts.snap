@@ -4,10 +4,10 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 1`] =
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
-const _t$3 = _template$("<div><!><!>");
-const _t$2 = _template$("<div>Bar");
-const _t$ = _template$("<div>Foo");
 import { createApp } from "essor";
+const _t$ = /*#__PURE__*/_template$("<div>Foo");
+const _t$2 = /*#__PURE__*/_template$("<div>Bar");
+const _t$3 = /*#__PURE__*/_template$("<div><!><!>");
 function Foo() {
   return _t$();
 }
@@ -20,12 +20,12 @@ Bar.__signature = "u5b22v";
 Bar.__hmrId = "me1pwu:Bar";
 function App() {
   return (() => {
-    const _root$ = _t$3();
-    const _n$ = _child$(_root$);
+    const _el$ = _t$3();
+    const _n$ = _child$(_el$);
     const _n$2 = _next$(_n$, 1);
-    _insert$(_root$, __$createHMRComponent$__(Foo, {}), _n$);
-    _insert$(_root$, __$createHMRComponent$__(Bar, {}), _n$2);
-    return _root$;
+    _insert$(_el$, __$createHMRComponent$__(Foo, {}), _n$);
+    _insert$(_el$, __$createHMRComponent$__(Bar, {}), _n$2);
+    return _el$;
   })();
 }
 App.__signature = "uvdrlt";
@@ -43,10 +43,10 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 2`] =
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, createComponent as _createComponent$, insert as _insert$ } from "essor";
-const _t$3 = _template$("<div><!><!>");
-const _t$2 = _template$("<div>B");
-const _t$ = _template$("<div>A");
 import { createApp } from 'essor';
+const _t$ = /*#__PURE__*/_template$("<div>A");
+const _t$2 = /*#__PURE__*/_template$("<div>B");
+const _t$3 = /*#__PURE__*/_template$("<div><!><!>");
 export function ComponentA() {
   return _t$();
 }
@@ -57,12 +57,12 @@ ComponentB.__signature = "1vo7hf2";
 ComponentB.__hmrId = "ydmpkz:ComponentB";
 export default function App() {
   return (() => {
-    const _root$ = _t$3();
-    const _n$ = _child$(_root$);
+    const _el$ = _t$3();
+    const _n$ = _child$(_el$);
     const _n$2 = _next$(_n$, 1);
-    _insert$(_root$, __$createHMRComponent$__(ComponentA, {}), _n$);
-    _insert$(_root$, __$createHMRComponent$__(ComponentB, {}), _n$2);
-    return _root$;
+    _insert$(_el$, __$createHMRComponent$__(ComponentA, {}), _n$);
+    _insert$(_el$, __$createHMRComponent$__(ComponentB, {}), _n$2);
+    return _el$;
   })();
 }
 App.__signature = "1q4priw";
@@ -80,16 +80,16 @@ exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 3`] =
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, nthChild as _nthChild$, insert as _insert$, createComponent as _createComponent$ } from "essor";
-const _t$ = _template$("<div>Hello <!>");
 import { createApp } from 'essor';
+const _t$ = /*#__PURE__*/_template$("<div>Hello <!>");
 function PropsComponent(props: {
   name: string;
 }) {
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _nthChild$(_root$, 1);
-    _insert$(_root$, () => props.name, _n$);
-    return _root$;
+    const _el$ = _t$();
+    const _n$ = _nthChild$(_el$, 1);
+    _insert$(_el$, () => props.name, _n$);
+    return _el$;
   })();
 }
 PropsComponent.__signature = "kth069";
@@ -108,17 +108,17 @@ if (import.meta.hot) {
 exports[`hMR - Vite Platform > should enable hmr for vite serve transforms 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
-const _t$ = _template$("<div>Count: <!>");
+import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
 import { createApp, signal } from 'essor';
+const _t$ = /*#__PURE__*/_template$("<div>Count: <!>");
 function SignalComponent() {
   const count = signal(0);
   return (() => {
-    const _root$ = _t$();
-    const _n$ = _nthChild$(_root$, 1);
-    _root$["_$click"] = () => count.value++;
-    _insert$(_root$, () => count.value, _n$);
-    return _root$;
+    const _el$ = _t$();
+    const _n$ = _nthChild$(_el$, 1);
+    _el$["_$click"] = () => count.value++;
+    _insert$(_el$, () => count.value, _n$);
+    return _el$;
   })();
 }
 SignalComponent.__signature = "182rwo7";

@@ -1,4 +1,4 @@
 import { createRolldownPlugin } from 'unplugin';
-import { unpluginFactory } from '.';
+import { unpluginFactory } from './index';
 
 export default createRolldownPlugin(unpluginFactory);

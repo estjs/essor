@@ -9,7 +9,7 @@
  * 4. **Instance Reloading**: Live component instances remount when their implementation changes
  * 5. **Bundler Agnostic**: Works with Vite, Webpack, Rspack, and other bundlers
  */
-import { createComponent, onDestroy } from 'essor';
+import { createComponent, onDestroy, signal } from 'essor';
 
 const isFunction = (value) => typeof value === 'function';
 const ESSOR_HMR = 'essor-hmr';
@@ -20,15 +20,15 @@ const ESSOR_HMR = 'essor-hmr';
  * - hmrId: Unique identifier for component (fileHash:componentName)
  * - component: Current component function
  * - signature: Hash of component code (changes when code changes)
- * - instances: Set of active component instances
+ * - mounts: Live mount records for this component (see createHMRComponent)
  * - updated: True after HMR applies a newer implementation
  */
 const componentRegistry = new Map();
 
-function cleanupInstance(hmrId, info, component) {
-  info.instances.delete(component);
+function cleanupInstance(hmrId, info, mount) {
+  info.mounts.delete(mount);
 
-  if (info.instances.size === 0 && !info.updated && componentRegistry.get(hmrId) === info) {
+  if (info.mounts.size === 0 && !info.updated && componentRegistry.get(hmrId) === info) {
     componentRegistry.delete(hmrId);
   }
 }
@@ -61,6 +61,23 @@ function invalidateOrReload(hot) {
 export function createHMRComponent(componentFn, props) {
   const { __hmrId: hmrId, __signature: signature } = componentFn;
 
+  // Two call shapes reach this function, and they need different return values:
+  //
+  //   createComponent(C, props)  ->  callee swapped to createHMRComponent
+  //        The compiler puts this INSIDE insert(), so returning a thunk lets
+  //        insert() track the version signal and re-render on update.
+  //
+  //   createApp(C, '#root')      ->  argument wrapped: createHMRComponent(C)
+  //        Here the result is used AS the component, so it must be a component
+  //        function. Detected by the absence of a props argument.
+  //
+  // Both share one registry and one boundary; only the wrapper differs.
+  if (arguments.length < 2) {
+    return function HMRRoot(rootProps) {
+      return createHMRComponent(componentFn, rootProps ?? {});
+    };
+  }
+
   if (!hmrId) {
     // If no hmrId, create normal component
     return createComponent(componentFn, props);
@@ -72,64 +89,73 @@ export function createHMRComponent(componentFn, props) {
     info = {
       component: componentFn,
       signature,
-      instances: new Set(),
+      mounts: new Set(),
       updated: false,
     };
     componentRegistry.set(hmrId, info);
-  } else if (info.instances.size === 0 && !info.updated) {
+  } else if (info.mounts.size === 0 && !info.updated) {
     info.signature = signature;
     info.component = componentFn;
   }
 
-  let component;
-  let disposed = false;
-  let isForceUpdating = false;
-  const cleanupHMR = () => {
-    if (isForceUpdating) return;
-    if (disposed) return;
-    disposed = true;
-    cleanupInstance(hmrId, info, component);
+  // A component is a function call returning nodes — there is no instance with a
+  // forceUpdate() to call. A hot swap therefore rides on the reactive system:
+  // this record holds a version signal that the returned thunk reads, so bumping
+  // it makes insert() re-run the call and diff the result. insert() already
+  // disposes the previous branch scope, so effects and listeners are cleaned up
+  // without any bookkeeping here.
+  const mount = {
+    props,
+    version: signal(0),
+    disposed: false,
+    swapping: false,
   };
 
-  // Use a stable boundary function so destroy cleanup is registered only
-  // after the component is mounted inside a real Essor scope. This also lets
-  // stale closures render the latest implementation after a hot update.
+  // The boundary keeps the indirection through `info.component`, so a stale
+  // closure captured before an update still renders the latest implementation.
   function HMRBoundary(nextProps) {
-    onDestroy(cleanupHMR);
+    onDestroy(() => {
+      // A swap disposes the old scope on purpose; that must not unregister the
+      // mount, or the next update would have nothing to replace.
+      if (mount.swapping || mount.disposed) return;
+      mount.disposed = true;
+      cleanupInstance(hmrId, info, mount);
+    });
     return info.component.call(this, nextProps);
   }
 
-  component = createComponent(HMRBoundary, props);
-  info.instances.add(component);
+  mount.render = (nextProps) => createComponent(HMRBoundary, nextProps ?? mount.props);
+  info.mounts.add(mount);
 
-  const originalForceUpdate = component.forceUpdate;
-  if (isFunction(originalForceUpdate)) {
-    component.forceUpdate = function (...args) {
-      isForceUpdating = true;
-      try {
-        return originalForceUpdate.apply(this, args);
-      } finally {
-        isForceUpdating = false;
-      }
-    };
-  }
-
-  // Integrate with component lifecycle - cleanup only when the component is
-  // actually unmounted, not during forceUpdate's destroy/remount cycle.
-  const originalDestroy = component.destroy;
-  component.destroy = function (...args) {
-    try {
-      if (isFunction(originalDestroy)) {
-        return originalDestroy.apply(this, args);
-      }
-    } finally {
-      if (!isForceUpdating) {
-        cleanupHMR();
-      }
-    }
+  // Returning a thunk rather than nodes is what makes a hot swap possible:
+  // `insert()` treats a function value as reactive and re-runs it when its
+  // dependency changes. `mount.version` is that dependency, so bumping it
+  // re-renders this component in place — insert() handles the DOM diff, so the
+  // runtime never has to track parents or anchors itself.
+  return () => {
+    // Read the version so this thunk SUBSCRIBES to it; the value is unused.
+    void mount.version.value;
+    return mount.render();
   };
+}
 
-  return component;
+/**
+ * Trigger a re-render of one mounted component.
+ *
+ * Bumping the version signal invalidates the thunk returned by
+ * createHMRComponent, so `insert()` re-runs it: the old branch scope is disposed
+ * (effects, listeners, cleanups) and the new nodes replace the old ones through
+ * the normal diff. No parent/anchor bookkeeping is needed here.
+ */
+function swapMount(mount) {
+  if (mount.disposed) return false;
+  mount.swapping = true;
+  try {
+    mount.version.value++;
+    return true;
+  } finally {
+    mount.swapping = false;
+  }
 }
 
 /**
@@ -198,10 +224,13 @@ export function applyUpdate(registry) {
     const info = componentRegistry.get(hmrId);
 
     if (!info) {
+      // First sighting of this component: register it as already-updated so a
+      // later mount picks up THIS implementation rather than resetting to the
+      // one from the module that happens to mount first.
       componentRegistry.set(hmrId, {
         component: entry,
         signature,
-        instances: new Set(),
+        mounts: new Set(),
         updated: true,
       });
       continue;
@@ -217,12 +246,12 @@ export function applyUpdate(registry) {
     info.updated = true;
     updatedIds.push(hmrId);
 
-    for (const component of [...info.instances]) {
+    for (const mount of [...info.mounts]) {
       try {
-        component.forceUpdate();
+        swapMount(mount);
       } catch (error) {
         console.error(`[Essor HMR] Failed to update ${hmrId}:`, error);
-        cleanupInstance(hmrId, info, component);
+        cleanupInstance(hmrId, info, mount);
         needsReload = true;
       }
     }

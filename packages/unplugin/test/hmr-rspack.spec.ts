@@ -6,6 +6,9 @@ import { rspack } from '@rspack/core';
 import unplugin from '../src/index';
 
 const fixtures = import.meta.glob('./fixtures/*.tsx');
+const snapshotFixtures = Object.fromEntries(
+  Object.entries(fixtures).filter(([path]) => !path.endsWith('/entry.tsx')),
+);
 
 describe('hMR - Rspack Platform', () => {
   beforeEach(() => {
@@ -13,7 +16,7 @@ describe('hMR - Rspack Platform', () => {
   });
 
   it('should work with rspack', async () => {
-    for (const path of Object.keys(fixtures)) {
+    for (const path of Object.keys(snapshotFixtures)) {
       const entry = join(__dirname, path);
 
       await new Promise<void>((resolve, reject) => {

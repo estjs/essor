@@ -66,12 +66,6 @@ export interface Options {
   omitClosingTags?: boolean;
 
   /**
-   * Whether to enable legacy For compiler optimization.
-   * @default false
-   */
-  enableFor?: boolean;
-
-  /**
    * Forces event delegation on or off globally.
    * @default true
    */

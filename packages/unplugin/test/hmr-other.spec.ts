@@ -6,6 +6,9 @@ import { rollup } from 'rollup';
 import unplugin, { unpluginFactory } from '../src/index';
 
 const fixtures = import.meta.glob('./fixtures/*.tsx');
+const snapshotFixtures = Object.fromEntries(
+  Object.entries(fixtures).filter(([path]) => !path.endsWith('/entry.tsx')),
+);
 
 describe('hMR - Rollup Platform', () => {
   beforeEach(() => {
@@ -13,7 +16,7 @@ describe('hMR - Rollup Platform', () => {
   });
 
   it('should work with rollup', async () => {
-    for (const path of Object.keys(fixtures)) {
+    for (const path of Object.keys(snapshotFixtures)) {
       const entry = join(__dirname, path);
 
       const bundle = await rollup({

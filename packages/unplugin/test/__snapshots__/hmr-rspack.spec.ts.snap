@@ -4,10 +4,10 @@ exports[`hMR - Rspack Platform > should work with rspack 1`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
-var _t$3 = _template$("<div><!><!>");
-var _t$2 = _template$("<div>Bar");
-var _t$ = _template$("<div>Foo");
 import { createApp } from "essor";
+var _t$ = /*#__PURE__*/ _template$("<div>Foo");
+var _t$2 = /*#__PURE__*/ _template$("<div>Bar");
+var _t$3 = /*#__PURE__*/ _template$("<div><!><!>");
 function Foo() {
     return _t$();
 }
@@ -20,12 +20,12 @@ Bar.__signature = "u5b22v";
 Bar.__hmrId = "me1pwu:Bar";
 function App() {
     return function() {
-        var _root$ = _t$3();
-        var _n$ = _child$(_root$);
+        var _el$ = _t$3();
+        var _n$ = _child$(_el$);
         var _n$2 = _next$(_n$, 1);
-        _insert$(_root$, __$createHMRComponent$__(Foo, {}), _n$);
-        _insert$(_root$, __$createHMRComponent$__(Bar, {}), _n$2);
-        return _root$;
+        _insert$(_el$, __$createHMRComponent$__(Foo, {}), _n$);
+        _insert$(_el$, __$createHMRComponent$__(Bar, {}), _n$2);
+        return _el$;
     }();
 }
 App.__signature = "uvdrlt";
@@ -50,10 +50,10 @@ exports[`hMR - Rspack Platform > should work with rspack 2`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, child as _child$, next as _next$, insert as _insert$ } from "essor";
-var _t$3 = _template$("<div><!><!>");
-var _t$2 = _template$("<div>B");
-var _t$ = _template$("<div>A");
 import { createApp } from 'essor';
+var _t$ = /*#__PURE__*/ _template$("<div>A");
+var _t$2 = /*#__PURE__*/ _template$("<div>B");
+var _t$3 = /*#__PURE__*/ _template$("<div><!><!>");
 export function ComponentA() {
     return _t$();
 }
@@ -66,12 +66,12 @@ ComponentB.__signature = "1vo7hf2";
 ComponentB.__hmrId = "ydmpkz:ComponentB";
 export default function App() {
     return function() {
-        var _root$ = _t$3();
-        var _n$ = _child$(_root$);
+        var _el$ = _t$3();
+        var _n$ = _child$(_el$);
         var _n$2 = _next$(_n$, 1);
-        _insert$(_root$, __$createHMRComponent$__(ComponentA, {}), _n$);
-        _insert$(_root$, __$createHMRComponent$__(ComponentB, {}), _n$2);
-        return _root$;
+        _insert$(_el$, __$createHMRComponent$__(ComponentA, {}), _n$);
+        _insert$(_el$, __$createHMRComponent$__(ComponentB, {}), _n$2);
+        return _el$;
     }();
 }
 App.__signature = "1q4priw";
@@ -96,16 +96,16 @@ exports[`hMR - Rspack Platform > should work with rspack 3`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
 import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
-var _t$ = _template$("<div>Hello <!>");
 import { createApp } from 'essor';
+var _t$ = /*#__PURE__*/ _template$("<div>Hello <!>");
 function PropsComponent(props) {
     return function() {
-        var _root$ = _t$();
-        var _n$ = _nthChild$(_root$, 1);
-        _insert$(_root$, function() {
+        var _el$ = _t$();
+        var _n$ = _nthChild$(_el$, 1);
+        _insert$(_el$, function() {
             return props.name;
         }, _n$);
-        return _root$;
+        return _el$;
     }();
 }
 PropsComponent.__signature = "kth069";
@@ -131,21 +131,21 @@ if (import.meta.webpackHot) {
 exports[`hMR - Rspack Platform > should work with rspack 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
-var _t$ = _template$("<div>Count: <!>");
+import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
 import { createApp, signal } from 'essor';
+var _t$ = /*#__PURE__*/ _template$("<div>Count: <!>");
 function SignalComponent() {
     var count = signal(0);
     return function() {
-        var _root$ = _t$();
-        var _n$ = _nthChild$(_root$, 1);
-        _root$["_$click"] = function() {
+        var _el$ = _t$();
+        var _n$ = _nthChild$(_el$, 1);
+        _el$["_$click"] = function() {
             return count.value++;
         };
-        _insert$(_root$, function() {
+        _insert$(_el$, function() {
             return count.value;
         }, _n$);
-        return _root$;
+        return _el$;
     }();
 }
 SignalComponent.__signature = "182rwo7";

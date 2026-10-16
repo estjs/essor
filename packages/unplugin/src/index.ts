@@ -3,7 +3,7 @@ import * as babel from '@babel/core';
 import essorBabelPlugin from 'babel-plugin-essor';
 import { createFilter } from 'vite';
 // @ts-ignore - resolved by esbuild raw plugin at build time
-import hmrRuntimeCode from './hmr-runtime.js?raw';
+import hmrRuntimeCode from './hmrRuntime.js?raw';
 import type { UnpluginContextMeta, UnpluginFactory } from 'unplugin';
 import type { LegacyRenderMode, Options, RenderMode } from './types';
 
@@ -22,7 +22,6 @@ const DEFAULT_OPTIONS = {
   mode: 'client' as RenderMode,
   props: true,
   hmr: true,
-  enableFor: false,
   omitClosingTags: true,
   delegateEvents: true,
 };
@@ -244,14 +243,13 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
       if (SKIP_DIRECTORIES_REGEX.test(id) || !FILE_EXTENSION_REGEX.test(id) || !filter(id)) {
         return;
       }
-      // Only transform JS/TS files
-      if (!filter(id) || !FILE_EXTENSION_REGEX.test(id)) {
-        return;
-      }
       const isSsr = finalOptions.mode === 'server' || options?.ssr === true;
 
       // Extract unplugin-only options before passing to Babel
-      const { symbol, include, exclude, ...babelPassOptions } = finalOptions;
+      const { symbol, ...restOptions } = finalOptions;
+      delete (restOptions as { include?: unknown }).include;
+      delete (restOptions as { exclude?: unknown }).exclude;
+      const babelPassOptions = restOptions;
 
       const babelOptions = {
         ...babelPassOptions,
@@ -267,7 +265,12 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
           filename: id,
           sourceMaps: true,
           sourceType: 'module',
-          plugins: [[essorBabelPlugin, babelOptions]],
+          configFile: false,
+          babelrc: false,
+          parserOpts: {
+            plugins: ['jsx', 'typescript'],
+          },
+          plugins: [[essorBabelPlugin as any, babelOptions]],
         });
       } catch (error) {
         console.error(`[unplugin-essor] Transform failed for ${id}:`, error);
@@ -289,13 +292,23 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
           finalCode = result.code;
         } else {
           const hmrCode = generateHMRCode(bundlerType, disposeHandlers);
-          const parts: string[] = [];
-          if (hasRegistry) parts.push(hmrCode.imports.hmrAccept);
-          if (hasComponents) parts.push(hmrCode.imports.createHMRComponent);
-          parts.push(strippedCode);
-          if (hasRegistry) parts.push(hmrCode.register);
+          const topParts: string[] = [];
+          if (hasRegistry) topParts.push(hmrCode.imports.hmrAccept);
+          if (hasComponents) topParts.push(hmrCode.imports.createHMRComponent);
+          const prependedText = topParts.length > 0 ? `${topParts.join('\n')}\n` : '';
+          const bottomParts: string[] = [];
+          if (hasRegistry) bottomParts.push(hmrCode.register);
+          const appendedText = bottomParts.length > 0 ? `\n${bottomParts.join('\n')}` : '';
 
-          finalCode = parts.join('\n');
+          finalCode = `${prependedText}${strippedCode}${appendedText}`;
+
+          if (result.map && prependedText) {
+            const prependedLines = prependedText.split('\n').length - 1;
+            result.map = {
+              ...result.map,
+              mappings: `${';'.repeat(prependedLines)}${result.map.mappings || ''}`,
+            };
+          }
         }
       } else {
         finalCode = result.code;
@@ -304,11 +317,20 @@ export const unpluginFactory: UnpluginFactory<Options | undefined> = (
       return {
         code: finalCode,
         map: result.map,
+        // Vite uses this meta to differentiate cache entries.
+        // Without it, SSR and client transforms share the same cache,
+        // causing SSR to receive client code (with JSX syntax).
+        meta: {
+          ssr: isSsr,
+        },
       };
     },
   };
 };
 
+/**
+ * Unplugin integration for Essor, supporting Vite, Webpack, Rspack, Rollup, and esbuild.
+ */
 export const unplugin = /* #__PURE__ */ createUnplugin(unpluginFactory);
 
 export default unplugin;

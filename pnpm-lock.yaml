@@ -722,11 +722,8 @@ importers:
   packages/unplugin:
     dependencies:
       '@babel/core':
-        specifier: ^8.0.6
+        specifier: ^8.0.1
         version: 8.0.6
-      '@estjs/shared':
-        specifier: workspace:*
-        version: link:../shared
       babel-plugin-essor:
         specifier: workspace:*
         version: link:../babel-plugin
@@ -740,26 +737,26 @@ importers:
         specifier: '*'
         version: 1.0.3
       unplugin:
-        specifier: ^3.4.0
+        specifier: ^3.3.0
         version: 3.4.0(@rspack/core@2.2.7)(esbuild@0.28.0)(rolldown@1.0.3)(rollup@4.63.5)(vite@8.3.1(@types/node@26.6.3)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.0))(webpack@5.107.2(esbuild@0.28.0)(lightningcss@1.32.0)(postcss@8.5.19)(uglify-js@3.19.3))
       webpack:
         specifier: ^4 || ^5
         version: 5.107.2(esbuild@0.28.0)(lightningcss@1.32.0)(postcss@8.5.19)(uglify-js@3.19.3)
     devDependencies:
       '@rspack/cli':
-        specifier: ^2.2.7
+        specifier: ^2.1.10
         version: 2.2.7(@rspack/core@2.2.7)(@rspack/dev-server@2.1.0(@rspack/core@2.2.7))
       '@rspack/core':
-        specifier: ^2.2.7
+        specifier: ^2.1.10
         version: 2.2.7
       '@types/node':
-        specifier: ^26.6.3
+        specifier: ^26.3.0
         version: 26.6.3
       essor:
         specifier: workspace:*
         version: link:../core
       rollup:
-        specifier: ^4.63.5
+        specifier: ^4.62.5
         version: 4.63.5
       tsup:
         specifier: ^8.5.1
@@ -768,7 +765,7 @@ importers:
         specifier: ^6.0.3
         version: 6.0.3
       vite:
-        specifier: ^8.3.1
+        specifier: ^8.2.2
         version: 8.3.1(@types/node@26.6.3)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.0)
 
 packages:

@@ -1,8 +1,8 @@
-import unplugin from '.';
+import unplugin from './index';
 import type { Options } from './types';
 
 export default (options: Options): any => ({
-  name: 'unplugin-starter',
+  name: 'unplugin-essor',
   hooks: {
     // eslint-disable-next-line require-await
     'astro:config:setup': async (astro: any) => {

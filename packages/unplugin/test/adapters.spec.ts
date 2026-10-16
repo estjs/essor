@@ -5,6 +5,9 @@ import esbuild from '../src/esbuild';
 import farm from '../src/farm';
 import rolldown from '../src/rolldown';
 import rollup from '../src/rollup';
+import rspack from '../src/rspack';
+import vite from '../src/vite';
+import webpack from '../src/webpack';
 import { unpluginFactory } from '../src/index';
 
 // Adapter smoke tests: every bundler entry must produce a plugin object with
@@ -48,6 +51,22 @@ describe('unplugin adapters', () => {
     expect(plugin.name).toBe('unplugin-essor');
   });
 
+  it('vite adapter returns a vite-shaped plugin', () => {
+    const plugin = vite(OPTIONS);
+    const resolved = Array.isArray(plugin) ? plugin[0] : plugin;
+    expect(resolved.name).toBe('unplugin-essor');
+  });
+
+  it('webpack adapter returns a webpack plugin with apply hook', () => {
+    const plugin = webpack(OPTIONS) as { apply?: unknown };
+    expect(plugin.apply).toBeTypeOf('function');
+  });
+
+  it('rspack adapter returns an rspack plugin with apply hook', () => {
+    const plugin = rspack(OPTIONS) as { apply?: unknown };
+    expect(plugin.apply).toBeTypeOf('function');
+  });
+
   it('astro adapter registers the vite plugin through astro:config:setup', async () => {
     const integration = astro(OPTIONS) as {
       name: string;
@@ -80,3 +99,59 @@ describe('unplugin adapters', () => {
     expect(typeof result === 'string' ? result : result.code).toContain('template');
   });
 });
+
+// ========== 从 adapters.contract.spec.ts 合并的契约测试 ==========
+
+describe("bundler adapters", () => {
+  it.each([
+    ["rollup", rollup, "transform"],
+    ["rolldown", rolldown, "transform"],
+    ["farm", farm, "transform"],
+  ])("%s exposes a transform hook", (_name, create, hook) => {
+    const result = create(OPTIONS) as Record<string, unknown>;
+    expect(result.name).toBe("unplugin-essor");
+    expect(result[hook]).toBeDefined();
+  });
+
+  it("exposes setup for esbuild", () => {
+    const result = esbuild(OPTIONS) as { name: string; setup: unknown };
+    expect(result.name).toBe("unplugin-essor");
+    expect(result.setup).toBeTypeOf("function");
+  });
+
+  it.each([
+    ["webpack", webpack],
+    ["rspack", rspack],
+  ])("%s exposes apply", (_name, create) => {
+    expect((create(OPTIONS) as { apply: unknown }).apply).toBeTypeOf(
+      "function",
+    );
+  });
+
+  it("astro installs one Vite plugin without replacing existing plugins", async () => {
+    const existing = { name: "existing" };
+    const integration = astro(OPTIONS) as any;
+    const config = { vite: { plugins: [existing] } };
+
+    await integration.hooks["astro:config:setup"]({ config });
+
+    expect(config.vite.plugins).toHaveLength(2);
+    expect(config.vite.plugins[0]).toBe(existing);
+    expect(
+      (Array.isArray(config.vite.plugins[1])
+        ? config.vite.plugins[1][0]
+        : config.vite.plugins[1]
+      ).name,
+    ).toBe("unplugin-essor");
+  });
+
+  it("astro creates the Vite plugin list when it is absent", async () => {
+    const integration = astro(OPTIONS) as any;
+    const config = { vite: {} };
+
+    await integration.hooks["astro:config:setup"]({ config });
+
+    expect(config.vite.plugins).toHaveLength(1);
+  });
+});
+

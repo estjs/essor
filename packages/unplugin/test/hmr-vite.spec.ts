@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { unpluginFactory } from '../src/index';
 
 const fixtures = import.meta.glob('./fixtures/*.tsx');
+const snapshotFixtures = Object.fromEntries(
+  Object.entries(fixtures).filter(([path]) => !path.endsWith('/entry.tsx')),
+);
 
 describe('hMR - Vite Platform', () => {
   it('should enable hmr for vite serve transforms', () => {
@@ -22,7 +25,7 @@ describe('hMR - Vite Platform', () => {
 
       plugin.vite?.configResolved?.({ command: 'serve' });
 
-      for (const path of Object.keys(fixtures)) {
+      for (const path of Object.keys(snapshotFixtures)) {
         const entry = join(__dirname, path);
         const source = readFileSync(entry, 'utf8');
         const result = plugin.transform?.call({}, source, entry);
