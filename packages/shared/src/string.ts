@@ -81,3 +81,17 @@ export function startsWith(str: string, searchString: string): boolean {
   }
   return str.indexOf(searchString) === 0;
 }
+
+/**
+ * Checks if a string ends with a specified substring.
+ *
+ * @param {string} str - The string to check
+ * @param {string} searchString - The substring to search for
+ * @returns {boolean} - Returns true if the string ends with the substring, false otherwise
+ */
+export function endsWith(str: string, searchString: string): boolean {
+  if (!isString(str)) {
+    return false;
+  }
+  return str.endsWith(searchString);
+}

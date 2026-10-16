@@ -1,3 +1,5 @@
+import { endsWith, startsWith } from './string';
+
 const URL_ATTRIBUTES = new Set(['href', 'src', 'xlink:href', 'action', 'formaction', 'poster']);
 
 const MARKUP_DATA_MIME_TYPES = new Set(['text/html', 'text/xml', 'application/xml']);
@@ -15,11 +17,11 @@ export function isUrlAttribute(name: string): boolean {
 export function isUnsafeUrl(value: string): boolean {
   const normalized = value.replaceAll(ASCII_WHITESPACE_AND_CONTROL_RE, '').toLowerCase();
 
-  if (normalized.startsWith('javascript:') || normalized.startsWith('vbscript:')) {
+  if (startsWith(normalized, 'javascript:') || startsWith(normalized, 'vbscript:')) {
     return true;
   }
-  if (!normalized.startsWith('data:')) return false;
+  if (!startsWith(normalized, 'data:')) return false;
 
   const mimeType = normalized.slice(5).split(/[;,]/, 1)[0];
-  return MARKUP_DATA_MIME_TYPES.has(mimeType) || mimeType.endsWith('+xml');
+  return MARKUP_DATA_MIME_TYPES.has(mimeType) || endsWith(mimeType, '+xml');
 }

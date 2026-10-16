@@ -45,7 +45,7 @@ export {
   type StringNumber,
 } from './is';
 
-export { camelCase, kebabCase, capitalize, startsWith } from './string';
+export { camelCase, kebabCase, capitalize, startsWith, endsWith } from './string';
 
 export { warn, info, error } from './logger';
 
@@ -81,7 +81,7 @@ export {
   isHtmlFormElement,
   isTextNode,
   isNode,
-} from './dom-types';
+} from './domTypes';
 
 // Normalization utilities
 export {
