@@ -128,7 +128,7 @@
     "essor": "workspace:*",
     "rollup": "^4.62.5",
     "tsup": "^8.5.1",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.0",
     "vite": "^8.2.2"
   },
   "engines": {
