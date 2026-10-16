@@ -2,7 +2,7 @@
  * Helpers shared by the client/hydrate and server generators.
  */
 import * as t from '@babel/types';
-import { SLOT_CLOSE, SLOT_OPEN, escapeHTML, isBooleanAttr, propsToAttrMap } from '@estjs/shared';
+import { SLOT_CLOSE, SLOT_OPEN, escapeHTML, isBoolean, isBooleanAttr, propsToAttrMap, startsWith } from '@estjs/shared';
 import type { CompileContext, IRDynamicProp, IRElement, IRNode, IRStaticProp } from '../types';
 
 /**
@@ -65,8 +65,8 @@ export function serializeStaticAttrs(
   let out = '';
   for (const attr of merged) {
     const { name, value } = attr;
-    if (typeof value === 'boolean') {
-      const isAriaOrData = name.startsWith('aria-') || name.startsWith('data-');
+    if (isBoolean(value)) {
+      const isAriaOrData = startsWith(name, 'aria-') || startsWith(name, 'data-');
       if (isAriaOrData) {
         out += ` ${name}="${value}"`;
       } else if (isBooleanAttr(name)) {

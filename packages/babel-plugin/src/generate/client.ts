@@ -10,6 +10,7 @@ import {
   SPREAD_NAME,
   escapeHTML,
   isDelegatedEvent,
+  isObject,
   isSelfClosingTag,
   startsWith,
 } from '@estjs/shared';
@@ -198,7 +199,12 @@ function buildStaticTemplateString(
   isLast = true,
   hasClosingParent = false,
 ): string {
-  const attrs = serializeStaticAttrs(element.props.static);
+  let staticProps = element.props.static;
+  if (element.props.spreads.length > 0) {
+    const firstSpreadOrder = Math.min(...element.props.spreads.map((s) => s.order));
+    staticProps = staticProps.filter((p) => !p.isOverridden && p.order < firstSpreadOrder);
+  }
+  const attrs = serializeStaticAttrs(staticProps);
   if (isSelfClosingTag(element.tag)) {
     return selfClosingTag(element.tag, attrs);
   }
@@ -255,17 +261,22 @@ function buildTemplateAndFlatten(
     hasClosingParent = false,
   ): void {
     const myId = nextId++;
+    let staticProps = element.props.static;
+    if (element.props.spreads.length > 0) {
+      const firstSpreadOrder = Math.min(...element.props.spreads.map((s) => s.order));
+      staticProps = staticProps.filter((p) => !p.isOverridden && p.order < firstSpreadOrder);
+    }
     const staticAttrsList =
       mode === 'hydrate' && forcedStaticIndex !== undefined
         ? [
-            ...element.props.static,
+            ...staticProps,
             {
               name: HYDRATION_ANCHOR_ATTR,
               value: t.stringLiteral(String(forcedStaticIndex)),
               order: 9999,
             },
           ]
-        : element.props.static;
+        : staticProps;
     const attrs = serializeStaticAttrs(staticAttrsList);
 
     if (isSelfClosingTag(element.tag)) {
@@ -559,6 +570,24 @@ function generateNode(node: IRNode, state: GenState): t.Expression {
 function generateElement(node: IRElement, state: GenState): t.Expression {
   const { mode, ctx } = state;
 
+  if (node.shouldHoist && isStaticSubtree(node)) {
+    const html = buildStaticTemplateString(node, mode, ctx.options.omitClosingTags ?? true);
+    const existingId = ctx.hoisted.get(html);
+    if (existingId) return existingId;
+
+    const tmplId = ctx.templates.register(html, node.isSVG);
+    const hoistedId = ctx.uids.generate('hoisted$');
+    ctx.hoisted.set(html, hoistedId);
+
+    ctx.declarations.add(
+      t.variableDeclaration('const', [
+        t.variableDeclarator(hoistedId, t.callExpression(tmplId, [])),
+      ]),
+    );
+
+    return hoistedId;
+  }
+
   if (isStaticSubtree(node)) {
     const tmplId = ctx.templates.register(
       buildStaticTemplateString(node, mode, ctx.options.omitClosingTags ?? true),
@@ -576,16 +605,16 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
 
   const body: t.Statement[] = [];
   const tmplId = ctx.templates.register(template, node.isSVG);
-  const elId = ctx.uids.generate('el$');
+  const rootId = ctx.uids.generate('el$');
   body.push(
-    t.variableDeclaration('const', [t.variableDeclarator(elId, t.callExpression(tmplId, []))]),
+    t.variableDeclaration('const', [t.variableDeclarator(rootId, t.callExpression(tmplId, []))]),
   );
 
   const varMap: NodeVarMap = new Map();
-  varMap.set(0, elId);
+  varMap.set(0, rootId);
 
   // Phase 1: Navigation
-  emitNavigationDeclarations(navSteps, varMap, elId, body, ctx);
+  emitNavigationDeclarations(navSteps, varMap, rootId, body, ctx);
 
   // Phase 2: Effects (events, refs, binds, attrs, spreads)
   const pendingMemoPatches: PendingMemoPatch[] = [];
@@ -595,21 +624,21 @@ function generateElement(node: IRElement, state: GenState): t.Expression {
   // Phase 3: Dynamic child insertions
   emitDynamicChildInserts(flatNodes, varMap, state, body);
 
-  body.push(t.returnStatement(elId));
+  body.push(t.returnStatement(rootId));
   return t.callExpression(t.arrowFunctionExpression([], t.blockStatement(body)), []);
 }
 
 function emitNavigationDeclarations(
   steps: NavigationStep[],
   varMap: NodeVarMap,
-  elId: t.Identifier,
+  rootId: t.Identifier,
   body: t.Statement[],
   ctx: CompileContext,
 ): void {
   for (const step of steps) {
     const isHydration = step.type === 'hydrationMarker' || step.type === 'hydrationAnchor';
     const varName = ctx.uids.generate(isHydration ? 'hk$' : 'n$');
-    const fromExpr = varMap.get(step.fromNodeId) ?? elId;
+    const fromExpr = varMap.get(step.fromNodeId) ?? rootId;
     const navExpr = createNavigationExpression(step, fromExpr, ctx);
 
     body.push(t.variableDeclaration('const', [t.variableDeclarator(varName, navExpr)]));
@@ -667,6 +696,24 @@ function emitElementEffect(
   for (const spread of props.spreads) {
     operations.push({ kind: 'spread', order: spread.order, spread });
   }
+  if (props.spreads.length > 0) {
+    const firstSpreadOrder = Math.min(...props.spreads.map((s) => s.order));
+    const staticAfterSpread = props.static.filter(
+      (p) => !p.isOverridden && p.order > firstSpreadOrder,
+    );
+    for (const attr of staticAfterSpread) {
+      operations.push({
+        kind: 'attr',
+        order: attr.order,
+        attr: {
+          name: attr.name,
+          value: attr.value,
+          order: attr.order,
+          isOverridden: false,
+        },
+      });
+    }
+  }
 
   operations.sort((a, b) => a.order - b.order);
 
@@ -697,7 +744,7 @@ function emitEvent(
   body: t.Statement[],
   ctx: CompileContext,
 ): void {
-  const eventName = event.name.startsWith('on')
+  const eventName = startsWith(event.name, 'on')
     ? event.name.slice(2).toLowerCase()
     : event.name.toLowerCase();
   const delegated = isDelegatedEvent(eventName);
@@ -972,6 +1019,32 @@ function emitDynamicChildInserts(
   }
 }
 
+/**
+ * Check if a child node is definitely static (no reactive dependencies).
+ * Static nodes can use insertStatic() directly, skipping the insert() dispatcher.
+ */
+export function isDefinitelyStatic(child: IRNode): boolean {
+  switch (child.type) {
+    case 'text':
+      // Text nodes are always static
+      return true;
+    case 'element':
+      // Elements marked as fullyStatic by analyzeIR
+      return child.fullyStatic === true && !child.isComponent;
+    case 'expression':
+      // Only string/number/boolean literals are static
+      return (
+        t.isStringLiteral(child.node) ||
+        t.isNumericLiteral(child.node) ||
+        t.isBooleanLiteral(child.node) ||
+        t.isNullLiteral(child.node)
+      );
+    case 'fragment':
+      // Fragments are never directly inserted as static
+      return false;
+  }
+}
+
 function createInsertCall(
   parent: t.Expression,
   child: IRNode,
@@ -981,6 +1054,7 @@ function createInsertCall(
 ): t.CallExpression {
   const { ctx } = state;
 
+  // Special case: For loops always use insert()
   if (child.type === 'element' && (child.importName === 'For' || child.tag === 'For')) {
     const insert = ctx.imports.get('insert');
     const args: t.Expression[] = [parent, generateFor(child, state)];
@@ -989,6 +1063,7 @@ function createInsertCall(
     return t.callExpression(insert, args);
   }
 
+  // Default: Use insert() dispatcher for potentially reactive nodes
   const childExpr = createDynamicChildExpression(child, state);
   const args: t.Expression[] = [parent, childExpr];
   if (range) args.push(anchor ?? t.identifier('undefined'), range);
@@ -1044,7 +1119,7 @@ function generateComponent(node: IRElement, state: GenState): t.Expression {
   const createComponentId = ctx.imports.get('createComponent');
   const callee = resolveComponentCallee(node.tag, node.importName, ctx);
 
-  const props = buildComponentProps(node, {
+  const propsExpr = buildComponentProps(node, {
     dynamicPropsAsGetters: true,
     forceStringLiteralKeys: false,
     renderedChildren,
@@ -1053,7 +1128,8 @@ function generateComponent(node: IRElement, state: GenState): t.Expression {
 
   const invocation = isHMR ? t.identifier(HMR_COMPONENT_NAME) : createComponentId;
 
-  return t.callExpression(invocation, [callee, props]);
+  // Generate: createComponent(Comp, props)
+  return t.callExpression(invocation, [callee, propsExpr]);
 }
 
 export interface ComponentPropsOptions {
@@ -1111,7 +1187,7 @@ export function buildComponentProps(node: IRElement, options: ComponentPropsOpti
   ): t.ObjectMember => {
     const key = createKey(prop.name);
     const val =
-      'value' in prop && typeof prop.value === 'object' && 'type' in prop.value
+      'value' in prop && isObject(prop.value) && 'type' in prop.value
         ? (prop.value as t.Expression)
         : (prop as IRDynamicProp).value;
 

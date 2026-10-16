@@ -2,6 +2,7 @@
  * Whole-text element handling (title, textarea, style, script).
  */
 import * as t from '@babel/types'
+import { startsWith } from '@estjs/shared'
 import { TAG_NAMES, WHITESPACE } from '../constants'
 
 /**
@@ -33,7 +34,7 @@ export function serializeStaticWholeText(tag: string, text: string): string {
   const escaped = escapeWholeText(text)
 
   // Textarea leading newline duplication per HTML parsing rules
-  if (tag === TAG_NAMES.TEXTAREA && text.startsWith(WHITESPACE.NEWLINE)) {
+  if (tag === TAG_NAMES.TEXTAREA && startsWith(text, WHITESPACE.NEWLINE)) {
     return `${WHITESPACE.NEWLINE}${escaped}`
   }
 

@@ -5,7 +5,7 @@
  * and content manipulation in the compilation pipeline.
  */
 import * as t from '@babel/types'
-import { normalizeStyle } from '@estjs/shared'
+import { isArray, isBoolean, isNull, isNumber, isObject, isString, normalizeStyle, startsWith } from '@estjs/shared'
 
 // ============================================================================
 // AST Type Utilities
@@ -87,7 +87,7 @@ export function isFunctionLike(node: t.Node | null | undefined): boolean {
  * - `undefined` identifier
  */
 export function isStaticValue(node: t.Expression | string | boolean | null): boolean {
-  if (typeof node === 'string' || typeof node === 'boolean' || node === null) {
+  if (isString(node) || isBoolean(node) || isNull(node)) {
     return true
   }
 
@@ -112,16 +112,16 @@ export function collectIdentifiers(node: t.Node, identifiers: Set<string>): void
   // Traverse all child nodes
   for (const key of Object.keys(node)) {
     const value = (node as any)[key]
-    if (!value || typeof value !== 'object') continue
+    if (!isObject(value)) continue
 
-    if (Array.isArray(value)) {
+    if (isArray(value)) {
       for (const child of value) {
-        if (child && typeof child.type === 'string') {
-          collectIdentifiers(child, identifiers)
+        if (child && isString(child.type)) {
+          collectIdentifiers(child as t.Node, identifiers)
         }
       }
-    } else if (typeof value.type === 'string') {
-      collectIdentifiers(value, identifiers)
+    } else if (isString(value.type)) {
+      collectIdentifiers(value as unknown as t.Node, identifiers)
     }
   }
 }
@@ -172,7 +172,7 @@ export function isAlreadyValueAccess(path: any): boolean {
  * Custom properties (`--x`) and already-kebab keys pass through unchanged.
  */
 function toCSSProperty(key: string): string {
-  return key.startsWith('--') ? key : key.replaceAll(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+  return startsWith(key, '--') ? key : key.replaceAll(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
 }
 
 /**
@@ -182,12 +182,12 @@ function toCSSProperty(key: string): string {
 export function styleToString(style: unknown): string | undefined {
   const normalized = normalizeStyle(style)
   if (!normalized) return undefined
-  if (typeof normalized === 'string') return normalized
+  if (isString(normalized)) return normalized
 
   const parts: string[] = []
   for (const key in normalized) {
     const value = normalized[key]
-    if (typeof value === 'string' || typeof value === 'number') {
+    if (isString(value) || isNumber(value)) {
       parts.push(`${toCSSProperty(key)}:${value}`)
     }
   }

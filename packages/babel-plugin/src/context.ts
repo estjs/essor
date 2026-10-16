@@ -79,12 +79,19 @@ class TemplateRegistryImpl implements TemplateRegistry {
     return id;
   }
 
+  private partsMap = new Map<string, string>();
+
   add(parts: string[]): string {
+    const key = parts.join('\0');
+    if (this.partsMap.has(key)) {
+      return this.partsMap.get(key)!;
+    }
     const uid = this.programPath.scope.generateUidIdentifier('tmpl');
     // eslint-disable-next-line regexp/no-super-linear-backtracking
     const match = uid.name.match(/^(.+?)(\d+)$/);
     const id = match ? `${match[1]}$${match[2]}` : `${uid.name}$`;
     this.templateArrays.push({ id, parts });
+    this.partsMap.set(key, id);
     return id;
   }
 

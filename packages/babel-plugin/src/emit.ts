@@ -2,6 +2,7 @@
  * Emit artifacts - imports, templates, declarations, delegated events
  */
 import * as t from '@babel/types';
+import { startsWith } from '@estjs/shared';
 import type { CompileContext } from './types';
 
 /** Runtime helpers that live in `essor/server` (server mode only). */
@@ -32,12 +33,21 @@ const SERVER_NAMES = new Set([
 ]);
 
 export function emitArtifacts(ctx: CompileContext): void {
+  emitImports(ctx);
   emitTemplates(ctx);
   emitDeclarations(ctx);
   if (ctx.mode === 'client' || ctx.mode === 'hydrate') {
     emitDelegateEvents(ctx);
   }
-  emitImports(ctx);
+}
+
+function findFirstNonImportIndex(body: t.Statement[]): number {
+  for (const [i, element] of body.entries()) {
+    if (!t.isImportDeclaration(element)) {
+      return i;
+    }
+  }
+  return 0;
 }
 
 function emitImports(ctx: CompileContext): void {
@@ -81,11 +91,19 @@ function emitTemplates(ctx: CompileContext): void {
   const declarations: t.VariableDeclaration[] = [];
 
   if (templates.length > 0) {
-    const templateFn = ctx.imports.get('template');
+    const templateFn =
+      ctx.mode === 'hydrate' && ctx.imports.has('getRenderedElement')
+        ? ctx.imports.get('getRenderedElement')
+        : ctx.imports.get('template');
 
     declarations.push(
-      ...templates.map(({ id, html }) => {
-        const callExpr = t.callExpression(templateFn, [t.stringLiteral(html)]);
+      ...templates.map(({ id, html, svg }) => {
+        const args: t.Expression[] = [t.stringLiteral(html)];
+        if (svg) args.push(t.booleanLiteral(true));
+
+        const callExpr = t.callExpression(templateFn, args);
+        t.addComment(callExpr, 'leading', '#__PURE__', false);
+
         return t.variableDeclaration('const', [t.variableDeclarator(id, callExpr)]);
       }),
     );
@@ -96,6 +114,7 @@ function emitTemplates(ctx: CompileContext): void {
     declarations.push(
       ...templateArrays.map(({ id, parts }) => {
         const arrayLiteral = t.arrayExpression(parts.map((part) => t.stringLiteral(part)));
+        t.addComment(arrayLiteral, 'leading', '#__PURE__', false);
         return t.variableDeclaration('const', [
           t.variableDeclarator(t.identifier(id), arrayLiteral),
         ]);
@@ -106,9 +125,7 @@ function emitTemplates(ctx: CompileContext): void {
   if (declarations.length === 0) return;
 
   const body = ctx.programPath.node.body;
-  for (const decl of declarations) {
-    body.unshift(decl);
-  }
+  body.splice(findFirstNonImportIndex(body), 0, ...declarations);
 }
 
 function emitDeclarations(ctx: CompileContext): void {
@@ -116,7 +133,24 @@ function emitDeclarations(ctx: CompileContext): void {
   if (declarations.length === 0) return;
 
   const body = ctx.programPath.node.body;
-  body.unshift(...declarations);
+  let insertIndex = findFirstNonImportIndex(body);
+  while (insertIndex < body.length && t.isVariableDeclaration(body[insertIndex])) {
+    const decl = body[insertIndex];
+    const init = decl.declarations[0]?.init;
+    if (t.isCallExpression(init) && t.isIdentifier(init.callee)) {
+      const calleeName = init.callee.name;
+      if (
+        startsWith(calleeName, '_template$') ||
+        startsWith(calleeName, '_claimElement') ||
+        startsWith(calleeName, '_getRenderedElement$')
+      ) {
+        insertIndex++;
+        continue;
+      }
+    }
+    break;
+  }
+  body.splice(insertIndex, 0, ...declarations);
 }
 
 function emitDelegateEvents(ctx: CompileContext): void {

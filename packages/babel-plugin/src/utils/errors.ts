@@ -8,6 +8,7 @@
  * - Consistent error formatting across the compiler
  */
 import type * as t from '@babel/types';
+import { isFunction } from '@estjs/shared';
 
 /**
  * Enumeration of all possible compilation error codes.
@@ -65,7 +66,7 @@ export class CompileError extends Error {
     this.name = 'CompileError';
 
     // Maintain proper stack trace in V8
-    if (typeof (Error as any).captureStackTrace === 'function') {
+    if (isFunction((Error as any).captureStackTrace)) {
       (Error as any).captureStackTrace(this, CompileError);
     }
   }

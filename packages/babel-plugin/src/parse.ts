@@ -8,7 +8,22 @@
  *    an imported runtime name, unless shadowed by a local binding
  */
 import * as t from '@babel/types';
-import { isDelegatedEvent, isHTMLTag, isOn, isSVGTag } from '@estjs/shared';
+import {
+  isArray,
+  isBigint,
+  isBoolean,
+  isDelegatedEvent,
+  isHTMLTag,
+  isNull,
+  isNumber,
+  isObject,
+  isOn,
+  isPlainObject,
+  isPrimitive,
+  isSVGTag,
+  isString,
+  startsWith,
+} from '@estjs/shared';
 import { getJSXText } from './utils/text';
 import { containsJSX, hasRawTextEndTag, isWholeTextTag } from './shared/text';
 import {
@@ -28,7 +43,7 @@ import type {
   IRNode,
   IRProps,
   IRStaticProp,
-} from '../types';
+} from './types';
 import type { NodePath } from '@babel/traverse';
 
 type JSXChild =
@@ -114,7 +129,7 @@ function getExpressionValue(
 }
 
 function isStaticValue(node: t.Expression | string | boolean | null): boolean {
-  if (typeof node === 'string' || typeof node === 'boolean' || !node) return true;
+  if (isString(node) || isBoolean(node) || !node) return true;
   return (
     t.isStringLiteral(node) ||
     t.isNumericLiteral(node) ||
@@ -128,7 +143,7 @@ function isSignalRef(node: t.Expression, ctx: CompileContext): boolean {
   const prefix = ctx.options.signalPrefix ?? '$';
 
   function check(n: t.Node): boolean {
-    if (t.isIdentifier(n)) return n.name.startsWith(prefix);
+    if (t.isIdentifier(n)) return startsWith(n.name, prefix);
     if (t.isMemberExpression(n)) return check(n.object);
     if (t.isCallExpression(n)) {
       return check(n.callee) || n.arguments.some((arg) => t.isExpression(arg) && check(arg));
@@ -157,11 +172,16 @@ function isSignalRef(node: t.Expression, ctx: CompileContext): boolean {
  * Returns the folded text ('' means "renders nothing"), or null when the
  * expression must stay dynamic.
  */
-function foldConstantChild(expr: t.Expression): string | null {
+function foldConstantChild(expr: t.Expression, ctx?: CompileContext): string | null {
   const value = evaluateConstant(expr);
   if (value === CANNOT_EVALUATE) return null;
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return String(value);
+  if (isString(value)) return value;
+  if (isNumber(value)) return String(value);
+  if (ctx && ctx.mode !== 'client') {
+    if (value === null || value === undefined || value === false) return '';
+    if (value === true) return 'true';
+    if (isBigint(value)) return String(value);
+  }
   return null;
 }
 
@@ -234,7 +254,7 @@ function parseElement(node: t.JSXElement, state: ParseState, parentIsSVG: boolea
   const children = parseChildren(node.children, state, svg && tag !== 'foreignObject');
 
   if (!isComp && isWholeTextTag(tag)) {
-    validateWholeTextElement(tag, children, props, node, state);
+    validateWholeTextElement(tag, children, props, node);
   }
 
   const element: IRElement = {
@@ -273,20 +293,14 @@ function isSerializableStaticValue(value: unknown): boolean {
   const stack: unknown[] = [value];
   while (stack.length > 0) {
     const current = stack.pop();
-    if (
-      current === null ||
-      typeof current === 'boolean' ||
-      typeof current === 'number' ||
-      typeof current === 'string' ||
-      typeof current === 'bigint'
-    ) {
+    if (isPrimitive(current)) {
       continue;
     }
-    if (Array.isArray(current)) {
+    if (isArray(current)) {
       for (const item of current) stack.push(item);
       continue;
     }
-    if (current && typeof current === 'object' && current.constructor === Object) {
+    if (isPlainObject(current)) {
       for (const item of Object.values(current)) stack.push(item);
       continue;
     }
@@ -299,7 +313,7 @@ function resolveStaticExpressionValue(
   attrName: string,
   expressionPath: NodePath<t.Expression>,
 ): string | boolean | undefined {
-  if (attrName === 'ref' || attrName.startsWith('bind:') || isOn(attrName)) {
+  if (attrName === 'ref' || startsWith(attrName, 'bind:') || isOn(attrName)) {
     return undefined;
   }
 
@@ -315,11 +329,11 @@ function resolveStaticExpressionValue(
     value = style;
   }
 
-  if (typeof value === 'string' || typeof value === 'boolean') {
+  if (isString(value) || isBoolean(value)) {
     return value;
   }
 
-  if (typeof value === 'number') {
+  if (isNumber(value)) {
     return String(value);
   }
 
@@ -364,21 +378,21 @@ function parseProps(
     let value = getExpressionValue(attr.value);
 
     // ref
-    if (!isComponent && name === 'ref' && value && typeof value === 'object') {
-      result.ref = { value, order: order++ };
+    if (!isComponent && name === 'ref' && isObject(value)) {
+      result.ref = { value: value as t.Expression, order: order++ };
       continue;
     }
 
     // DOM events: onClick={handler}
-    if (!isComponent && isOn(name) && value && typeof value === 'object') {
+    if (!isComponent && isOn(name) && isObject(value)) {
       const eventName = name.slice(2).toLowerCase();
       if (isDelegatedEvent(eventName)) ctx.delegatedEvents?.add(eventName);
-      result.events.push({ name, handler: value, order: order++ });
+      result.events.push({ name, handler: value as t.Expression, order: order++ });
       continue;
     }
 
     // Bindings
-    if (name.startsWith('bind:')) {
+    if (startsWith(name, 'bind:')) {
       const propName = name.slice(5);
       if (isComponent) {
         // Component binds lower to a value prop plus a writable `update:x` callback.
@@ -407,15 +421,12 @@ function parseProps(
       t.isJSXExpressionContainer(attrPath.node.value)
     ) {
       const exprPath = attrPath.get('value.expression');
-      if (!Array.isArray(exprPath) && exprPath.isExpression()) {
+      if (!isArray(exprPath) && exprPath.isExpression()) {
         const staticVal = resolveStaticExpressionValue(name, exprPath as NodePath<t.Expression>);
         if (staticVal !== undefined) {
           result.static.push({
             name,
-            value:
-              typeof staticVal === 'string'
-                ? t.stringLiteral(staticVal)
-                : t.booleanLiteral(staticVal),
+            value: isString(staticVal) ? t.stringLiteral(staticVal) : t.booleanLiteral(staticVal),
             order: order++,
           });
           continue;
@@ -424,35 +435,34 @@ function parseProps(
     }
 
     // Constant style objects become static CSS strings.
-    if (!isComponent && name === 'style' && value && typeof value === 'object') {
+    if (!isComponent && name === 'style' && isObject(value)) {
       let css: string | undefined;
-      const constantValue = evaluateConstant(value);
-      if (constantValue !== CANNOT_EVALUATE && constantValue && typeof constantValue === 'object') {
+      const constantValue = evaluateConstant(value as t.Expression);
+      if (constantValue !== CANNOT_EVALUATE && isObject(constantValue)) {
         css = styleToString(constantValue);
-      } else if (t.isIdentifier(value)) {
-        css = resolveConstObjectStyle(value, state);
+      } else if (t.isIdentifier(value as t.Node)) {
+        css = resolveConstObjectStyle(value as t.Identifier, state);
       }
       if (css) value = css;
     }
 
     if (isComponent) {
       if (isStaticValue(value)) {
-        const staticValue =
-          typeof value === 'string'
-            ? t.stringLiteral(value)
-            : typeof value === 'boolean'
-              ? t.booleanLiteral(value)
-              : value === null
-                ? t.nullLiteral()
-                : (value as IRStaticProp['value']);
+        const staticValue = isString(value)
+          ? t.stringLiteral(value)
+          : isBoolean(value)
+            ? t.booleanLiteral(value)
+            : isNull(value)
+              ? t.nullLiteral()
+              : (value as IRStaticProp['value']);
         result.static.push({ name, value: staticValue, order: order++ });
       } else {
         result.dynamic.push({ name, value: value as t.Expression, order: order++ });
       }
     } else {
-      if (typeof value === 'string') {
+      if (isString(value)) {
         result.static.push({ name, value: t.stringLiteral(value), order: order++ });
-      } else if (typeof value === 'boolean') {
+      } else if (isBoolean(value)) {
         result.static.push({ name, value: t.booleanLiteral(value), order: order++ });
       } else if (
         t.isStringLiteral(value as t.Expression) ||
@@ -554,7 +564,7 @@ function parseChildren(children: JSXChild[], state: ParseState, parentIsSVG: boo
         continue;
       }
 
-      const folded = foldConstantChild(expr);
+      const folded = foldConstantChild(expr, state.ctx);
       if (folded !== null) {
         pushText(folded);
         continue;

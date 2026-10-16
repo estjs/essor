@@ -6,6 +6,7 @@
  * reactive effects).
  */
 import * as t from '@babel/types';
+import { isArray, isPlainObject, isPrimitive, startsWith } from '@estjs/shared';
 import { RUNTIME_IDENTIFIER } from '../constants';
 
 /**
@@ -119,13 +120,13 @@ export function isLiteralExpression(expr: t.Expression): boolean {
  */
 export function isSignalReference(expr: t.Expression, signalPrefix: string = '$'): boolean {
   // Direct signal identifier
-  if (t.isIdentifier(expr) && expr.name.startsWith(signalPrefix)) {
+  if (t.isIdentifier(expr) && startsWith(expr.name, signalPrefix)) {
     return true;
   }
 
   // Signal.value access
   if (t.isMemberExpression(expr)) {
-    if (t.isIdentifier(expr.object) && expr.object.name.startsWith(signalPrefix)) {
+    if (t.isIdentifier(expr.object) && startsWith(expr.object.name, signalPrefix)) {
       return true;
     }
   }
@@ -178,18 +179,12 @@ export function isSerializableValue(value: unknown): boolean {
     const current = stack.pop();
 
     // Primitives are serializable
-    if (
-      current === null ||
-      typeof current === 'boolean' ||
-      typeof current === 'number' ||
-      typeof current === 'string' ||
-      typeof current === 'bigint'
-    ) {
+    if (isPrimitive(current)) {
       continue;
     }
 
     // Arrays are serializable if all elements are
-    if (Array.isArray(current)) {
+    if (isArray(current)) {
       for (const item of current) {
         stack.push(item);
       }
@@ -197,7 +192,7 @@ export function isSerializableValue(value: unknown): boolean {
     }
 
     // Plain objects are serializable if all values are
-    if (current && typeof current === 'object' && current.constructor === Object) {
+    if (isPlainObject(current)) {
       for (const item of Object.values(current)) {
         stack.push(item);
       }
@@ -228,9 +223,37 @@ export function isAlreadyWrapped(init: t.Expression | null | undefined): boolean
       name === 'signal' ||
       name === 'computed' ||
       name === 'reactive' ||
-      name.startsWith('_signal$') ||
-      name.startsWith('_computed$') ||
-      name.startsWith('_reactive$')
+      name === 'shallowReactive' ||
+      startsWith(name, '_signal$') ||
+      startsWith(name, '_computed$') ||
+      startsWith(name, '_reactive$') ||
+      startsWith(name, '_shallowReactive$')
+    );
+  }
+
+  return false;
+}
+
+/**
+ * Check if an initializer expression is a reactive proxy wrapper.
+ *
+ * Reactive proxies (reactive(), shallowReactive()) do NOT use `.value` access,
+ * unlike signal()/computed(). When a $-prefixed variable is initialized with
+ * one of these, the compiler must not append `.value` to its references.
+ *
+ * @param init - Initializer expression
+ * @returns true if wrapped with reactive() or shallowReactive()
+ */
+export function isReactiveWrapped(init: t.Expression | null | undefined): boolean {
+  if (!init || !t.isCallExpression(init)) return false;
+
+  if (t.isIdentifier(init.callee)) {
+    const name = init.callee.name;
+    return (
+      name === 'reactive' ||
+      name === 'shallowReactive' ||
+      startsWith(name, '_reactive$') ||
+      startsWith(name, '_shallowReactive$')
     );
   }
 

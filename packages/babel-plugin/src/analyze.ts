@@ -9,7 +9,7 @@
  * - Fully static elements with significant subtree depth (not trivial text-only nodes)
  * - Not text-only tags (span/div with only static text is cheaper to recreate)
  */
-import type { IRElement, IRNode } from '../types';
+import type { IRElement, IRNode } from './types';
 
 function isStaticElement(el: IRElement): boolean {
   const { props } = el;

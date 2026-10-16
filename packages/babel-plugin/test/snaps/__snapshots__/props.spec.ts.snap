@@ -2,7 +2,7 @@
 
 exports[`jsx props transform > should array-destructure an iterable (Set/Map/generator) via spread 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -23,7 +23,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should array-destructure with element defaults from an iterable 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -44,7 +44,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should destructure Map entries via nested array pattern 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -65,7 +65,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should destructure a string prop by character 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const restChars = [...__props.name].slice(1);
   return (() => {
@@ -87,7 +87,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should exclude a computed key from a sibling rest at runtime 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const rest = _omitProps$(__props, [dynamicKey]);
   return (() => {
@@ -109,7 +109,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle a binding used at multiple sites 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -133,7 +133,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle alias combined with default 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -151,7 +151,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle array of objects 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -175,7 +175,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle nested array-in-array patterns 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -202,7 +202,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle nested object rest at depth 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const others = _omitProps$(__props.user, ["name"]);
   return (() => {
@@ -226,7 +226,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should handle numeric and string-literal keys 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -247,7 +247,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should keep a Map default value 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -265,7 +265,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should keep a Set default value 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -283,7 +283,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should keep a deep object literal as a top-level default 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -305,7 +305,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should keep an array default value 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -323,7 +323,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should keep an object default value 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -346,7 +346,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should not work with array props 1`] = `
 "import { template as _template$, child as _child$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, insert as _insert$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction([prop1, prop2], otherProps) {
   return (() => {
     const _el$ = _t$();
@@ -369,7 +369,7 @@ function testFunction([prop1, prop2], otherProps) {
 
 exports[`jsx props transform > should not work with not pattern props 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(prop1, prop2) {
   return (() => {
     const _el$ = _t$();
@@ -390,7 +390,7 @@ function testFunction(prop1, prop2) {
 
 exports[`jsx props transform > should replace function parameter with "props" 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -411,7 +411,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should replace function parameter with 'props' when it's an object 1`] = `
 "import { template as _template$, child as _child$, patchAttr as _patchAttr$, memoEffect as _memoEffect$, insert as _insert$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props, otherProps) {
   return (() => {
     const _el$ = _t$();
@@ -434,7 +434,7 @@ function testFunction(__props, otherProps) {
 
 exports[`jsx props transform > should resolve a chain of sibling-referencing defaults 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -458,7 +458,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should resolve a default that references a sibling prop 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -479,7 +479,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should resolve a sibling reference inside a default expression 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -500,7 +500,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should resolve deep object structure with defaults at each level 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -518,7 +518,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should resolve deep structure with a container default at depth 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -539,7 +539,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work just rest props 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(restProps) {
   return (() => {
     const _el$ = _t$();
@@ -565,7 +565,7 @@ function testFunction(restProps) {
 
 exports[`jsx props transform > should work with array destructuring in object pattern 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -586,7 +586,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with arrow functions in class properties 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 class TestClass {
   handler = __props => {
     return (() => {
@@ -609,7 +609,7 @@ class TestClass {
 
 exports[`jsx props transform > should work with async functions 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 async function testFunction(__props) {
   const result = await someAsyncOperation();
   return (() => {
@@ -634,7 +634,7 @@ async function testFunction(__props) {
 
 exports[`jsx props transform > should work with async generator functions 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 async function* testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -652,7 +652,7 @@ async function* testFunction(__props) {
 
 exports[`jsx props transform > should work with class methods 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 class TestClass {
   method({
     prop1,
@@ -678,7 +678,7 @@ class TestClass {
 
 exports[`jsx props transform > should work with complex nested patterns 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const others = [...__props.user.contacts].slice(1);
   const otherSettings = _omitProps$(__props.user.settings === undefined ? {} : __props.user.settings, ["theme"]);
@@ -710,7 +710,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with computed property names 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -728,7 +728,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with deep props 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -749,7 +749,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with default values 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -769,8 +769,8 @@ function testFunction(__props) {
 `;
 
 exports[`jsx props transform > should work with function parameters 1`] = `
-"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
-const _t$ = _template$("<button>Click me");
+"import { template as _template$ } from "essor";
+const _t$ = /*#__PURE__*/_template$("<button>Click me");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -783,7 +783,7 @@ _delegateEvents$(["click"]);"
 
 exports[`jsx props transform > should work with generator functions 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function* testFunction({
   prop1,
   prop2
@@ -815,7 +815,7 @@ function* testFunction({
 
 exports[`jsx props transform > should work with multiple parameters including object pattern 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(first, {
   prop1,
   prop2
@@ -845,7 +845,7 @@ function testFunction(first, {
 
 exports[`jsx props transform > should work with nested destructuring and defaults 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   return (() => {
     const _el$ = _t$();
@@ -866,7 +866,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with nested function declarations 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function outer() {
   function inner(__props) {
     return (() => {
@@ -890,7 +890,7 @@ function outer() {
 
 exports[`jsx props transform > should work with nested function declarations with rest props 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function outer() {
   function inner(__props) {
     const restProps = _omitProps$(__props, ["prop1", "prop2"]);
@@ -920,7 +920,7 @@ function outer() {
 
 exports[`jsx props transform > should work with object method shorthand 1`] = `
 "import { template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 const obj = {
   method({
     prop1,
@@ -946,7 +946,7 @@ const obj = {
 
 exports[`jsx props transform > should work with rest pattern props 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const restProps = _omitProps$(__props, ["prop1", "prop2"]);
   return (() => {
@@ -971,7 +971,7 @@ function testFunction(__props) {
 
 exports[`jsx props transform > should work with rest value props 1`] = `
 "import { omitProps as _omitProps$, template as _template$, patchAttr as _patchAttr$, memoEffect as _memoEffect$ } from "essor";
-const _t$ = _template$("<div>");
+const _t$ = /*#__PURE__*/_template$("<div>");
 function testFunction(__props) {
   const restProps = _omitProps$(__props, ["prop1", "prop2"]);
   return (() => {

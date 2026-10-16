@@ -34,7 +34,7 @@ describe('should work with jsx client transform', () => {
     `;
 
     const output = transformCode(inputCode);
-    expect(output).toContain('const _t$ = _template$("<div>Hello, World!");');
+    expect(output).toContain('const _t$ = /*#__PURE__*/_template$("<div>Hello, World!");');
     expect(output).toContain('const element = _t$();');
   });
 

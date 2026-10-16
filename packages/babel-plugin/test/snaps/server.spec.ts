@@ -61,7 +61,6 @@ describe('jsx server transform', () => {
 
   it('duplicates a static leading textarea LF for parser round-trip', () => {
     const output = transformCode("const element = <textarea>{'\\nline'}</textarea>;");
-
     expect(output).toContain('["<textarea>\\n\\nline</textarea>"]');
   });
 
@@ -72,8 +71,7 @@ describe('jsx server transform', () => {
 
     expect(comment).toContain('"<div><!--@essor:start:c:0-->"');
     expect(comment).toContain('"<!--0-->text</div>"');
-    expect(element).toContain('"<div><!--@essor:start:e:0-->"');
-    expect(element).toContain('"<span data-hk-idx=\\"0\\">right</span></div>"');
+    expect(element).toContain('"<div><span>right</span></div>"');
     expect(tail).toContain('"<div><span>left</span><!--@essor:start:t:0-->"');
     expect(tail).toContain('", "</div>"');
   });

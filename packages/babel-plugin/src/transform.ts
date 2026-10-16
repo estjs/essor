@@ -10,7 +10,7 @@
 
 import { generate } from '@babel/generator';
 import * as t from '@babel/types';
-import { isNull, startsWith, warn } from '@estjs/shared';
+import { isArray, isNull, startsWith, warn } from '@estjs/shared';
 import { DEFAULT_SIGNAL_PREFIX, TRANSFORM_PROPERTY_NAME } from './constants';
 import {
   type MemberLike,
@@ -19,7 +19,7 @@ import {
   isMemberAccessingProperty,
   isMemberLike,
 } from './utils/dom';
-import { isAlreadyWrapped } from './utils/analysis';
+import { isAlreadyWrapped, isReactiveWrapped } from './utils/analysis';
 import type { NodePath } from '@babel/core';
 import type { Binding } from '@babel/traverse';
 import type { CompileContext } from './context';
@@ -30,12 +30,12 @@ import type { CompileContext } from './context';
 
 export function isSignal(name: string, ctx: CompileContext): boolean {
   const prefix = ctx.options.signalPrefix ?? DEFAULT_SIGNAL_PREFIX;
-  return !!name && name.length > prefix.length && name.startsWith(prefix);
+  return !!name && name.length > prefix.length && startsWith(name, prefix);
 }
 
 function stripSignalPrefix(name: string, ctx: CompileContext): string {
   const prefix = ctx.options.signalPrefix ?? DEFAULT_SIGNAL_PREFIX;
-  return name.startsWith(prefix) ? name.slice(prefix.length) : name;
+  return startsWith(name, prefix) ? name.slice(prefix.length) : name;
 }
 
 function isPlainBinding(path: NodePath<t.VariableDeclarator>): boolean {
@@ -56,9 +56,21 @@ function isForInOrOfBinding(path: NodePath<t.VariableDeclarator>): boolean {
   );
 }
 
+function isInsideJSXEventHandler(path: NodePath): boolean {
+  const jsxAttr = path.findParent((p) => p.isJSXAttribute());
+  if (!jsxAttr || !jsxAttr.isJSXAttribute()) return false;
+  const nameNode = jsxAttr.node.name;
+  return t.isJSXIdentifier(nameNode) && startsWith(nameNode.name, 'on');
+}
+
 function shouldProcessIdentifier(path: NodePath<t.Identifier>): boolean {
   const parentPath = path.parentPath;
   if (!parentPath) return false;
+
+  const binding = path.scope.getBinding(path.node.name);
+  if (binding?.kind === 'param' && isInsideJSXEventHandler(binding.path)) {
+    return false;
+  }
 
   const parent = parentPath.node;
   const node = path.node;
@@ -130,6 +142,13 @@ function isAlreadyValueAccess(path: NodePath<t.Identifier>): boolean {
 }
 
 export function transformSignals(programPath: NodePath<t.Program>, ctx: CompileContext): void {
+  /**
+   * Track $-prefixed variable names whose initializer is reactive() or
+   * shallowReactive(). These return proxies directly — NOT signals — so
+   * references must NOT be transformed to `.value` access.
+   */
+  const reactiveBindings = new Set<string>();
+
   programPath.traverse({
     VariableDeclarator(path) {
       const { id, init } = path.node;
@@ -149,7 +168,13 @@ export function transformSignals(programPath: NodePath<t.Program>, ctx: CompileC
       }
 
       if (t.isIdentifier(id) && isSignal(id.name, ctx)) {
-        if (isAlreadyWrapped(init)) return;
+        if (isAlreadyWrapped(init)) {
+          // Record reactive-wrapped bindings so we skip .value for them
+          if (isReactiveWrapped(init)) {
+            reactiveBindings.add(id.name);
+          }
+          return;
+        }
 
         const isComputed =
           isFunctionLike(init) && (path.parent as t.VariableDeclaration).kind === 'const';
@@ -161,18 +186,21 @@ export function transformSignals(programPath: NodePath<t.Program>, ctx: CompileC
     AssignmentExpression(path) {
       const { left } = path.node;
       if (!t.isIdentifier(left) || !isSignal(left.name, ctx)) return;
+      if (reactiveBindings.has(left.name)) return;
       path.node.left = createValueAccess(t.identifier(left.name));
     },
 
     UpdateExpression(path) {
       const { argument } = path.node;
       if (!t.isIdentifier(argument) || !isSignal(argument.name, ctx)) return;
+      if (reactiveBindings.has(argument.name)) return;
       path.node.argument = createValueAccess(t.identifier(argument.name));
     },
 
     Identifier(path) {
       const { node, parent } = path;
       if (!isSignal(node.name, ctx)) return;
+      if (reactiveBindings.has(node.name)) return;
 
       if (!shouldProcessIdentifier(path)) return;
       if (isAlreadyValueAccess(path)) return;
@@ -388,7 +416,7 @@ function buildObjectRest(
 // PROPS TRANSFORM
 // ============================================================================
 
-type FnPath = NodePath<t.FunctionDeclaration | t.ArrowFunctionExpression>;
+type FnPath = NodePath<t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression>;
 
 interface LeafBinding {
   name: string;
@@ -404,22 +432,48 @@ function clone<N extends t.Node>(node: N): N {
   return t.cloneNode(node, true);
 }
 
-function checkHasJSXReturn(
-  path: NodePath<t.FunctionDeclaration | t.FunctionExpression | t.ArrowFunctionExpression>,
-): boolean {
-  if (path.isArrowFunctionExpression()) {
-    const body = path.get('body');
-    if (body.isJSXElement() || body.isJSXFragment()) {
-      return true;
-    }
+function returnsJSXValue(node: t.Node | null | undefined): boolean {
+  if (!node) return false;
+  if (t.isJSXElement(node) || t.isJSXFragment(node)) return true;
+  if (t.isConditionalExpression(node)) {
+    return returnsJSXValue(node.consequent) || returnsJSXValue(node.alternate);
+  }
+  if (t.isLogicalExpression(node)) {
+    return returnsJSXValue(node.left) || returnsJSXValue(node.right);
+  }
+  if (t.isSequenceExpression(node)) {
+    const last = node.expressions[node.expressions.length - 1];
+    return returnsJSXValue(last);
+  }
+  if (t.isArrayExpression(node)) {
+    return node.elements.some((element) =>
+      element && t.isExpression(element) ? returnsJSXValue(element) : false,
+    );
+  }
+  if (t.isAssignmentExpression(node)) return returnsJSXValue(node.right);
+  if (t.isAwaitExpression(node)) return returnsJSXValue(node.argument);
+  if (
+    t.isParenthesizedExpression(node) ||
+    t.isTSAsExpression(node) ||
+    t.isTSSatisfiesExpression(node) ||
+    t.isTSTypeAssertion(node) ||
+    t.isTSNonNullExpression(node)
+  ) {
+    return returnsJSXValue(node.expression);
+  }
+  return false;
+}
+
+function checkHasJSXReturn(path: FnPath): boolean {
+  if (path.isArrowFunctionExpression() && !t.isBlockStatement(path.node.body)) {
+    return returnsJSXValue(path.node.body);
   }
 
   let found = false;
 
   path.traverse({
     ReturnStatement(returnPath) {
-      const argumentPath = returnPath.get('argument');
-      if (argumentPath.isJSXElement() || argumentPath.isJSXFragment()) {
+      if (returnsJSXValue(returnPath.node.argument)) {
         found = true;
         returnPath.stop();
       }
@@ -597,7 +651,38 @@ function transformFnProps(path: FnPath, ctx: CompileContext): void {
   if (!firstParam || !t.isObjectPattern(firstParam) || !checkHasJSXReturn(path)) return;
 
   const signalPrefix = ctx.options.signalPrefix || '$';
-  const base = t.identifier(TRANSFORM_PROPERTY_NAME);
+
+  let hasExistingProps = path.scope.hasBinding(TRANSFORM_PROPERTY_NAME);
+  if (!hasExistingProps) {
+    path.traverse({
+      Identifier(idPath) {
+        if (idPath.node.name === TRANSFORM_PROPERTY_NAME) {
+          hasExistingProps = true;
+          idPath.stop();
+        }
+      },
+      Function(fnPath) {
+        if (fnPath.node !== path.node) fnPath.skip();
+      },
+    });
+  }
+
+  const baseName = hasExistingProps
+    ? path.scope.generateUidIdentifier('props').name
+    : TRANSFORM_PROPERTY_NAME;
+  const base = t.identifier(baseName);
+
+  const hoistedDecls: t.VariableDeclarator[] = [];
+  for (const prop of firstParam.properties) {
+    if (t.isObjectProperty(prop) && prop.computed) {
+      const key = prop.key;
+      if (!t.isStringLiteral(key) && !t.isNumericLiteral(key) && !t.isIdentifier(key)) {
+        const tempKey = path.scope.generateUidIdentifier('key');
+        hoistedDecls.push(t.variableDeclarator(tempKey, clone(key as t.Expression)));
+        prop.key = tempKey;
+      }
+    }
+  }
 
   const initLeaves: LeafBinding[] = [];
   const initRests: RestBinding[] = [];
@@ -645,7 +730,7 @@ function transformFnProps(path: FnPath, ctx: CompileContext): void {
   collectObjectPattern(firstParam, base, leaves, rests, ctx);
   const accessorByName = new Map(leaves.map((leaf) => [leaf.name, leaf.accessor]));
 
-  path.node.params[0] = t.identifier(TRANSFORM_PROPERTY_NAME);
+  path.node.params[0] = t.identifier(baseName);
 
   for (const [name, refs] of bodyRefs) {
     const accessor = accessorByName.get(name);
@@ -653,11 +738,14 @@ function transformFnProps(path: FnPath, ctx: CompileContext): void {
     for (const ref of refs) ref.replaceWith(clone(accessor));
   }
 
-  if (rests.length > 0) {
+  if (hoistedDecls.length > 0 || rests.length > 0) {
     const body = ensureBlockBody(path);
-    const declarations = rests.map((rest) =>
-      t.variableDeclaration('const', [t.variableDeclarator(t.identifier(rest.name), rest.init)]),
-    );
+    const declarations = [
+      ...hoistedDecls.map((d) => t.variableDeclaration('const', [d])),
+      ...rests.map((rest) =>
+        t.variableDeclaration('const', [t.variableDeclarator(t.identifier(rest.name), rest.init)]),
+      ),
+    ];
     body.body.unshift(...declarations);
   }
 }
@@ -665,6 +753,9 @@ function transformFnProps(path: FnPath, ctx: CompileContext): void {
 export function transformProps(programPath: NodePath<t.Program>, ctx: CompileContext): void {
   programPath.traverse({
     FunctionDeclaration(path) {
+      transformFnProps(path, ctx);
+    },
+    FunctionExpression(path) {
       transformFnProps(path, ctx);
     },
     ArrowFunctionExpression(path) {
@@ -903,56 +994,8 @@ function isFunctionLikeExpressionPath(
   return path.isFunctionExpression() || path.isArrowFunctionExpression();
 }
 
-function returnsJSXValue(node: t.Node | null | undefined): boolean {
-  if (!node) return false;
-  if (t.isJSXElement(node) || t.isJSXFragment(node)) return true;
-  if (t.isConditionalExpression(node)) {
-    return returnsJSXValue(node.consequent) || returnsJSXValue(node.alternate);
-  }
-  if (t.isLogicalExpression(node)) {
-    return returnsJSXValue(node.left) || returnsJSXValue(node.right);
-  }
-  if (t.isSequenceExpression(node)) {
-    const last = node.expressions[node.expressions.length - 1];
-    return returnsJSXValue(last);
-  }
-  if (t.isArrayExpression(node)) {
-    return node.elements.some((element) =>
-      element && t.isExpression(element) ? returnsJSXValue(element) : false,
-    );
-  }
-  if (t.isAssignmentExpression(node)) return returnsJSXValue(node.right);
-  if (t.isAwaitExpression(node)) return returnsJSXValue(node.argument);
-  if (
-    t.isParenthesizedExpression(node) ||
-    t.isTSAsExpression(node) ||
-    t.isTSSatisfiesExpression(node) ||
-    t.isTSTypeAssertion(node) ||
-    t.isTSNonNullExpression(node)
-  ) {
-    return returnsJSXValue(node.expression);
-  }
-  return false;
-}
-
 function checkHasJSXReturnHMR(path: NodePath<AnyFunction>): boolean {
-  if (path.isArrowFunctionExpression() && !t.isBlockStatement(path.node.body)) {
-    return returnsJSXValue(path.node.body);
-  }
-
-  let found = false;
-  path.traverse({
-    ReturnStatement(returnPath) {
-      if (returnsJSXValue(returnPath.node.argument)) {
-        found = true;
-        returnPath.stop();
-      }
-    },
-    Function(functionPath) {
-      if (functionPath.node !== path.node) functionPath.skip();
-    },
-  });
-  return found;
+  return checkHasJSXReturn(path as FnPath);
 }
 
 function unwrapTopLevelDeclaration(
@@ -966,7 +1009,7 @@ function unwrapTopLevelDeclaration(
     const declarationPath = statementPath.get('declaration');
     if (
       declarationPath &&
-      !Array.isArray(declarationPath) &&
+      !isArray(declarationPath) &&
       (declarationPath.isFunctionDeclaration() || declarationPath.isVariableDeclaration())
     ) {
       return declarationPath as NodePath<t.FunctionDeclaration | t.VariableDeclaration>;
