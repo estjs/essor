@@ -5,6 +5,7 @@ packages:
   - benchmark
 allowBuilds:
   esbuild: true
+  pnpm: true
   simple-git-hooks: true
   unrs-resolver: true
 minimumReleaseAgeExclude:
