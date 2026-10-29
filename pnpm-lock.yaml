@@ -624,7 +624,7 @@ importers:
         version: 8.0.7
       '@babel/types':
         specifier: ^8.0.6
-        version: 8.0.6
+        version: 8.0.10
 
   packages/core:
     dependencies:
@@ -874,8 +874,8 @@ packages:
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/helper-string-parser@8.0.6':
-    resolution: {integrity: sha512-+6HYEBnsDRZHJtUTAEfMQd0zMDqdFHS7C+5vAsEZqBUr3vEMWOWlHJ0Jz1gS8jJIlCvLsuA6ivmeoqzH936YcA==}
+  '@babel/helper-string-parser@8.0.8':
+    resolution: {integrity: sha512-fVM+gSuKbdv9cpmyRNh5EvsDHUZCdxQH3FdnFKSkNYHpbsn95bbrxm+ES3MVeQjcqwi2O5ur/DjLfmTQaO60ng==}
     engines: {node: ^22.18.0 || >=24.11.0}
 
   '@babel/helper-validator-identifier@7.29.7':
@@ -946,8 +946,12 @@ packages:
     resolution: {integrity: sha512-Vj1jF3cPfxg7OAfoI7QnVKLoILlm2JF9pnVHrX8qx7AHMiYWT+NDAA7jChlNgRS4WTLc/fD1lXLmPixluj+3Gg==}
     engines: {node: '>=6.9.0'}
 
-  '@babel/types@8.0.6':
-    resolution: {integrity: sha512-c+xgSWboV2pdwXP67BUWDVRHi2BO5Q3KwxyFVs7taVTY+fsK47/L51ZXQoV9rozHJDNHvJ4v4WEsI/IlxV2l2A==}
+  '@babel/types@8.0.10':
+    resolution: {integrity: sha512-KV8Y+teoRsmXeEPS4sCJY1kwV+hcPzHP1qQqgCxrjKOehLdBaxpsFBfoJ8MXWFV80y6Jw56+TM95wR0Per8dYw==}
+    engines: {node: ^22.18.0 || >=24.11.0}
+
+  '@babel/types@8.0.8':
+    resolution: {integrity: sha512-iXSSZAKQWmaeAwGtFw10v9fg5hUiUs0L+w+Z2K11kym3pDNK+SF0VcAQPsEFvWcTSZ7LMgClMXDBvTbH0IlICg==}
     engines: {node: ^22.18.0 || >=24.11.0}
 
   '@bcoe/v8-coverage@1.0.2':
@@ -5895,7 +5899,7 @@ snapshots:
       '@babel/parser': 8.0.7
       '@babel/template': 8.0.0
       '@babel/traverse': 8.0.7
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
       '@types/gensync': 1.0.5
       convert-source-map: 2.0.0
       empathic: 2.0.1
@@ -5916,7 +5920,7 @@ snapshots:
   '@babel/generator@8.0.6':
     dependencies:
       '@babel/parser': 8.0.6
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
       '@jridgewell/gen-mapping': 0.4.0-beta.0
       '@jridgewell/trace-mapping': 0.3.31
       '@types/jsesc': 2.5.1
@@ -5960,7 +5964,7 @@ snapshots:
 
   '@babel/helper-string-parser@7.29.7': {}
 
-  '@babel/helper-string-parser@8.0.6': {}
+  '@babel/helper-string-parser@8.0.8': {}
 
   '@babel/helper-validator-identifier@7.29.7': {}
 
@@ -5978,7 +5982,7 @@ snapshots:
   '@babel/helpers@8.0.7':
     dependencies:
       '@babel/template': 8.0.0
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
 
   '@babel/parser@7.29.7':
     dependencies:
@@ -5990,11 +5994,11 @@ snapshots:
 
   '@babel/parser@8.0.6':
     dependencies:
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
 
   '@babel/parser@8.0.7':
     dependencies:
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
 
   '@babel/template@7.29.7':
     dependencies:
@@ -6006,7 +6010,7 @@ snapshots:
     dependencies:
       '@babel/code-frame': 8.0.6
       '@babel/parser': 8.0.7
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
 
   '@babel/traverse@7.29.7(supports-color@8.1.1)':
     dependencies:
@@ -6027,7 +6031,7 @@ snapshots:
       '@babel/helper-globals': 8.0.6
       '@babel/parser': 8.0.7
       '@babel/template': 8.0.0
-      '@babel/types': 8.0.6
+      '@babel/types': 8.0.8
       obug: 3.0.0
 
   '@babel/types@7.29.7':
@@ -6040,9 +6044,14 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@babel/types@8.0.6':
+  '@babel/types@8.0.10':
     dependencies:
-      '@babel/helper-string-parser': 8.0.6
+      '@babel/helper-string-parser': 8.0.8
+      '@babel/helper-validator-identifier': 8.0.6
+
+  '@babel/types@8.0.8':
+    dependencies:
+      '@babel/helper-string-parser': 8.0.8
       '@babel/helper-validator-identifier': 8.0.6
 
   '@bcoe/v8-coverage@1.0.2': {}
