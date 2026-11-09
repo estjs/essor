@@ -15,7 +15,7 @@ const RUNTIME = ['@estjs/shared', '@estjs/template', '@estjs/signals'];
 
 const base: Options = {
   outDir: 'dist',
-  target: 'es2016',
+  target: 'es2020',
   banner: { js: banner },
   treeshake: true,
   sourcemap: isDev,

@@ -9,7 +9,7 @@ export default defineConfig({
   },
   outDir: 'dist',
   format: ['cjs', 'esm'],
-  target: 'es2016',
+  target: 'es2020',
   dts: true,
   shims: true,
   clean: true,
