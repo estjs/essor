@@ -15,11 +15,11 @@ import {
 } from '@estjs/shared';
 import {
   type Target,
+  getReactiveMap,
+  getShallowReactiveMap,
   isProxy,
   isShallow,
   reactive,
-  reactiveMap,
-  shallowReactiveMap,
   toRaw,
   toReactive,
 } from './reactive';
@@ -61,7 +61,7 @@ class BaseReactiveHandler implements ProxyHandler<Target> {
       return isShallow;
     } else if (key === signalsFlags.RAW) {
       if (
-        receiver === (isShallow ? shallowReactiveMap : reactiveMap).get(target) ||
+        receiver === (isShallow ? getShallowReactiveMap() : getReactiveMap()).get(target) ||
         // receiver is not the reactive proxy, but has the same prototype
         // this means the receiver is a user proxy of the reactive proxy
         Object.getPrototypeOf(target) === Object.getPrototypeOf(receiver)
@@ -183,10 +183,27 @@ class MutableReactiveHandler extends BaseReactiveHandler {
   }
 }
 
-export const mutableHandlers: ProxyHandler<object> = /*@__PURE__*/ new MutableReactiveHandler();
+let _mutableHandlers: ProxyHandler<object> | undefined;
+export const getMutableHandlers = (): ProxyHandler<object> =>
+  (_mutableHandlers ??= new MutableReactiveHandler());
 
-export const shallowReactiveHandlers: MutableReactiveHandler =
-  /*@__PURE__*/ new MutableReactiveHandler(true);
+let _shallowReactiveHandlers: MutableReactiveHandler | undefined;
+export const getShallowReactiveHandlers = (): MutableReactiveHandler =>
+  (_shallowReactiveHandlers ??= new MutableReactiveHandler(true));
+
+export const mutableHandlers: ProxyHandler<object> = /*@__PURE__*/ new Proxy(
+  {} as ProxyHandler<object>,
+  {
+    get: (_, p) => (getMutableHandlers() as any)[p],
+  },
+);
+
+export const shallowReactiveHandlers: MutableReactiveHandler = /*@__PURE__*/ new Proxy(
+  {} as MutableReactiveHandler,
+  {
+    get: (_, p) => (getShallowReactiveHandlers() as any)[p],
+  },
+);
 
 /**
  * Track array iteration and return:
@@ -683,13 +700,31 @@ function createInstrumentationGetter(shallow: boolean) {
   };
 }
 
-export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = {
-  get: /*@__PURE__*/ createInstrumentationGetter(false),
-};
+let _mutableCollectionHandlers: ProxyHandler<CollectionTypes> | undefined;
+export const getMutableCollectionHandlers = (): ProxyHandler<CollectionTypes> =>
+  (_mutableCollectionHandlers ??= {
+    get: createInstrumentationGetter(false),
+  });
 
-export const shallowCollectionHandlers: ProxyHandler<CollectionTypes> = {
-  get: /*@__PURE__*/ createInstrumentationGetter(true),
-};
+let _shallowCollectionHandlers: ProxyHandler<CollectionTypes> | undefined;
+export const getShallowCollectionHandlers = (): ProxyHandler<CollectionTypes> =>
+  (_shallowCollectionHandlers ??= {
+    get: createInstrumentationGetter(true),
+  });
+
+export const mutableCollectionHandlers: ProxyHandler<CollectionTypes> = /*@__PURE__*/ new Proxy(
+  {} as ProxyHandler<CollectionTypes>,
+  {
+    get: (_, p) => (getMutableCollectionHandlers() as any)[p],
+  },
+);
+
+export const shallowCollectionHandlers: ProxyHandler<CollectionTypes> = /*@__PURE__*/ new Proxy(
+  {} as ProxyHandler<CollectionTypes>,
+  {
+    get: (_, p) => (getShallowCollectionHandlers() as any)[p],
+  },
+);
 
 function checkIdentityKeys(target: CollectionTypes, has: (key: unknown) => boolean, key: unknown) {
   const rawKey = toRaw(key);

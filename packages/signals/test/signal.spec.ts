@@ -683,4 +683,24 @@ describe('edge cases', () => {
     s.value = 9;
     expect(raw.a).toBe(9);
   });
+
+  it('cannot write to a getter-based readonly signal', () => {
+    const getterSig = toSignal(() => 42);
+    expect(getterSig.value).toBe(42);
+    // @ts-expect-error write to readonly signal
+    expect(() => {
+      getterSig.value = 100;
+    }).toThrow();
+    expect(getterSig.value).toBe(42);
+  });
+
+  it('toSignals warns and returns empty object on invalid non-object input', () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const res = toSignals(null as any);
+    expect(res).toEqual({});
+    expect(warning).toHaveBeenCalledWith(
+      expect.stringContaining('toSignals() expects an object or array'),
+    );
+    warning.mockRestore();
+  });
 });

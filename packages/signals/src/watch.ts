@@ -255,9 +255,48 @@ function warnInvalidSource(s: object, onWarn: WatchOptions['onWarn']): void {
   );
 }
 
+export type MapSources<T, Immediate extends boolean = false> = {
+  [K in keyof T]: T[K] extends WatchSource<infer V>
+    ? Immediate extends true
+      ? V | undefined
+      : V
+    : T[K] extends object
+      ? Immediate extends true
+        ? T[K] | undefined
+        : T[K]
+      : never;
+};
+
+// Overload 1: single source
+export function watch<T, Immediate extends boolean = boolean>(
+  source: WatchSource<T>,
+  cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
+  options?: WatchOptions<Immediate>,
+): WatchHandle;
+
+// Overload 2: array of sources
+export function watch<
+  T extends readonly (WatchSource<unknown> | object)[],
+  Immediate extends boolean = boolean,
+>(
+  sources: readonly [...T],
+  cb: WatchCallback<MapSources<T>, MapSources<T, Immediate>>,
+  options?: WatchOptions<Immediate>,
+): WatchHandle;
+
+// Overload 3: reactive object
+export function watch<T extends object, Immediate extends boolean = boolean>(
+  source: T,
+  cb: WatchCallback<T, Immediate extends true ? T | undefined : T>,
+  options?: WatchOptions<Immediate>,
+): WatchHandle;
+
+// Overload 4: effect-only
+export function watch(effect: WatchEffect, options?: WatchOptions): WatchHandle;
+
 export function watch(
   source: WatchSource | WatchSource[] | WatchEffect | object,
-  cb?: WatchCallback | null,
+  cb?: any,
   options: WatchOptions = EMPTY_OBJ,
 ): WatchHandle {
   const effect = new WatcherEffect(source, cb, options);

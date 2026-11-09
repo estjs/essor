@@ -1,10 +1,10 @@
 import { def, hasOwn, isObject, toRawType, warn } from '@estjs/shared';
 import { signalsFlags } from './constants';
 import {
-  mutableCollectionHandlers,
-  mutableHandlers,
-  shallowCollectionHandlers,
-  shallowReactiveHandlers,
+  getMutableCollectionHandlers,
+  getMutableHandlers,
+  getShallowCollectionHandlers,
+  getShallowReactiveHandlers,
 } from './handlers';
 import type { RawSymbol, Signal, UnwrapSignalSimple } from './signal';
 
@@ -18,8 +18,26 @@ export interface Target {
   [signalsFlags.RAW]?: any;
 }
 
-export const reactiveMap: WeakMap<Target, any> = new WeakMap<Target, any>();
-export const shallowReactiveMap: WeakMap<Target, any> = new WeakMap<Target, any>();
+let _reactiveMap: WeakMap<Target, any> | undefined;
+export const getReactiveMap = (): WeakMap<Target, any> =>
+  (_reactiveMap ??= new WeakMap<Target, any>());
+
+let _shallowReactiveMap: WeakMap<Target, any> | undefined;
+export const getShallowReactiveMap = (): WeakMap<Target, any> =>
+  (_shallowReactiveMap ??= new WeakMap<Target, any>());
+
+export const reactiveMap: WeakMap<Target, any> = /*@__PURE__*/ new Proxy(
+  {} as WeakMap<Target, any>,
+  {
+    get: (_, p) => (getReactiveMap() as any)[p],
+  },
+);
+export const shallowReactiveMap: WeakMap<Target, any> = /*@__PURE__*/ new Proxy(
+  {} as WeakMap<Target, any>,
+  {
+    get: (_, p) => (getShallowReactiveMap() as any)[p],
+  },
+);
 
 enum TargetType {
   INVALID = 0,
@@ -71,7 +89,12 @@ export type Reactive<T> = UnwrapNestedRefs<T> & (T extends readonly any[] ? Reac
 export function reactive<T extends object>(target: T): Reactive<T>;
 /*@__NO_SIDE_EFFECTS__*/
 export function reactive(target: object) {
-  return createReactiveObject(target, mutableHandlers, mutableCollectionHandlers, reactiveMap);
+  return createReactiveObject(
+    target,
+    getMutableHandlers(),
+    getMutableCollectionHandlers(),
+    getReactiveMap(),
+  );
 }
 
 // Use a private class brand instead of a marker property so shallow-reactive
@@ -118,9 +141,9 @@ export type ShallowReactive<T> = T & ShallowReactiveBrand;
 export function shallowReactive<T extends object>(target: T): ShallowReactive<T> {
   return createReactiveObject(
     target,
-    shallowReactiveHandlers,
-    shallowCollectionHandlers,
-    shallowReactiveMap,
+    getShallowReactiveHandlers(),
+    getShallowCollectionHandlers(),
+    getShallowReactiveMap(),
   );
 }
 

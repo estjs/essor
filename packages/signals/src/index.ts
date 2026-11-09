@@ -42,7 +42,7 @@ export {
   ComputedRef as Computed,
 } from './computed';
 
-export { isReactive, isShallow, toRaw, isProxy, toReactive, Reactive } from './reactive';
+export { isReactive, isShallow, toRaw, isProxy, toReactive, Reactive, markRaw } from './reactive';
 export { reactive, shallowReactive } from './reactive';
 
 export { batch, startBatch, endBatch, nextTick } from './graph';

@@ -6,6 +6,7 @@ import {
   isIntegerKey,
   isObject,
   isSymbol,
+  warn,
 } from '@estjs/shared';
 import { signalsFlags } from './constants';
 import { getDepFromReactive } from './dep';
@@ -50,7 +51,7 @@ export interface Signal<T = any, S = T> {
  *
  * @param s - The value to inspect.
  */
-export function isSignal<T>(s: Signal<T> | unknown): s is Signal<T>;
+export function isSignal<T = any>(s: Signal<T> | unknown): s is Signal<T>;
 /*@__NO_SIDE_EFFECTS__*/
 export function isSignal(s: any): s is Signal {
   return s ? s[signalsFlags.IS_SIGNAL] === true : false;
@@ -390,6 +391,12 @@ type ToSignalValue<T extends object, K extends ToSignalKey<T>> = K extends keyof
  */
 /*@__NO_SIDE_EFFECTS__*/
 export function toSignals<T extends object>(object: T): ToSignals<T> {
+  if (__DEV__ && !isObject(object)) {
+    warn(`toSignals() expects an object or array, but received ${String(object)}.`);
+  }
+  if (!isObject(object)) {
+    return {} as ToSignals<T>;
+  }
   const ret: any = isArray(object) ? new Array(object.length) : {};
   for (const key in object) {
     ret[key] = propertyToSignal(object, key);

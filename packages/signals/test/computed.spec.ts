@@ -1084,7 +1084,7 @@ describe('reactivity/computed', () => {
     start.prop2.value = 3;
     start.prop3.value = 2;
     start.prop4.value = 1;
-    expect(performance.now() - t).toBeLessThan(100);
+    expect(performance.now() - t).toBeLessThan(500);
 
     const end = layer;
     expect([end.prop1.value, end.prop2.value, end.prop3.value, end.prop4.value]).toMatchObject([

@@ -1,4 +1,4 @@
-import { extend, warn } from '@estjs/shared';
+import { extend, isFunction, warn } from '@estjs/shared';
 import { activeEffectScope } from './effectScope';
 import {
   type Link,
@@ -106,7 +106,11 @@ export class ReactiveEffect<T = any> implements ReactiveNode {
     const prevSub = startTracking(this);
     incRunDepth();
     try {
-      return this.fn();
+      const res = this.fn();
+      if (isFunction(res)) {
+        this.cleanups[this.cleanupsLength++] = () => cleanupEffect(res as () => void);
+      }
+      return res;
     } finally {
       decRunDepth();
       endTracking(this, prevSub);
