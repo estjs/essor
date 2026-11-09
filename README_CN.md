@@ -75,7 +75,26 @@ function Form() {
 }
 ```
 
-### 4. 启动开发服务器
+### 4. 双模响应式与解构规范
+
+Essor 既支持极简的 `$var` 编译时语法糖，也完整提供原生显式 TypeScript 响应式原语：
+
+```tsx
+import { signal, reactive, toSignals, toValue } from 'essor';
+
+// 模式 A：原生标准 TypeScript Signals
+const count = signal(0);
+const state = reactive({ name: 'Essor', age: 1 });
+
+// 安全解构响应式对象/组件 props，保持响应性不丢失：
+const { name, age } = toSignals(state);
+
+// 模式 B：人体工学 $ 前缀语法糖
+let $total = 100;
+$total++; // 编译期自动转换为 $total.value++
+```
+
+### 5. 启动开发服务器
 
 ```bash
 npm run dev
@@ -129,10 +148,12 @@ git clone https://github.com/estjs/essor.git
 cd essor
 
 pnpm install
-pnpm dev       # 监听模式
-pnpm test      # 单元测试
-pnpm test:e2e  # E2E 测试
-pnpm build     # 构建所有包
+pnpm dev           # 监听模式
+pnpm test          # 单元测试 (vitest)
+pnpm test:e2e      # E2E 测试 (playwright)
+pnpm benchmark:ci  # 自动化无头浏览器基准测试与体积守卫门禁
+pnpm prerelease    # 完整发布门禁：lint + build + typecheck + test
+pnpm build         # 构建所有包
 ```
 
 ## 📄 许可证

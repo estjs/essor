@@ -74,7 +74,26 @@ function Form() {
 }
 ```
 
-### 4. Start Development Server
+### 4. Dual DX Reactivity & Destructuring
+
+Essor supports both intuitive `$var` compile-time syntax sugar and explicit TypeScript-native primitives:
+
+```tsx
+import { signal, reactive, toSignals, toValue } from 'essor';
+
+// Model A: Explicit Standard TypeScript Signals
+const count = signal(0);
+const state = reactive({ name: 'Essor', age: 1 });
+
+// Safely destructure reactive objects/props without losing reactivity:
+const { name, age } = toSignals(state);
+
+// Model B: Ergonomic $ prefix
+let $total = 100;
+$total++; // automatically transforms to $total.value++
+```
+
+### 5. Start Development Server
 
 ```bash
 npm run dev
@@ -128,10 +147,12 @@ git clone https://github.com/estjs/essor.git
 cd essor
 
 pnpm install
-pnpm dev       # Watch mode
-pnpm test      # Unit tests
-pnpm test:e2e  # E2E tests
-pnpm build     # Build all packages
+pnpm dev           # Watch mode
+pnpm test          # Unit tests (vitest)
+pnpm test:e2e      # E2E tests (playwright)
+pnpm benchmark:ci  # Headless browser benchmark & size budget gate
+pnpm prerelease    # Full release gate: lint, build, typecheck, test
+pnpm build         # Build all packages
 ```
 
 ## 📄 License
