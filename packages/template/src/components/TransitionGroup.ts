@@ -9,8 +9,7 @@ import {
   runWithScope,
 } from '../scope';
 import { onMount } from '../lifecycle';
-import { TRANSITION_GROUP_COMPONENT } from '../constants';
-import { isComponent } from '../component';
+import { TRANSITION_GROUP_COMPONENT, isComponentLike } from '../constants';
 import {
   type TransitionCleanup,
   type TransitionProps,
@@ -115,8 +114,8 @@ function resolveItemElement(
   if (raw instanceof HTMLElement) {
     return { el: raw, comp: null };
   }
-  if (isComponent(raw)) {
-    const comp = raw as Component;
+  if (isComponentLike(raw)) {
+    const comp = raw as any;
     if (comp.scope == null) {
       // Mount into the wrapper directly. The Component lays itself out as a
       // normal child; we just snag the first rendered HTMLElement for FLIP.
@@ -638,7 +637,7 @@ export function TransitionGroup<T>(props: TransitionGroupProps<T>): Element {
   return wrapper;
 }
 
-(TransitionGroup as unknown as Record<symbol, true>)[TRANSITION_GROUP_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(TransitionGroup, { [TRANSITION_GROUP_COMPONENT]: true });
 
 /**
  * Type guard for the TransitionGroup component reference.

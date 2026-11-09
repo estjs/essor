@@ -2,18 +2,63 @@ import { coerceArray, error, isFunction, isObject, warn } from '@estjs/shared';
 import { effect } from '@estjs/signals';
 import { isComponent } from './component';
 import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
-import {
-  claimHydratedNodes,
-  claimHydrationNode,
-  hasActiveHydrationRange,
-  isHydrating,
-  isHydrationNodeClaimed,
-  isNodeHydrated,
-  runWithHydrationRange,
-  runWithoutHydration,
-} from './hydration';
 import { reconcileArrays } from './reconcile';
 import type { AnyNode } from './types';
+
+export interface HydrationOperations {
+  isHydrating(): boolean;
+  claimHydrationNode(node: Node): Node;
+  claimHydratedNodes(parent: Node, nodes: Node[], before?: Node | null): Node[] | null;
+  hasActiveHydrationRange(): boolean;
+  isHydrationNodeClaimed(node: Node): boolean;
+  isNodeHydrated(node: Node): boolean;
+  runWithHydrationRange(
+    parent: Node,
+    before: Node | undefined,
+    start: Comment,
+    update: () => void,
+    onMismatch?: () => void,
+  ): void;
+  runWithoutHydration(fn: () => void): void;
+}
+
+let hydrationOps: HydrationOperations | null = null;
+
+export function registerHydrationOperations(ops: HydrationOperations): void {
+  hydrationOps = ops;
+}
+
+const isHydrating = (): boolean => (hydrationOps ? hydrationOps.isHydrating() : false);
+const claimHydrationNode = (node: Node): Node =>
+  hydrationOps ? hydrationOps.claimHydrationNode(node) : node;
+const claimHydratedNodes = (parent: Node, nodes: Node[], before?: Node | null): Node[] | null =>
+  hydrationOps ? hydrationOps.claimHydratedNodes(parent, nodes, before) : null;
+const hasActiveHydrationRange = (): boolean =>
+  hydrationOps ? hydrationOps.hasActiveHydrationRange() : false;
+const isHydrationNodeClaimed = (node: Node): boolean =>
+  hydrationOps ? hydrationOps.isHydrationNodeClaimed(node) : false;
+const isNodeHydrated = (node: Node): boolean =>
+  hydrationOps ? hydrationOps.isNodeHydrated(node) : false;
+const runWithHydrationRange = (
+  parent: Node,
+  before: Node | undefined,
+  start: Comment,
+  update: () => void,
+  onMismatch?: () => void,
+): void => {
+  if (hydrationOps) {
+    hydrationOps.runWithHydrationRange(parent, before, start, update, onMismatch);
+  } else {
+    update();
+  }
+};
+const runWithoutHydration = (fn: () => void): void => {
+  if (hydrationOps) {
+    hydrationOps.runWithoutHydration(fn);
+  } else {
+    fn();
+  }
+};
 
 // Preserve fragment ordering without detaching an already-connected SSR node.
 const hydrationFragmentPlaceholders = new WeakMap<Comment, Node>();

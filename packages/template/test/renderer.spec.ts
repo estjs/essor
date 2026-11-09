@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createApp, hydrate, template } from '../src/renderer';
-import { getRenderedElement, isHydrating, resetHydrationKey } from '../src/hydration';
+import { createApp, template } from '../src/renderer';
+import { getRenderedElement, hydrate, isHydrating, resetHydrationKey } from '../src/hydration';
 import { onMount } from '../src/lifecycle';
 import { onCleanup } from '../src/scope';
 import { createComponent } from '../src/component';

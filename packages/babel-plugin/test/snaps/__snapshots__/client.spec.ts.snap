@@ -186,7 +186,7 @@ const NavIconLinks = __props => {
 `;
 
 exports[`should work with jsx client transform > should correctly compile Fragment with element children 1`] = `
-"import { Fragment as _Fragment$, template as _template$, createComponent as _createComponent$ } from "essor";
+"import { Fragment as _Fragment$, template as _template$, createComponent as _createComponent$, delegateEvents as _delegateEvents$ } from "essor";
 import { useRouter } from 'essor-router';
 const _t$ = /*#__PURE__*/_template$("<div class=\\"home\\">to about");
 const _t$2 = /*#__PURE__*/_template$("<div class=\\"random\\">random router");
@@ -459,7 +459,7 @@ const element = _createComponent$(ErrorBoundary, {
 `;
 
 exports[`should work with jsx client transform > should work with event handlers 1`] = `
-"import { template as _template$ } from "essor";
+"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = /*#__PURE__*/_template$("<button>Click me");
 const handleClick = () => console.log('clicked');
 const element = (() => {
@@ -650,7 +650,7 @@ const element = _createComponent$(ThemeContext.Provider, {
 `;
 
 exports[`should work with jsx client transform > should work with multiple event handlers 1`] = `
-"import { template as _template$, addEventListener as _addEventListener$ } from "essor";
+"import { template as _template$, addEventListener as _addEventListener$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = /*#__PURE__*/_template$("<div>Multiple Events");
 const element = (() => {
   const _el$ = _t$();

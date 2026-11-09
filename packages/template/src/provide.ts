@@ -5,8 +5,10 @@ import { type Scope, getActiveScope } from './scope';
  * InjectionKey is a unique identifier for provided values.
  * Using Symbol ensures type safety and prevents key collisions.
  */
-// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types, unused-imports/no-unused-vars
-export interface InjectionKey<T> extends Symbol {}
+// eslint-disable-next-line @typescript-eslint/no-wrapper-object-types
+export interface InjectionKey<T> extends Symbol {
+  readonly __type?: T;
+}
 
 /**
  * Provide a value in the current scope.
@@ -39,10 +41,21 @@ export function provide<T>(key: InjectionKey<T> | string | number, value: T): vo
  * Traverses up the parent chain until finding a matching key.
  *
  * @param key - The injection key.
+ * @returns The injected value or undefined if not found.
+ */
+export function inject<T>(key: InjectionKey<T> | string | number): T | undefined;
+/**
+ * Inject a value from the scope hierarchy with a fallback default.
+ *
+ * @param key - The injection key.
  * @param defaultValue - Default value if key is not found.
  * @returns The injected value or default value.
  */
-export function inject<T>(key: InjectionKey<T> | string | number, defaultValue?: T): T {
+export function inject<T>(key: InjectionKey<T> | string | number, defaultValue: T): T;
+export function inject<T, Default = T>(
+  key: InjectionKey<T> | string | number,
+  defaultValue?: Default,
+): T | Default | undefined {
   const scope = getActiveScope();
 
   if (!scope) {

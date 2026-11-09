@@ -1,4 +1,4 @@
-import { type Signal, isComputed, isSignal, shallowReactive, toRaw } from '@estjs/signals';
+import { type Signal, isSignal } from '@estjs/signals';
 import { isFunction, isOn, isString } from '@estjs/shared';
 
 import { COMPONENT_STATE, COMPONENT_TYPE, REF_KEY } from './constants';
@@ -75,7 +75,7 @@ export class Component<P extends ComponentProps = {}> {
     this.parentScope = getActiveScope();
     const reactiveProps = Object.create(null) as P;
     syncDescriptors(reactiveProps, props);
-    this.reactiveProps = shallowReactive(reactiveProps) as P;
+    this.reactiveProps = reactiveProps;
   }
 
   /**
@@ -112,8 +112,6 @@ export class Component<P extends ComponentProps = {}> {
 
       // Unwrap signal / computed — only their current value reaches the DOM.
       if (isSignal<Element>(result)) {
-        result = result.value;
-      } else if (isComputed<Element>(result)) {
         result = result.value;
       }
 
@@ -212,12 +210,8 @@ export class Component<P extends ComponentProps = {}> {
     for (const node of this.renderedNodes) removeNode(node);
     this.renderedNodes = [];
     this.parentNode = undefined;
-    // Clear all descriptors to release signal getter references. Deleted on
-    // the RAW target: when finalize runs from the scope-cleanup path the
-    // component's effects are not stopped yet (effectScope.stop() comes after
-    // cleanups), and a proxied delete would TRIGGER them into re-reading
-    // already-cleared props.
-    const rawProps = toRaw(this.reactiveProps) as Record<PropertyKey, unknown>;
+    // Clear all descriptors to release signal getter references.
+    const rawProps = this.reactiveProps as Record<PropertyKey, unknown>;
     for (const key of Reflect.ownKeys(rawProps)) {
       delete rawProps[key];
     }

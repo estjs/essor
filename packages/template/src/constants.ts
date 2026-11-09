@@ -64,3 +64,6 @@ export enum COMPONENT_TYPE {
   TRANSITION = 'transition',
   TRANSITION_GROUP = 'transition-group',
 }
+
+export const isComponentLike = (node: unknown): node is { component: unknown } =>
+  !!node && !!(node as Record<PropertyKey, unknown>)[COMPONENT_TYPE.NORMAL];

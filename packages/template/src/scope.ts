@@ -27,7 +27,7 @@ export interface Scope {
   cleanup: Array<() => void> | null;
 
   /** Mount lifecycle hooks (lazy initialized) */
-  onMount: Array<() => void | Promise<void>> | null;
+  onMount: Array<(() => void | Promise<void>) | (() => () => void)> | null;
 
   /** Update lifecycle hooks (lazy initialized) */
   onUpdate: Array<() => void | Promise<void>> | null;

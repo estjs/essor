@@ -322,7 +322,7 @@ export function Suspense(props: SuspenseProps): Node {
   return frag;
 }
 
-Suspense[SUSPENSE_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(Suspense, { [SUSPENSE_COMPONENT]: true });
 
 /**
  * Check if a node is a Suspense component.

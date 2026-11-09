@@ -2,13 +2,18 @@ import {
   HYDRATION_ANCHOR_ATTR,
   HYDRATION_RANGE_START_PREFIX,
   isBrowser,
+  isString,
   warn,
 } from '@estjs/shared';
 import { requestSlotProviders } from './request-slots';
 import { patchAttr } from './operations/attr';
 import { patchClass } from './operations/class';
 import { patchStyle } from './operations/style';
-import { template } from './renderer';
+import { template } from './template';
+import { type Component, createComponent, isComponent } from './component';
+import { createScope, disposeScope, runWithScope } from './scope';
+import { insert, registerHydrationOperations } from './dom';
+import type { ComponentFn, ComponentProps } from './types';
 
 // ---------------------------------------------------------------------------
 // Hydration key counter
@@ -180,6 +185,7 @@ export function consumeTeleportBlock(
  * @param root - The root element to hydrate.
  */
 export function beginHydration(root: Element): void {
+  ensureHydrationRegistered();
   _isHydrating = true;
   resetHydrationKey();
   _registry.clear();
@@ -709,4 +715,82 @@ export function patchAttrHydrate(el: Element, key: string, prev: unknown, next: 
 export function patchStyleHydrate(el: HTMLElement, prev: unknown, next?: unknown): void {
   if (_isHydrating) return;
   patchStyle(el, prev, next);
+}
+
+let registered = false;
+function ensureHydrationRegistered(): void {
+  if (!registered) {
+    registered = true;
+    registerHydrationOperations({
+      isHydrating,
+      claimHydrationNode,
+      claimHydratedNodes,
+      hasActiveHydrationRange,
+      isHydrationNodeClaimed,
+      isNodeHydrated,
+      runWithHydrationRange,
+      runWithoutHydration,
+    });
+  }
+}
+
+/**
+ * Hydrates a server-rendered DOM tree with a component instance.
+ *
+ * @param component - The root component function to mount.
+ * @param target - CSS selector string or DOM element to hydrate into.
+ * @returns Object with root component and unmount function.
+ */
+export function hydrate<P extends ComponentProps = {}>(
+  component: ComponentFn<P>,
+  target: string | Element,
+) {
+  ensureHydrationRegistered();
+  const container = isString(target) ? document.querySelector(target) : (target as Element);
+  if (!container) {
+    if (__DEV__) {
+      warn(`[essor] hydrate: target element not found: ${target}`);
+    }
+    return;
+  }
+
+  beginHydration(container);
+
+  const scope = createScope();
+  let rootNode: Component | undefined;
+  try {
+    runWithScope(scope, () => {
+      const mountedRoot = createComponent(component);
+      if (isComponent(mountedRoot)) {
+        rootNode = mountedRoot;
+        insert(container, mountedRoot);
+      }
+    });
+  } catch (error_) {
+    disposeScope(scope);
+    throw error_;
+  } finally {
+    endHydration();
+  }
+
+  return {
+    root: rootNode,
+    unmount: () => {
+      rootNode?.destroy();
+      disposeScope(scope);
+    },
+  };
+}
+
+/**
+ * Creates and hydrates an SSR-rendered application (alias for SSR app entry).
+ *
+ * @param component - The root component function to mount.
+ * @param target - CSS selector string or DOM element to hydrate into.
+ */
+export function createSSRApp<P extends ComponentProps = {}>(
+  component: ComponentFn<P>,
+  target: string | Element,
+) {
+  return hydrate(component, target);
 }

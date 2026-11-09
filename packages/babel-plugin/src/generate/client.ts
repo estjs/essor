@@ -1256,6 +1256,53 @@ export function buildComponentProps(node: IRElement, options: ComponentPropsOpti
 
 // ===== For Loop =====
 
+function transformJSXCallback(
+  fnExpr: t.Expression,
+  ctx: CompileContext,
+  state: GenState,
+): t.Expression {
+  if (t.isArrowFunctionExpression(fnExpr) || t.isFunctionExpression(fnExpr)) {
+    const body = fnExpr.body;
+    if (t.isJSXElement(body)) {
+      const innerIR = parseJSX(body, ctx, false);
+      const inlined =
+        innerIR.type === 'element' && innerIR.isComponent
+          ? generateInlineComponent(innerIR, state)
+          : generateNode(innerIR, state);
+      return t.arrowFunctionExpression(fnExpr.params, inlined);
+    }
+    if (t.isBlockStatement(body)) {
+      const prelude: t.Statement[] = [];
+      let returnJSX: t.JSXElement | t.JSXFragment | null = null;
+      for (const stmt of body.body) {
+        if (
+          t.isReturnStatement(stmt) &&
+          stmt.argument &&
+          (t.isJSXElement(stmt.argument) || t.isJSXFragment(stmt.argument))
+        ) {
+          returnJSX = stmt.argument as t.JSXElement;
+          break;
+        } else {
+          prelude.push(stmt);
+        }
+      }
+      if (returnJSX && t.isJSXElement(returnJSX)) {
+        const innerIR = parseJSX(returnJSX, ctx, false);
+        const inlined =
+          innerIR.type === 'element' && innerIR.isComponent
+            ? generateInlineComponent(innerIR, state)
+            : generateNode(innerIR, state);
+        const blockBody = t.blockStatement([
+          ...prelude.map((s) => t.cloneNode(s, true)),
+          t.returnStatement(inlined),
+        ]);
+        return t.arrowFunctionExpression(fnExpr.params, blockBody);
+      }
+    }
+  }
+  return fnExpr;
+}
+
 function generateFor(node: IRElement, state: GenState): t.Expression {
   const { ctx } = state;
   const eachProp = node.props.dynamic.find((p) => p.name === 'each');
@@ -1263,55 +1310,10 @@ function generateFor(node: IRElement, state: GenState): t.Expression {
 
   // Child callback is the first child (an expression or arrow function)
   const firstChild = node.children[0];
-  let callbackExpr: t.Expression = t.nullLiteral();
-
-  if (firstChild?.type === 'expression') {
-    const fnExpr = firstChild.node;
-    if (t.isArrowFunctionExpression(fnExpr) || t.isFunctionExpression(fnExpr)) {
-      const body = fnExpr.body;
-      if (t.isJSXElement(body)) {
-        const innerIR = parseJSX(body, ctx, false);
-        const inlined =
-          innerIR.type === 'element' && innerIR.isComponent
-            ? generateInlineComponent(innerIR, state)
-            : generateNode(innerIR, state);
-        callbackExpr = t.arrowFunctionExpression(fnExpr.params, inlined);
-      } else if (t.isBlockStatement(body)) {
-        const prelude: t.Statement[] = [];
-        let returnJSX: t.JSXElement | t.JSXFragment | null = null;
-        for (const stmt of body.body) {
-          if (
-            t.isReturnStatement(stmt) &&
-            stmt.argument &&
-            (t.isJSXElement(stmt.argument) || t.isJSXFragment(stmt.argument))
-          ) {
-            returnJSX = stmt.argument as t.JSXElement;
-            break;
-          } else {
-            prelude.push(stmt);
-          }
-        }
-        if (returnJSX && t.isJSXElement(returnJSX)) {
-          const innerIR = parseJSX(returnJSX, ctx, false);
-          const inlined =
-            innerIR.type === 'element' && innerIR.isComponent
-              ? generateInlineComponent(innerIR, state)
-              : generateNode(innerIR, state);
-          const blockBody = t.blockStatement([
-            ...prelude.map((s) => t.cloneNode(s, true)),
-            t.returnStatement(inlined),
-          ]);
-          callbackExpr = t.arrowFunctionExpression(fnExpr.params, blockBody);
-        } else {
-          callbackExpr = fnExpr;
-        }
-      } else {
-        callbackExpr = fnExpr;
-      }
-    } else {
-      callbackExpr = fnExpr;
-    }
-  }
+  const callbackExpr: t.Expression =
+    firstChild?.type === 'expression'
+      ? transformJSXCallback(firstChild.node, ctx, state)
+      : t.nullLiteral();
 
   const propsMembers: t.ObjectMember[] = [
     t.objectMethod(
@@ -1329,6 +1331,18 @@ function generateFor(node: IRElement, state: GenState): t.Expression {
   const keyProp = node.props.dynamic.find((p) => p.name === 'key');
   if (keyProp) {
     propsMembers.push(t.objectProperty(t.identifier('key'), keyProp.value));
+  }
+
+  // Preserve any other props (e.g. fallback)
+  for (const prop of node.props.dynamic) {
+    if (prop.name === 'each' || prop.name === 'key') continue;
+    propsMembers.push(
+      t.objectProperty(t.identifier(prop.name), transformJSXCallback(prop.value, ctx, state)),
+    );
+  }
+  for (const prop of node.props.static) {
+    if (prop.name === 'each' || prop.name === 'key') continue;
+    propsMembers.push(t.objectProperty(t.identifier(prop.name), prop.value));
   }
 
   const createComponentId = ctx.imports.get('createComponent');

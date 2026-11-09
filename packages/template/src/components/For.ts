@@ -8,12 +8,10 @@ import {
   onCleanup,
   runWithScope,
 } from '../scope';
-import { FOR_COMPONENT } from '../constants';
-import { isComponent } from '../component';
+import { FOR_COMPONENT, isComponentLike } from '../constants';
 import { insertNode, normalizeNode, removeNode } from '../dom';
 import { getSequence } from '../reconcile';
 import type { AnyNode } from '../types';
-import type { Component } from '../component';
 
 export interface ForProps<T> {
   each: T[] | Signal<T[]> | (() => T[]);
@@ -112,12 +110,12 @@ export function For<T>(props: ForProps<T>): Node {
       return nodes;
     }
 
-    if (isComponent(value)) {
-      insertNode(parent, value, before ?? undefined);
+    if (isComponentLike(value)) {
+      insertNode(parent, value as any, before ?? undefined);
       // Safe to return the live array: Component only ever reassigns
       // `renderedNodes` (mount/destroy), never mutates it in place, and For
       // treats `entry.nodes` as read-only.
-      return (value as Component).renderedNodes;
+      return (value as any).renderedNodes;
     }
 
     const node = normalizeNode(value);
@@ -385,7 +383,7 @@ export function For<T>(props: ForProps<T>): Node {
   return fragment;
 }
 
-For[FOR_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(For, { [FOR_COMPONENT]: true });
 
 export function isFor(node: unknown): boolean {
   return !!node && !!(node as Record<symbol, boolean>)[FOR_COMPONENT];

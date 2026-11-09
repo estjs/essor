@@ -769,7 +769,7 @@ function testFunction(__props) {
 `;
 
 exports[`jsx props transform > should work with function parameters 1`] = `
-"import { template as _template$ } from "essor";
+"import { template as _template$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = /*#__PURE__*/_template$("<button>Click me");
 function testFunction(__props) {
   return (() => {

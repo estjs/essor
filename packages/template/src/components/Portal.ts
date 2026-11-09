@@ -231,7 +231,7 @@ export function Portal(props: PortalProps): Comment {
   return placeholder;
 }
 
-Portal[PORTAL_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(Portal, { [PORTAL_COMPONENT]: true });
 
 /** Result of a successful Portal hydration claim. */
 interface AdoptedPortal {

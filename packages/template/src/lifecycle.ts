@@ -1,7 +1,7 @@
-import { error, isPromise } from '@estjs/shared';
-import { type Scope, getActiveScope, runWithScope } from './scope';
+import { error, isFunction, isPromise } from '@estjs/shared';
+import { type Scope, getActiveScope, onCleanup, runWithScope } from './scope';
 
-export type LifecycleHook = () => void | Promise<void>;
+export type LifecycleHook = (() => void | Promise<void>) | (() => () => void);
 
 /**
  * Registers scoped hook.
@@ -18,9 +18,9 @@ function registerScopedHook(
   let hookList = scope[listKey];
   if (!hookList) {
     hookList = [];
-    scope[listKey] = hookList;
+    (scope as any)[listKey] = hookList;
   }
-  hookList.push(hook);
+  (hookList as any[]).push(hook);
 }
 
 /**
@@ -44,7 +44,9 @@ function executeHooks(
   for (let i = 0; i < len; i++) {
     try {
       const result = hooks[i]();
-      if (isPromise(result)) {
+      if (isFunction(result)) {
+        onCleanup(result as () => void);
+      } else if (isPromise(result)) {
         const safePromise = result.catch((error_) => {
           if (__DEV__) {
             error(`Scope(${scopeId}): Async ${phase} hook rejected:`, error_);
@@ -81,7 +83,9 @@ export function onMount(hook: LifecycleHook): void {
   if (scope.isMounted) {
     try {
       const result = hook();
-      if (isPromise(result)) {
+      if (isFunction(result)) {
+        onCleanup(result as () => void);
+      } else if (isPromise(result)) {
         result.catch((error_) => {
           if (__DEV__) error(`Scope(${scope.id}): Async mount hook rejected:`, error_);
         });

@@ -131,7 +131,7 @@ if (import.meta.webpackHot) {
 exports[`hMR - Rspack Platform > should work with rspack 4`] = `
 "import { hmrAccept as __$hmrAccept$__ } from "virtual:essor-hmr";
 import { createHMRComponent as __$createHMRComponent$__ } from "virtual:essor-hmr";
-import { template as _template$, nthChild as _nthChild$, insert as _insert$ } from "essor";
+import { template as _template$, nthChild as _nthChild$, insert as _insert$, delegateEvents as _delegateEvents$ } from "essor";
 import { createApp, signal } from 'essor';
 var _t$ = /*#__PURE__*/ _template$("<div>Count: <!>");
 function SignalComponent() {

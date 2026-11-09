@@ -33,12 +33,12 @@ const SERVER_NAMES = new Set([
 ]);
 
 export function emitArtifacts(ctx: CompileContext): void {
-  emitImports(ctx);
   emitTemplates(ctx);
   emitDeclarations(ctx);
   if (ctx.mode === 'client' || ctx.mode === 'hydrate') {
     emitDelegateEvents(ctx);
   }
+  emitImports(ctx);
 }
 
 function findFirstNonImportIndex(body: t.Statement[]): number {

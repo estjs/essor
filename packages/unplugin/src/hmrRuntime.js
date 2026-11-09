@@ -124,7 +124,11 @@ export function createHMRComponent(componentFn, props) {
     return info.component.call(this, nextProps);
   }
 
-  mount.render = (nextProps) => createComponent(HMRBoundary, nextProps ?? mount.props);
+  mount.render = (nextProps) => {
+    const comp = createComponent(HMRBoundary, nextProps ?? mount.props);
+    mount.instance = comp;
+    return comp;
+  };
   info.mounts.add(mount);
 
   // Returning a thunk rather than nodes is what makes a hot swap possible:
@@ -143,15 +147,17 @@ export function createHMRComponent(componentFn, props) {
  * Trigger a re-render of one mounted component.
  *
  * Bumping the version signal invalidates the thunk returned by
- * createHMRComponent, so `insert()` re-runs it: the old branch scope is disposed
- * (effects, listeners, cleanups) and the new nodes replace the old ones through
- * the normal diff. No parent/anchor bookkeeping is needed here.
+ * createHMRComponent, and forceUpdate() re-mounts the component with
+ * the updated implementation at its current insertion point.
  */
 function swapMount(mount) {
   if (mount.disposed) return false;
   mount.swapping = true;
   try {
     mount.version.value++;
+    if (mount.instance && typeof mount.instance.forceUpdate === 'function') {
+      mount.instance.forceUpdate();
+    }
     return true;
   } finally {
     mount.swapping = false;

@@ -52,7 +52,7 @@ export function Fragment(props?: FragmentProps): AnyNode {
   return children as AnyNode;
 }
 
-Fragment[FRAGMENT_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(Fragment, { [FRAGMENT_COMPONENT]: true });
 
 /**
  * Check if a node is a Fragment component.

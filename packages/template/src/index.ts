@@ -1,4 +1,5 @@
-export { template, createApp, hydrate } from './renderer';
+export { template } from './template';
+export { createApp } from './renderer';
 
 export { Component, createComponent, isComponent } from './component';
 
@@ -15,6 +16,8 @@ export { omitProps } from './utils';
 export { insert, insertTextContent, next, child, nthChild } from './dom';
 
 export {
+  hydrate,
+  createSSRApp,
   isHydrating,
   beginHydration,
   endHydration,
@@ -50,9 +53,14 @@ export {
   Suspense,
   isSuspense,
   createResource,
+  type Resource,
+  type ResourceActions,
+  type ResourceState,
+  type ResourceOptions,
   defineAsyncComponent,
   type AsyncComponentOptions,
   For,
+  isFor,
   Transition,
   isTransition,
   type TransitionProps,
@@ -61,4 +69,4 @@ export {
   type TransitionGroupProps,
 } from './components';
 
-export type { ComponentProps, ComponentFn, AppInstance } from './types';
+export type { AnyNode, ComponentFn, ComponentProps, AppInstance } from './types';

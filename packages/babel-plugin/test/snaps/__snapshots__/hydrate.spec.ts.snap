@@ -146,7 +146,7 @@ const element = _createComponent$(ErrorBoundary, {
 `;
 
 exports[`jsx hydrate transform > should work with event handlers in hydrate 1`] = `
-"import { getRenderedElement as _getRenderedElement$ } from "essor";
+"import { getRenderedElement as _getRenderedElement$, delegateEvents as _delegateEvents$ } from "essor";
 const _t$ = /*#__PURE__*/_getRenderedElement$("<button>Click me");
 const handleClick = () => console.log('clicked');
 const element = (() => {

@@ -2,8 +2,7 @@ import { effect } from '@estjs/signals';
 import { isArray, isNumber, warn } from '@estjs/shared';
 import { onCleanup } from '../scope';
 import { onMount } from '../lifecycle';
-import { TRANSITION_COMPONENT } from '../constants';
-import { isComponent } from '../component';
+import { TRANSITION_COMPONENT, isComponentLike } from '../constants';
 import { useChildren } from '../utils';
 import type { AnyNode } from '../types';
 import type { Component } from '../component';
@@ -244,8 +243,8 @@ function validateSlot(value: unknown): Element | null {
   // component renders multiple roots (fragment-style return), only the
   // first one participates — the rest stay in the detached fragment and
   // never reach the DOM. Surface that as a dev warning.
-  if (isComponent(value)) {
-    const comp = value as Component;
+  if (isComponentLike(value)) {
+    const comp = value as any;
     if (comp.scope == null) {
       const fragment = document.createDocumentFragment();
       comp.mount(fragment);
@@ -586,7 +585,7 @@ export function Transition(props: TransitionProps): Node {
   return anchor;
 }
 
-(Transition as unknown as Record<symbol, true>)[TRANSITION_COMPONENT] = true;
+/*@__PURE__*/ Object.assign(Transition, { [TRANSITION_COMPONENT]: true });
 
 /**
  * Check if a node is a Transition component.
