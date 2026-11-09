@@ -2,267 +2,254 @@
  * Type tests for store type inference
  * These tests verify TypeScript type checking at compile time
  */
-import { expectTypeOf } from 'vitest';
+import { describe, expectTypeOf, it } from 'vitest';
 import { createStore } from '../src/store';
 
-// ============================================================================
-// Options-based Store Type Inference
-// ============================================================================
-
-const useCounter = createStore({
-  state: () => ({ count: 0, name: 'test' }),
-  getters: {
-    doubled: (state) => state.count * 2,
-    message: (state) => `${state.name}: ${state.count}`,
-  },
-  actions: {
-    increment() {
-      this.count++;
-    },
-    setName(name: string) {
-      this.name = name;
-    },
-  },
-});
-
-const counter = useCounter();
-
-// State properties should be writable
-expectTypeOf<number>(counter.count);
-expectTypeOf<string>(counter.name);
-counter.count = 5;
-counter.name = 'updated';
-
-// Getters should be readonly
-expectTypeOf<number>(counter.doubled);
-expectTypeOf<string>(counter.message);
-
-// Actions should preserve their signatures
-expectTypeOf<() => void>(counter.increment);
-expectTypeOf<(name: string) => void>(counter.setName);
-
-// Built-in methods should be present
-expectTypeOf<object>(counter.$state);
-expectTypeOf<(payload: any) => void>(counter.$patch);
-expectTypeOf<() => void>(counter.$reset);
-expectTypeOf<() => void>(counter.$dispose);
-
-// ============================================================================
-// Class-based Store Type Inference
-// ============================================================================
-
-class TodoStore {
-  todos: Array<{ id: number; text: string; done: boolean }> = [];
-  filter: 'all' | 'active' | 'completed' = 'all';
-
-  get filtered() {
-    switch (this.filter) {
-      case 'active':
-        return this.todos.filter((t) => !t.done);
-      case 'completed':
-        return this.todos.filter((t) => t.done);
-      default:
-        return this.todos;
-    }
-  }
-
-  get count() {
-    return this.todos.length;
-  }
-
-  add(text: string) {
-    this.todos.push({
-      id: Date.now(),
-      text,
-      done: false,
+describe('store typecheck', () => {
+  it('infers options-based store types correctly', () => {
+    const useCounter = createStore({
+      state: () => ({ count: 0, name: 'test' }),
+      getters: {
+        doubled: (state) => state.count * 2,
+        message: (state) => `${state.name}: ${state.count}`,
+      },
+      actions: {
+        increment() {
+          this.count++;
+        },
+        setName(name: string) {
+          this.name = name;
+        },
+      },
     });
-  }
 
-  toggle(id: number) {
-    const todo = this.todos.find((t) => t.id === id);
-    if (todo) todo.done = !todo.done;
-  }
+    const counter = useCounter();
 
-  remove(id: number) {
-    const index = this.todos.findIndex((t) => t.id === id);
-    if (index > -1) this.todos.splice(index, 1);
-  }
+    // State properties should be writable
+    expectTypeOf<number>(counter.count);
+    expectTypeOf<string>(counter.name);
+    counter.count = 5;
+    counter.name = 'updated';
 
-  setFilter(filter: 'all' | 'active' | 'completed') {
-    this.filter = filter;
-  }
-}
+    // Getters should be readonly
+    expectTypeOf<number>(counter.doubled);
+    expectTypeOf<string>(counter.message);
 
-const useTodos = createStore(TodoStore);
-const todos = useTodos();
+    // Actions should preserve their signatures
+    expectTypeOf<() => void>(counter.increment);
+    expectTypeOf<(name: string) => void>(counter.setName);
 
-// State properties should be writable
-expectTypeOf<Array<{ id: number; text: string; done: boolean }>>(todos.todos);
-expectTypeOf<'all' | 'active' | 'completed'>(todos.filter);
-todos.filter = 'active';
+    // Built-in methods should be present
+    expectTypeOf<object>(counter.$state);
+    expectTypeOf<(payload: any) => void>(counter.$patch);
+    expectTypeOf<() => void>(counter.$reset);
+    expectTypeOf<() => void>(counter.$dispose);
+  });
 
-// Getters should be readonly and inferred correctly
-expectTypeOf<Array<{ id: number; text: string; done: boolean }>>(todos.filtered);
-expectTypeOf<number>(todos.count);
+  it('infers class-based store types correctly', () => {
+    class TodoStore {
+      todos: Array<{ id: number; text: string; done: boolean }> = [];
+      filter: 'all' | 'active' | 'completed' = 'all';
 
-// Actions should preserve their signatures
-expectTypeOf<(text: string) => void>(todos.add);
-expectTypeOf<(id: number) => void>(todos.toggle);
-expectTypeOf<(id: number) => void>(todos.remove);
-expectTypeOf<(filter: 'all' | 'active' | 'completed') => void>(todos.setFilter);
+      get filtered() {
+        switch (this.filter) {
+          case 'active':
+            return this.todos.filter((t) => !t.done);
+          case 'completed':
+            return this.todos.filter((t) => t.done);
+          default:
+            return this.todos;
+        }
+      }
 
-// Built-in methods should be present
-expectTypeOf<object>(todos.$state);
-expectTypeOf<(payload: any) => void>(todos.$patch);
-expectTypeOf<() => void>(todos.$reset);
-expectTypeOf<() => void>(todos.$dispose);
+      get count() {
+        return this.todos.length;
+      }
 
-// ============================================================================
-// Class with Nested State
-// ============================================================================
+      add(text: string) {
+        this.todos.push({
+          id: Date.now(),
+          text,
+          done: false,
+        });
+      }
 
-class UserStore {
-  user = {
-    name: 'John',
-    email: 'john@example.com',
-    preferences: {
-      theme: 'dark' as 'dark' | 'light',
-      notifications: true,
-    },
-  };
+      toggle(id: number) {
+        const todo = this.todos.find((t) => t.id === id);
+        if (todo) todo.done = !todo.done;
+      }
 
-  get displayName() {
-    return this.user.name;
-  }
+      remove(id: number) {
+        const index = this.todos.findIndex((t) => t.id === id);
+        if (index > -1) this.todos.splice(index, 1);
+      }
 
-  updateEmail(email: string) {
-    this.user.email = email;
-  }
-
-  toggleTheme() {
-    this.user.preferences.theme = this.user.preferences.theme === 'dark' ? 'light' : 'dark';
-  }
-}
-
-const useUser = createStore(UserStore);
-const user = useUser();
-
-// Nested state structure should be preserved
-expectTypeOf<string>(user.user.name);
-expectTypeOf<string>(user.user.email);
-expectTypeOf<'dark' | 'light'>(user.user.preferences.theme);
-expectTypeOf<boolean>(user.user.preferences.notifications);
-
-// Getters
-expectTypeOf<string>(user.displayName);
-
-// Actions
-expectTypeOf<(email: string) => void>(user.updateEmail);
-expectTypeOf<() => void>(user.toggleTheme);
-
-// ============================================================================
-// Class with Async Actions
-// ============================================================================
-
-class AsyncStore {
-  data: string | null = null;
-  loading = false;
-  error: Error | null = null;
-
-  get isReady() {
-    return this.data !== null && !this.loading;
-  }
-
-  async fetchData() {
-    this.loading = true;
-    this.error = null;
-    try {
-      const response = await fetch('/api/data');
-      this.data = await response.text();
-    } catch (err) {
-      this.error = err as Error;
-    } finally {
-      this.loading = false;
+      setFilter(filter: 'all' | 'active' | 'completed') {
+        this.filter = filter;
+      }
     }
-  }
 
-  reset() {
-    this.data = null;
-    this.loading = false;
-    this.error = null;
-  }
-}
+    const useTodos = createStore(TodoStore);
+    const todos = useTodos();
 
-const useAsync = createStore(AsyncStore);
-const asyncStore = useAsync();
+    // State properties should be writable
+    expectTypeOf<Array<{ id: number; text: string; done: boolean }>>(todos.todos);
+    expectTypeOf<'all' | 'active' | 'completed'>(todos.filter);
+    todos.filter = 'active';
 
-// State types
-expectTypeOf<string | null>(asyncStore.data);
-expectTypeOf<boolean>(asyncStore.loading);
-expectTypeOf<Error | null>(asyncStore.error);
+    // Getters should be readonly and inferred correctly
+    expectTypeOf<Array<{ id: number; text: string; done: boolean }>>(todos.filtered);
+    expectTypeOf<number>(todos.count);
 
-// Getters
-expectTypeOf<boolean>(asyncStore.isReady);
+    // Actions should preserve their signatures
+    expectTypeOf<(text: string) => void>(todos.add);
+    expectTypeOf<(id: number) => void>(todos.toggle);
+    expectTypeOf<(id: number) => void>(todos.remove);
+    expectTypeOf<(filter: 'all' | 'active' | 'completed') => void>(todos.setFilter);
 
-// Actions (async should return Promise)
-expectTypeOf<() => Promise<void>>(asyncStore.fetchData);
-expectTypeOf<() => void>(asyncStore.reset);
+    // Built-in methods should be present
+    expectTypeOf<object>(todos.$state);
+    expectTypeOf<(payload: any) => void>(todos.$patch);
+    expectTypeOf<() => void>(todos.$reset);
+    expectTypeOf<() => void>(todos.$dispose);
+  });
 
-// ============================================================================
-// Empty Class (Edge Case)
-// ============================================================================
+  it('infers class with nested state correctly', () => {
+    class UserStore {
+      user = {
+        name: 'John',
+        email: 'john@example.com',
+        preferences: {
+          theme: 'dark' as 'dark' | 'light',
+          notifications: true,
+        },
+      };
 
-class EmptyStore { }
+      get displayName() {
+        return this.user.name;
+      }
 
-const useEmpty = createStore(EmptyStore);
-const empty = useEmpty();
+      updateEmail(email: string) {
+        this.user.email = email;
+      }
 
-// Should have built-ins even with no state
-expectTypeOf<object>(empty.$state);
-expectTypeOf<() => void>(empty.$dispose);
+      toggleTheme() {
+        this.user.preferences.theme = this.user.preferences.theme === 'dark' ? 'light' : 'dark';
+      }
+    }
 
-// ============================================================================
-// Class with Only Getters
-// ============================================================================
+    const useUser = createStore(UserStore);
+    const user = useUser();
 
-class GettersOnlyStore {
-  count = 0;
+    // Nested state structure should be preserved
+    expectTypeOf<string>(user.user.name);
+    expectTypeOf<string>(user.user.email);
+    expectTypeOf<'dark' | 'light'>(user.user.preferences.theme);
+    expectTypeOf<boolean>(user.user.preferences.notifications);
 
-  get doubled() {
-    return this.count * 2;
-  }
+    // Getters
+    expectTypeOf<string>(user.displayName);
 
-  get tripled() {
-    return this.count * 3;
-  }
-}
+    // Actions
+    expectTypeOf<(email: string) => void>(user.updateEmail);
+    expectTypeOf<() => void>(user.toggleTheme);
+  });
 
-const useGettersOnly = createStore(GettersOnlyStore);
-const gettersOnly = useGettersOnly();
+  it('infers class with async actions correctly', () => {
+    class AsyncStore {
+      data: string | null = null;
+      loading = false;
+      error: Error | null = null;
 
-expectTypeOf<number>(gettersOnly.count);
-expectTypeOf<number>(gettersOnly.doubled);
-expectTypeOf<number>(gettersOnly.tripled);
+      get isReady() {
+        return this.data !== null && !this.loading;
+      }
 
-// ============================================================================
-// Class with Only Actions
-// ============================================================================
+      async fetchData() {
+        this.loading = true;
+        this.error = null;
+        try {
+          this.data = 'result';
+        } catch (error) {
+          this.error = error as Error;
+        } finally {
+          this.loading = false;
+        }
+      }
 
-class ActionsOnlyStore {
-  value = 0;
+      reset() {
+        this.data = null;
+        this.loading = false;
+        this.error = null;
+      }
+    }
 
-  increment() {
-    this.value++;
-  }
+    const useAsync = createStore(AsyncStore);
+    const asyncStore = useAsync();
 
-  decrement() {
-    this.value--;
-  }
-}
+    // State types
+    expectTypeOf<string | null>(asyncStore.data);
+    expectTypeOf<boolean>(asyncStore.loading);
+    expectTypeOf<Error | null>(asyncStore.error);
 
-const useActionsOnly = createStore(ActionsOnlyStore);
-const actionsOnly = useActionsOnly();
+    // Getters
+    expectTypeOf<boolean>(asyncStore.isReady);
 
-expectTypeOf<number>(actionsOnly.value);
-expectTypeOf<() => void>(actionsOnly.increment);
-expectTypeOf<() => void>(actionsOnly.decrement);
+    // Actions (async should return Promise)
+    expectTypeOf<() => Promise<void>>(asyncStore.fetchData);
+    expectTypeOf<() => void>(asyncStore.reset);
+  });
+
+  it('infers empty class correctly', () => {
+    class EmptyStore {}
+
+    const useEmpty = createStore(EmptyStore);
+    const empty = useEmpty();
+
+    // Should have built-ins even with no state
+    expectTypeOf<object>(empty.$state);
+    expectTypeOf<() => void>(empty.$dispose);
+  });
+
+  it('infers getters-only class correctly', () => {
+    class GettersOnlyStore {
+      count = 0;
+
+      get doubled() {
+        return this.count * 2;
+      }
+
+      get tripled() {
+        return this.count * 3;
+      }
+    }
+
+    const useGettersOnly = createStore(GettersOnlyStore);
+    const gettersOnly = useGettersOnly();
+
+    expectTypeOf<number>(gettersOnly.count);
+    expectTypeOf<number>(gettersOnly.doubled);
+    expectTypeOf<number>(gettersOnly.tripled);
+  });
+
+  it('infers actions-only class correctly', () => {
+    class ActionsOnlyStore {
+      value = 0;
+
+      increment() {
+        this.value++;
+      }
+
+      decrement() {
+        this.value--;
+      }
+    }
+
+    const useActionsOnly = createStore(ActionsOnlyStore);
+    const actionsOnly = useActionsOnly();
+
+    expectTypeOf<number>(actionsOnly.value);
+    expectTypeOf<() => void>(actionsOnly.increment);
+    expectTypeOf<() => void>(actionsOnly.decrement);
+  });
+});

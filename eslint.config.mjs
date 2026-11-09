@@ -1,25 +1,36 @@
 import { estjs } from '@estjs/eslint-config';
 
-export default estjs(
+export default [
+  ...estjs(
+    {
+      unicorn: {
+        'unicorn/prefer-modern-dom-apis': 'off',
+        'unicorn/prefer-dom-node-remove': 'off',
+        'unicorn/prefer-dom-node-append': 'off',
+        'unicorn/no-lonely-if': 'off',
+        'unicorn/no-new-array': 'off',
+        'unicorn/filename-case': 'off',
+      },
+      typescript: {
+        '@typescript-eslint/no-this-alias': 'off',
+      },
+      javascript: {
+        'no-prototype-builtins': 'off',
+      },
+      test: {
+        'vitest/no-conditional-expect': 'off',
+      },
+      ignores: ['AGENTS.md'],
+    },
+    { unocss: false, node: false },
+  ),
   {
-    unicorn: {
-      'unicorn/prefer-modern-dom-apis': 'off',
-      'unicorn/prefer-dom-node-remove': 'off',
-      'unicorn/prefer-dom-node-append': 'off',
-      'unicorn/no-lonely-if': 'off',
-      'unicorn/no-new-array': 'off',
-      'unicorn/filename-case': 'off',
+    files: ['**/*.test-d.ts'],
+    rules: {
+      'vitest/expect-expect': 'off',
+      'vitest/valid-expect': 'off',
+      'require-await': 'off',
+      '@typescript-eslint/no-extraneous-class': 'off',
     },
-    typescript: {
-      '@typescript-eslint/no-this-alias': 'off',
-    },
-    javascript: {
-      'no-prototype-builtins': 'off',
-    },
-    test: {
-      'vitest/no-conditional-expect': 'off',
-    },
-    ignores: ['AGENTS.md'],
   },
-  { unocss: false, node: false },
-);
+];
